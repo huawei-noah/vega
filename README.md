@@ -6,7 +6,7 @@
 
 Vega is an AutoML algorithm tool chain developed by Noah's Ark Laboratory, the main features are as follows:
 
-1. Complete AutoML capabilities: The AutoML capabilities cover key functions such as Hyperparameter Optimization, Data Augmentation, Network Architecture Search (NAS), Model Compression, and Fully Train. These functions are highly decoupled and can be configured as required, construct a complete pipeline.
+1. Full pipeline capailities: The AutoML capabilities cover key functions such as Hyperparameter Optimization, Data Augmentation, Network Architecture Search (NAS), Model Compression, and Fully Train. These functions are highly decoupled and can be configured as required, construct a complete pipeline.
 2. Industry-leading AutoML algorithms: provides Noah's Ark Laboratory's self-developed [industry-leading algorithm](./docs/en/benchmark/benchmark.md) and  [Model Zoo](./docs/en/model_zoo/model_zoo.md) to download the State-of-the-art (SOTA) model.
 3. High-concurrency neural network training capability: Provides high-performance trainers to accelerate model training and evaluation.
 
