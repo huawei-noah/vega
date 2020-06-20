@@ -30,7 +30,7 @@ Vega是诺亚方舟实验室自研的AutoML算法工具链，有主要特点：
 | HPO | BOSS: Bayesian Optimization via Sub-Sampling | 基于贝叶斯优化框架下的一种针对计算资源受限，需要高效搜索的，具有普适性的超参优化算法 | [参考](./docs/cn/algorithms/hpo.md) |
 | Data Augmentation | [PBA: Population Based Augmentation: Efficient Learning of Augmentation Policy Schedules](https://arxiv.org/abs/1905.05393) | 基于PBT优化算法搜索数据增广策略时刻表的数据增广算法 | [参考](./docs/cn/algorithms/pba.md) |
 | Data Augmentation | cyclesr: CycleGAN + SR | 底层视觉的无监督风格迁移算法 | [参考](./docs/cn/algorithms/cyclesr.md) |
-| Fully Train | FMD | 基于特征图扰动的神经网络训练方法 | [参考](./docs/cn/algorithms/fmd.md) |
+| Fully Train | [FMD](https://arxiv.org/abs/2002.11022) | 基于特征图扰动的神经网络训练方法 | [参考](./docs/cn/algorithms/fmd.md) |
 
 ## 获取和安装
 
