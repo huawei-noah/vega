@@ -1,0 +1,76 @@
+general:
+    worker:
+        timeout: 1000
+        gpus_per_job: 1
+
+pipeline: [nas1]
+# pipeline: [nas1, fullytrain1]
+
+nas1:
+    pipe_step:
+        type: NasPipeStep
+
+    search_algorithm:
+        type: BackboneNas
+        codec: BackboneNasCodec
+        policy:
+            num_mutate: 10
+            random_ratio: 0.2
+        range:
+            max_sample: 100
+            min_sample: 10
+
+    search_space:
+        type: SearchSpace
+        modules: ['backbone', 'head']
+        backbone:
+            ResNetVariant:
+                base_depth: [18, 34, 50, 101]
+                base_channel: [32, 48, 56, 64]
+                doublechannel: [3, 4]
+                downsample: [3, 4]
+        head:
+            LinearClassificationHead:
+                num_classes: [10]
+
+    trainer:
+        type: Trainer
+        epochs: 1
+        optim:
+            type: Adam
+            lr: 0.1
+        lr_scheduler:
+            type: MultiStepLR
+            milestones: [75, 150]
+            gamma: 0.5
+        loss:
+            type: CrossEntropyLoss
+        metric:
+            type: accuracy
+    dataset:
+        type: Cifar10
+        common:
+            data_path: /cache/datasets/cifar10/
+
+# fullytrain1:
+#     pipe_step:
+#         type: FullyTrainPipeStep
+
+#     #    model:
+#     #        model_desc_file: "{local_base_path}/output/nas_model_desc.json"
+
+#     trainer:
+#         ref: nas1.trainer
+#         epochs: 160
+#         optim:
+#             type: SGD
+#             lr: 0.1
+#             momentum: 0.9
+#             weight_decay: 0.0001
+#         lr_scheduler:
+#             type: MultiStepLR
+#             milestones: [60, 120]
+#             gamma: 0.5
+
+#     dataset:
+#         ref: nas1.dataset

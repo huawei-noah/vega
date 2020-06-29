@@ -1,0 +1,52 @@
+{
+    "modules": ["super_network"],
+    "super_network": {
+        "name": "DartsNetwork",
+        "network": ["PreOneStem",
+                  "normal", "normal", "normal", "normal", "normal", "normal", "reduce",
+                  "normal", "normal", "normal", "normal", "normal", "normal", "reduce",
+                  "normal", "normal", "normal", "normal", "normal", "normal"
+                 ],
+
+        "input_size": 32,
+        "init_channels": 36,
+        "num_classes": 10,
+        "auxiliary": true,
+        "aux_size": 8,
+        "auxiliary_layer": 13,
+        "search": false,
+
+        "normal": {
+            "type": "block",
+            "name": "Cell",
+            "steps": 4,
+            "reduction": false,
+            "genotype":
+              [["sep_conv_5x5", 2, 0],
+               ["sep_conv_3x3", 2, 1],
+               ["sep_conv_3x3", 3, 0],
+               ["sep_conv_5x5", 3, 2],
+               ["sep_conv_3x3", 4, 0],
+               ["sep_conv_5x5", 4, 3],
+               ["sep_conv_3x3", 5, 0],
+               ["sep_conv_5x5", 5, 3]],
+            "concat": [2, 3, 4, 5]
+        },
+        "reduce": {
+            "type": "block",
+            "name": "Cell",
+            "steps": 4,
+            "reduction": true,
+            "genotype":
+              [["sep_conv_5x5", 2, 1],
+               ["sep_conv_5x5", 2, 0],
+               ["sep_conv_5x5", 3, 2],
+               ["sep_conv_5x5", 3, 1],
+               ["sep_conv_5x5", 4, 3],
+               ["sep_conv_5x5", 4, 2],
+               ["sep_conv_5x5", 5, 4],
+               ["sep_conv_5x5", 5, 2]],
+            "concat": [2, 3, 4, 5]
+        }
+    }
+}

@@ -1,0 +1,56 @@
+Set5:
+    test:
+        root_HR: ~
+        root_LR: ~
+        batch_size: 1
+        num_workers: 4
+        upscale: 2
+        subfile: !!null
+        crop: !!null
+        shuffle: false
+        hflip: false
+        vflip: false
+        rot90: false
+        save_in_memory: false
+        distributed: false
+        imgs_per_gpu: 1
+        pin_memory: True
+        drop_last: True
+
+Set14:
+    test:
+        root_HR: ~
+        root_LR: ~
+        batch_size: 1
+        num_workers: 4
+        upscale: 2
+        subfile: !!null
+        crop: !!null
+        shuffle: false
+        hflip: false
+        vflip: false
+        rot90: false
+        save_in_memory: false
+        distributed: false
+        imgs_per_gpu: 1
+        pin_memory: True
+        drop_last: True
+
+BSDS100:
+    test:
+        root_HR: ~
+        root_LR: ~
+        batch_size: 1
+        num_workers: 4
+        upscale: 2
+        subfile: !!null
+        crop: !!null
+        shuffle: false
+        hflip: false
+        vflip: false
+        rot90: false
+        save_in_memory: false
+        distributed: false
+        imgs_per_gpu: 1
+        pin_memory: True
+        drop_last: True

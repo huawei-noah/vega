@@ -1,0 +1,27 @@
+pipeline: [nas]
+
+nas:
+    pipe_step:
+        type: NasPipeStep
+    dataset:
+        type: Cifar10
+        common:
+            data_path: /cache/datasets/cifar10/
+
+    search_algorithm:
+        type: RandomSearch
+
+    search_space:
+        type: FineGrainedSpace
+
+        modules: ['resnet18']
+        resnet18:
+            type: ResNetVariant
+            base_depth: 18
+            base_channel: 64
+            doublechannel: [0, 0, 1, 0, 1, 0, 1, 0]
+            downsample: [0, 0, 1, 0, 1, 0, 1, 0]
+
+    trainer:
+        type: Trainer
+        epochs: 4

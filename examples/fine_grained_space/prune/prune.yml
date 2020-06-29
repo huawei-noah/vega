@@ -1,0 +1,68 @@
+pipeline: [nas]
+
+nas:
+    pipe_step:
+        type: NasPipeStep
+    dataset:
+        type: Cifar10
+        common:
+            data_path: /cache/datasets/cifar10/
+
+    search_algorithm:
+        type: RandomSearch
+
+    search_space:
+        type: FineGrainedSpace
+        modules: ['resnet', 'process']
+
+        resnet:
+            type: ResNet
+            depth: 20
+            block:
+                type: BasicBlock
+            init_plane: 16
+            out_plane: 60
+            num_reps: 9
+            items:
+                inchannel: [16, 15, 15, 15, 29, 29, 29, 60, 60]
+                outchannel: [15, 15, 15, 29, 29, 29, 60, 60, 60]
+                inner_plane: [14, 16, 16, 29, 30, 30, 62, 60, 62]
+                stride: [1, 1, 1, 2, 1, 1, 2, 1, 1]
+        process:
+            type: Prune
+            path: "/cache/models/resnet20.pth"
+            chn_mask: [[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+                       [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0],
+                       [0, 1, 0, 0, 1, 1, 0, 0, 0, 1, 0, 0],
+                       [0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                       [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                       [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0],
+                       [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                       [0, 1, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0],
+                       [0, 1, 0, 0, 1, 1, 0, 0, 0, 0, 1, 0],
+                       [0, 1, 0, 0, 1, 1, 0, 0, 0, 0, 1, 0],
+                       [0, 1, 0, 0, 1, 1, 0, 0, 0, 1, 0, 0],
+                       [0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0]]
+            chn_node_mask: [[0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1],
+                            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1],
+                            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                            [0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1],
+                            [0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]]
+
+
+    trainer:
+        type: Trainer
+        epochs: 2
+        optim:
+            type: SGD
+            lr: 0.1
+            momentum: 0.9
+            weight_decay: !!float 1e-4
+        lr_scheduler:
+            type: StepLR
+            step_size: 20
+            gamma: 0.5
+        loss:
+            type: CrossEntropyLoss
+        metrics:
+            type: accuracy

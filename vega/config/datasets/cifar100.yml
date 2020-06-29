@@ -1,0 +1,72 @@
+Cifar100:
+    n_class: 100
+    train:
+       data_path: ~
+       batch_size: 256
+       num_workers: 4
+       shuffle: false
+       distributed: false
+       download: false
+       imgs_per_gpu: 1
+       train_portion: 0.5
+       pin_memory: True
+       drop_last: True
+       transforms:
+            - type: RandomCrop
+              size: 32
+              padding: 4
+            - type: RandomHorizontalFlip
+            - type: ToTensor
+            - type: Normalize
+              mean:
+               - 0.50707519
+               - 0.48654887
+               - 0.44091785
+              std:
+               - 0.26733428
+               - 0.25643846
+               - 0.27615049
+    val:
+       data_path: ~
+       batch_size: 256
+       num_workers: 4
+       shuffle: false
+       distributed: false
+       download: false
+       imgs_per_gpu: 1
+       train_portion: 0.5
+       pin_memory: True
+       drop_last: True
+       transforms:
+            - type: ToTensor
+            - type: Normalize
+              mean:
+               - 0.50707519
+               - 0.48654887
+               - 0.44091785
+              std:
+               - 0.26733428
+               - 0.25643846
+               - 0.27615049
+    test:
+       data_path: ~
+       batch_size: 1
+       num_workers: 4
+       shuffle: false
+       distributed: false
+       download: false
+       imgs_per_gpu: 1
+       train_portion: 0.5
+       pin_memory: True
+       drop_last: True
+       transforms:
+            - type: ToTensor
+            - type: Normalize
+              mean:
+               - 0.50707519
+               - 0.48654887
+               - 0.44091785
+              std:
+               - 0.26733428
+               - 0.25643846
+               - 0.27615049

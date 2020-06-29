@@ -1,0 +1,79 @@
+Imagenet:
+    n_class: 1000
+    train:
+        data_path: ~
+        batch_size: 1
+        num_workers: 4
+        shuffle: true
+        distributed: false
+        download: false
+        imgs_per_gpu: 1
+        pin_memory: True
+        drop_last: True
+        transforms:
+            - type: RandomResizedCrop
+              size: 224
+            - type: RandomHorizontalFlip
+            - type: ColorJitter
+              brightness: 0.4
+              contrast: 0.4
+              saturation: 0.4
+              hue: 0.2
+            - type: ToTensor
+            - type: Normalize
+              mean:
+                  - 0.485
+                  - 0.456
+                  - 0.406
+              std:
+                  - 0.229
+                  - 0.224
+                  - 0.225
+    val:
+        data_path: ~
+        batch_size: 1
+        num_workers: 4
+        shuffle: true
+        distributed: false
+        imgs_per_gpu: 1
+        pin_memory: True
+        drop_last: True
+        transforms:
+            - type: Resize
+              size: 256
+            - type: CenterCrop
+              size: 224
+            - type: ToTensor
+            - type: Normalize
+              mean:
+                  - 0.485
+                  - 0.456
+                  - 0.406
+              std:
+                  - 0.229
+                  - 0.224
+                  - 0.225
+    test:
+        data_path: ~
+        batch_size: 1
+        num_workers: 4
+        shuffle: true
+        distributed: false
+        imgs_per_gpu: 1
+        pin_memory: True
+        drop_last: True
+        transforms:
+            - type: Resize
+              size: 256
+            - type: CenterCrop
+              size: 224
+            - type: ToTensor
+            - type: Normalize
+              mean:
+                  - 0.485
+                  - 0.456
+                  - 0.406
+              std:
+                  - 0.229
+                  - 0.224
+                  - 0.225

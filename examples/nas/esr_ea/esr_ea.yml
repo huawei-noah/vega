@@ -1,0 +1,125 @@
+general:
+    worker:
+        gpus_per_job: 1
+
+pipeline: [nas]
+# pipeline: [nas, fully_train]
+
+nas:
+    pipe_step:
+        type: NasPipeStep
+
+    dataset:
+        type: DIV2K
+        train:
+            root_HR: /cache/datasets/DIV2K/div2k_train/hr
+            root_LR: /cache/datasets/DIV2K/div2k_train/lr
+            upscale: 2
+            crop: 32
+            hflip: true
+            vflip: true
+            rot90: true 
+            shuffle: true
+            batch_size: 16
+        test:
+            root_HR: /cache/datasets/DIV2K/Set5/hr
+            root_LR: /cache/datasets/DIV2K/Set5/lr
+            upscale: 2
+
+    search_space:
+        type: SearchSpace
+        modules: ['esrbody']
+        esrbody:
+            name: ESRN
+            block_type: [S,G,C]
+            conv_num: [4,6,8]
+            growth_rate: [16,24,32,48,64]
+            type_prob: [1,1,1]
+            conv_prob: [1,1,1]
+            growth_prob: [1,1,1,1,1]
+            G0: 64
+            scale: 2
+
+    search_algorithm:
+        type: ESRSearch
+        codec: ESRCodec
+        policy:
+            num_generation: 2
+            num_individual: 4
+            num_elitism: 2
+            mutation_rate: 0.05
+        range:
+            node_num: 20
+            min_active: 16
+            max_params: 1020000
+            min_params: 1010000
+
+    trainer:
+        type: Trainer
+        callbacks: ESRTrainerCallback
+        epochs: 10
+        optim:
+            type: Adam
+            lr: 0.0001
+        lr_scheduler:
+            type: MultiStepLR
+            milestones: [800,900]
+            gamma: 0.5
+        loss:
+            type: L1Loss
+        metric:
+            type: SRMetric
+            scale: 2 
+            max_rgb: 255
+        scale: 2
+        cuda: True
+        seed: 10
+        
+# fully_train:
+#     pipe_step:
+#         type: FullyTrainPipeStep
+#         esr_models_file: "{local_base_path}/output/nas/selected_arch.npy"
+#     dataset:
+#         ref: nas.dataset
+
+#     model:
+#         model_desc:
+#             type: SearchSpace
+#             modules: ['esrbody']
+#             esrbody:
+#                 name: ESRN
+#                 block_type: [S,G,C]
+#                 conv_num: [4,6,8]
+#                 growth_rate: [16,24,32,48,64]
+#                 type_prob: [1,1,1]
+#                 conv_prob: [1,1,1]
+#                 growth_prob: [1,1,1,1,1]
+#                 G0: 64
+#                 scale: 2
+#     trainer:
+#         type: Trainer
+#         lazy_built: True
+#         callbacks: ESRTrainerCallback
+#         codec: ESRCodec
+#         node_num: 20
+#         epochs: 10
+#         stat_epoch: 2
+#         # model_desc_file: "./output/0417.142237.891/output/selected_arch.npy"
+#         optim:
+#             type: Adam
+#             lr: 0.0001
+#         lr_scheduler:
+#             type: MultiStepLR
+#             milestones: [12000,20000]
+#             gamma: 0.5
+#         loss:
+#             type: L1Loss
+#         metric:
+#             type: SRMetric
+#             scale: 2 
+#             max_rgb: 255
+#         scale: 2
+#         seed: 10
+#         lazy_built: true
+#         range:
+#             node_num: 20

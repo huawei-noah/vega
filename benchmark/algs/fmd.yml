@@ -1,0 +1,43 @@
+general:
+    worker:
+      gpus_per_job: 1
+      group_join_num: 64
+
+pipeline: [fully_train]
+
+fully_train:
+    pipe_step:
+        type: FullyTrainPipeStep
+
+    dataset:
+        type: Cifar10
+        common:
+            data_path: /cache/datasets/cifar10/
+        test:
+            batch_size: 256
+
+    model:
+        model_desc:
+            modules: ["custom"]
+            custom:
+                name: FmdNetwork
+                depth: 56
+                num_classes: 10
+                args: 
+                    drop_prob: 0.03
+                    alpha: 5
+                    block_size: 6
+      
+    trainer:
+        type: Trainer
+        epochs: 300
+        seed: 0
+        optim:
+            type: SGD
+            lr: 0.1
+            momentum: 0.9
+            weight_decay: 0.0005
+        lr_scheduler:
+            type: CosineAnnealingLR
+            T_max: 200
+

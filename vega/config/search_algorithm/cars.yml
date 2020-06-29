@@ -1,0 +1,24 @@
+CARSAlgorithm:
+    codec: DartsCodec
+    policy:
+        momentum: 0.9
+        weight_decay: 3.0e-4
+        parallel: False
+        num_individual: 8 #128
+        num_individual_per_iter: 1
+        expand: 1.0
+        warmup: 0 #50
+        num_generation: 1
+        start_ga_epoch: 0 #50
+        ga_interval: 1 #10
+        nsga_method: cars_nsga
+        pareto_model_num: 4
+        select_method: uniform #pareto
+        arch_optim:
+            type: Adam
+            lr: 3.0e-4
+            betas: [0.5, 0.999]
+            weight_decay: 1.0e-3
+        criterion:
+            type: CrossEntropyLoss
+

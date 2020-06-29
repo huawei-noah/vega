@@ -1,0 +1,139 @@
+general:
+    worker:
+        gpus_per_job: 1
+        timeout: 1000
+
+pipeline: [random, mutate]
+# pipeline: [random, mutate, fully_train]
+
+random:
+    pipe_step:
+        type: NasPipeStep
+
+    dataset:
+        type: DIV2K
+        train:
+            root_HR: /cache/datasets/DIV2K/div2k_train/hr
+            root_LR: /cache/datasets/DIV2K/div2k_train/lr
+            upscale: 2
+            crop: 64    # crop size of lr image
+            hflip: true    # flip image horizontally
+            vflip: true    # flip image vertically
+            rot90: true    # flip image diagonally
+            shuffle: true
+            num_workers: 2
+            batch_size: 16
+        test:
+            root_HR: /cache/datasets/DIV2K/Set5/hr
+            root_LR: /cache/datasets/DIV2K/Set5/lr
+            upscale: 2
+
+    search_space:
+        type: SearchSpace
+        modules: ['custom']
+        custom:
+            name: MtMSR
+            in_channel: 3
+            out_channel: 3
+            upscale: 2
+            rgb_mean: [0.4040, 0.4371, 0.4488]
+            candidates: [res2, res3]
+            block_range: [10, 20]
+            cib_range: [2, 4]
+
+    search_algorithm:
+        type: SRRandom
+        codec: SRCodec
+        policy:
+            num_sample: 10
+
+    trainer:
+        type: Trainer
+        callbacks: SREATrainerCallback
+        codec: SRCodec
+        epochs: 50
+        optim:
+            type: Adam
+            lr: 0.0002
+        lr_scheduler:
+            type: StepLR
+            step_size: 2000
+            gamma: 0.5
+            call_point: 'AFTER_EPOCH'
+        loss:
+            type: L1Loss
+        metric:
+            type: SRMetric
+            method: psnr
+            crop_border: 2
+
+mutate:
+    pipe_step:
+        type: NasPipeStep
+
+    dataset:
+        ref: random.dataset
+
+    search_space:
+        type: SearchSpace
+        ref: random.search_space
+
+    search_algorithm:
+        type: SRMutate
+        codec: SRCodec
+        policy:
+            num_mutate: 3
+            num_sample: 10
+
+    trainer:
+        ref: random.trainer
+        callbacks: SREATrainerCallback
+        epochs: 50
+        codec: SRCodec
+        save_model_desc: True
+
+fully_train:
+    pipe_step:
+        type: FullyTrainPipeStep
+        models_folder: "{local_base_path}/output/mutate/"
+    dataset:
+        train:
+            root_HR: /cache/datasets/DIV2K/div2k_train/hr
+            root_LR: /cache/datasets/DIV2K/div2k_train/lr
+            upscale: 2
+            crop: 64    # crop size of lr image
+            hflip: true    # flip image horizontally
+            vflip: true    # flip image vertically
+            rot90: true    # flip image diagonally
+            shuffle: true
+            num_workers: 2
+            batch_size: 50
+        test:
+            root_HR: /cache/datasets/DIV2K/Set5/hr
+            root_LR: /cache/datasets/DIV2K/Set5/lr
+            upscale: 2
+
+    search_space:
+        ref: random.search_space
+
+    trainer:
+        type: Trainer
+        callbacks: SREATrainerCallback
+        codec: SRCodec
+        seed: 0
+        epochs: 10000
+        print_step: 50
+        val_epoch: 5
+        optim:
+            type: Adam
+            lr: 0.0002
+        lr_scheduler:
+            type: StepLR
+            step_size: 2000
+            gamma: 0.5
+        loss:
+            type: L1Loss
+        metric:
+            type: SRMetric
+            method: psnr
+            crop_border: 2

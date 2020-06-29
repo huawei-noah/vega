@@ -1,0 +1,40 @@
+pipeline: [nas]
+
+nas:
+    pipe_step:
+        type: NasPipeStep
+    dataset:
+        type: Cifar10
+        common:
+            data_path: /cache/datasets/cifar10/
+
+    search_algorithm:
+        type: RandomSearch
+
+    search_space:
+        type: FineGrainedSpace
+
+        modules: ['init', 'bottlelayer', 'pooling', 'view', 'linear']
+        init:
+            type: InitialBlock
+            init_plane: 64
+        bottlelayer:
+            type: BasicLayer
+            in_plane: 64
+            expansion: 4
+            block: 
+                type: BottleneckBlock
+            layer_reps: [3, 4, 6, 3]
+        pooling:
+            type: AdaptiveAvgPool2d
+            output_size: !!python/tuple [1, 1]
+        view:
+            type: View
+        linear:
+            type: Linear
+            in_features: 2048
+            out_features: 10
+
+    trainer:
+        type: Trainer
+        epochs: 4

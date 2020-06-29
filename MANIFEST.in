@@ -1,0 +1,3 @@
+#dispatch files to site-packages
+recursive-include vega *
+recursive-include roma *

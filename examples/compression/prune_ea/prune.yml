@@ -1,0 +1,86 @@
+general:
+    worker:
+        gpus_per_job: 1
+        group_join_num: 64
+
+pipeline: [nas]
+# pipeline: [nas, fully_train]
+
+nas:
+    pipe_step:
+        type: NasPipeStep
+
+    dataset:
+        type: Cifar10
+        common:
+            data_path: /cache/datasets/cifar10/
+        test:
+            batch_size: 256
+
+    search_algorithm:
+        type: PruneEA
+        codec: PruneCodec
+        policy:
+            length: 464
+            num_generation: 31
+            num_individual: 4
+            random_models: 32
+
+    search_space:
+        type: SearchSpace
+        modules: ['backbone']
+        backbone:
+            name: 'PruneResNet'
+            base_chn: [16,16,16,32,32,32,64,64,64]
+            base_chn_node: [16,16,32,64]
+            num_classes: 10
+
+    trainer:
+        type: Trainer
+        callbacks: PruneTrainerCallback
+        epochs: 2
+        init_model_file: "/cache/models/resnet20.pth"
+        optim:
+            type: SGD
+            lr: 0.1
+            momentum: 0.9
+            weight_decay: !!float 1e-4
+        lr_scheduler:
+            type: StepLR
+            step_size: 20
+            gamma: 0.5
+        loss:
+            type: CrossEntropyLoss
+        metrics:
+            type: accuracy
+        seed: 10
+        #        encoding: None
+        limits:
+            flop_range: [!!float 0, !!float 1e10]
+
+# fully_train:
+#     pipe_step:
+#         type: FullyTrainPipeStep
+#         models_folder: "{local_base_path}/output/nas/"
+
+#     model:
+#         model_desc_file: "./model_desc.json"
+
+#     search_space:
+#         type: SearchSpace
+#         modules: ['backbone']
+#         backbone:
+#             name: 'PruneResNet'
+#             base_chn: [16,16,16,32,32,32,64,64,64]
+#             base_chn_node: [16,16,32,64]
+#             num_classes: 10
+
+#     dataset:
+#         ref: nas.dataset
+
+#     trainer:
+#         ref: nas.trainer
+#         lr_scheduler:
+#             type: MultiStepLR
+#             milestones: [200,300,375]
+#             gamma: 0.1

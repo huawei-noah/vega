@@ -1,4 +1,4 @@
-# Vega is coming soon
+# Vega
 
 [中文](./README.cn.md)
 
@@ -77,4 +77,5 @@ Of course, this document cannot solve all the problems. If you have any question
 
 ## Cooperation and contribution
 
-Welcome to use Vega. If you have any questions, ask for help, fix bugs, contribute algorithms, or improve documents, submit the issue in the community. We will reply to and communicate with you in a timely manner. We hope that with our joint efforts, we can improve Vega to be a real productivity tool.
+Welcome to use Vega. If you have any questions, ask for help, fix bugs, contribute algorithms, or improve documents, submit the issue in the community. We will reply to and communicate with you in a timely manner.
+Welcome to join our QQ chatroom (Chinese): 833345709.

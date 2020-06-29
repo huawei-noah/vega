@@ -1,0 +1,48 @@
+pipeline: [nas1]
+
+nas1:
+    pipe_step:
+        type: NasPipeStep
+    dataset:
+        type: Cifar10
+        common:
+            data_path: /cache/datasets/cifar10/
+
+    search_algorithm:
+        type: RandomSearch
+
+    search_space:
+        type: FineGrainedSpace
+        modules: ['init', 'layer', 'head']
+        init:
+            type: SmallInputInitialBlock
+            init_plane: 32
+        layer:
+            type: VariantLayer
+            block:
+                type: BasicBlock
+            in_plane: 32
+            out_plane: 512
+            doublechannel: [0, 1, 1, 0, 1, 0, 0, 1]
+            downsample: [1, 1, 0, 1, 0, 0, 0, 1]
+            expansion: 1
+        head:
+            type: LinearClassificationHead
+            base_channel: 512
+            num_class: 10
+
+    trainer:
+        type: Trainer
+        epochs: 10
+        optim:
+            type: Adam
+            lr: 0.1
+        lr_scheduler:
+            type: MultiStepLR
+            milestones: [75, 150]
+            gamma: 0.5
+        loss:
+            type: CrossEntropyLoss
+        metric:
+            type: accuracy
+

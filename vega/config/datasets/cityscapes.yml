@@ -1,0 +1,23 @@
+Cityscapes:
+    train:
+        root_path: ~
+        list_path: 'img_gt_train.txt'
+        batch_size: 1
+        num_workers: 4
+        shuffle: False
+        distributed: False
+        imgs_per_gpu: 1
+        workers_per_gpu: 8
+        pin_memory: True
+        drop_last: True
+    test:
+        root_path: ~
+        list_path: 'img_gt_train.txt'
+        batch_size: 1
+        num_workers: 4
+        shuffle: False
+        distributed: False
+        imgs_per_gpu: 1
+        workers_per_gpu: 8
+        pin_memory: True
+        drop_last: True

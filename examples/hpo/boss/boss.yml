@@ -1,0 +1,81 @@
+general:
+    worker:
+        timeout: 1000
+        gpus_per_job: 1
+
+pipeline: [hpo1]
+
+hpo1:
+    pipe_step:
+        type: HpoPipeStep
+
+    dataset:
+        type: Cifar10
+        common:
+            data_path: /cache/datasets/cifar10/
+        val:
+            batch_size: 256
+        test:
+            batch_size: 256
+
+    hpo:
+        type: BossHpo
+        policy:
+            total_epochs: 81
+            config_count: 40
+            repeat_times: 2
+        hyperparameter_space:
+            hyperparameters:
+                - key: dataset.batch_size
+                  type: INT_CAT
+                  range: [8, 16, 32, 64, 128, 256]
+                - key: trainer.optim.lr
+                  type: FLOAT_EXP
+                  range: [0.00001, 0.1]
+                - key: trainer.optim.type
+                  type: STRING
+                  range: ['Adam', 'SGD']
+                - key: trainer.optim.momentum
+                  type: FLOAT
+                  range: [0.0, 0.99]
+            condition:
+                - key: condition_for_sgd_momentum
+                  child: trainer.optim.momentum
+                  parent: trainer.optim.type
+                  type: EQUAL
+                  range: ["SGD"]
+
+    
+    model:
+        model_desc:
+            modules: ["backbone", "head"]
+            backbone:
+                base_channel: 64
+                downsample: [0, 0, 1, 0, 1, 0, 1, 0]
+                base_depth: 18
+                doublechannel: [0, 0, 1, 0, 1, 0, 1, 0]
+                name: ResNetVariant
+            head:
+                num_classes: 10
+                name: LinearClassificationHead
+                base_channel: 512
+    trainer:
+        type: Trainer
+        epochs: 1
+        optim:
+            type: Adam
+            lr: 0.1
+        lr_scheduler:
+            type: MultiStepLR
+            milestones: [75, 150]
+            gamma: 0.5
+        metric:
+            type: accuracy
+        loss:
+            type: CrossEntropyLoss
+
+    evaluator:
+        type: Evaluator
+        gpu_evaluator:
+            type: GpuEvaluator
+            ref: trainer

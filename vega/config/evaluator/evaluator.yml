@@ -1,0 +1,33 @@
+Evaluator:
+    gpu_evaluator:
+        type: GpuEvaluator
+        cuda: True
+        horovod: False
+        load_checkpoint: True
+        evaluate_latency: False
+        model_file: ~
+        ckpt_file: ~
+        model_name: ~
+        ckpt_name: ~
+        model_desc_file: ~
+        hps_file: ~
+        report_freq: 10
+        seed: 0
+        epochs: 1
+        optim:
+            type: Adam
+            lr: 0.1
+        lr_scheduler:
+            type: MultiStepLR
+            milestones: [75, 150]
+            gamma: 0.5
+        loss:
+            type: CrossEntropyLoss
+        metric:
+            type: accuracy
+        visualize:
+            train_process:
+                visual: true
+            model:
+                visual: true
+                interval: 10

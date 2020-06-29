@@ -1,0 +1,60 @@
+FashionMnist:
+    n_class: 10
+    train:
+        data_path: ~
+        batch_size: 1
+        num_workers: 4
+        shuffle: true
+        distributed: false
+        download: false
+        imgs_per_gpu: 1
+        pin_memory: True
+        drop_last: True
+        transforms:
+            - type: RandomAffine
+              degrees: 15
+              translate: (0.1, 0.1)
+              scale: (0.9, 1.1)
+              shear: 0.1
+            - type: RandomVerticalFlip
+            - type: ToTensor
+            - type: Normalize
+              mean:
+                - 0.28604063146254594
+              std:
+                - 0.35302426207299326
+    val:
+        data_path: ~
+        batch_size: 1
+        num_workers: 4
+        shuffle: true
+        distributed: false
+        download: false
+        imgs_per_gpu: 1
+        pin_memory: True
+        drop_last: True
+        transforms:
+            - type: ToTensor
+            - type: Normalize
+              mean:
+                - 0.28604063146254594
+              std:
+                - 0.35302426207299326
+    test:
+        data_path: ~
+        batch_size: 1
+        num_workers: 4
+        shuffle: true
+        distributed: false
+        download: false
+        imgs_per_gpu: 1
+        pin_memory: True
+        drop_last: True
+        transforms:
+            - type: ToTensor
+            - type: Normalize
+              mean:
+                - 0.28604063146254594
+              std:
+                - 0.35302426207299326
+

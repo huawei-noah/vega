@@ -1,0 +1,12 @@
+DifferentialAlgorithm:
+    momentum: 0.9
+    weight_decay: 3.0e-4
+    parallel: False
+    codec: DartsCodec
+    arch_optim:
+        type: Adam
+        lr: 3.0e-4
+        betas: [0.5, 0.999]
+        weight_decay: 1.0e-3
+    criterion:
+        type: CrossEntropyLoss

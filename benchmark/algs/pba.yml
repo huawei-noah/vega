@@ -1,0 +1,90 @@
+general:
+    worker:
+        timeout: 1000
+        gpus_per_job: 1
+
+pipeline: [hpo1]
+
+hpo1:
+    pipe_step:
+        type: HpoPipeStep
+
+    dataset:
+        type: Cifar10
+        common:
+            data_path: /cache/datasets/cifar10/
+        train:
+            train_portion: 0.08
+        val:
+            batch_size: 256
+        test:
+            batch_size: 256
+
+    hpo:
+        type: PBAHpo
+        each_epochs: 3
+        config_count: 16
+        total_rungs: 200
+        transformers:
+            Cutout: True
+            Rotate: True
+            Translate_X: True
+            Translate_Y: True
+            Brightness: True
+            Color: True
+            Invert: True
+            Sharpness: True
+            Posterize: True
+            Shear_X: True
+            Solarize: True
+            Shear_Y: True
+            Equalize: True
+            AutoContrast: True
+            Contrast: True
+
+    trainer:
+        type: Trainer
+        load_checkpoint: True
+        with_valid: False
+        report_freq: 50
+        epochs: 1
+        model_desc:
+            modules: ["backbone", "head"]
+            backbone:
+                base_channel: 64
+                downsample: [1, 0, 1, 0, 0, 0, 1, 0]
+                base_depth: 18
+                doublechannel: [1, 0, 1, 0, 0, 0, 1, 0]
+                name: ResNetVariant
+            head:
+                num_classes: 10
+                name: LinearClassificationHead
+                base_channel: 512
+        optim:
+            type: Adam
+            lr: 0.1
+        lr_scheduler:
+            type: MultiStepLR
+            milestones: [75, 150]
+            gamma: 0.5
+        metric:
+            type: accuracy
+        loss:
+            type: CrossEntropyLoss
+
+    evaluator:
+        type: Evaluator
+        gpu_evaluator:
+            type: GpuEvaluator
+            load_checkpoint: True
+            optim:
+                type: Adam
+                lr: 0.1
+            lr_scheduler:
+                type: MultiStepLR
+                milestones: [75, 150]
+                gamma: 0.5
+            loss:
+                type: CrossEntropyLoss
+            metric:
+                type: accuracy

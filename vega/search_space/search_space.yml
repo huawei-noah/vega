@@ -1,0 +1,65 @@
+# classification:
+#     backbone: [ResNet, ResNext]
+#     head: [LinearClassificationHead]
+
+# detection:
+#     backbon: [ResNet, ResNext]
+#     neck: [FPN]
+#     head: [BoxHead, CascaddeRcnn]
+
+# backbone:
+#     ResNet:
+#         num_layers: [18, 34, 50, 101]
+#         base_channel: [48, 56, 64, 72]
+#         blocks: [BasicBlock, BottleNeckBlock]  # 当前不支持调整。
+#         # 输入参数
+#         # mask: [1, 0, 1, 0, 1, 0]
+#         # doubl_channel: []
+#         # down_sample: []
+#     ResNext:
+#         num_layers: [18, 34, 50, 101]
+#         base_channel: [48, 56, 64, 72]
+#         blocks: [BasicBlock, BottleNeckBlock]
+
+# head:
+#     LinearClassificationHead:
+#         num_classes: 10
+#     BoxHead:
+#         params: values
+#     CascadeRcnn:
+#         params: values
+#     FastRcnn:
+#         params: values
+
+# neck:
+#     FPN:
+#         fpn_params: fpn_params_values
+
+modules: ['backbone', 'neck', 'RPN', 'head', 'custom', 'esrbody', 'jddbody']
+
+backbone: 
+    names: ['ResNet', 'ResNext', 'MobileNetV2']
+    ResNet:
+        num_layers: [18, 34, 50, 101]
+        base_channel: [48, 56, 64, 72]
+        blocks: [BasicBlock, BottleNeckBlock]  # 当前不支持调整。
+        # 输入参数
+        # mask: [1, 0, 1, 0, 1, 0]
+        # doubl_channel: []
+        # down_sample: []
+    ResNext:
+        num_layers: [18, 34, 50, 101]
+        base_channel: [48, 56, 64, 72]
+        blocks: [BasicBlock, BottleNeckBlock]
+        
+
+neck: 
+    names: ['FPN']
+
+RPN:
+    names: ['RPN', 'GA-RPN']
+
+head:
+    names: ['FC', 'Retina', 'Cascade']
+
+

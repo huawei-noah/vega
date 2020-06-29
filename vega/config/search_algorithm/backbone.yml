@@ -1,0 +1,11 @@
+BackboneNas:
+    codec: BackboneNasCodec
+    policy:
+        random_ratio: 0.2
+        num_mutate: 10
+    range:
+        max_sample: 100
+        min_sample: 10
+    pareto:
+        object_count: 2
+        max_object_ids: [0]

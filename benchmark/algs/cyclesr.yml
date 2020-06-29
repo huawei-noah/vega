@@ -1,0 +1,58 @@
+pipeline: [fully_train]
+
+fully_train:
+    pipe_step:
+        type: FullyTrainPipeStep
+
+    dataset:
+        type: Div2kUnpair
+        train:
+            HR_dir: "/cache/datasets/DIV2K_unknown/DIV2K_HR_sub480"
+            LR_dir: "/cache/datasets/DIV2K_unknown/DIV2K_unknown_sub120"
+        test:
+            HR_dir: "/cache/datasets/DIV2K_unknown/DIV2K_valid_HR"
+            LR_dir: "/cache/datasets/DIV2K_unknown/DIV2K_valid_LR_unknown"
+
+    trainer:
+        type: CyclesrTrainer
+        epoch_count: 1
+        n_epoch: 100
+        n_epoch_decay: 100
+        eval_epoch: 5
+        print_freq: 10
+        val_ps_offset: 10
+        continue_train: !!null
+        lr_policy: linear
+        verbose: False
+        cuda: True
+        horovod: False
+        model_desc:
+            modules: ["custom"]
+            custom:
+                name: CycleSRModel
+                SR_lam: 1000
+                cycleSR_lam: 1000
+                grad_clip: 50
+                cyc_lr: !!float 2e-4
+                SR_lr: !!float 1e-4
+                use_cuda: True
+                use_horovod: False
+                cyclegan:
+                    input_nc: 3
+                    output_nc: 3
+                    ngf: 64
+                    ndf: 64
+                    lambda_cycle: 10.0
+                    lambda_identity: 0.5
+                    buffer_size: 50
+                    up_mode: transpose
+                    n_layers_D: 3
+                    norm: instance
+                VDSR:
+                    name: VDSR
+                    SR_nb: 20
+                    SR_nf: 64
+                    SR_norm_type: batch
+                    upscale: 4
+                    input_nc: 3
+                    output_nc: 3

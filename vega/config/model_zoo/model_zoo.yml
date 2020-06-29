@@ -1,0 +1,5 @@
+general:
+    model_zoo:
+        # model_zoo_path: "http://noah.inhuawei.com:8080/models/"
+        model_zoo_path: /data3/model_zoo
+        local_path: ~

@@ -1,0 +1,124 @@
+general:
+    worker:
+        gpus_per_job: 1
+
+pipeline: [random, mutate]
+# pipeline: [random, mutate, fully_train]
+
+random:
+    pipe_step:
+        type: NasPipeStep
+
+    dataset:
+        type: Cityscapes
+        common:
+            root_dir: /cache/datasets/cityscapes/cs_small
+        train:
+            list_file: train.txt
+            batch_size: 4
+            shuffle: true
+            Rescale:
+                size: 192
+            RandomMirror: true
+            RandomColor:
+                color_factor: [0.95, 1.05]
+                contrast_factor: [0.95, 1.05]
+                brightness_factor: [0.95, 1.05]
+            RandomGaussianBlur:
+                kernel_size: 3
+            RandomRotation:
+                rotation_factor: [-10, 10]
+                border_value: [0.485, 0.456, 0.406]
+                fill_label: 255
+        test:
+            list_file: val.txt
+            Rescale:
+                size: 192
+
+    search_space:
+        type: SearchSpace
+        modules: ['custom']
+        custom:
+            name: AdelaideFastNAS
+            backbone_load_path: ~
+            backbone_out_sizes: [24, 32, 96, 320]
+            op_names: [conv1x1, conv3x3, sep_conv_3x3, sep_conv_5x5, conv3x3_dil3, sep_conv_3x3_dil3, sep_conv_5x5_dil6]
+            agg_size: 64
+            aux_cell: false
+            sep_repeats: 1
+            agg_concat: true
+            num_classes: 19
+
+    search_algorithm:
+        type: AdelaideRandom
+        codec: AdelaideCodec
+        max_sample: 10
+
+    trainer:
+        type: Trainer
+        callbacks: AdelaideEATrainerCallback
+        codec: AdelaideCodec
+        cuda: true
+        horovod: False
+        seed: 0
+        epochs: 5
+        print_step: 5
+        optim:
+            type: Adam
+            lr: 0.0002
+        lr_scheduler:
+            type: StepLR
+            step_size: 1000
+            gamma: 0.5
+        loss:
+            type: CrossEntropyLoss
+            ignore_index: 255
+        metric:
+            type: IoUMetric
+            num_class: 19
+
+mutate:
+    pipe_step:
+        type: NasPipeStep
+
+    dataset:
+        ref: random.dataset
+
+    search_space:
+           ref: random.search_space
+
+    search_algorithm:
+        type: AdelaideMutate
+        codec: AdelaideCodec
+        max_sample: 10
+        pareto_front_file: "{local_base_path}/output/random/pareto_front.csv"
+        random_file: "{local_base_path}/output/random/random.csv"
+
+    trainer:
+        ref: random.trainer
+        callbacks: AdelaideEATrainerCallback
+        codec: AdelaideCodec
+        save_model_desc: True
+
+fully_train:
+    pipe_step:
+        type: FullyTrainPipeStep
+        models_folder: "{local_base_path}/output/mutate/"
+
+    dataset:
+        type: Cityscapes
+        ref: random.dataset
+
+    search_space:
+        ref: random.search_space
+        custom:
+            sep_repeats: 2
+
+    trainer:
+        ref: random.trainer
+        callbacks: AdelaideEATrainerCallback
+        model_statistics: True
+        codec: AdelaideCodec
+        pareto_front_file: "{local_base_path}/output/mutate/pareto_front.csv"
+        random_file: "{local_base_path}/output/random/random.csv"
+        epochs: 10

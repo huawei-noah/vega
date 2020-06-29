@@ -1,0 +1,32 @@
+Div2kUnpair:
+    train:
+        remote_data_file: "s3://automl-hn1/chensj/datasets/DIV2K_unknown.tar"
+        local_data_root: "/cache/datasets/"
+        local_data_file: "/cache/datasets/DIV2K_unknown.tar"
+        HR_dir: "/cache/datasets/DIV2K_HR_sub480"
+        LR_dir: "/cache/datasets/DIV2K_unknown_sub120"
+        batch_size: 64
+        num_workers: 8
+        upscale: 4
+        load_size: 1024
+        crop_size: 120
+        save_in_memory: False
+        pin_memory: False
+        shuffle: True
+        distributed: false
+        imgs_per_gpu: 4
+        drop_last: True
+    test:
+        remote_data_file: "s3://automl-hn1/chensj/datasets/DIV2K_unknown.tar"
+        local_data_root: "/cache/datasets/"
+        local_data_file: "/cache/datasets/DIV2K_unknown.tar"
+        HR_dir: "/cache/datasets/DIV2K_valid_HR"
+        LR_dir: "/cache/datasets/DIV2K_valid_LR_unknown"
+        batch_size: 1
+        num_workers: 8
+        shuffle: False
+        pin_memory: False
+        distributed: false
+        imgs_per_gpu: 4
+        val_ps_offset: 10
+        drop_last: False

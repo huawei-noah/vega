@@ -1,0 +1,66 @@
+general:
+    worker:
+        timeout: 1000.0
+
+pipeline: [fully_train]
+
+fully_train:
+    pipe_step:
+        type: FullyTrainPipeStep
+    dataset: ~
+    trainer:
+        type: Trainer
+        lazy_built: True
+        callbacks: TimmTrainerCallback
+        optim:
+            opt: rmsproptf
+            lr: 0.064
+            opt_eps: 0.001
+            momentum: 0.9
+            weight_decay: 1.0e-5
+        lr_scheduler:
+            sched: step
+            decay_epochs: 3.0
+            decay_rate: 0.968
+            warmup_lr: 0.0001
+            warmup_epochs: 5
+        loss:
+            type: LabelSmoothingCrossEntropy
+            smoothing: 0.1
+        metric:
+            type: accuracy
+            topk: [1, 5]
+        model_desc:
+            model_name: 'efficientnet_b4'
+            pretrained: False
+            num_classes: 1000
+            drop: 0.4
+            drop_path: 0.2
+            gp: 'avg'
+            bn_tf: False
+            bn_momentum: ~
+            bn_eps: ~
+            initial_checkpoint: ~
+        model_ema:
+            model_ema_decay: 0.9999
+            model_ema_force_cpu: False
+        dataset:
+            data_dir: /cache/datasets/ILSVRC/Data/CLS-LOC
+            input_size: [3, 380, 380]
+            batch_size: 28
+            reprob: 0.1
+            remode: pixel
+            recount: 1
+            color_jitter: 0.06
+            aa: rand-m15-mstd0.5
+            interpolation: bicubic
+            mean: [0.485, 0.456, 0.406]
+            std: [0.229, 0.224, 0.225]
+            workers: 8
+        epochs: 300
+        horovod: True
+        prefetcher: True
+        model_name: effcientnet.pickle
+        ckpt_name: efficientnet_fully_train.pth
+        amp: True
+        syncbn: True

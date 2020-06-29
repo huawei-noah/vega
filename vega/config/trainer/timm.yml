@@ -1,0 +1,12 @@
+TimmTrainer:
+    use_timm_optim: True
+    use_timm_lr_sched: True
+    use_timm_loss: True
+    use_timm_model: True
+    use_timm_dataset: True
+    seed: 100
+    cuda: True
+    horovod: True
+    report_freq: 100
+    with_valid: True
+    load_checkpoint: False

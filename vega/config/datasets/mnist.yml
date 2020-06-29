@@ -1,0 +1,57 @@
+Mnist:
+    n_class: 10
+    train:
+        data_path: "s3://noah-hb1/dataset/mnist_data/"
+        batch_size: 1
+        num_workers: 4
+        shuffle: true
+        distributed: false
+        download: false
+        imgs_per_gpu: 1
+        pin_memory: True
+        drop_last: True
+        transofrms:
+            - type: RandomAffine
+              degrees: 15
+              translate: (0.1, 0.1)
+              scale: (0.9, 1.1)
+              shear: 0.1
+            - type: ToTensor
+            - type: Normalize
+              mean:
+                  - 0.13066051707548254
+              std:
+                  - 0.30810780244715075
+    val:
+        data_path: "s3://noah-hb1/dataset/mnist_data/"
+        batch_size: 1
+        num_workers: 4
+        shuffle: true
+        distributed: false
+        download: false
+        imgs_per_gpu: 1
+        pin_memory: True
+        drop_last: True
+        transofrms:
+            - type: ToTensor
+            - type: Normalize
+              mean:
+                  - 0.13066051707548254
+              std:
+                  - 0.30810780244715075
+    test:
+        data_path: "s3://noah-hb1/dataset/mnist_data/"
+        batch_size: 1
+        num_workers: 4
+        shuffle: true
+        distributed: false
+        imgs_per_gpu: 1
+        pin_memory: True
+        drop_last: True
+        transofrms:
+            - type: ToTensor
+            - type: Normalize
+              mean:
+                  - 0.13066051707548254
+              std:
+                  - 0.30810780244715075

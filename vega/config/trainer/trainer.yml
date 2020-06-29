@@ -1,0 +1,37 @@
+Trainer:
+    with_valid: True
+    cuda: True
+    is_detection_trainer: False
+    horovod: False
+    save_model_desc: True
+    report_freq: 10
+    seed: 0
+    epochs: 1
+    optim:
+        type: Adam
+        lr: 0.1
+    lr_scheduler:
+        type: MultiStepLR
+        milestones: [75, 150]
+        gamma: 0.5
+    metric:
+        type: accuracy
+    loss:
+        type: CrossEntropyLoss
+    model_statistic: True
+
+    # model
+    model_desc: ~
+    model_desc_file: ~
+    hps_file: ~
+    pretrained_model_file: ~
+
+    print_step_interval: 50
+    visualize:
+        train_process:
+            visual: true
+        model:
+            visual: true
+            interval: 10
+
+    warmup_epochs: 5

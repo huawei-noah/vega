@@ -1,0 +1,191 @@
+general:
+    worker:
+        gpus_per_job: 1
+
+pipeline: [esr_search, fully_train, benchmark_DIV2K, benchmark_Set5, benchmark_Set14, benchmark_BSDS100]
+
+esr_search:
+    pipe_step:
+        type: NasPipeStep
+
+    dataset:
+        type: DIV2K
+        train:
+            root_HR: /cache/datasets/DIV2K/div2k_train/hr
+            root_LR: /cache/datasets/DIV2K/div2k_train/lr
+            upscale: 2
+            crop: 64
+            hflip: true
+            vflip: true
+            rot90: true 
+            shuffle: true
+            num_workers: 1
+            batch_size: 16
+        test:
+            root_HR: /cache/datasets/DIV2K/Set5/hr
+            root_LR: /cache/datasets/DIV2K/Set5/lr
+            upscale: 2
+
+    search_space:
+        type: SearchSpace
+        modules: ['esrbody']
+        esrbody:
+            name: ESRN
+            block_type: [S,G,C]
+            conv_num: [4,6,8]
+            growth_rate: [8,16,24,32]
+            type_prob: [1,1,1]
+            conv_prob: [1,1,1]
+            growth_prob: [1,1,1,1]
+            G0: 32
+            scale: 2
+
+    search_algorithm:
+        type: ESRSearch
+        codec: ESRCodec
+        policy:
+            num_generation: 20
+            num_individual: 8
+            num_elitism: 4
+            mutation_rate: 0.05
+        range:
+            node_num: 20
+            min_active: 16
+            max_params: 325000
+            min_params: 315000
+
+    trainer:
+        type: Trainer
+        callbacks: ESRTrainerCallback
+        epochs: 500
+        optim:
+            type: Adam
+            lr: 0.0001
+        lr_scheduler:
+            type: MultiStepLR
+            milestones: [100,200]
+            gamma: 0.5
+        loss:
+            type: L1Loss
+        metric:
+            type: SRMetric
+            scale: 2 
+            max_rgb: 255
+        scale: 2
+        cuda: True
+        seed: 10
+        
+fully_train:
+    pipe_step:
+        type: FullyTrainPipeStep
+        esr_models_file: "{local_base_path}/output/esr_search/selected_arch.npy"
+    dataset:
+        ref: esr_search.dataset
+    
+    model:
+        model_desc:
+            type: SearchSpace
+            modules: ['esrbody']
+            esrbody:
+                name: ESRN
+                block_type: [S,G,C]
+                conv_num: [4,6,8]
+                growth_rate: [8,16,24,32]
+                type_prob: [1,1,1]
+                conv_prob: [1,1,1]
+                growth_prob: [1,1,1,1]
+                G0: 32
+                scale: 2
+
+    trainer:
+        type: Trainer
+        callbacks: ESRTrainerCallback
+        codec: ESRCodec
+        node_num: 20
+        epochs: 15000
+        stat_epoch: 2
+        # model_desc_file: "./output/0417.142237.891/output/selected_arch.npy"
+        optim:
+            type: Adam
+            lr: 0.0001
+        lr_scheduler:
+            type: MultiStepLR
+            milestones: [8000,12000,13500,14500]
+            gamma: 0.5
+        metric:
+            type: SRMetric
+            scale: 2 
+            max_rgb: 255
+        loss:
+            type: L1Loss
+        scale: 2
+        seed: 10
+        lazy_built: true
+        range:
+            node_num: 20
+
+benchmark_DIV2K:
+    pipe_step:
+        type: BenchmarkPipeStep
+        models_folder: "{local_base_path}/output/fully_train/"
+        esr_models_file: "{local_base_path}/output/esr_search/selected_arch.npy"
+    dataset:
+        type: DIV2K
+        test:
+            upscale: 2
+    evaluator:
+        type: Evaluator
+        gpu_evaluator:
+            type: EsrGpuEvaluator
+            codec: ESRCodec
+            range:
+                node_num: 20
+            scale: 2
+            seed: 10
+            metric:
+                type: SRMetric
+                method: psnr
+                crop_border: 2
+                max_rgb: 255
+
+    model:
+        ref: fully_train.model
+
+benchmark_Set5:
+    pipe_step:
+        type: BenchmarkPipeStep
+        models_folder: "{local_base_path}/output/fully_train/"
+        esr_models_file: "{local_base_path}/output/esr_search/selected_arch.npy"
+    dataset:
+        ref: benchmark_DIV2K.dataset
+        type: Set5
+    evaluator:
+        ref: benchmark_DIV2K.evaluator
+    model:
+        ref: fully_train.model
+
+benchmark_Set14:
+    pipe_step:
+        type: BenchmarkPipeStep
+        models_folder: "{local_base_path}/output/fully_train/"
+        esr_models_file: "{local_base_path}/output/esr_search/selected_arch.npy"
+    dataset:
+        ref: benchmark_DIV2K.dataset
+        type: Set14
+    evaluator:
+        ref: benchmark_DIV2K.evaluator
+    model:
+        ref: fully_train.model
+
+benchmark_BSDS100:
+    pipe_step:
+        type: BenchmarkPipeStep
+        models_folder: "{local_base_path}/output/fully_train/"
+        esr_models_file: "{local_base_path}/output/esr_search/selected_arch.npy"
+    dataset:
+        ref: benchmark_DIV2K.dataset
+        type: BSDS100
+    evaluator:
+        ref: benchmark_DIV2K.evaluator
+    model:
+        ref: fully_train.model

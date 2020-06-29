@@ -1,0 +1,24 @@
+pipeline: [fully_train]
+
+fully_train:
+    pipe_step:
+        type: FullyTrainPipeStep
+    trainer:
+        type: Trainer
+        report_freq: 100
+        epochs: 4
+    model:
+        model_desc:
+            modules: ["torch_vision_model"]
+            torch_vision_model:
+                name: resnet18
+                pretrained: False
+    evaluator:
+        type: Evaluator
+        gpu_evaluator:
+            type: GpuEvaluator
+    dataset:
+        type: Imagenet
+        common:
+           data_path: /cache/datasets/ILSVRC/Data/CLS-LOC/
+           batch_size: 256

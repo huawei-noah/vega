@@ -1,0 +1,76 @@
+general:
+    worker:
+        timeout: 1000
+        gpus_per_job: -1
+
+pipeline: [nas1, nas2]
+# pipeline: [nas1, nas2, fullytrain]
+
+nas1:
+    pipe_step:
+        type: SpNasPipeStep
+
+    search_algorithm:
+        type: SpNas
+        codec: SpNasCodec
+        total_list: 'total_list_s.csv'
+        sample_level: 'serial'
+        max_sample: 10
+        max_optimal: 5
+        serial_settings:
+            num_mutate: 3
+            addstage_ratio: 0.05
+            expend_ratio: 0.3
+            max_stages: 6
+        regnition: False
+#        last_search_result:
+
+    search_space:
+        type: SearchSpace
+        config_template_file: "./nas/sp_nas/faster_rcnn_r50_fpn_1x.py"
+        epoch: 1
+
+    trainer:
+        type: SpNasTrainer
+        gpus: 8
+        debug: False
+
+nas2:
+    pipe_step:
+        type: SpNasPipeStep
+
+    search_algorithm:
+        type: SpNas
+        codec: SpNasCodec
+        total_list: 'total_list_p.csv'
+        sample_level: 'parallel'
+        max_sample: 10
+        max_optimal: 1
+        serial_settings:
+        last_search_result: 'total_list_s.csv'
+        regnition: False
+
+    search_space:
+        type: SearchSpace
+        config_template_file: "./nas/sp_nas/faster_rcnn_r50_fpn_1x.py"
+        epoch: 1
+
+    trainer:
+        type: SpNasTrainer
+        gpus: 8
+        debug: False
+
+
+# fullytrain:
+#     pipe_step:
+#         type: FullyTrainPipeStep
+
+#     trainer:
+#         type: SpNasTrainer
+#         gpus: 8
+#         model_desc_file: 'total_list_p.csv'
+# #        model_desc: 'r_111-2111-211111-211_0-0-0-0'
+#         config_template: "./nas/sp_nas/faster_rcnn_r50_fpn_1x.py"
+#         regnition: False
+#         epoch: 12
+#         debug: False

@@ -1,0 +1,7 @@
+PruneEA:
+    length: 464
+    num_generation: 31
+    num_individual: 4
+    metric_x: flops
+    metric_y: acc
+    random_models: 4

@@ -1,0 +1,25 @@
+general:
+    task:
+        local_base_path: "./tasks"
+        output_subpath: "output"
+        best_model_subpath: "best_model"
+        log_subpath: "logs"
+        result_subpath: "result"
+        worker_subpath: "workers/[step_name]/[worker_id]"
+        backup_base_path: ~
+
+    worker:
+        timeout: 10.0
+        gpus_per_job: -1
+        eval_count: 10
+        evaluate_timeout: 0.1
+
+    logger:
+        level: info
+
+    backend: pytorch
+
+    cluster:
+        master_ip: ~
+        listen_port: 8000
+        slaves: []

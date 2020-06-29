@@ -1,0 +1,35 @@
+DIV2K:
+    train:
+        root_HR: ~
+        root_LR: ~
+        batch_size: 1
+        num_workers: 4
+        upscale: 2
+        subfile: !!null  # Set it to None by default
+        crop: !!null  # Set it to None by default
+        shuffle: false
+        hflip: false
+        vflip: false
+        rot90: false
+        save_in_memory: false
+        distributed: false
+        imgs_per_gpu: 1
+        pin_memory: True
+        drop_last: True
+    test:
+        root_HR: ~
+        root_LR: ~
+        batch_size: 1
+        num_workers: 4
+        upscale: 2
+        subfile: !!null  # Set it to None by default
+        crop: !!null  # Set it to None by default
+        shuffle: false
+        hflip: false
+        vflip: false
+        rot90: false
+        save_in_memory: false
+        distributed: false
+        imgs_per_gpu: 1
+        pin_memory: True
+        drop_last: True

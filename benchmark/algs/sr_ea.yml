@@ -1,0 +1,177 @@
+general:
+    worker:
+        gpus_per_job: 1
+        timeout: 1000
+
+pipeline: [random1, mutate1, full1, benchmark_DIV2K, benchmark_Set5, benchmark_Set14, benchmark_BSDS100]
+
+random1:
+    pipe_step:
+        type: NasPipeStep
+
+    dataset:
+        type: DIV2K
+        train:
+            root_HR: /cache/datasets/DIV2K/div2k_train/hr
+            root_LR: /cache/datasets/DIV2K/div2k_train/lr
+            upscale: 2
+            crop: 64    # crop size of lr image
+            hflip: true    # flip image horizontally
+            vflip: true    # flip image vertically
+            rot90: true    # flip image diagonally
+            shuffle: true
+            num_workers: 2
+            batch_size: 16
+            pin_memory: false
+        test:
+            root_HR: /cache/datasets/DIV2K/Set5/hr
+            root_LR: /cache/datasets/DIV2K/Set5/lr
+            upscale: 2
+            pin_memory: false
+
+    search_space:
+        type: SearchSpace
+        modules: ['custom']
+        custom:
+            name: MtMSR
+            in_channel: 3
+            out_channel: 3
+            upscale: 2
+            rgb_mean: [0.4040, 0.4371, 0.4488]
+            candidates: [res2, res3]
+            block_range: [10, 80]
+            cib_range: [3, 4]
+
+    search_algorithm:
+        type: SRRandom
+        codec: SRCodec
+        policy:
+            mum_sample: 1000
+
+    trainer:
+        type: Trainer
+        callbacks: SREATrainerCallback
+        codec: SRCodec
+        epochs: 400
+        optim:
+            type: Adam
+            lr: 0.0004
+        lr_scheduler:
+            type: StepLR
+            step_size: 100
+            gamma: 0.5
+            call_point: 'AFTER_EPOCH'            
+        loss:
+            type: L1Loss
+        metric:
+            type: SRMetric
+            method: psnr
+            crop_border: 2
+
+mutate1:
+    pipe_step:
+        type: NasPipeStep
+
+    dataset:
+        ref: random1.dataset
+
+    search_space:
+        type: SearchSpace
+        ref: random1.search_space
+
+    search_algorithm:
+        type: SRMutate
+        codec: SRCodec
+        policy:
+            mum_sample: 1000
+            num_mutate: 3
+
+    trainer:
+        ref: random1.trainer
+        callbacks: SREATrainerCallback
+        epochs: 100
+        codec: SRCodec
+        save_model_desc: True
+
+full1:
+    pipe_step:
+        type: FullyTrainPipeStep
+        models_folder: "{local_base_path}/output/mutate1/"
+    dataset:
+        ref: random1.dataset
+        train:
+            batch_size: 50
+
+    search_space:
+        ref: random1.search_space
+
+    trainer:
+        type: Trainer
+        callbacks: SREATrainerCallback
+        codec: SRCodec
+        cuda: true
+        horovod: False
+        seed: 0
+        epochs: 10000
+        print_step: 50
+        val_epoch: 5
+        optim:
+            type: Adam
+            lr: 0.0002
+        lr_scheduler:
+            type: StepLR
+            step_size: 2000
+            gamma: 0.5
+        loss:
+            type: L1Loss
+        metric:
+            type: SRMetric
+            method: psnr
+            crop_border: 2
+
+benchmark_DIV2K:
+    pipe_step:
+        type: BenchmarkPipeStep
+        models_folder: "{local_base_path}/output/full1/"
+    dataset:
+        type: DIV2K
+        test:
+            upscale: 2
+    evaluator:
+        type: Evaluator
+        gpu_evaluator:
+            type: SrGpuEvaluator
+            metric:
+                type: SRMetric
+                method: psnr
+                crop_border: 2
+
+benchmark_Set5:
+    pipe_step:
+        type: BenchmarkPipeStep
+        models_folder: "{local_base_path}/output/full1/"
+    dataset:
+        ref: benchmark_DIV2K.dataset
+        type: Set5
+    evaluator:
+        ref: benchmark_DIV2K.evaluator
+
+benchmark_Set14:
+    pipe_step:
+        type: BenchmarkPipeStep
+        models_folder: "{local_base_path}/output/full1/"
+    dataset:
+        ref: benchmark_DIV2K.dataset
+        type: Set14
+    evaluator:
+        ref: benchmark_DIV2K.evaluator
+
+benchmark_BSDS100:
+    pipe_step:
+        type: BenchmarkPipeStep
+        models_folder: "{local_base_path}/output/full1/"
+    dataset:
+        ref: benchmark_DIV2K.dataset
+        type: BSDS100
+    evaluator:
+        ref: benchmark_DIV2K.evaluator
