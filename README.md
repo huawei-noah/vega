@@ -53,7 +53,7 @@ Therefore, before using the Vega, you need to fully understand the meaning of th
 
 **Note:**
 
-Before running an example, you need to configure the directory where the dataset and pre-trained models are located in the algorithm configuration file. Please refer to [Example Reference] (./docs/cn/user/examples.md).
+Before running an example, you need to configure the directory where the dataset and pre-trained models are located in the algorithm configuration file. Please refer to [Example Reference](./docs/en/user/examples.md).
 
 ## Developer Guide
 
