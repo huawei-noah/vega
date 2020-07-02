@@ -183,8 +183,9 @@ nas:
         type: NasPipeStep
 
     dataset:
+        type: Cifar10
         common:
-            data_path: '/dataset/cifar10/'
+            data_path: '/cache/datasets/cifar10/'
         train:
             shuffle: False
             num_workers: 8
@@ -247,6 +248,7 @@ from vega.search_space.search_algs import SearchAlgorithm
 
 
 @NetworkFactory.register(NetTypes.CUSTOM)
+class SimpleCnn(nn.Module):
 
     def __init__(self, desc):
         super(SimpleCnn, self).__init__()
@@ -344,7 +346,7 @@ class RandomSearch(SearchAlgorithm):
 
 
 if __name__ == "__main__":
-    vega.run("./my.yaml")
+    vega.run("./my.yml")
 ```
 
 ## 5. 运行代码
