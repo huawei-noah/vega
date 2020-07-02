@@ -5,21 +5,23 @@
 | Model | Model Size(M) | Flops(M) | Top-1 ACC | Inference Time(μs) | Inference Device | Download |
 |---|---|---|---|---|---|:--:|
 | CARS-A | 7.72 | 469 | 95.923477 | 51.28 | V100 | [tar](http://www.noahlab.com.hk/opensource/vega/model_zoo/cars/cars_a.zip) |
-| CARS-B | 8.45 | 548 | 96.584535 | 69.00 | v100 | [tar](http://www.noahlab.com.hk/opensource/vega/model_zoo/cars/cars_b.zip) |
-| CARS-C | 9.32 | 620 | 96.744791 | 71.62 | v100 | [tar](http://www.noahlab.com.hk/opensource/vega/model_zoo/cars/cars_c.zip) |
-| CARS-D | 10.5 | 729 | 97.055288 | 82.72 | v100 | [tar](http://www.noahlab.com.hk/opensource/vega/model_zoo/cars/cars_d.zip) |
-| CARS-E | 11.3 | 786 | 97.245592 | 88.98 | v100 | [tar](http://www.noahlab.com.hk/opensource/vega/model_zoo/cars/cars_e.zip) |
-| CARS-F | 16.7 | 1234 | 97.295673 | 244.07 | v100 | [tar](http://www.noahlab.com.hk/opensource/vega/model_zoo/cars/cars_f.zip) |
-| CARS-G | 19.1 | 1439 | 97.375801 | 391.20 | v100 | [tar](http://www.noahlab.com.hk/opensource/vega/model_zoo/cars/cars_g.zip) |
-| CARS-H | 19.6 | 1464 | 97.415865 | 398.19 | v100 | [tar](http://www.noahlab.com.hk/opensource/vega/model_zoo/cars/cars_h.zip) |
-| CARS-I | 19.7 | 1456 | 97.425881 | 398.88 | P100 | [tar](http://www.noahlab.com.hk/opensource/vega/model_zoo/cars/cars_i.zip) |
+| CARS-B | 8.45 | 548 | 96.584535 | 69.00 | V100 | [tar](http://www.noahlab.com.hk/opensource/vega/model_zoo/cars/cars_b.zip) |
+| CARS-C | 9.32 | 620 | 96.744791 | 71.62 | V100 | [tar](http://www.noahlab.com.hk/opensource/vega/model_zoo/cars/cars_c.zip) |
+| CARS-D | 10.5 | 729 | 97.055288 | 82.72 | V100 | [tar](http://www.noahlab.com.hk/opensource/vega/model_zoo/cars/cars_d.zip) |
+| CARS-E | 11.3 | 786 | 97.245592 | 88.98 | V100 | [tar](http://www.noahlab.com.hk/opensource/vega/model_zoo/cars/cars_e.zip) |
+| CARS-F | 16.7 | 1234 | 97.295673 | 244.07 | V100 | [tar](http://www.noahlab.com.hk/opensource/vega/model_zoo/cars/cars_f.zip) |
+| CARS-G | 19.1 | 1439 | 97.375801 | 391.20 | V100 | [tar](http://www.noahlab.com.hk/opensource/vega/model_zoo/cars/cars_g.zip) |
+| CARS-H | 19.6 | 1464 | 97.415865 | 398.19 | V100 | [tar](http://www.noahlab.com.hk/opensource/vega/model_zoo/cars/cars_h.zip) |
+| CARS-I | 19.7 | 1456 | 97.425881 | 398.88 | V100 | [tar](http://www.noahlab.com.hk/opensource/vega/model_zoo/cars/cars_i.zip) |
 
 ## Image Classification on ImageNet
 
 | Model | Model Size(M) | Flops(G) | Top-1 ACC | Inference Time(s) | Download |
 |---|---|---|---|---|:--:|
-| EfficientNet:B8:672 | 88 | 63 | 85.7 | 0.98s/iters | [tar](http://www.noahlab.com.hk/opensource/vega/model_zoo/effecientnet/efficientnet.tar.gz) |
-| EfficientNet:B8:832 | 88 | 97 | 85.8 | 1.49s/iters | [tar](http://www.noahlab.com.hk/opensource/vega/model_zoo/effecientnet/efficientnet.tar.gz) |
+| EfficientNet:B0 | 20.3 | 0.40 | 76.82 | 0.0088s/iters | [tar](http://www.noahlab.com.hk/opensource/vega/model_zoo/effecientnet/b0.zip) |
+| EfficientNet:B4 | 74.3 | 4.51 | 82.87 | 0.015s/iters | [tar](http://www.noahlab.com.hk/opensource/vega/model_zoo/effecientnet/b4.zip) |
+| EfficientNet:B8:672 | 88 | 63 | 85.7 | 0.98s/iters | [tar](http://www.noahlab.com.hk/opensource/vega/model_zoo/effecientnet/b8_672.zip) |
+| EfficientNet:B8:800 | 88 | 97 | 85.8 | 1.49s/iters | [tar](http://www.noahlab.com.hk/opensource/vega/model_zoo/effecientnet/b8_800.zip) |
 
 ## Detection on COCO-minival
 
@@ -31,12 +33,6 @@
 | SM-NAS:E3 | 52.05 | 116.22 | 42.68 | 50.71 | V100 | [tar](http://www.noahlab.com.hk/opensource/vega/model_zoo/sm_nas/E3.tar.gz) |
 | SM-NAS:E4 | 92 | 115.51 | 43.89 | 80.22 | V100 | [tar](http://www.noahlab.com.hk/opensource/vega/model_zoo/sm_nas/E4.tar.gz) |
 | SM-NAS:E5 | 90.47 | 249.14 | 46.05 | 108.07 | V100 | [tar](http://www.noahlab.com.hk/opensource/vega/model_zoo/sm_nas/E5.tar.gz) |
-
-## Detection on CULane
-
-| Model | Flops(G) | F1 Score | Inference Time(ms) | Inference Device | Download |
-|---|---|---|---|---|:--:|
-| AutoLane | 86.5 | 74.8 | 44.94 | V100 | [tar](http://www.noahlab.com.hk/opensource/vega/model_zoo/auto_lane/auto_lane.tar.gz) |
 
 ## Detection on ECP
 
