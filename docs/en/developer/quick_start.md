@@ -12,7 +12,7 @@ You need to set data set parameters in the configuration file. Generally, you ne
 dataset:
     type: Cifar10
     common:
-        data_path: '/dataset/cifar10/'
+        data_path: '/cache/datasets/cifar10/'
     train:
         shuffle: False
         num_workers: 8
@@ -183,8 +183,9 @@ nas:
         type: NasPipeStep
 
     dataset:
+        type: Cifar10
         common:
-            data_path: '/dataset/cifar10/'
+            data_path: '/cache/datasets/cifar10/'
         train:
             shuffle: False
             num_workers: 8
@@ -345,7 +346,7 @@ class RandomSearch(SearchAlgorithm):
 
 
 if __name__ == "__main__":
-    vega.run("./my.yaml")
+    vega.run("./my.yml")
 ```
 
 ## 5. Run the code
