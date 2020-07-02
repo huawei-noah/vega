@@ -37,7 +37,7 @@ Vega is an AutoML algorithm tool chain developed by Noah's Ark Laboratory, the m
 
 The software has been released on the Releases page. Obtain the latest version and install it by following the instructions provided in the [installation guide](./docs/en/user/install.md).
 
-If you want to deploy Vega in local cluster, see the  HYPERLINK "./docs/en/user/deployment.md"  [deployment guide](./docs/en/user/deployment.md).
+If you want to deploy Vega in local cluster, see the [deployment guide](./docs/en/user/deployment.md).
 
 ## Usage Guide
 
