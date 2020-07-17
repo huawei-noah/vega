@@ -55,7 +55,6 @@ def main():
         mmcv.load = load_method
     else:
         cfg = mmcv.Config.fromfile(args.config)
-    cfg = Config.fromfile(args.config)
     # update configs according to CLI args
     if args.work_dir is not None:
         cfg.work_dir = args.work_dir
