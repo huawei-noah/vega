@@ -2,7 +2,7 @@
 
 ## 1. 简介
 
-Vega在Dataset类中提供了数据转换和采样相关的接口和公共方法，用户数据处理类可继承自Dataset类，使用这些公共能力。
+Vega在`Dataset`类中提供了数据转换和采样相关的接口和公共方法，用户数据处理类可继承自`Dataset`类，使用这些公共能力。
 
 Vega提供了常用的数据集类，包括`Cifar10`、`Cifar100`、`ImageNet`、`Coco`、`FMnist`、`Mnist`、`Cityscapes`、`Div2K`等，具体描述，可参考[配置参考](../user/config_reference.md)。
 
@@ -19,11 +19,11 @@ Vega提供了常用的数据集类，包括`Cifar10`、`Cifar100`、`ImageNet`�
             data_path: "/data/dataset/"
      ```
 
-1. 在程序中，使用`ClassFactory`来创建`Dataset`，`model`来初始化训练集或测试集，并使用Dataloader来加载数据，如下：
+1. 在程序中，使用`ClassFactory`来创建`Dataset`，`mode`来初始化训练集或测试集，并使用`Dataloader`来加载数据，如下：
 
     ```python
-    dataset = ClassFactory.get_cls(Classtype.Dataset)
-    train_data, test_data = dataset(model='train'), dataset(model='test')
+    dataset = ClassFactory.get_cls(Classtype.DATASET)
+    train_data, test_data = dataset(mode='train'), dataset(mode='test')
     data_loader = train_data.dataloader
     for input, target in data_loader:
         process_data(input, target)
@@ -31,7 +31,7 @@ Vega提供了常用的数据集类，包括`Cifar10`、`Cifar100`、`ImageNet`�
 
 ### 1.2 架构
 
-Vega的所有数据集类都继承自基类`Dataset`，`Dataset`基类定义了数据集所需的接口， 并提供了`dataloader`、`transforms`、`sampler`等属性，并提供了缺省的实现，派生类可以根据需要来重载这些缺省实现，以下会介绍如何自定义一个 Dataset。
+Vega的所有数据集类都继承自基类`Dataset`，`Dataset`基类定义了数据集所需的接口， 并提供了`dataloader`、`transforms`、`sampler`等属性，并提供了缺省的实现，派生类可以根据需要来重载这些缺省实现，以下会介绍如何自定义一个 `Dataset`。
 
 ## 2. 自定义Dataset
 
@@ -44,14 +44,14 @@ Vega的所有数据集类都继承自基类`Dataset`，`Dataset`基类定义了�
 如上所述，类 `MyDataset` 继承自 `Dataset`，如下：
 
 ```python
-from vega.datasets import Dataset
-from vega.core.common import ClassFactory, ClassType
+from vega.datasets.pytorch.common.dataset import Dataset
+from vega.core.common.class_factory import ClassFactory, ClassType
 
 
 @ClassFactory.register(ClassType.DATASET)
 class MyDataset(Dataset):
-    def __init__(self):
-        super(MyDataset, self).__init__()
+    def __init__(self， **kwargs):
+        super(MyDataset, self).__init__(**kwargs)
 ```
 
 以上代码中，`@ClassFactory.register(ClassType.DATASET)` 是将 `MyDataset` 注册到`Vega` 库中。
