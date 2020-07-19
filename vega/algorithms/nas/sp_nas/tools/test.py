@@ -190,7 +190,6 @@ def main():  # noqa: C901
         mmcv.load = load_method
     else:
         cfg = mmcv.Config.fromfile(args.config)
-
     cfg.model.pretrained = None
     cfg.data.test.test_mode = True
     if args.dist:
