@@ -113,7 +113,7 @@ class CARSAlgorithm(SearchAlgorithm):
                     alphas[np.random.randint(0, alphas.size(0))],
                     alphas[np.random.randint(0, alphas.size(0))])
             else:
-                alphas_c = self.model.random_single_path().to(alphas.device)
+                alphas_c = self.model.random_sample_path().to(alphas.device)
             if self.judge_repeat(alphas, alphas_c) == 0:
                 offsprings.append(alphas_c)
         offsprings = torch.cat([offspring.unsqueeze(0) for offspring in offsprings], dim=0)

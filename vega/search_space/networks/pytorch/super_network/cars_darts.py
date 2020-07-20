@@ -109,7 +109,7 @@ class CARSDartsNetwork(DartsNetwork):
             start = end
         return self.random_individual_node.clone(), self.random_individual_ops.clone()
 
-    def random_single_path(self):
+    def random_sample_path(self):
         """Randomly sample a path.
 
         :param depth: the number of paths
@@ -132,29 +132,8 @@ class CARSDartsNetwork(DartsNetwork):
         :param input: An input tensor
         :type input: Tensor
         """
-        random_node, random_ops = self._random_one_individual()
-        alphas_normal = self._node_ops_to_alpha(random_node, random_ops)
-        random_node, random_ops = self._random_one_individual()
-        alphas_reduce = self._node_ops_to_alpha(random_node, random_ops)
-        s0, s1 = self.stem(input)
-        for i, cell in enumerate(self.cells):
-            if self.search:
-                if self.desc.network[i + 1] == 'reduce':
-                    weights = alphas_reduce
-                else:
-                    weights = alphas_normal
-            else:
-                weights = None
-            s0, s1 = s1, cell(s0, s1, weights, self.drop_path_prob)
-            if not self.search:
-                if self._auxiliary and i == self._auxiliary_layer:
-                    logits_aux = self.auxiliary_head(s1)
-        out = self.global_pooling(s1)
-        logits = self.classifier(out.view(out.size(0), -1))
-        if self._auxiliary and not self.search:
-            return logits, logits_aux
-        else:
-            return logits
+        alpha = self.random_sample_path()
+        return self.forward(input, alpha)
 
     def forward(self, input, alpha):
         """Forward a model that specified by alpha.

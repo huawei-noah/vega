@@ -53,7 +53,7 @@ class CARSTrainerCallback(Callback):
         self.set_algorithm_model(self.trainer.model)
         # setup alphas
         n_individual = self.alg_policy.num_individual
-        self.alphas = torch.cat([self.trainer.model.random_single_path().unsqueeze(0)
+        self.alphas = torch.cat([self.trainer.model.random_sample_path().unsqueeze(0)
                                  for i in range(n_individual)], dim=0)
         self.trainer.train_loader = self.trainer._init_dataloader(mode='train')
         self.trainer.valid_loader = self.trainer._init_dataloader(mode='val')
