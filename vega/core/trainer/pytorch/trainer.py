@@ -73,7 +73,7 @@ class Trainer(DistributedWorker):
 
         # Data Memeber list of Trainer
         self.is_chief = True
-        self.use_cuda = True
+        self.use_cuda = self.cfg.get('cuda', True)
         self.epochs = self.cfg.epochs
         self.do_validation = True
         self.auto_save_ckpt = True
