@@ -10,6 +10,7 @@
 
 """Import all torchvision networks and models."""
 import os
+from types import ModuleType
 from torchvision import models as torchvision_models
 from torchvision.models.detection import fasterrcnn_resnet50_fpn
 from vega.search_space.networks import NetworkFactory
@@ -18,12 +19,22 @@ from vega.core.common import TaskOps, DefaultConfig
 
 
 def import_all_torchvision_models():
-    """Import all torchvision networks and models."""
-    for _name in dir(torchvision_models):
-        if not _name.startswith("_"):
-            _cls = getattr(torchvision_models, _name)
+    """Import all torchvision networks and models."""    
+    def register_models_from_current_module_scope(module):
+        for _name in dir(module):
+            if _name.startswith("_"):
+                continue
+            _cls = getattr(module, _name)
+            if isinstance(_cls, ModuleType):
+                continue
+            if NetworkFactory.is_exists(NetTypes.TORCH_VISION_MODEL, _cls.__name__):
+                continue
             NetworkFactory.register_custom_cls(NetTypes.TORCH_VISION_MODEL, _cls)
-    NetworkFactory.register_custom_cls(NetTypes.TORCH_VISION_MODEL, fasterrcnn_resnet50_fpn)
+
+    register_models_from_current_module_scope(torchvision_models)
+    register_models_from_current_module_scope(torchvision_models.segmentation)
+    register_models_from_current_module_scope(torchvision_models.detection)
+    register_models_from_current_module_scope(torchvision_models.video)
 
 
 def set_torch_home():

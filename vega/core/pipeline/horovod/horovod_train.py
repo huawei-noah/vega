@@ -17,6 +17,8 @@ import horovod.torch as hvd
 from vega.core.common.class_factory import ClassFactory
 from vega.core.common.user_config import UserConfig
 from vega.core.common.file_ops import FileOps
+from vega.search_space.networks.network_factory import NetworkFactory
+
 
 parser = argparse.ArgumentParser(description='Horovod Fully Train')
 parser.add_argument('--cf_file', type=str, help='ClassFactory pickle file')
@@ -39,6 +41,7 @@ with open('./cf_file.pickle', 'rb') as f:
 ClassFactory.__configs__ = cf_content.get('configs')
 ClassFactory.__registry__ = cf_content.get('registry')
 UserConfig().__data__ = cf_content.get('data')
+NetworkFactory.__network_registry__ = cf_content.get('network_registry')
 cls_trainer = ClassFactory.get_cls('trainer')
 trainer = cls_trainer(None, 0)
 trainer.train_process()
