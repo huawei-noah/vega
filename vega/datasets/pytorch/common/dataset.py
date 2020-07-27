@@ -125,7 +125,7 @@ class Dataset(TaskOps):
             self.transforms.__transform__ = value
 
     def _init_transforms(self):
-        """Initialize sampler method.
+        """Initialize transforms method.
 
         :return: a list of object
         :rtype: list
