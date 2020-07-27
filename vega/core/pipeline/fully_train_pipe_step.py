@@ -21,6 +21,7 @@ from .pipe_step import PipeStep
 from ..common.class_factory import ClassFactory, ClassType
 from vega.core.common import UserConfig, FileOps, TaskOps, Config
 from ..scheduler import Master, LocalMaster
+from vega.search_space.networks.network_factory import NetworkFactory
 
 
 logger = logging.getLogger(__name__)
@@ -116,7 +117,8 @@ class FullyTrainPipeStep(PipeStep):
         cf_file = os.path.join(pwd_dir, 'cf.pickle')
         cf_content = {'configs': ClassFactory.__configs__,
                       'registry': ClassFactory.__registry__,
-                      'data': UserConfig().__data__}
+                      'data': UserConfig().__data__,
+                      'network_registry': NetworkFactory.__network_registry__}
         with open(cf_file, 'wb') as f:
             pickle.dump(cf_content, f)
         cf_file_remote = os.path.join(self.task.local_base_path, 'cf.pickle')
