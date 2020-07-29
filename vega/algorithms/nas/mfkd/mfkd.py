@@ -129,7 +129,6 @@ class MFKD1(SearchAlgorithm):
     @property
     def is_completed(self):
         """Check if the search is finished."""
-        print(self.acc_list)
         return self.sample_count >= self.max_samples
 
     def _save_model_desc_file(self, id, desc):
