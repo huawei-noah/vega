@@ -34,7 +34,7 @@ class MFKD1(SearchAlgorithm):
 
         for key, value in sorted(config.items()):
             if isinstance(value, dict):
-                self._sub_config_choice(value, choices, pos)
+                _, pos = self._sub_config_choice(value, choices, pos)
             elif isinstance(value, list):
                 choice = value[choices[pos]]
                 config[key] = choice
