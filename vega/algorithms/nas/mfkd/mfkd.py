@@ -26,10 +26,12 @@ class MFKD1(SearchAlgorithm):
         self.acc_list = []
 
         self._get_all_arcs()
-        self.points = list(np.random.choice(list(range(len(self.X))), size = self.max_samples, replace = False))
+        self.points = list(np.random.choice(range(len(self.X)), size = self.max_samples, replace = False))
         logging.info('Selected %d random points: %s' % (len(self.points), str(self.points)))
 
     def _sub_config_choice(self, config, choices, pos):
+        """Apply choices to config"""
+
         for key, value in sorted(config.items()):
             if isinstance(value, dict):
                 self._sub_config_choice(value, choices, pos)
@@ -41,6 +43,8 @@ class MFKD1(SearchAlgorithm):
         return config, pos
 
     def _desc_from_choices(self, choices):
+        """Create description object from choices"""
+
         desc = {}
         pos = 0
 
@@ -54,6 +58,8 @@ class MFKD1(SearchAlgorithm):
         return desc
 
     def _sub_config_all(self, config, vectors, choices):
+        """Get all possible choices and their values"""
+
         for key, value in sorted(config.items()):
             if isinstance(value, dict):
                 self._sub_config_all(value, vectors, choices)
@@ -62,6 +68,7 @@ class MFKD1(SearchAlgorithm):
                 choices.append(list(range(len(value))))
 
     def _get_all_arcs(self):
+        """Get all the architectures from the search space"""
 
         vectors = []
         choices = []
@@ -74,9 +81,11 @@ class MFKD1(SearchAlgorithm):
         self.X = preprocessing.scale(self.X, axis = 0)
         self.choices = list(itertools.product(*choices))
 
-        logging.info('Architectures in the search space %d' % len(self.X))
+        logging.info('Number of architectures in the search space %d' % len(self.X))
 
     def _get_best_arc(self):
+        """Find the best (by estimate) architecture from the search space"""
+
         X_train = []
         y_train = []
 
