@@ -114,7 +114,7 @@ class MFKD1(SearchAlgorithm):
         # not clear where to write the best architecture
         if self.is_completed:
             idx = self._get_best_arc()
-            desc = self._desc_from_choices(self.c[idx])
+            desc = self._desc_from_choices(self.choices[idx])
             logging.info('The best architecture %d, description %s' % (idx, str(desc)))
 
     @property
