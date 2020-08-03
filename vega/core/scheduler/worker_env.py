@@ -137,7 +137,7 @@ class WorkerEnv(WorkerPlugin):
                     p.wait()
                     fh.close()
                     sub_pids = p.stdout.read().split()
-                    for spid in sub_pids:
+                    for spid in sub_pids[1:]:
                         cuda_pid_set.add(int(spid))
                 for spid in protect_pid_set:
                     if spid in cuda_pid_set:
