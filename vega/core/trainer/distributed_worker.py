@@ -26,6 +26,7 @@ from vega.core.common.task_ops import TaskOps
 from .utils import kill_proc_tree
 from vega.core.common.user_config import UserConfig
 from vega.core.common.class_factory import ClassFactory
+from vega.search_space.networks.network_factory import NetworkFactory
 
 
 class DistributedWorker(TaskOps):
@@ -60,7 +61,8 @@ class DistributedWorker(TaskOps):
         self.timeout = int(float(self.cfg.worker.timeout) * 60 * 60)
         self.__env_config__ = (copy.deepcopy(UserConfig().data),
                                copy.deepcopy(ClassFactory.__configs__),
-                               copy.deepcopy(ClassFactory.__registry__))
+                               copy.deepcopy(ClassFactory.__registry__),
+                               copy.deepcopy(NetworkFactory.__network_registry__))
         return
 
     # basic decorators
@@ -171,7 +173,8 @@ class DistributedWorker(TaskOps):
         cmd = "import pickle;f=open('{0}', 'rb');augment = pickle.load(f);".format(worker_file)
         cmd = cmd + "from vega.core.common.user_config import UserConfig;"
         cmd = cmd + "from vega.core.common.class_factory import ClassFactory;"
-        cmd = cmd + "user_config_data,ClassFactory.__configs__,ClassFactory.__registry__=augment.__env_config__;"
+        cmd = cmd + "from vega.search_space.networks.network_factory import NetworkFactory;"
+        cmd = cmd + "user_config_data,ClassFactory.__configs__,ClassFactory.__registry__,NetworkFactory.__network_registry__=augment.__env_config__;
         cmd = cmd + "UserConfig().load(user_config_data);"
         if 'VEGA_INIT_ENV' in os.environ:
             cmd = cmd + os.environ.copy()['VEGA_INIT_ENV']
