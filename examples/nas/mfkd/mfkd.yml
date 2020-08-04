@@ -1,0 +1,54 @@
+# my.yml
+
+pipeline: [nas]
+
+nas:
+    pipe_step:
+        type: NasPipeStep
+
+    dataset:
+        type: Cifar10
+        common:
+            data_path: '~/cache/datasets/cifar10/'
+            download: True
+        train:
+            shuffle: False
+            num_workers: 8
+            batch_size: 256
+            train_portion: 0.1
+        valid:
+            shuffle: False
+            num_workers: 8
+            batch_size: 256
+            train_portion: 0.1
+
+    search_space:
+        type: SearchSpace
+        modules: ['custom']
+        custom:
+            name: SimpleCnn
+            conv_layer_0:
+                kernel_size: [1, 3, 5]
+                bn: [False, True]
+                relu: [False, True]
+                filters: [8, 16, 32]
+            conv_layer_1:
+                kernel_size: [1, 3, 5]
+                bn: [False, True]
+                relu: [False, True]
+                filters: [8, 16, 32]
+            conv_layer_2:
+                kernel_size: [1, 3, 5]
+                bn: [False, True]
+                relu: [False, True]
+                filters: [8, 16, 32]
+            fully_connect:
+                output_unit: [16, 20, 24, 28, 32]
+
+    search_algorithm:
+        type: MFKD1
+        max_samples: 5
+
+    trainer:
+        type: Trainer
+        epochs: 1
