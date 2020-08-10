@@ -24,3 +24,9 @@ pip3 install --user "tensorflow-gpu>=1.14.0,<2.0"
 pip3 install --user intervaltree==3.0.2
 pip3 install --user more-itertools==8.2.0
 pip3 install --user imagecorruptions==1.0.0
+pip3 install --user ujson==3.0.0
+pip3 install --user PrettyTable==0.7.2
+pip3 install --user imgaug==0.4.0
+pip3 install --user pycocotools==2.0.1
+pip3 install --user matplotlib==3.2.2
+pip3 install --user tf-models-official==0.0.3.dev1

@@ -10,95 +10,66 @@
 
 """Defined PBAHpo class."""
 import os
-import logging
 import copy
 import shutil
 from vega.algorithms.data_augmentation.common import PBA
 from vega.core.common.class_factory import ClassFactory, ClassType
 from vega.core.common.file_ops import FileOps
-from vega.core.pipeline.hpo_generator import HpoGenerator
+from vega.algorithms.hpo.hpo_base import HPOBase
+from .pba_conf import PBAConfig
 
 
-@ClassFactory.register(ClassType.HPO)
-class PBAHpo(HpoGenerator):
+@ClassFactory.register(ClassType.SEARCH_ALGORITHM)
+class PBAHpo(HPOBase):
     """An Hpo of PBA, inherit from HpoGenerator."""
 
-    def __init__(self):
+    config = PBAConfig()
+
+    def __init__(self, search_space=None, **kwargs):
         """Init PBAHpo."""
-        super(PBAHpo, self).__init__()
-        self.transformers = self.cfg.transformers
+        super(PBAHpo, self).__init__(search_space, **kwargs)
+        self.transformers = search_space.transformers
         self.operation_names = []
         for operation, w_o in self.transformers.items():
             if w_o:
                 self.operation_names.append(operation)
         num_operation = len(self.operation_names)
-        self.hpo = PBA(self.policy.config_count, self.policy.each_epochs,
-                       self.policy.total_rungs, self.local_base_path, num_operation)
+        self.hpo = PBA(self.config.policy.config_count, self.config.policy.each_epochs,
+                       self.config.policy.total_rungs, self.local_base_path, num_operation)
 
-    def sample(self):
-        """Sample an id and hps from hpo.
-
-        :return: id, hps
-        :rtype: int, dict
-        """
-        re_hps = {}
+    def search(self):
+        """Search an id and hps from hpo."""
         sample = self.hpo.propose()
-        if sample is not None:
-            sample = copy.deepcopy(sample)
-            sample_id = sample.get('config_id')
-            self._hps_cache[str(sample_id)] = [copy.deepcopy(sample), []]
-            trans_para = sample.get('configs')
-            re_hps['dataset.transforms'] = [{'type': 'PBATransformer', 'para_array': trans_para,
-                                             'operation_names': self.operation_names}]
-            checkpoint_path = FileOps.join_path(self.local_base_path, 'cache', 'pba', str(sample_id), 'checkpoint')
-            FileOps.make_dir(checkpoint_path)
-            if os.path.exists(checkpoint_path):
-                re_hps['trainer.checkpoint_path'] = checkpoint_path
-            if 'epoch' in sample:
-                re_hps['trainer.epochs'] = sample.get('epoch')
-            return sample_id, re_hps
-        else:
-            return None, None
+        if sample is None:
+            return None
+        re_hps = {}
+        sample = copy.deepcopy(sample)
+        sample_id = sample.get('config_id')
+        trans_para = sample.get('configs')
+        rung_id = sample.get('rung_id')
+        re_hps['dataset.transforms'] = [{'type': 'PBATransformer', 'para_array': trans_para,
+                                         'operation_names': self.operation_names}]
+        checkpoint_path = FileOps.join_path(self.local_base_path, 'cache', 'pba', str(sample_id), 'checkpoint')
+        FileOps.make_dir(checkpoint_path)
+        if os.path.exists(checkpoint_path):
+            re_hps['trainer.checkpoint_path'] = checkpoint_path
+        if 'epoch' in sample:
+            re_hps['trainer.epochs'] = sample.get('epoch')
+        return dict(worker_id=sample_id, desc=re_hps, info=rung_id)
 
-    def update_performance(self, hps, performance):
+    def update(self, record):
         """Update current performance into hpo score board.
 
         :param hps: hyper parameters need to update
         :param performance:  trainer performance
         """
-        if isinstance(performance, list) and len(performance) > 0:
-            self.hpo.add_score(int(hps.get('config_id')),
-                               int(hps.get('rung_id')), performance[0])
-        else:
-            self.hpo.add_score(int(hps.get('config_id')),
-                               int(hps.get('rung_id')), -1)
-            logging.error("hpo get empty performance!")
-        worker_result_path = self.get_local_worker_path(self.cfg.step_name, str(hps.get('config_id')))
-        new_worker_result_path = FileOps.join_path(self.local_base_path, 'cache', 'pba',
-                                                   str(hps.get('config_id')), 'checkpoint')
+        super().update(record)
+        config_id = str(record.get('worker_id'))
+        step_name = record.get('step_name')
+        worker_result_path = self.get_local_worker_path(step_name, config_id)
+        new_worker_result_path = FileOps.join_path(self.local_base_path, 'cache', 'pba', config_id, 'checkpoint')
         FileOps.make_dir(worker_result_path)
         FileOps.make_dir(new_worker_result_path)
         if os.path.exists(new_worker_result_path):
             shutil.rmtree(new_worker_result_path)
         shutil.copytree(worker_result_path, new_worker_result_path)
-
-    @property
-    def is_completed(self):
-        """Make hpo pipe step status is completed.
-
-        :return: hpo status
-        :rtype: bool
-        """
-        return self.hpo.is_completed
-
-    @property
-    def best_hps(self):
-        """Get best hps."""
-        return self.hpo.best_config()
-
-    def _save_score_board(self):
-        """Save the internal score board for detail analysis."""
-        try:
-            self.hpo.sieve_board.to_csv(self._board_file, index=None, header=True)
-        except Exception as e:
-            logging.error("Failed to save score board file, error={}".format(str(e)))

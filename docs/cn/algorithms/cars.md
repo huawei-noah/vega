@@ -18,12 +18,6 @@ pipeline中的CARS算法集成了DARTS的搜索空间，整体结构大体如下
 
 ![darts_search_sapce](./images/cars_darts_search_sapce.png)
 
-搜索空间的定义可参考：
-
-```python
-vega/search_space/networks/super_network/cars_darts.py
-```
-
 DARTS搜索空间的详细介绍请参考相应的[ICLR'19文章](https://arxiv.org/abs/1806.09055)。
 
 ### 2.2 配置搜索空间
@@ -113,7 +107,7 @@ CIFAR-10数据集配置信息如下：
     dataset:
         type: Cifar10
         common:
-            #data_path: /datasets/cifar10/
+            data_path: /cache/datasets/cifar10/
             num_workers: 8
             train_portion: 0.5
             drop_last: False
@@ -128,7 +122,7 @@ CIFAR-10数据集配置信息如下：
 
 在配置文件中进行参数配置，搜索模型、训练模型可参考以下配置文件：
 
-- vega/examples/nas/cars/cars_darts.yml
+- vega/examples/nas/cars/cars.yml
 
 配置文件在`main.py`中直接传入给pipeline，两个过程会依次进行，搜索过程会搜出位于Pareto前沿的一系列模型，训练过程会把前沿的模型训到底，得到最终的模型性能。
 
@@ -151,7 +145,8 @@ nas:
     trainer:
         type: Trainer
         darts_template_file: "{default_darts_cifar10_template}"
-        callbacks: DartsFullTrainerCallback
+        callbacks: CARSTrainerCallback
+        model_statistics: False
         epochs: 500
         optim:
             type: SGD
@@ -166,7 +161,6 @@ nas:
             type: CrossEntropyLoss
         metric:
             type: accuracy
-            topk: [1, 5]
         grad_clip: 5.0
         seed: 10
         unrolled: True
@@ -182,7 +176,7 @@ fully_train:
 
     trainer:
         ref: nas.trainer
-        callbacks: CARSFullTrainerCallback
+        callbacks: DartsFullTrainerCallback
         epochs: 600
         lr_scheduler:
             type: CosineAnnealingLR
@@ -199,7 +193,7 @@ fully_train:
     dataset:
         type: Cifar10
         common:
-            #data_path: /datasets/cifar10/
+            data_path: /cache/datasets/cifar10/
             num_workers: 8
             drop_last: False
             batch_size: 96
@@ -221,7 +215,7 @@ fully_train:
                       - 0.24348505
                       - 0.26158768
                 - type: Cutout
-                  length: 8 # pipeline scale this number to 8*20/10
+                  length: 8
         test:
             shuffle: False
 ```
@@ -233,15 +227,7 @@ fully train 的 models_folder 和 model_desc_n.json 参数说明：
 
 ### 3.3 算法输出
 
-配置算法输出的目录：
-
-```yaml
-general:
-    task:
-        local_base_path: "./output"     # 输出目录，缺省为当前目录下output目录，可修改
-```
-
-算法会在该目录下新建output目录，并在output目录下新建 nas 和 fully_train 目录，其中：
+算法输出：
 
 1. nas 目录：输出相对最优的多个模型描述文件。
 2. fully_train 目录：输出训练后的模型权重文件。

@@ -218,7 +218,8 @@ hpo1:
         type: Evaluator
         gpu_evaluator:
             type: GpuEvaluator
-            ref: trainer
+            metric:
+                type: accuracy
 ```
 
 Gpu_evaluator is used to evaluate model performance based on GPU platform and return evaluation results with performance sorting.

@@ -30,56 +30,70 @@ class DaskEnv(object):
          contain `init_method`, `rank` and `world_size`.
     :param str master_path: a python path that need to add in SYSPATH before
         all environment been setup.
-    :param int gpus_per_job: .
+    :param int devices_per_job: .
     :param float worker_portion: the portion of workers that must wait to
          till connected with dask-scheduler.
 
     """
 
-    def __init__(self, args, master_path, gpus_per_job, temp_path, worker_portion=1.0):
+    def __init__(self, args, master_path, devices_per_job, temp_path, worker_portion=1.0):
         """Init DaskEnv and set basic attrs."""
         self.args = args
         self.worker_portion = worker_portion
         self.__master_path__ = master_path
+        self.temp_path = temp_path
         self.is_master = False
         self.client = None
         self.master_address = None
         self.world_size = None
         self.slave_num = None
         self.slave_proc_num = None
-        self.slave_gpus_per_proc = None
-        self._set_slave_num(gpus_per_job)
+        self.slave_device_num_per_proc = None
+        self._set_slave_num(devices_per_job)
         self._cluster_pid = []
         self.slaves = []
-        self.temp_path = temp_path
         if 'slaves' in self.args and self.args.slaves:
             if not isinstance(self.args.slaves, list):
                 self.args.slaves = [self.args.slaves]
             self.slaves = self.args.slaves
 
-    def _set_slave_num(self, gpus_per_job):
+    def _set_slave_num(self, device_num):
         """Set slave node number.
 
-        :param int gpus_per_job: Description of parameter `gpus_per_job`.
+        :param int device_num: Description of parameter `device_num`.
 
         """
         self.slave_num = self.args.world_size
         self.slave_proc_num = 1
-        try:
-            import torch
-            system_gpu_num = 0
-            if torch.cuda.is_available():
-                system_gpu_num = torch.cuda.device_count()
-            if gpus_per_job > 0 and gpus_per_job <= system_gpu_num:
-                self.slave_gpus_per_proc = gpus_per_job
-                self.slave_proc_num = int(system_gpu_num // gpus_per_job)
-            else:
-                self.slave_gpus_per_proc = system_gpu_num
-                self.slave_proc_num = 1
-        except ImportError:
-            pass
+        system_device_num = self._get_slave_device_num()
+        if device_num > 0 and device_num <= system_device_num:
+            self.slave_device_num_per_proc = device_num
+            self.slave_proc_num = int(system_device_num // device_num)
+        else:
+            self.slave_device_num_per_proc = system_device_num
+            self.slave_proc_num = 1
         self.world_size = self.slave_num * self.slave_proc_num
         return
+
+    def _get_slave_device_num(self):
+        device_category = os.environ['DEVICE_CATEGORY']
+        system_device_num = 0
+        if device_category == 'GPU':
+            try:
+                import torch
+                system_device_num = 0
+                if torch.cuda.is_available():
+                    system_device_num = torch.cuda.device_count()
+            except ImportError:
+                pass
+        elif device_category == 'NPU':
+            try:
+                system_device_num = len(os.environ['NPU-VISIBLE-DEVICES'].split(','))
+            except Exception:
+                pass
+        else:
+            raise Exception('device category must be GPU or NPU.')
+        return system_device_num
 
     def _get_address(self):
         """Get the master ip address and check if current node is master node.
@@ -125,10 +139,11 @@ class DaskEnv(object):
         the_ip, the_port = utils.get_master_address(self.args)
         logging.info("master ip and port: {}:{}".format(the_ip, the_port))
         if 'PYTHONPATH' in os.environ:
-            os.environ['PYTHONPATH'] = "{0}:{1}".format(os.environ['PYTHONPATH'],
-                                                        self.__master_path__)
+            os.environ['PYTHONPATH'] = "{}:{}:{}".format(
+                os.environ['PYTHONPATH'], self.__master_path__, os.path.abspath(os.curdir))
         elif self.__master_path__ is not None:
-            os.environ['PYTHONPATH'] = self.__master_path__
+            os.environ['PYTHONPATH'] = "{}:{}".format(
+                self.__master_path__, os.path.abspath(os.curdir))
 
         # set distributed configs
         # os.environ['DASK_DISTRIBUTED__CLIENT__HEARTBEAT'] = '10s'
@@ -158,7 +173,7 @@ class DaskEnv(object):
         # run dask-worker in master
         for i in range(self.slave_proc_num):
             worker_p = subprocess.Popen(["dask-worker", address, '--nthreads=1', '--nprocs=1',
-                                        '--memory-limit=0', local_dir], env=os.environ)
+                                         '--memory-limit=0', local_dir], env=os.environ)
             self._cluster_pid.append(worker_p.pid)
         # run dask-worker in each slaves.
         for slave_ip in self.slaves:

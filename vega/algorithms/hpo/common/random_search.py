@@ -88,7 +88,6 @@ class RandomSearch(ShaBase):
         next_config_id = rung_df['config_id'].min(skipna=True)
         results = {
             'config_id': int(next_config_id),
-            'rung_id': 0,
             'configs': self.config_list[int(next_config_id)],
             'epoch': int(self.epoch)
         }

@@ -4,7 +4,7 @@
 
 The Vega provides interfaces and public methods related to data conversion and sampling in the Dataset class. The user data processing class can inherit from the Dataset class and use these public capabilities.
 
-Vega provides common dataset classes, including Cifar10, Cifar100, ImageNet, Coco, FMnist, Mnist, Cityscapes, and Div2K. For details, see the  HYPERLINK "../user/config_reference.md"  Configuration Reference.Error! Hyperlink reference not valid.
+Vega provides common dataset classes, including Avazu, Cifar10, Cifar100, ImageNet, Coco, FMnist, Mnist, Cityscapes, and Div2K. For details, see the  HYPERLINK "../user/config_reference.md"  Configuration Reference.Error! Hyperlink reference not valid.
 
 ### 1.1 Example
 
@@ -16,14 +16,14 @@ The following describes how to use the Dataset by using the cifar10 as an exampl
     dataset:
         type: Cifar10
         train:
-            data_path: "/data/dataset/"
+            data_path: "/cache/datasets/cifar10/"
      ```
 
-2. In the program, use ClassFactory to create a Dataset,model to initialize the training set or test set, and use Dataloader to load data, as shown in the following figure.
+2. In the program, use ClassFactory to create a Dataset, mode to initialize the training set or test set, and use Dataloader to load data, as shown in the following figure.
 
     ```python
-    dataset = ClassFactory.get_cls(Classtype.Dataset)
-    train_data, test_data = dataset(model='train'), dataset(model='test')
+    dataset = ClassFactory.get_cls(Classtype.DATASET)
+    train_data, test_data = dataset(mode='train'), dataset(mode='test')
     data_loader = train_data.dataloader
     for input, target in data_loader:
         process_data(input, target)
@@ -33,7 +33,7 @@ The following describes how to use the Dataset by using the cifar10 as an exampl
 
 All dataset classes of Vega are inherited from the base class Dataset. The base class Dataset defines the interfaces required by the dataset, provides attributes such as dataloader, transforms, and sampler, and provides default implementation. The derived class can reload these default implementations as required. The following describes how to customize a dataset.
 
-## 2. Customize a dataset.
+## 2. Customize a dataset
 
 Assume that the user data contains 100 images and is stored in a folder. To implement a dataset class named MyDataset, perform the following steps:
 
@@ -44,14 +44,14 @@ Assume that the user data contains 100 images and is stored in a folder. To impl
 As mentioned above, the MyDataset class inherits from Dataset as follows:
 
 ```python
-from vega.datasets import Dataset
-from vega.core.common import ClassFactory, ClassType
+from vega.datasets.pytorch.common.dataset import Dataset
+from vega.core.common.class_factory import ClassFactory, ClassType
 
 
 @ClassFactory.register(ClassType.DATASET)
 class MyDataset(Dataset):
-    def __init__(self):
-        super(MyDataset, self).__init__()
+    def __init__(self， **kwargs):
+        super(MyDataset, self).__init__(**kwargs)
 ```
 
 In the preceding code, @ClassFactory.register(ClassType.DATASET) is used to register MyDataset with the Vega library.

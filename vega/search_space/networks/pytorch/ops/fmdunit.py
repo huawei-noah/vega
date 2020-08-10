@@ -42,23 +42,27 @@ class FMDUnit(Network):
             return x
         else:
             width = x.size(3)
-            seed_drop_rate = self.drop_prob * width**2 / self.block_size**2 / (width - self.block_size + 1)**2
-            valid_block_center = torch.zeros(width, width, device=x.device).float()
+            seed_drop_rate = self.drop_prob * width ** 2 / \
+                self.block_size ** 2 / (width - self.block_size + 1) ** 2
+            valid_block_center = torch.zeros(
+                width, width, device=x.device).float()
             valid_block_center[int(self.block_size // 2):(width - (self.block_size - 1) // 2),
                                int(self.block_size // 2):(width - (self.block_size - 1) // 2)] = 1.0
             valid_block_center = valid_block_center.unsqueeze(0).unsqueeze(0)
             randnoise = torch.rand(x.shape, device=x.device)
-            block_pattern = ((1 - valid_block_center + float(1 - seed_drop_rate) + randnoise) >= 1).float()
+            block_pattern = (
+                (1 - valid_block_center + float(1 - seed_drop_rate) + randnoise) >= 1).float()
             if self.block_size == width:
                 block_pattern = torch.min(block_pattern.view(x.size(0), x.size(1),
-                                          x.size(2) * x.size(3)), dim=2)[0].unsqueeze(-1).unsqueeze(-1)
+                                                             x.size(2) * x.size(3)), dim=2)[0].unsqueeze(-1).unsqueeze(
+                    -1)
             else:
                 block_pattern = -F.max_pool2d(input=-block_pattern, kernel_size=(self.block_size, self.block_size),
                                               stride=(1, 1), padding=self.block_size // 2)
             if self.block_size % 2 == 0:
                 block_pattern = block_pattern[:, :, :-1, :-1]
             percent_ones = block_pattern.sum() / float(block_pattern.numel())
-            if not (self.weight_behind is None) and not(len(self.weight_behind) == 0):
+            if not (self.weight_behind is None) and not (len(self.weight_behind) == 0):
                 wtsize = self.weight_behind.size(3)
                 weight_max = self.weight_behind.max(dim=0, keepdim=True)[0]
                 sig = torch.ones(weight_max.size(), device=weight_max.device)
@@ -69,10 +73,12 @@ class FMDUnit(Network):
                     weight_mean = 0.1 * weight_mean
                 self.weight_record = weight_mean
             var = torch.var(x).clone().detach()
-            if not (self.weight_behind is None) and not(len(self.weight_behind) == 0):
-                noise = self.alpha * weight_mean * (var**0.5) * torch.randn(*x.shape, device=x.device)
+            if not (self.weight_behind is None) and not (len(self.weight_behind) == 0):
+                noise = self.alpha * weight_mean * \
+                    (var ** 0.5) * torch.randn(*x.shape, device=x.device)
             else:
-                noise = self.alpha * 0.01 * (var**0.5) * torch.randn(*x.shape, device=x.device)
+                noise = self.alpha * 0.01 * \
+                    (var ** 0.5) * torch.randn(*x.shape, device=x.device)
             x = x * block_pattern
             noise = noise * (1 - block_pattern)
             x = x + noise
@@ -98,7 +104,8 @@ class LinearScheduler(Network):
         super(LinearScheduler, self).__init__()
         self.fmdblock = fmdblock
         self.i = 0
-        self.dis_values = np.linspace(start=int(start_value), stop=int(stop_value), num=int(nr_steps))
+        self.dis_values = np.linspace(
+            start=int(start_value), stop=int(stop_value), num=int(nr_steps))
 
     def forward(self, x):
         """Forward."""

@@ -10,15 +10,17 @@
 
 """Random search algorithm for Adelaide EA."""
 import random
-from vega.search_space.search_algs.search_algorithm import SearchAlgorithm
-from vega.search_space.codec import Codec
-from vega.search_space.networks import NetworkDesc
+from copy import deepcopy
+from .conf import AdelaideConfig
 from vega.core.common.class_factory import ClassFactory, ClassType
+from vega.search_space.search_algs.search_algorithm import SearchAlgorithm
 
 
 @ClassFactory.register(ClassType.SEARCH_ALGORITHM)
 class AdelaideRandom(SearchAlgorithm):
     """Search algorithm of the random structures."""
+
+    config = AdelaideConfig()
 
     def __init__(self, search_space=None):
         """Construct the AdelaideRandom class.
@@ -27,8 +29,7 @@ class AdelaideRandom(SearchAlgorithm):
         """
         super(AdelaideRandom, self).__init__(search_space)
         self.search_space = search_space
-        self.codec = Codec(self.cfg.codec, search_space)
-        self.max_sample = self.cfg.max_sample
+        self.max_sample = self.config.max_sample
         self.sample_count = 0
 
     @property
@@ -44,7 +45,8 @@ class AdelaideRandom(SearchAlgorithm):
 
         :return: current number of samples, and the model
         """
-        search_desc = self.search_space.search_space.custom
+        desc = deepcopy(self.search_space)
+        search_desc = self.search_space.custom
         num_ops = len(search_desc.op_names)
         ops = [random.randrange(num_ops) for _ in range(7)]
         inputs = list()
@@ -66,12 +68,5 @@ class AdelaideRandom(SearchAlgorithm):
         search_desc['method'] = "random"
         search_desc = self.codec.encode(search_desc)
         self.sample_count += 1
-        return self.sample_count, NetworkDesc(self.search_space.search_space)
-
-    def update(self, local_worker_path):
-        """Update function.
-
-        :param local_worker_path: Local path that saved `performance.txt`
-        :type local_worker_path: str
-        """
-        pass
+        desc['custom'] = search_desc
+        return self.sample_count, desc

@@ -22,9 +22,7 @@ class ForbiddenEqualsClause(object):
     def __new__(cls, param_name, value):
         """Build new class."""
         if not isinstance(param_name, HyperParameter):
-            raise ValueError(
-                'Invalid param_name type {}, should be Hyperparameter type.'
-                .format(type(param_name)))
+            raise ValueError('Invalid param_name type {}, should be Hyperparameter type.'.format(type(param_name)))
 
         if not param_name.check_legal(value):
             raise ValueError('Illegal hyperparameter value {}'.format(value))
@@ -48,9 +46,7 @@ class ForbiddenAndConjunction(object):
     def __new__(cls, forbidden_list):
         """Build new class."""
         if not isinstance(forbidden_list, list):
-            raise ValueError(
-                'Invalid forbidden_list type {}, should be List type.'.format(
-                    type(forbidden_list)))
+            raise ValueError('Invalid forbidden_list type {}, should be List type.'.format(type(forbidden_list)))
         for forbidden in forbidden_list:
             if not isinstance(forbidden, ForbiddenEqualsClause):
                 raise ValueError(

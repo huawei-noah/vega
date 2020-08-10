@@ -15,15 +15,15 @@ calculate tasks.
 """
 import os
 import sys
-import copy
 import logging
 import time
 import traceback
 from queue import Queue
 from ..trainer import utils
 from .distribution import ClusterDaskDistributor, LocalDistributor
-from vega.core.common import UserConfig, TaskOps
+from vega.core.common import TaskOps
 from vega.core.common.consts import ClusterMode
+from vega.core.common.general import General
 from .local_master import LocalMaster
 from .worker_env import WorkerEnv
 from .dask_env import DaskEnv
@@ -42,22 +42,22 @@ class Master(object):
 
     def __new__(cls):
         """Return a LocalMaster instance when run on local, else return a master instance."""
-        mode = UserConfig().data.general.cluster_mode
-        gpus = str(UserConfig().data.general.worker.gpus_per_job)
-        if mode == ClusterMode.Single and gpus == "-1":
+        mode = General.cluster_mode
+        devices = str(General.worker.devices_per_job)
+        if mode == ClusterMode.Single and devices == "-1":
             return LocalMaster()
         else:
             return object.__new__(cls)
 
     def __init__(self):
         """Init master attrs, setup and start dask distributed cluster and local multiprocess pool."""
-        self.cfg = copy.deepcopy(UserConfig().data.general)
+        self.cfg = General()
         self.task_count = 0
-        self.eval_count = self.cfg.worker.eval_count
-        self.dask_env = DaskEnv(UserConfig().data.env,
+        self.eval_count = General.worker.eval_count
+        self.dask_env = DaskEnv(General.env,
                                 self.__master_path__,
-                                self.cfg.worker.gpus_per_job,
-                                TaskOps(self.cfg).temp_path)
+                                General.worker.devices_per_job,
+                                TaskOps().temp_path)
         status = self.dask_env.start()
         if not status or not self.dask_env.is_master:
             sys.exit(0)
@@ -78,10 +78,10 @@ class Master(object):
         elif "BATCH_CUSTOM0_HOSTS" in os.environ:
             local_host = os.environ["BATCH_CUSTOM0_HOSTS"]
         plugin = WorkerEnv(self.dask_env.slave_proc_num,
-                           self.dask_env.slave_gpus_per_proc,
+                           self.dask_env.slave_device_num_per_proc,
                            local_host,
                            os.getpid(),
-                           TaskOps(self.cfg).temp_path)
+                           TaskOps().temp_path)
         self.client.register_worker_plugin(plugin)
         return
 
@@ -156,12 +156,12 @@ class Master(object):
         if t_pid is not None:
             pid_splited = t_pid.split("::")
             if len(pid_splited) >= 3:
-                type = pid_splited[0]
-                pid = "{0}::{1}".format(pid_splited[1], pid_splited[2])
-                if type == utils.WorkerTypes.TRAINER.name:
+                (_type, step_name, worker_id) = pid_splited
+                pid = "{0}::{1}".format(step_name, worker_id)
+                if _type == utils.WorkerTypes.TRAINER.name:
                     self.t_queue.put(pid)
                 else:
-                    self.e_queue.put(item=pid, type=type)
+                    self.e_queue.put(item=pid, type=_type)
         dloop_pid = self.dmd.process_result_get()
         if dloop_pid is not None:
             pid_splited = dloop_pid.split("::")
@@ -197,7 +197,7 @@ class Master(object):
         pid = None
         if train_worker and not self.t_queue.empty():
             pid = self.t_queue.get()
-        else:
+        if not train_worker and self.e_queue.qsize() > 0:
             pid = self.e_queue.get()
         if pid is None:
             return None
@@ -266,9 +266,9 @@ class Master(object):
     @staticmethod
     def shutdown():
         """Shutdown all distributed cluster."""
-        mode = UserConfig().data.general.cluster_mode
-        gpus = str(UserConfig().data.general.worker.gpus_per_job)
-        if mode == ClusterMode.Single and gpus == "-1":
+        mode = General.cluster_mode
+        devices = str(General.worker.devices_per_job)
+        if mode == ClusterMode.Single and devices == "-1":
             return
         try:
             logging.info("Try to shutdown cluster.")

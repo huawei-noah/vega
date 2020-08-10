@@ -10,11 +10,15 @@
 
 """Coarse SearchSpace Define."""
 from vega.core.common.class_factory import ClassFactory, ClassType
+from vega.core.common.config import obj2config
+from vega.core.pipeline.conf import SearchSpaceConfig
 
 
 @ClassFactory.register(ClassType.SEARCH_SPACE)
 class SearchSpace(object):
     """Used for coarse search space. search space is the config from yaml."""
+
+    config = SearchSpaceConfig()
 
     def __new__(cls, *args, **kwargs):
         """Create a new SearchSpace."""
@@ -24,4 +28,4 @@ class SearchSpace(object):
     @property
     def search_space(self):
         """Get hyper parameters."""
-        return self.cfg
+        return obj2config(self.config)

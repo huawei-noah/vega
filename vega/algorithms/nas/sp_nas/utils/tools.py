@@ -58,6 +58,7 @@ def update_config(config, code):
     :return: updated config
     :rtype: dict
     """
+
     def contr_neck(arch, neck_i=256):
 
         neck = []

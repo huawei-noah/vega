@@ -10,15 +10,15 @@
 
 """This is a class for Cifar10 dataset."""
 import os
-import functools
 import tensorflow as tf
-from tensorflow.contrib.data.python.ops import threadpool
 from vega.core.common.class_factory import ClassFactory, ClassType
 from vega.core.common import FileOps
+from .dataset import Dataset
+from vega.datasets.conf.cifar10 import Cifar10Config
 
 
 @ClassFactory.register(ClassType.DATASET)
-class Cifar10TF(object):
+class Cifar10(Dataset):
     """This is a class for Cifar10TF dataset.
 
     :param data_dir: cifar10 data directory
@@ -39,36 +39,40 @@ class Cifar10TF(object):
     :type drop_remainder: bool, default False
     """
 
-    def __init__(self, data_dir, batch_size, mode, num_parallel_batches=1,
-                 repeat_num=5, padding=8, fp16=False, drop_remainder=False):
-        """Init Cifar10TF."""
-        self.data_dir = FileOps.download_dataset(data_dir)
-        self.batch_size = batch_size
-        self.mode = mode
-        self.num_parallel_batches = num_parallel_batches
-        self.repeat_num = repeat_num
-        self.dtype = tf.float16 if fp16 is True else tf.float32
+    config = Cifar10Config()
+
+    def __init__(self, **kwargs):
+        """Init Cifar10."""
+        super(Cifar10, self).__init__(**kwargs)
+        self.data_path = FileOps.download_dataset(self.args.data_path)
+        self.num_parallel_batches = self.args.num_parallel_batches
+        self.train_portion = self.args.train_portion
+        self.dtype = tf.float16 if self.args.fp16 is True else tf.float32
         self.num_channels = 3
         self.height = 32
         self.width = 32
         self.single_data_bytes = self.height * self.width * self.num_channels + 1
-        self.num_images_train = 50000
-        self.num_images_valid = 10000
-        self.drop_remainder = drop_remainder
+        self.num_images = self.args.num_images
+        if self.train_portion != 1:
+            if self.mode == 'train':
+                self.num_images = int(self.num_images * self.train_portion)
+            elif self.mode == 'val':
+                self.num_images = int(self.args.num_images_train * (1 - self.train_portion))
+        self.drop_remainder = self.args.drop_last
         self.single_data_size = [self.num_channels, self.height, self.width]
-        self.padding = padding
+        if self.mode == 'train':
+            self.padding = self.args.padding
 
     @property
     def data_files(self):
         """Cifar10 data files of type bin."""
         data_files = []
-        if self.mode == 'train':
+        is_training = self.mode == 'train' or self.mode == 'val' and self.train_portion != 1
+        if is_training:
             for i in range(1, 6):
-                data_files.append(os.path.join(self.data_dir, 'data_batch_{}.bin'.format(i)))
-        elif self.mode == 'val':
-            data_files.append(os.path.join(self.data_dir, 'test_batch.bin'))
+                data_files.append(os.path.join(self.data_path, 'data_batch_{}.bin'.format(i)))
         else:
-            raise Exception('mode must be train or val.')
+            data_files.append(os.path.join(self.data_path, 'test_batch.bin'))
         return data_files
 
     def data_map_func(self, value):
@@ -97,30 +101,31 @@ class Cifar10TF(object):
         label = tf.cast(label_vector, tf.int32)
         return label
 
-    def set_shapes(self, batch_size, images, labels):
-        """Statically set the batch_size dimension."""
-        images.set_shape(images.get_shape().merge_with(
-            tf.TensorShape([batch_size, None, None, None])))
-        labels.set_shape(labels.get_shape().merge_with(
-            tf.TensorShape([batch_size])))
-        return images, labels
+    def split_train_data(self, dataset):
+        """Split dataset."""
 
-    @property
-    def data_len(self):
-        """Return dataset length of train or valid."""
+        def val_filter_func(x, y):
+            return x >= self.args.num_images_train - self.num_images
+
+        def train_filter_func(x, y):
+            return x < self.num_images
+
         if self.mode == 'train':
-            len = self.num_images_train // self.batch_size
-        else:
-            len = self.num_images_valid // self.batch_size
-        return len
+            return dataset.enumerate().filter(train_filter_func).map(lambda x, y: y)
+        elif self.mode == 'val':
+            return dataset.enumerate().filter(val_filter_func).map(lambda x, y: y)
 
-    def input_fn(self, params):
+    def input_fn(self):
         """Define input_fn used by Tensorflow Estimator."""
         dataset = tf.data.FixedLengthRecordDataset(self.data_files, self.single_data_bytes)
+        if self.train_portion != 1:
+            dataset = self.split_train_data(dataset)
+        if self.world_size > 1:
+            dataset = dataset.shard(self.world_size, self.rank)
         dataset = dataset.prefetch(buffer_size=self.batch_size)
         if self.mode == 'train':
-            dataset = dataset.shuffle(buffer_size=self.num_images_train)
-        dataset = dataset.repeat(self.repeat_num)
+            dataset = dataset.shuffle(buffer_size=self.num_images)
+            dataset = dataset.repeat()
         dataset = dataset.apply(
             tf.contrib.data.map_and_batch(self.data_map_func,
                                           batch_size=self.batch_size,

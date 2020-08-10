@@ -101,7 +101,7 @@ trainer:
 trainer:
     type: SpNasTrainer
     gpus: 8
-    model_desc: 'r_111-2111-211111-211_0-0-0-0' # resnet50
+    model_desc_file: "{local_base_path}/output/total_list_p.csv"
     config_template: "./faster_rcnn_r50_fpn_1x.py"
     regnition: False    # Whether ImageNet regnite
     epoch: 12

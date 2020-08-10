@@ -1,3 +1,15 @@
+# -*- coding: utf-8 -*-
+
+# Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the MIT License.
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# MIT License for more details.
+
+"""Simple CNN network."""
+
 import torch.nn as nn
 from vega.core.common.utils import update_dict
 from vega.core.common.class_factory import ClassFactory, ClassType
@@ -5,10 +17,13 @@ from vega.core.common import UserConfig, TaskOps, FileOps
 from vega.search_space.networks import NetTypes, NetworkFactory, NetworkDesc
 from vega.search_space.search_algs import SearchAlgorithm
 
+
 @NetworkFactory.register(NetTypes.CUSTOM)
 class SimpleCnn(nn.Module):
+    """Simple CNN network."""
 
     def __init__(self, desc):
+        """Initialize."""
         super(SimpleCnn, self).__init__()
         self.conv_num = 3
         self.conv_layers = nn.ModuleList([None] * self.conv_num)
@@ -41,6 +56,7 @@ class SimpleCnn(nn.Module):
         self.fc1 = nn.Linear(fc_inp_size, fc_out_size)
 
     def forward(self, x):
+        """Forward."""
         for i in range(self.conv_num):
             x = self.conv_layers[i](x)
             if self.bn_layers[i] is not None:

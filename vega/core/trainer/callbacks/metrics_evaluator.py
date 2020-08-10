@@ -9,19 +9,20 @@
 # MIT License for more details.
 
 """ProgressLogger call defination."""
-from .callbacks import Callback
+import vega
 from copy import deepcopy
-import torch
-import numpy as np
+from .callback import Callback
+from vega.core.common.class_factory import ClassFactory, ClassType
 
 
+@ClassFactory.register(ClassType.CALLBACK)
 class MetricsEvaluator(Callback):
     """Callback that shows the progress of evaluating metrics."""
 
-    def __init__(self, mode='MAX', key=None):
-        """Initialize MetricsUpdator callback."""
-        self.perfs_cmp_mode = mode
-        self.perfs_cmp_key = key
+    def __init__(self):
+        """Initialize MetricsEvaluator callback."""
+        super(Callback, self).__init__()
+        self.priority = 230
 
     def before_train(self, logs=None):
         """Be called before the training process."""
@@ -34,6 +35,8 @@ class MetricsEvaluator(Callback):
         self.best_valid_perfs = None
         self.best_valid_changed = False
         self.summary_perfs = None
+        self.perfs_cmp_mode = self.trainer.config.perfs_cmp_mode
+        self.perfs_cmp_key = self.trainer.config.perfs_cmp_key
 
     def before_epoch(self, epoch, logs=None):
         """Be called before each epoach."""
@@ -53,7 +56,7 @@ class MetricsEvaluator(Callback):
     def after_train_step(self, batch_index, logs=None):
         """Be called after each train batch."""
         input, target = self.train_batch
-        if self.trainer.cfg.is_detection_trainer:
+        if self.trainer.config.is_detection_trainer:
             self.cur_loss = logs['loss']
             self.loss_avg = self.cur_loss
         else:
@@ -61,18 +64,9 @@ class MetricsEvaluator(Callback):
             self.cur_loss = logs['loss']
             self.loss_avg = self._average_loss(batch_size, self.cur_loss)
         output = logs['train_batch_output']
-        if self.train_metrics is not None:
-            metrics_names = self.train_metrics.names
+        if self.train_metrics is not None and self.trainer.call_metrics_on_train:
             self.train_metrics(output, target)
-            if "is_detection_trainer" in logs.keys() and logs["is_detection_trainer"]:
-                metrics_vals = torch.from_numpy(np.array([[0]]))
-            else:
-                metrics_vals = self.train_metrics.results
-            metrics_results = dict(zip(metrics_names, metrics_vals))
-            logs.update({'cur_loss': self.cur_loss, 'loss_avg': self.loss_avg,
-                         'train_step_metrics': metrics_results})
-        else:
-            logs.update({'cur_loss': self.cur_loss, 'loss_avg': self.loss_avg})
+        logs.update({'cur_loss': self.cur_loss, 'loss_avg': self.loss_avg})
 
     def before_valid_step(self, batch_index, logs=None):
         """Be called before a batch validation."""
@@ -83,19 +77,17 @@ class MetricsEvaluator(Callback):
         if self.do_validation and self.valid_metrics is not None:
             input, target = self.valid_batch
             output = logs['valid_batch_output']
-            metrics_names = self.valid_metrics.names
             self.valid_metrics(output, target)
-            metrics_vals = self.valid_metrics.results
-            metrics_results = dict(zip(metrics_names, metrics_vals))
-            logs.update({'valid_step_metrics': metrics_results})
 
     def after_valid(self, logs=None):
         """Be called after validation."""
         if self.do_validation and self.valid_metrics is not None:
-            metrics_names = self.valid_metrics.names
             # Get the summary of valid metrics
             metrics_results = self.valid_metrics.results
-            self.cur_valid_perfs = dict(zip(metrics_names, metrics_results))
+            if vega.is_torch_backend() and self.trainer.distributed:
+                for key, value in metrics_results.items():
+                    metrics_results[key] = self.trainer._metric_average(value, key)
+            self.cur_valid_perfs = metrics_results
             logs.update({'cur_valid_perfs': self.cur_valid_perfs})
             # update best valid perfs based on current valid valid_perfs
             if self.best_valid_perfs is None:
@@ -113,13 +105,9 @@ class MetricsEvaluator(Callback):
         self.summary_perfs = logs.get('summary_perfs', {})
         self.summary_perfs.update({'loss_avg': self.loss_avg})
         if self.train_metrics is not None:
-            metrics_names = self.train_metrics.names
             # Get the summary of train metrics
-            if self.params["is_detection_trainer"]:
-                metrics_results = torch.from_numpy(np.array([[0]]))
-            else:
-                metrics_results = self.train_metrics.results
-            self.cur_train_perfs = dict(zip(metrics_names, metrics_results))
+            metrics_results = self.train_metrics.results
+            self.cur_train_perfs = metrics_results
             # update best train perfs based on current train perfs
             if self.best_train_perfs is None:
                 self.best_train_perfs = deepcopy(self.cur_train_perfs)
@@ -132,12 +120,11 @@ class MetricsEvaluator(Callback):
             self.summary_perfs.update({'cur_valid_perfs': self.cur_valid_perfs,
                                        'best_valid_perfs': self.best_valid_perfs,
                                        'best_valid_perfs_changed': self.best_valid_changed})
+
         logs.update({'summary_perfs': self.summary_perfs})
 
     def _update_best_perfs(self, cur_perfs, best_perfs):
         best_changed = False
-        best_val = None
-        cur_val = None
         if self.perfs_cmp_key is None:
             # Select the first kye as default for comparsion
             self.perfs_cmp_key = list(cur_perfs.keys())[0]
@@ -149,6 +136,8 @@ class MetricsEvaluator(Callback):
             best_val = best_perfs[self.perfs_cmp_key]
             cur_val = cur_perfs[self.perfs_cmp_key]
         # Store the perfs after comparison based on mode
+        if self.perfs_cmp_mode is None:
+            self.perfs_cmp_mode = self.valid_metrics.objectives.get(self.perfs_cmp_key)
         if self.perfs_cmp_mode == 'MAX':
             if cur_val > best_val:
                 best_perfs.update(deepcopy(cur_perfs))

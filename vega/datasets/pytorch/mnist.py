@@ -9,12 +9,12 @@
 # MIT License for more details.
 
 """This is a class for Mnist dataset."""
-from copy import deepcopy
 from torchvision.datasets import MNIST
 from .common.dataset import Dataset
-from vega.datasets.pytorch.transforms import Compose
+from vega.datasets.transforms import Compose
 from vega.core.common.class_factory import ClassFactory, ClassType
 from vega.core.common.file_ops import FileOps
+from vega.datasets.conf.mnist import MnistConfig
 
 
 @ClassFactory.register(ClassType.DATASET)
@@ -27,6 +27,8 @@ class Mnist(MNIST, Dataset):
     the default config will be used, the default config file is a yml file with the same name of the class
     :type cfg: yml, py or dict
     """
+
+    config = MnistConfig()
 
     def __init__(self, **kwargs):
         """Construct the Mnist class."""

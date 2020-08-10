@@ -34,6 +34,12 @@
 | SM-NAS:E4 | 92 | 115.51 | 43.89 | 80.22 | V100 | [tar](http://www.noahlab.com.hk/opensource/vega/model_zoo/sm_nas/E4.tar.gz) |
 | SM-NAS:E5 | 90.47 | 249.14 | 46.05 | 108.07 | V100 | [tar](http://www.noahlab.com.hk/opensource/vega/model_zoo/sm_nas/E5.tar.gz) |
 
+## Detection on CULane
+
+| Model | Flops(G) | F1 Score | Inference Time(ms) | Inference Device | Download |
+|---|---|---|---|---|:--:|
+| AutoLane | 86.5 | 74.8 | 44.94 | V100 | [tar](http://vega.inhuawei.com/model_zoo/auto_lane/auto_lane.tar.gz) |
+
 ## Detection on ECP
 
 | Model | Model Size(M) | Flops(G) | F1 Score | Inference Time(ms) | Inference Device | Download |

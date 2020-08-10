@@ -1,6 +1,6 @@
 general:
     worker:
-        timeout: 1000.0
+        devices_per_job: -1
 
 pipeline: [nas]
 # pipeline: [nas, fully_train]
@@ -13,11 +13,6 @@ nas:
         type: Cifar10
         common:
             data_path: /cache/datasets/cifar10/
-        train:
-            batch_size: 64
-            train_portion: 0.5
-
-        val:
             batch_size: 64
             train_portion: 0.5
 
@@ -96,50 +91,47 @@ nas:
         epochs: 1
         optim:
             type: SGD
-            lr: 0.025
-            momentum: 0.9
-            weight_decay: !!float 3e-4
+            params:
+                lr: 0.025
+                momentum: 0.9
+                weight_decay: !!float 3e-4
         lr_scheduler:
             type: CosineAnnealingLR
-            T_max: 50.0
-            eta_min: 0.001
-        loss:
-            type: CrossEntropyLoss
-        metric:
-            type: accuracy
-            topk: [1, 5]
+            params:
+                T_max: 50.0
+                eta_min: 0.001
         grad_clip: 5.0
         seed: 10
         unrolled: True
 
-# fully_train:
-#     pipe_step:
-#         type: FullyTrainPipeStep
-#         models_folder: "{local_base_path}/output/nas/"
-#     model:
-#         model_desc_file: '{local_output_path}/nas/model_desc_1.json'
+fully_train:
+    pipe_step:
+        type: FullyTrainPipeStep
+        models_folder: "{local_base_path}/output/nas/"
+    model:
+        model_desc_file: '{local_output_path}/nas/model_desc_1.json'
 
-#     trainer:
-#         ref: nas.trainer
-#         callbacks: DartsFullTrainerCallback
-#         epochs: 6
-#         lr_scheduler:
-#             type: CosineAnnealingLR
-#             T_max: 600.0
-#         loss:
-#             type: MixAuxiliaryLoss
-#             loss_base:
-#                 type: torch.nn.CrossEntropyLoss
-#             aux_weight: 0.4
-#         warmup_epochs: 0
-#         drop_path_prob: 0.2
+    trainer:
+        ref: nas.trainer
+        callbacks: DartsFullTrainerCallback
+        epochs: 6
+        lr_scheduler:
+            type: CosineAnnealingLR
+            params:
+                T_max: 600.0
+        loss:
+            type: MixAuxiliaryLoss
+            params:
+                loss_base:
+                    type: torch.nn.CrossEntropyLoss
+                aux_weight: 0.4
+        warmup_epochs: 0
+        drop_path_prob: 0.2
 
-#     dataset:
-#         type: Cifar10
-#         train:
-#             num_workers: 32
-#             batch_size: 96
-#             cutout_length: 8
-#         test:
-#             num_workers: 32
-#             batch_size: 96
+    dataset:
+        type: Cifar10
+        common:
+            num_workers: 32
+            batch_size: 96
+        train:
+            cutout_length: 8

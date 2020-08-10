@@ -10,7 +10,7 @@ if sys.version_info < (3, 6):
 
 setuptools.setup(
     name="vega",
-    version="0.9.3",
+    version="1.0.0",
     packages=["vega"],
     include_package_data=True,
     python_requires=">=3.6",

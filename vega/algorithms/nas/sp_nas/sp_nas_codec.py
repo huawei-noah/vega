@@ -15,18 +15,20 @@ import logging
 from vega.search_space.codec import Codec
 from vega.core.common.config import Config
 from vega.algorithms.nas.sp_nas.utils import update_config
+from vega.core.common.class_factory import ClassType, ClassFactory
 
 
+@ClassFactory.register(ClassType.CODEC)
 class SpNasCodec(Codec):
     """Description for SPNAS model."""
 
-    def __init__(self, codec_name, search_space=None):
-        super(SpNasCodec, self).__init__(codec_name, search_space)
-        config_template_file = search_space.search_space.config_template_file
+    def __init__(self, search_space=None, **kwargs):
+        super(SpNasCodec, self).__init__(search_space, **kwargs)
+        config_template_file = search_space.config_template_file
         assert config_template_file is not None
         self.config_template = Config(config_template_file)
-        if 'epoch' in search_space.search_space.keys():
-            self.config_template['total_epochs'] = search_space.search_space.epoch
+        if 'epoch' in search_space.keys():
+            self.config_template['total_epochs'] = search_space.epoch
 
     def encode(self, block_type, arch, mb_arch):
         """Encode backbone.

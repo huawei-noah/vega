@@ -16,6 +16,7 @@ import torch
 import torch.nn as nn
 from torch.nn import init
 from torch.optim import lr_scheduler
+
 try:
     import horovod.torch as hvd
 except Exception:
@@ -23,7 +24,7 @@ except Exception:
     pass
 
 
-def initialize(nets, init_gain=0.02, use_cuda=True, use_horovod=False):
+def initialize(nets, init_gain=0.02, use_cuda=True, use_distributed=False):
     """Initialize a network.
 
     :param nets: list of networks to be initialized
@@ -35,6 +36,7 @@ def initialize(nets, init_gain=0.02, use_cuda=True, use_horovod=False):
     :return: Return an initialized network.
     :rtype: nn.Module
     """
+
     def init_w(module):
         classname = module.__class__.__name__
         if hasattr(module, 'weight') and (classname.find('Conv') != -1 or classname.find('Linear') != -1):
@@ -44,10 +46,11 @@ def initialize(nets, init_gain=0.02, use_cuda=True, use_horovod=False):
         elif classname.find('BatchNorm2d') != -1:
             init.normal_(module.weight.data, 1.0, init_gain)
             init.constant_(module.bias.data, 0.0)
+
     module_nets = []
     for net in nets:
         if use_cuda:
-            if use_horovod:
+            if use_distributed:
                 net = torch.nn.DataParallel(net, device_ids=[hvd.local_rank()])
             else:
                 net = torch.nn.DataParallel(net).cuda()

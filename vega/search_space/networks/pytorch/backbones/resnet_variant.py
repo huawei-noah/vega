@@ -45,7 +45,7 @@ class ResNetVariant(Network):
         """Init ResNetVariant."""
         super(ResNetVariant, self).__init__()
         self.net_desc = net_desc
-        logging.info("start init ResNetVariant")
+        logging.debug("start init ResNetVariant")
         self.small_input = True
         self.base_depth = int(net_desc.base_depth)
         self.base_channel = int(net_desc.base_channel)
@@ -60,8 +60,7 @@ class ResNetVariant(Network):
         else:
             self.block = BottleneckBlock
 
-        self.out_channel = self.base_channel * \
-            2 ** sum(self.doublechannel) * self.block.expansion
+        self.out_channel = self.base_channel * 2 ** sum(self.doublechannel) * self.block.expansion
         if self.small_input:
             self.init_block = SmallInputInitialBlock(self.base_channel)
         else:
@@ -71,10 +70,10 @@ class ResNetVariant(Network):
                                              self.num_block,
                                              self.downsample,
                                              self.doublechannel)
-        logging.info("start init ResNetVariant blocks")
+        logging.debug("start init ResNetVariant blocks")
         self.blocks = nn.Sequential(*blocks)
         self.apply(_weights_init)
-        logging.info("finished init ResNetVariant blocks")
+        logging.debug("finished init ResNetVariant blocks")
 
     def _make_resolution_block(self, in_planes, out_planes, num_blocks,
                                downsample, doublechannel):

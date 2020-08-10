@@ -9,7 +9,7 @@
 # MIT License for more details.
 
 """LearningRateSchduler callback Defination."""
-from .callbacks import Callback
+from .callback import Callback
 from vega.core.common.class_factory import ClassFactory, ClassType
 
 
@@ -17,20 +17,31 @@ from vega.core.common.class_factory import ClassFactory, ClassType
 class LearningRateScheduler(Callback):
     """Callback that adjust the learning rate during training."""
 
-    def __init__(self, call_point="BEFORE_EPOCH"):
-        """Init LearningRateSchduler callback."""
-        self.call_point = call_point
+    def __init__(self):
+        """Initialize LearningRateScheduler callback."""
+        super(Callback, self).__init__()
+        self.priority = 260
 
     def before_train(self, logs=None):
         """Be called before training."""
+        self.call_point = self.trainer.config.lr_adjustment_position
         self.lr_scheduler = self.trainer.lr_scheduler
 
     def before_epoch(self, epoch, logs=None):
-        """Be called before each epoch."""
-        if self.call_point == "BEFORE_EPOCH" and self.lr_scheduler is not None:
-            self.lr_scheduler.step(epoch=epoch)
+        """Call before_epoch of the managed callbacks."""
+        self.epoch = epoch
 
     def after_epoch(self, epoch, logs=None):
         """Be called before each epoch."""
-        if self.call_point == "AFTER_EPOCH" and self.lr_scheduler is not None:
+        if self.call_point.upper() == "AFTER_EPOCH" and self.lr_scheduler is not None:
             self.lr_scheduler.step(epoch=epoch)
+
+    def before_train_step(self, batch_index, logs=None):
+        """Call before_train_step of the managed callbacks."""
+        if self.call_point.upper() == 'BEFORE_TRAIN_STEP':
+            self.lr_scheduler.step(epoch=self.epoch)
+
+    def after_train_step(self, batch_index, logs=None):
+        """Call after_train_step of the managed callbacks."""
+        if self.call_point.upper() == 'AFTER_TRAIN_STEP':
+            self.lr_scheduler.step(epoch=self.epoch)

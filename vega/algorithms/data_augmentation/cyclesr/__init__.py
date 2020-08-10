@@ -1,1 +1,1 @@
-from .cyclesr_trainer import CyclesrTrainer
+from .cyclesr_trainer_callback import CyclesrTrainerCallback

@@ -9,10 +9,7 @@
 # MIT License for more details.
 
 """Defined the basic Codec."""
-import os
-import copy
-from vega.core.common import Config
-from vega.core.common.utils import update_dict
+from vega.core.common.class_factory import ClassFactory, ClassType
 
 
 class Codec(object):
@@ -24,33 +21,19 @@ class Codec(object):
     :type search_space: SearchSpace
     """
 
-    _subclasses = {}
+    def __new__(cls, *args, **kwargs):
+        """Create search algorithm instance by ClassFactory."""
+        if cls.__name__ != 'Codec':
+            return super().__new__(cls)
+        if kwargs.get('type'):
+            t_cls = ClassFactory.get_cls(ClassType.CODEC, kwargs.pop('type'))
+        else:
+            t_cls = ClassFactory.get_cls(ClassType.CODEC)
+        return super().__new__(t_cls)
 
-    @classmethod
-    def _get_subclasses(cls):
-        """Return sub class for codec."""
-        subclasses = {}
-        for subclass in cls.__subclasses__():
-            subclasses[subclass.__name__] = subclass
-        return subclasses
-
-    @classmethod
-    def subclasses(cls):
-        """Return sub class for codec."""
-        if not cls._subclasses:
-            cls._subclasses = cls._get_subclasses()
-        return cls._subclasses
-
-    def __new__(cls, codec_name, search_space=None):
-        """Build new Codec."""
-        for subclass_name, subclass in cls.subclasses().items():
-            if subclass_name == str(codec_name):
-                return super(Codec, cls).__new__(subclass)
-        return super(Codec, cls).__new__(cls)
-
-    def __init__(self, codec_name, search_space=None):
+    def __init__(self, search_space=None, **kwargs):
         """Init Codec."""
-        return
+        self.search_space = search_space
 
     def encode(self, desc):
         """Encode function need to implement."""

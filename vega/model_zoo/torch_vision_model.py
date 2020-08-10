@@ -12,15 +12,15 @@
 import os
 from types import ModuleType
 from torchvision import models as torchvision_models
-from torchvision.models.detection import fasterrcnn_resnet50_fpn
 from vega.search_space.networks import NetworkFactory
 from vega.search_space.networks import NetTypes
-from vega.core.common import TaskOps, DefaultConfig
+from vega.core.common.general import General
 
 
 def import_all_torchvision_models():
-    """Import all torchvision networks and models."""    
-    def register_models_from_current_module_scope(module):
+    """Import all torchvision networks and models."""
+
+    def _register_models_from_current_module_scope(module):
         for _name in dir(module):
             if _name.startswith("_"):
                 continue
@@ -31,16 +31,16 @@ def import_all_torchvision_models():
                 continue
             NetworkFactory.register_custom_cls(NetTypes.TORCH_VISION_MODEL, _cls)
 
-    register_models_from_current_module_scope(torchvision_models)
-    register_models_from_current_module_scope(torchvision_models.segmentation)
-    register_models_from_current_module_scope(torchvision_models.detection)
-    register_models_from_current_module_scope(torchvision_models.video)
+    _register_models_from_current_module_scope(torchvision_models)
+    _register_models_from_current_module_scope(torchvision_models.segmentation)
+    _register_models_from_current_module_scope(torchvision_models.detection)
+    _register_models_from_current_module_scope(torchvision_models.video)
 
 
 def set_torch_home():
     """Set TORCH_HOME to local path."""
-    task = TaskOps(DefaultConfig().data.general)
-    full_path = os.path.abspath("{}/torchvision_models".format(task.model_zoo_path))
+    full_path = os.path.abspath("{}/torchvision_models".format(
+        General.model_zoo.model_zoo_path))
     os.environ['TORCH_HOME'] = full_path
 
 

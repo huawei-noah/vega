@@ -1,0 +1,130 @@
+general:
+    worker:
+        devices_per_job: -1
+    backend: tensorflow
+
+pipeline: [random, mutate]
+#pipeline: [random, mutate, fully_train]
+
+random:
+    pipe_step:
+        type: NasPipeStep
+
+    dataset:
+        type: Cityscapes
+        common:
+            root_dir: /cache/datasets/VOC2012
+        train:
+            list_file: train.txt
+            batch_size: 4
+            num_parallel_batches: 4
+            drop_remainder: True
+            shuffle: true
+            Rescale:
+                size: 192
+            RandomMirror: true
+            RandomColor:
+                color_factor: [0.95, 1.05]
+                contrast_factor: [0.95, 1.05]
+                brightness_factor: [0.95, 1.05]
+            RandomGaussianBlur:
+                kernel_size: 3
+            RandomRotation:
+                rotation_factor: [-10, 10]
+                border_value: [0.485, 0.456, 0.406]
+                fill_label: 255
+        val:
+            list_file: val.txt
+            Rescale:
+                size: 192
+
+    search_space:
+        type: SearchSpace
+        modules: ['custom']
+        custom:
+            name: AdelaideFastNAS
+            backbone_load_path: ~
+            backbone_out_sizes: [24, 32, 96, 320]
+            op_names: [conv1x1, conv3x3, sep_conv_3x3, sep_conv_5x5, conv3x3_dil3, sep_conv_3x3_dil3, sep_conv_5x5_dil6]
+            agg_size: 64
+            aux_cell: false
+            sep_repeats: 1
+            agg_concat: true
+            num_classes: 21
+
+    search_algorithm:
+        type: AdelaideRandom
+        codec: AdelaideCodec
+        max_sample: 5
+
+    trainer:
+        type: Trainer
+        callbacks: AdelaideEATrainerCallback
+        epochs: 1
+        optim:
+            type: AdamOptimizer
+            params:
+                learning_rate: 0.0002
+        lr_scheduler:
+            type: MultiStepLrWarmUp
+            params:
+                base_lr: 0.0002
+                warmup: False
+                milestones: [1000]
+                decay_rates: [1, 0.5]
+        loss:
+            type: CrossEntropyWeightDecay
+            params:
+                cross_entropy: sparse_softmax_cross_entropy
+                weight_decay: !!float 1e-4
+                ignore_index: 255
+        metric:
+            type: IoUMetric
+            params:
+                num_classes: 21
+        seed: 0
+        ignore_index: 255
+        save_weight: False
+        save_steps: 250
+        distributed: False
+        amp: True
+        flops_limit: 70
+
+mutate:
+    pipe_step:
+        type: NasPipeStep
+
+    dataset:
+        ref: random.dataset
+
+    search_space:
+           ref: random.search_space
+
+    search_algorithm:
+        type: AdelaideMutate
+        codec: AdelaideCodec
+        max_sample: 5 #10
+
+    trainer:
+        ref: random.trainer
+        callbacks: AdelaideEATrainerCallback
+        save_model_desc: True
+
+fully_train:
+    pipe_step:
+        type: FullyTrainPipeStep
+
+    dataset:
+        type: Cityscapes
+        ref: random.dataset
+
+    search_space:
+        ref: random.search_space
+        custom:
+            sep_repeats: 2
+
+    trainer:
+        ref: random.trainer
+        callbacks: AdelaideEATrainerCallback
+        model_statistics: True
+        epochs: 10

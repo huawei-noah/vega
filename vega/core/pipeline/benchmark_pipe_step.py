@@ -10,15 +10,17 @@
 
 """Benchmark Pipe Step defined in Pipeline."""
 import logging
-import glob
 import os
-import numpy as np
 import traceback
-from copy import deepcopy
-from vega.core.common import TaskOps, Config, UserConfig, FileOps
-from .pipe_step import PipeStep
-from vega.core.common.class_factory import ClassFactory, ClassType
 
+from vega.core.common import FileOps, Config
+from vega.core.common.class_factory import ClassFactory, ClassType
+from vega.core.common.general import General
+from vega.core.common.task_ops import TaskOps
+from vega.core.pipeline.conf import PipeStepConfig, PipelineConfig
+from vega.core.report import Report, ReportRecord
+from .pipe_step import PipeStep
+from ..scheduler import Master
 
 logger = logging.getLogger(__name__)
 
@@ -33,82 +35,88 @@ class BenchmarkPipeStep(PipeStep):
     def do(self):
         """Start to run benchmark evaluator."""
         logger.info("BenchmarkPipeStep started...")
-        cfg = Config(deepcopy(UserConfig().data))
-        step_name = cfg.general.step_name
-        pipe_step_cfg = cfg[step_name].pipe_step
-        if "esr_models_file" in pipe_step_cfg and pipe_step_cfg.esr_models_file is not None:
-            # TODO: ESR model
-            self._evaluate_esr_models(pipe_step_cfg.esr_models_file, pipe_step_cfg.models_folder)
-        elif "models_folder" in pipe_step_cfg and pipe_step_cfg.models_folder is not None:
-            self._evaluate_multi_models(pipe_step_cfg.models_folder)
-        else:
-            self._evaluate_single_model()
-        self._backup_output_path()
-        logger.info("Complete model evaluation.")
+        records = self._get_current_step_records()
+        if not records:
+            logger.error("There is no model to evaluate.")
+            return
+        self.master = Master()
+        for record in records:
+            _record = ReportRecord(worker_id=record.worker_id, desc=record.desc, step_name=record.step_name)
+            Report().broadcast(_record)
+            self._evaluate_single_model(record)
+            self.master.pop_all_finished_evaluate_worker()
+        self.master.join()
+        self.master.pop_all_finished_evaluate_worker()
+        for record in records:
+            Report().update_report({"step_name": record.step_name, "worker_id": record.worker_id})
+        Report().output_step_all_records(
+            step_name=General.step_name,
+            weights_file=False,
+            performance=True)
+        self.master.close_client()
+        Report().backup_output_path()
 
-    def _evaluate_single_model(self, id=None, desc_file=None, pretrained_model=None):
+    def _get_current_step_records(self):
+        step_name = General.step_name
+        models_folder = PipeStepConfig.pipe_step.get("models_folder")
+        cur_index = PipelineConfig.steps.index(step_name)
+        if cur_index >= 1 or models_folder:
+            # records = Report().get_step_records(PipelineConfig.steps[cur_index - 1])
+            if not models_folder:
+                models_folder = FileOps.join_path(
+                    TaskOps().local_output_path, PipelineConfig.steps[cur_index - 1])
+            models_folder = models_folder.replace(
+                "{local_base_path}", TaskOps().local_base_path)
+            records = Report().load_records_from_model_folder(models_folder)
+        else:
+            records = self._load_single_model_records()
+        final_records = []
+        for record in records:
+            if not record.weights_file:
+                logger.error("Model file is not existed, id={}".format(record.worker_id))
+            else:
+                record.step_name = General.step_name
+                final_records.append(record)
+        logging.debug("Records: {}".format(final_records))
+        return final_records
+
+    def _load_single_model_records(self):
+        model_desc = PipeStepConfig.model.get("model_desc")
+        model_desc_file = PipeStepConfig.model.get("model_desc_file")
+        if model_desc_file:
+            model_desc_file = model_desc_file.replace(
+                "{local_base_path}", TaskOps().local_base_path)
+            model_desc = Config(model_desc_file)
+        if not model_desc:
+            logger.error("Model desc or Model desc file is None.")
+            return []
+        model_file = PipeStepConfig.model.get("model_file")
+        if not model_file:
+            logger.error("Model file is None.")
+            return []
+        if not os.path.exists(model_file):
+            logger.error("Model file is not existed.")
+            return []
+        return ReportRecord().load_dict(dict(worker_id="1", desc=model_desc, weights_file=model_file))
+
+    def _evaluate_single_model(self, record):
         try:
             cls_gpu_evaluator = ClassFactory.get_cls(ClassType.GPU_EVALUATOR)
         except Exception:
             logger.error("Failed to create Evaluator, please check the config file.")
             logger.error(traceback.format_exc())
             return
-        if desc_file and pretrained_model is not None:
-            cls_gpu_evaluator.cfg.model_desc_file = desc_file
-            model_cfg = ClassFactory.__configs__.get('model')
-            if model_cfg:
-                setattr(model_cfg, 'model_desc_file', desc_file)
-            else:
-                setattr(ClassFactory.__configs__, 'model', Config({'model_desc_file': desc_file}))
-            cls_gpu_evaluator.cfg.pretrained_model_file = pretrained_model
         try:
-            evaluator = cls_gpu_evaluator()
-            evaluator.train_process()
-            evaluator.output_evaluate_result(id, evaluator.evaluate_result)
+            worker_info = {"step_name": record.step_name, "worker_id": record.worker_id}
+            _record = dict(worker_id=record.worker_id, desc=record.desc, step_name=record.step_name)
+            _init_record = ReportRecord().load_dict(_record)
+            Report().broadcast(_init_record)
+            evaluator = cls_gpu_evaluator(
+                worker_info=worker_info,
+                model_desc=record.desc,
+                weights_file=record.weights_file)
+            self.master.run(evaluator)
         except Exception:
-            logger.error("Failed to evaluate model, id={}, desc_file={}, pretrained_model={}".format(
-                id, desc_file, pretrained_model))
+            logger.error("Failed to evaluate model, worker info={}".format(worker_info))
             logger.error(traceback.format_exc())
             return
-
-    def _evaluate_multi_models(self, models_folder):
-        models_folder = models_folder.replace("{local_base_path}", self.task.local_base_path)
-        models_folder = os.path.abspath(models_folder)
-        model_desc_files = glob.glob("{}/model_desc_*.json".format(models_folder))
-        pretrained_models = glob.glob("{}/model_*.pth".format(models_folder))
-        for desc_file in model_desc_files:
-            basename = os.path.basename(desc_file).replace(".json", ".pth").replace("model_desc_", "model_")
-            pretrained_model = os.path.join(os.path.dirname(desc_file), basename)
-            if pretrained_model not in pretrained_models:
-                logger.warn("No pretrained model corresponding to the model desc file, file={}".format(desc_file))
-                continue
-            id = os.path.splitext(os.path.basename(desc_file))[0][11:]
-            logger.info("Begin evaluate model, id={}, desc={}".format(id, desc_file))
-            self._evaluate_single_model(id, desc_file, pretrained_model)
-
-    def _evaluate_esr_models(self, esr_models_file, models_folder):
-        models_folder = models_folder.replace("{local_base_path}", self.task.local_base_path)
-        models_folder = os.path.abspath(models_folder)
-        esr_models_file = esr_models_file.replace("{local_base_path}", self.task.local_base_path)
-        esr_models_file = os.path.abspath(esr_models_file)
-        archs = np.load(esr_models_file)
-        for i, arch in enumerate(archs):
-            try:
-                cls_gpu_evaluator = ClassFactory.get_cls(ClassType.GPU_EVALUATOR)
-            except Exception:
-                logger.error("Failed to create Evaluator, please check the config file")
-                logger.error(traceback.format_exc())
-                return
-            pretrained_model = FileOps.join_path(models_folder, "model_{}.pth".format(i))
-            if not os.path.exists(pretrained_model):
-                logger.error("Failed to find model file, file={}".format(pretrained_model))
-            cls_gpu_evaluator.cfg.model_arch = arch
-            cls_gpu_evaluator.cfg.pretrained_model_file = pretrained_model
-            try:
-                evaluator = cls_gpu_evaluator()
-                evaluator.train_process()
-                evaluator.output_evaluate_result(i, evaluator.evaluate_result)
-            except Exception:
-                logger.error("Failed to evaluate model, id={}, pretrained_model={}".format(i, pretrained_model))
-                logger.error(traceback.format_exc())
-                return

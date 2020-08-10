@@ -19,7 +19,7 @@ import psutil
 from collections import OrderedDict
 from enum import Enum
 from vega.core.common.file_ops import FileOps
-from vega.core.common.user_config import UserConfig
+from vega.core.common.general import General
 
 
 class WorkerTypes(Enum):
@@ -29,6 +29,7 @@ class WorkerTypes(Enum):
     EVALUATOR = 2
     GPU_EVALUATOR = 3
     HAVA_D_EVALUATOR = 4
+    DavinciMobileEvaluator = 5
 
 
 class PairDictQueue():
@@ -77,10 +78,10 @@ class PairDictQueue():
 
         """
         if item not in self.odict:
-            logging.info("item({}) not in PairDictQueue!".format(item))
+            logging.debug("item({}) not in PairDictQueue!".format(item))
             return
         self.odict[item][type] = 1
-        logging.info("PairDictQueue add item({}) key({})".format(item, type))
+        logging.debug("PairDictQueue add item({}) key({})".format(item, type))
         return True
 
     def get(self):
@@ -121,13 +122,9 @@ def clean_cuda_proc(master_pid, device_id):
     :param type device_id: Description of parameter `device_id`.
     """
     current_pid = os.getpid()
-    cuda_kill = "fuser -v /dev/nvidia{0} | "\
-                "awk '{{for(i=1;i<=NF;i++)if($i!={1}&&$i!={2})"\
-                "print \"kill -9 \" $i;}}' | sh".format(
-                    device_id,
-                    master_pid,
-                    current_pid
-                )
+    cuda_kill = "fuser -v /dev/nvidia{0} | " \
+                "awk '{{for(i=1;i<=NF;i++)if($i!={1}&&$i!={2})" \
+                "print \"kill -9 \" $i;}}' | sh".format(device_id, master_pid, current_pid)
     os.system(cuda_kill)
     return
 
@@ -259,8 +256,8 @@ def write_ip(ip_address, port, args):
          contain `init_method`, `rank` and `world_size`.
 
     """
-    local_base_path = UserConfig().data.general.task.local_base_path
-    local_task_id = UserConfig().data.general.task.task_id
+    local_base_path = General.task.local_base_path
+    local_task_id = General.task.task_id
     local_path = os.path.join(local_base_path, local_task_id, 'ip_address/')
     if not os.path.exists(local_path):
         FileOps.make_dir(local_path)
@@ -281,8 +278,8 @@ def get_write_ip(args):
     :rtype: str, str.
 
     """
-    local_base_path = UserConfig().data.general.task.local_base_path
-    local_task_id = UserConfig().data.general.task.task_id
+    local_base_path = General.task.local_base_path
+    local_task_id = General.task.task_id
     local_path = os.path.join(local_base_path, local_task_id, 'ip_address/')
     if not os.path.exists(local_path):
         FileOps.make_dir(local_path)
@@ -301,8 +298,8 @@ def get_write_ip_master_local():
 
     here will not download anything from S3.
     """
-    local_base_path = UserConfig().data.general.task.local_base_path
-    local_task_id = UserConfig().data.general.task.task_id
+    local_base_path = General.task.local_base_path
+    local_task_id = General.task.task_id
     local_path = os.path.join(local_base_path, local_task_id, 'ip_address/')
     file_path = os.path.join(local_path, 'ip_address.txt')
     if os.path.isfile(file_path):

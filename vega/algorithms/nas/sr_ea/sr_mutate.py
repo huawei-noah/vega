@@ -9,31 +9,30 @@
 # MIT License for more details.
 
 """Mutate part of SR_EA algorithm."""
-import os
 import logging
 import random
-import pandas as pd
-from vega.search_space.search_algs.search_algorithm import SearchAlgorithm
-from vega.search_space.codec import Codec
-from vega.search_space.networks import NetworkDesc
+from copy import deepcopy
+
+from .conf import SRConfig
 from vega.core.common.class_factory import ClassFactory, ClassType
-from vega.core.common.file_ops import FileOps
+from vega.core.report import Report
+from vega.search_space.search_algs.search_algorithm import SearchAlgorithm
 
 
 @ClassFactory.register(ClassType.SEARCH_ALGORITHM)
 class SRMutate(SearchAlgorithm):
     """Search algorithm of the mutated structures."""
 
-    def __init__(self, search_space=None):
+    config = SRConfig()
+
+    def __init__(self, search_space=None, **kwargs):
         """Construct the class SRMutate.
 
         :param search_space: Config of the search space
         """
-        super(SRMutate, self).__init__(search_space)
-        self.search_space = search_space
-        self.codec = Codec(self.cfg.codec, search_space)
-        self.max_sample = self.policy.num_sample
-        self.num_mutate = self.policy.num_mutate
+        super(SRMutate, self).__init__(search_space, **kwargs)
+        self.max_sample = self.config.policy.num_sample
+        self.num_mutate = self.config.policy.num_mutate
         self.sample_count = 0
 
     @property
@@ -49,13 +48,14 @@ class SRMutate(SearchAlgorithm):
 
         :return: current number of samples, and the model
         """
-        search_desc = self.search_space.search_space.custom
-        pareto_front_folder = FileOps.join_path(self.local_base_path, "result")
-        if 'pareto_folder' in self.search_space.cfg and self.search_space.cfg.pareto_folder is not None:
-            pareto_front_folder = self.search_space.cfg.pareto_folder.replace("{local_base_path}", self.local_base_path)
-        pareto_front_df = pd.read_csv(FileOps.join_path(pareto_front_folder, "pareto_front.csv"))
-        code_to_mutate = random.choice(pareto_front_df['Code'])
-
+        desc = deepcopy(self.search_space)
+        search_desc = desc.custom
+        # TODO: merge sr ea in one pipe step.
+        records = Report().get_pareto_front_records(['random', 'mutate'])
+        codes = []
+        for record in records:
+            codes.append(record.desc['custom']['code'])
+        code_to_mutate = random.choice(codes)
         current_mutate, code_mutated = 0, code_to_mutate
         num_candidates = len(search_desc["candidates"])
         while current_mutate < self.num_mutate:
@@ -63,13 +63,13 @@ class SRMutate(SearchAlgorithm):
             if code_new != code_mutated:
                 current_mutate += 1
                 code_mutated = code_new
-
         logging.info("Mutate from {} to {}".format(code_to_mutate, code_mutated))
         search_desc['code'] = code_mutated
         search_desc['method'] = "mutate"
         search_desc = self.codec.decode(search_desc)
+        desc['custom'] = search_desc
         self.sample_count += 1
-        return self.sample_count, NetworkDesc(self.search_space.search_space)
+        return dict(worker_id=self.sample_count, desc=desc)
 
     def mutate_once(self, code, num_largest):
         """Do one mutate.
@@ -152,10 +152,6 @@ class SRMutate(SearchAlgorithm):
         parts[place_chosen], parts[place_chosen + 1] = parts[place_chosen + 1], parts[place_chosen]
         return ''.join(parts)
 
-    def update(self, local_worker_path):
-        """Update function.
-
-        :param local_worker_path: Local path that saved `performance.txt`
-        :type local_worker_path: str
-        """
+    def update(self, record):
+        """Nothing need to update."""
         pass

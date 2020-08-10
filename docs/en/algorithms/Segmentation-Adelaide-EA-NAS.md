@@ -66,7 +66,7 @@ random1:
         modules: ['custom']
         custom:
             name: AdelaideFastNAS
-            backbone_load_path: /efs/model/mobilenet_v2-b0353104.pth
+            backbone_load_path: /cache/models/mobilenet_v2-b0353104.pth
             backbone_out_sizes: [24, 32, 96, 320]
             op_names: [conv1x1, conv3x3, sep_conv_3x3, sep_conv_5x5, conv3x3_dil3, sep_conv_3x3_dil3, sep_conv_5x5_dil6]
             agg_size: 64
@@ -80,7 +80,7 @@ random1:
 
 mutate1:
     search_space:
-            ref: random1.search_space
+        ref: random.search_space
     search_algorithm:
         type: AdelaideMutate
         codec: AdelaideCodec

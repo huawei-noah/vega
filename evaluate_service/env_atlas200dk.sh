@@ -1,0 +1,10 @@
+export DDK_PATH=/home/ly/huawei/ddk
+export PYTHONPATH=$DDK_PATH/site-packages/te-0.4.0.egg:$DDK_PATH/site-packages/topi-0.4.0.egg
+export LD_LIBRARY_PATH=$DDK_PATH/uihost/lib:$DDK_PATH/lib/x86_64-linux-gcc5.4
+export PATH=$PATH:$DDK_PATH/toolchains/ccec-linux/bin:$DDK_PATH/uihost/bin
+export TVM_AICPU_LIBRARY_PATH=$DDK_PATH/uihost/lib/:$DDK_PATH/uihost/toolchains/ccec-linux/aicpu_lib
+export TVM_AICPU_INCLUDE_PATH=$DDK_PATH/include/inc/tensor_engine
+export TVM_AICPU_OS_SYSROOT=/home/ly/tools/sysroot/aarch64_Ubuntu16.04.3
+export NPU_HOST_LIB=/home/ly/tools/1.32.0.B080/RC/host-aarch64_Ubuntu16.04.3/lib
+export NPU_DEV_LIB=/home/ly/tools/1.32.0.B080/RC/host-aarch64_Ubuntu16.04.3/lib
+#export CPLUS_INCLUDE_PATH=$DDK_PATH/include/inc:$DDK_PATH/include/third_party

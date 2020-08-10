@@ -75,4 +75,6 @@ class Accuracy(MetricBase):
 
     def summary(self):
         """Summary all cached records, here is the last pfm record."""
-        return self.pfm
+        if len(self.pfm) == 1:
+            return self.pfm[0]
+        return {'top{}_{}'.format(self.topk[idx], self.name): value for idx, value in enumerate(self.pfm)}

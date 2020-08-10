@@ -13,7 +13,6 @@ import hashlib
 import logging
 import json
 from copy import deepcopy
-import torch.nn as nn
 from vega.core.common import Config
 from .network_factory import NetworkFactory, NetTypes, NetTypesMap
 
@@ -30,7 +29,7 @@ class NetworkDesc(object):
     def to_model(self):
         """Transform a NetworkDesc to a special model."""
         if 'modules' not in self._desc:
-            logging.warning('network=%s does not have key modules.', self._desc)
+            logging.debug("network=%s does not have key modules. desc={}".format(self._desc))
             return None
         networks = []
         module_types = self._desc.get('modules')
@@ -42,6 +41,7 @@ class NetworkDesc(object):
             if len(networks) == 1:
                 return networks[0]
             else:
+                import torch.nn as nn
                 return nn.Sequential(*networks)
         else:
             from .pytorch.network import Network

@@ -13,9 +13,10 @@ from torchvision.datasets import CIFAR10
 from torch.utils.data.sampler import SubsetRandomSampler
 import numpy as np
 from .common.dataset import Dataset
-from vega.datasets.pytorch.transforms import Compose
+from vega.datasets.transforms import Compose
 from vega.core.common.class_factory import ClassFactory, ClassType
 from vega.core.common.file_ops import FileOps
+from vega.datasets.conf.cifar10 import Cifar10Config
 
 
 @ClassFactory.register(ClassType.DATASET)
@@ -28,6 +29,8 @@ class Cifar10(CIFAR10, Dataset):
     the default config will be used, the default config file is a yml file with the same name of the class
     :type cfg: yml, py or dict
     """
+
+    config = Cifar10Config()
 
     def __init__(self, **kwargs):
         """Construct the Cifar10 class."""

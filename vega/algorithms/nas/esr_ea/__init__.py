@@ -1,5 +1,7 @@
 from .esr_search import ESRSearch
 from .esr_ea_codec import ESRCodec
 from .esr_ea_individual import ESRIndividual
-from .esr_evaluator import EsrGpuEvaluator
-from .esr_ea_trainer_callback import ESRTrainerCallback
+import os
+
+if os.environ['BACKEND_TYPE'] == 'PYTORCH':
+    from .esr_ea_trainer_callback import ESRTrainerCallback

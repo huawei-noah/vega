@@ -9,17 +9,17 @@
 # MIT License for more details.
 
 """This is the class of Cityscapes dataset."""
-import os
 import os.path as osp
 import cv2
 import torch
 import numpy as np
 import glob
 import pickle
-from . import transforms
+from .. import transforms
 from .common.dataset import Dataset
 from vega.core.common.class_factory import ClassFactory, ClassType
 from vega.core.common.file_ops import FileOps
+from vega.datasets.conf.city_scapes import CityscapesConfig
 
 
 @ClassFactory.register(ClassType.DATASET)
@@ -36,6 +36,8 @@ class Cityscapes(Dataset):
     the default config will be used, the default config file is a yml file with the same name of the class
     :type cfg: yml, py or dict
     """
+
+    config = CityscapesConfig()
 
     def __init__(self, **kwargs):
         """Construct the Cityscapes class."""

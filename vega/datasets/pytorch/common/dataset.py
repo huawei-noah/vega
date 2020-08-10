@@ -10,14 +10,13 @@
 
 """This is a base class of the dataset."""
 import importlib
-from copy import deepcopy
 from mmcv.runner import get_dist_info
 from torch.utils import data as torch_data
 from ..samplers import DistributedSampler
 from vega.core.common.task_ops import TaskOps
 from vega.datasets.pytorch.common.transforms import Transforms
 from vega.core.common.class_factory import ClassFactory, ClassType
-from vega.core.common.config import Config
+from vega.core.common.config import Config, obj2config
 from vega.core.common.utils import update_dict
 
 
@@ -27,75 +26,47 @@ class Dataset(TaskOps):
     The Dataset provide several basic attribute like dataloader, transform and sampler.
     """
 
-    __cls_dict__ = dict()
-
-    def __new__(cls, hps=None, **kwargs):
-        """Construct method."""
-        if "dataset_type" in kwargs.keys():
-            t_cls = ClassFactory.get_cls(ClassType.DATASET, kwargs["dataset_type"])
+    def __new__(cls, *args, **kwargs):
+        """Create a subclass instance of dataset."""
+        if Dataset in cls.__bases__:
+            return super().__new__(cls)
+        if kwargs.get('type'):
+            t_cls = ClassFactory.get_cls(ClassType.DATASET, kwargs.pop('type'))
         else:
             t_cls = ClassFactory.get_cls(ClassType.DATASET)
-        return super(Dataset, cls).__new__(t_cls)
+        return super().__new__(t_cls)
 
-    def __init__(self, hps=None, **kwargs):
+    def __init__(self, hps=None, mode='train', **kwargs):
         """Construct method."""
-        default_config = {
-            'batch_size': 1,
-            'num_workers': 0,
-            'shuffle': False,
-            'distributed': False,
-            'imgs_per_gpu': 1,
-            'pin_memory': True,
-            'drop_last': True
-        }
-        self.mode = "train"
-        if "mode" in kwargs.keys():
-            self.mode = kwargs["mode"]
-        if hps is not None:
-            self._init_hps(hps)
-        if 'common' in self.cfg.keys() and self.cfg['common'] is not None:
-            common = deepcopy(self.cfg['common'])
-            self.args = update_dict(common, deepcopy(self.cfg[self.mode]))
-        else:
-            self.args = deepcopy(self.cfg[self.mode])
-        self.args = update_dict(self.args, Config(default_config))
-        for key in kwargs.keys():
-            if key in self.args:
-                self.args[key] = kwargs[key]
+        super(Dataset, self).__init__()
+        self.args = dict()
+        self.mode = mode
+        if mode == "val" and not hasattr(self.config, "val"):
+            self.mode = "test"
+        # modify config from kwargs, `Cifar10(mode='test', data_path='/cache/datasets')`
+        if kwargs:
+            self.args = Config(kwargs)
+        if hasattr(self, 'config'):
+            config = obj2config(getattr(self.config, self.mode))
+            config.update(self.args)
+            self.args = config
+        self._init_hps(hps)
         self.train = self.mode in ["train", "val"]
         transforms_list = self._init_transforms()
         self._transforms = Transforms(transforms_list)
         if "transforms" in kwargs.keys():
             self._transforms.__transform__ = kwargs["transforms"]
+        self.dataset_init()
         self.sampler = self._init_sampler()
+
+    def dataset_init(self):
+        """Init Dataset before sampler."""
+        pass
 
     def _init_hps(self, hps):
         """Convert trainer values in hps to cfg."""
-        if hps.get("dataset") is not None:
-            self.cfg.train = Config(update_dict(hps.dataset, self.cfg.train))
-        self.cfg = Config(update_dict(hps.trainer, self.cfg))
-
-    @classmethod
-    def register(cls, name):
-        """Register user's dataset in Dataset.
-
-        :param name:  class of user's registered dataset
-        :type name: class
-        """
-        if name in cls.__cls_dict__:
-            raise ValueError("Cannot register name ({}) in Dataset".format(name))
-        cls.__cls_dict__[name.__name__] = name
-
-    @classmethod
-    def get_cls(cls, name):
-        """Get concrete dataset class.
-
-        :param name: name of dataset
-        :type name: str
-        """
-        if name not in cls.__cls_dict__:
-            raise ValueError("Cannot found name ({}) in Dataset".format((name)))
-        return cls.__cls_dict__[name]
+        if hps is not None:
+            self.args = Config(update_dict(hps, self.args))
 
     @property
     def dataloader(self):
@@ -164,6 +135,7 @@ class Dataset(TaskOps):
         """
         if self.args.distributed:
             rank, world_size = get_dist_info()
+            self.args.shuffle = False
             sampler = DistributedSampler(self,
                                          num_replicas=world_size,
                                          rank=rank,
