@@ -4,7 +4,7 @@
 
 **Vega ver1.0.0 released:**
 
-- New algorithms: [auto-lane](./docs/en/algorithms/auto_lane.md), [AutoGate](./docs/en/algorithms/fis-autogate.md.md), [AutoGroup](./docs/en/algorithms/fis-autogroup.md), [MFKD](https://arxiv.org/pdf/2006.08341.pdf).
+- New algorithms: [auto-lane](./docs/en/algorithms/auto_lane.md), [AutoFIS](./docs/en/algorithms/fis-autogate.md.md), [AutoGroup](./docs/en/algorithms/fis-autogroup.md), [MFKD](https://arxiv.org/pdf/2006.08341.pdf).
 - Feature enhancement:
   - Trainer Callbacks: The trainer supports the callback mechanism and provides nine default callbacks.
   - Report mechanism: provides a unified data collection and processing mechanism for the AutoML algorithm.
