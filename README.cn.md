@@ -4,7 +4,7 @@
 
 **Vega ver1.0.0 发布：**
 
-- 新增算法：[auto-lane](./docs/cn/algorithms/auto_lane.md)，[AutoGate](./docs/cn/algorithms/fis-autogate.md.md)，[AutoGroup](./docs/cn/algorithms/fis-autogroup.md)，[MFKD](https://arxiv.org/pdf/2006.08341.pdf)。
+- 新增算法：[auto-lane](./docs/cn/algorithms/auto_lane.md)，[AutoFIS](./docs/cn/algorithms/fis-autogate.md.md)，[AutoGroup](./docs/cn/algorithms/fis-autogroup.md)，[MFKD](https://arxiv.org/pdf/2006.08341.pdf)。
 - 特性增强：
   - Trainer提供回调机制：Trainer支持Callback机制，并提供九个缺省的callback。
   - Report机制：提供统一的AutoML算法的数据收集和处理机制。
