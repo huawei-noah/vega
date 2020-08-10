@@ -72,9 +72,20 @@ search_space:
 `SearchSpace`类初始化时，加载搜索空间配置文件为`search_space`属性，如下：
 
 ```python
+@ClassFactory.register(ClassType.SEARCH_SPACE)
 class SearchSpace(object):
-    def __init__(self):
-        self.search_space = self.cfg
+
+    config = SearchSpaceConfig()
+
+    def __new__(cls, *args, **kwargs):
+        """Create a new SearchSpace."""
+        t_cls = ClassFactory.get_cls(ClassType.SEARCH_SPACE)
+        return super(SearchSpace, cls).__new__(t_cls)
+
+    @property
+    def search_space(self):
+        """Get hyper parameters."""
+        return obj2config(self.config)
 ```
 
 搜索空间还有一个重要的概念是网络描述`NetworkDesc`，网络描述是搜索算法从`SearchSpace`里采样出来的结果，它是`Search Space`中的一种可能性子集。网络描述类里只有一个属性，就是dict类型的网络描述（可以是一个网络或者多个网络）。网络描述类只一个通用的`to_model()`的接口，负责分析网络描述并通过`NetworFactory`自动解析成`Networks`里具体的网络对象。
@@ -86,6 +97,15 @@ class NetworkDesc(object):
 
     def to_model(self):
         pass
+
+class NetworkDesc(object):
+
+    def __init__(self, desc):
+        self._desc = Config(deepcopy(desc))
+
+    def to_model(self):
+        ...
+        return Network(params)
 ```
 
 总的来说，Vega提供预定义（支持开发者新增）的一系列网络模型`Networks`，并注册到`NetworkFactory`，开发者需要将网络模型构造参数的搜索空间写在配置文件中，通过算法去采样和生成网络描述`NetworkDesc`，`NetworkDesc`自动解析出相应的网络模型。
@@ -105,20 +125,26 @@ Vega的SDK提供一些默认的搜索算法，比如随机搜索、基本进化�
 其中，最重要的是第一个功能，它负责在`SearchSpace`对象中搜索出一个子集，作为网络描述。
 
 ```python
-class SearchAlgorithm(TaskUtils):
+class SearchAlgorithm(TaskOps):
+
+    def __new__(cls, *args, **kwargs):
+        t_cls = ClassFactory.get_cls(ClassType.SEARCH_ALGORITHM)
+        return super().__new__(t_cls)
 
     def __init__(self, search_space=None, **kwargs):
-        super(SearchAlgorithm, self).__init__(self.cfg)
+        super(SearchAlgorithm, self).__init__()
+        self.search_space = search_space
+        self.codec = Codec(search_space, type=self.config.codec)
 
     def search(self):
         raise NotImplementedError
 
-    def update(self, local_worker_path):
-        raise NotImplementedError
+    def update(self, record):
+        pass
 
     @property
     def is_completed(self):
-        return False
+        raise NotImplementedError
 ```
 
 在一些算法中（比如`EA`），可能还会涉及到搜索空间的编码问题，所以还要在搜索算法里实现一个编解码器`Codec`，编解码器主要完成两个功能，一个是将网络描述编码化，还有一个是将编码解码成网络描述。
@@ -137,13 +163,12 @@ class Codec(object):
 ```yaml
 search_algorithm:
     type: PruneEA
-    length: 464
-    num_generation: 31
-    num_individual: 4
-    metric_x: flops
-    metric_y: acc
-    random_models: 32
     codec: PruneCodec
+    policy:
+        length: 464
+        num_generation: 31
+        num_individual: 32
+        random_models: 64
 ```
 
 配置文件中，需要定义搜索算法的类型，以及该类型搜索算法的参数。
@@ -156,18 +181,17 @@ NAS的搜索流程是在`NasPipeStep`中完成的，`NasPipeStep`的主要功能
 
 ```python
 def do(self):
-        """Do the main task in this pipe step."""
-        logger.info("NasPipeStep started...")
-        while not self.generator.is_completed:
-            id, model = self.generator.sample()
-            cls_trainer = ClassFactory.get_cls('trainer')
-            trainer = cls_trainer(model, id)
-            self.master.run(trainer)
-            finished_trainer_info = self.master.pop_finished_worker()
-            self.update_generator(self.generator, finished_trainer_info)
-        self.master.join()
-        finished_trainer_info = self.master.pop_all_finished_train_worker()
-        self.update_generator(self.generator, finished_trainer_info)
+    while not self.generator.is_completed:
+        res = self.generator.sample()
+        if res:
+            self._dispatch_trainer(res)
+        else:
+            time.sleep(0.5)
+        self._after_train(wait_until_finish=False)
+    self.master.join()
+    self._after_train(wait_until_finish=True)
+    Report().output_pareto_front(General.step_name)
+    self.master.close_client()
 ```
 
 在每一次循环中，`Generator`首先判断搜索是否停止，如果停止了就结束搜索，更新`Generator`并返回。
@@ -177,7 +201,6 @@ def do(self):
 ### 4.1 Generator
 
 Generator里将定义Search Space和Search Algorithm的对象，后面在每一次循环中，Search Algorithm从Search Space中采样出一个model，并将model初始化成NAS的Trainer。
-
 这是一个标准的过程，如果没有特殊的处理步骤，无需额外添加或者重新实现。Generator的实现代码如下：
 
 ```python
@@ -186,46 +209,47 @@ class Generator(object):
 
     def __init__(self):
         self.search_space = SearchSpace()
-        self.search_alg = SearchAlgorithm(self.search_space)
+        self.search_alg = SearchAlgorithm(self.search_space.search_space)
 
     @property
     def is_completed(self):
         return self.search_alg.is_completed
 
     def sample(self):
-        id, net_desc = self.search_alg.search()
-        model = net_desc.to_model()
-        return id, model
+        id, desc = self.search_alg.search()
+        return id, desc
 
-    def update(self, worker_path):
-        self.search_alg.update(worker_path)
-        return
+    def update(self, step_name, worker_id):
+        report = Report()
+        record = report.receive(step_name, worker_id)
+        logging.debug("Get Record=%s", str(record))
+        self.search_alg.update(record.serialize())
 ```
 
 初始化时，首先通过配置文件中search_space部分生成搜索空间的对象，将搜索空间作为参数初始化搜索算法的对象。
-
 代码中的sample接口即是NAS中每一次采样，首先调用搜索算法search出一个网络描述，再通过网络描述生成网络模型。
-
 此外，Generator还具有判断迭代搜索是否停止以及更新搜索算法等功能。
 
-### 4.2 Trainer
+## 5 Trainer
 
-在NasPipeStep里，Generator生成出网络模型后，会进一步初始化出一个Trainer，Trainer是一个完整的Fully Train的过程，其主要接口是train_process，以及一些优化器、学习率策略和损失函数等标准接口。Vega提供了标准的Trainer接口和训练流程，开发者只需要通过修改配置文件来控制训练参数和训练过程。也支持用户自定义一些尚未提供的功能。
+Trainer用于训练模型，在NAS、HPO、fully train等阶段，可将trainer配置这些阶段的pipestep中，完成模型的训练。
 
-Trainer的配置形式如下所示：
+一般在配置文件中，Trainer的配置形式如下所示：
 
 ```yaml
 trainer:
     type: Trainer
     optim:
         type: SGD
-        lr: 0.1
-        momentum: 0.9
-        weight_decay: !!float 1e-4
+        params:
+            lr: 0.1
+            momentum: 0.9
+            weight_decay: !!float 1e-4
     lr_scheduler:
         type: StepLR
-        step_size: 20
-        gamma: 0.5
+        params:
+            step_size: 20
+            gamma: 0.5
     loss:
         type: CrossEntropyLoss
     metric:
@@ -234,54 +258,91 @@ trainer:
     epochs: 50
 ```
 
-Trainer的配置参数需将优化器、学习率策略和损失函数的名称和参数写入对应位置，标准的Trainer提供解析这些对象的初始化接口。
-
-标准的Trainer的训练过程实现在train_process接口里，具体实现如下：
+trainer的主要函数是train_process()，该函数定义如下：
 
 ```python
     def train_process(self):
-        """Whole train process of the TrainWorker specified in config.
+        self._init_callbacks(self.callbacks)
+        self._train_loop()
 
-        After training, the model and validation results are saved to local_worker_path and s3_path.
-        """
-        self._init_estimator()
-        self._init_dataloader()
-        logging_hook = []
-        if self.horovod:
-            logging_hook += [hvd.BroadcastGlobalVariablesHook(0)]
-        train_steps = self.train_data.data_len
-        valid_steps = self.valid_data.data_len
-        if self.horovod:
-            train_steps = train_steps // hvd.size()
-            valid_steps = valid_steps // hvd.size()
-        start_step = est._load_global_step_from_checkpoint_dir(self.cfg.model_dir)
-        for i in range(self.cfg.epochs):
-            logging.info('train epoch [{0}/{1}]'.format(i, self.cfg.epochs))
-            current_max_step = start_step + train_steps
-            start_step = current_max_step
-            self.estimator.train(input_fn=self.train_data.input_fn,
-                                 max_steps=current_max_step,
-                                 hooks=logging_hook)
-            eval_results = self.estimator.evaluate(input_fn=self.valid_data.input_fn, steps=valid_steps)
-            logging.info(eval_results)
-        self.save_backup(eval_results)
+    def _init_callbacks(self, callbacks):
+        self.callbacks = CallbackList(self.config.callbacks, disables)
+        self.callbacks.set_trainer(self)
+
+    def _train_loop(self):
+        self.callbacks.before_train()
+        for epoch in range(self.epochs):
+            epoch_logs = {'train_num_batches': len(self.train_loader)}
+            if self.do_validation:
+                epoch_logs.update({'valid_num_batches': len(self.valid_loader)})
+            self.callbacks.before_epoch(epoch, epoch_logs)
+            self._train_epoch()
+            if self.do_validation and self._should_run_validation(epoch):
+                self._valid_epoch()
+            self.callbacks.after_epoch(epoch)
+        self.callbacks.after_train()
+        if self.distributed:
+            self._shutdown_distributed()
+
+    def _train_epoch(self):
+        if vega.is_torch_backend():
+            self.model.train()
+            for batch_index, batch in enumerate(self.train_loader):
+                batch = self.make_batch(batch)
+                batch_logs = {'train_batch': batch}
+                self.callbacks.before_train_step(batch_index, batch_logs)
+                train_batch_output = self.train_step(batch)
+                batch_logs.update(train_batch_output)
+                if self.config.is_detection_trainer:
+                    batch_logs.update({'is_detection_trainer': True})
+                self.callbacks.after_train_step(batch_index, batch_logs)
+        elif vega.is_tf_backend():
+            self.estimator.train(input_fn=self.train_input_fn,
+                                 steps=len(self.train_loader),
+                                 hooks=self._init_logging_hook())
+
+    def _valid_epoch(self):
+        self.callbacks.before_valid()
+        valid_logs = None
+        if vega.is_torch_backend():
+            self.model.eval()
+            with torch.no_grad():
+                for batch_index, batch in enumerate(self.valid_loader):
+                    batch = self.make_batch(batch)
+                    batch_logs = {'valid_batch': batch}
+                    self.callbacks.before_valid_step(batch_index, batch_logs)
+                    valid_batch_output = self.valid_step(batch)
+                    self.callbacks.after_valid_step(batch_index, valid_batch_output)
+        elif vega.is_tf_backend():
+            eval_metrics = self.estimator.evaluate(input_fn=self.valid_input_fn,
+                                                   steps=len(self.valid_loader))
+            self.valid_metrics.update(eval_metrics)
+            valid_logs = dict()
+            valid_logs['cur_valid_perfs'] = self.valid_metrics.results
+        self.callbacks.after_valid(valid_logs)
 ```
 
-为了方便开发者使用，我们讲trainer中需要使用的部分能力进行了封装并提供对于的扩展接口
+从以上代码可以看出，trainer使用了callback机制，将模型的训练过程中插入了before_train()、before_epoch()、before_train_step()、after_train_step()、after_epoch()、before_valid()、before_valid_step()、after_valid_step()、after_valid()、after_train()这十个插入点，用户根据需要，定制callback，完成特定的模型训练过程。
 
-#### Optimizer
+同时Vega提供了缺省的Callback：
+
+- pytorch：ModelStatistics、MetricsEvaluator、ModelCheckpoint、PerformanceSaver、LearningRateScheduler、ProgressLogger、ReportCallback
+- TensorFlow：ModelStatistics、MetricsEvaluator、PerformanceSaver、ProgressLogger、ReportCallback
+
+### 5.1 Optimizer
 
 默认使用pytroch库上的`torch.optim`，采用配置方式直接使用，`type`表示使用的方法，其他键值为方法中的入参和入参的值
 
 ```yaml
 optim:
-        type: SGD
+    type: SGD
+    params:
         lr: 0.1
         momentum: 0.9
         weight_decay: !!float 1e-4
 ```
 
-#### Loss
+### 5.2 Loss
 
 默认可以直接使用`torch.nn`下的所有loss函数，采用配置方式使用，`type`表示使用的方法，其他键值为方法中的入参和入参的值
 
@@ -302,7 +363,7 @@ class CustomCrossEntropyLoss(Network):
 
     def __init__(self, desc):
         super(CustomCrossEntropyLoss, self).__init__()
-        	pass
+            pass
 
     def forward(self, **kwargs):
         pass
@@ -313,19 +374,19 @@ class CustomCrossEntropyLoss(Network):
 
 ```yaml
 loss:
-        type: CustomCrossEntropyLoss
-        desc: ~
+    type: CustomCrossEntropyLoss
+    desc: ~
 ```
 
-#### LrScheduler
+### 5.3 LrScheduler
 
 ​	默认可以直接使用`torch.optim.lr_scheduler`下的所有lr_scheduler函数，采用配置方式使用，`type`表示使用的方法，其他键值为方法中的入参和入参的值
 
 ```yaml
 lr_scheduler:
-        type: StepLR
-        step_size: 20
-        gamma: 0.5
+    type: StepLR
+    step_size: 20
+    gamma: 0.5
 ```
 
 自定义一个LrScheduler
@@ -340,7 +401,7 @@ class WarmupScheduler(_LRScheduler):
          pass
 ```
 
-#### Metrics
+### 5.4 Metrics
 
 常用的metrics已预置在vega中，可直接在配置文件中配置使用，同时支持处理多个metrics进行打印分析。当有多个metrics的时候，会自动以第一个metric函数计算loss。
 
@@ -359,24 +420,16 @@ metric:
 ```python
 @ClassFactory.register(ClassType.METRIC, alias='accuracy')
 class Accuracy(MetricBase):
-    """Calculate classification accuracy between output and target."""
 
     __metric_name__ = 'accuracy'
 
     def __init__(self, topk=(1,)):
-        """Init Accuracy metric."""
         self.topk = topk
         self.sum = [0.] * len(topk)
         self.data_num = 0
         self.pfm = [0.] * len(topk)
 
     def __call__(self, output, target, *args, **kwargs):
-        """Perform top k accuracy.
-
-        :param output: output of classification network
-        :param target: ground truth from dataset
-        :return: pfm
-        """
         if isinstance(output, tuple):
             output = output[0]
         res = accuracy(output, target, self.topk)
@@ -387,14 +440,14 @@ class Accuracy(MetricBase):
         return res
 
     def reset(self):
-        """Reset states for new evaluation after each epoch."""
         self.sum = [0.] * len(self.topk)
         self.data_num = 0
         self.pfm = [0.] * len(self.topk)
 
     def summary(self):
-        """Summary all cached records, here is the last pfm record."""
-        return self.pfm
+        if len(self.pfm) == 1:
+            return self.pfm[0]
+        return {'top{}_{}'.format(self.topk[idx], self.name): value for idx, value in enumerate(self.pfm)}
 ```
 
 另外，我们支持多个metrics的统一管理，使用Metrics类管理trainer各种不同类型的metrics，统一各个metrics的初始化、调用的接口和获取结果的方式。
@@ -405,30 +458,23 @@ class Accuracy(MetricBase):
 
 ```python
 class Metrics(object):
-    """Metrics class of all metrics defined in cfg.
 
-    :param metric_cfg: metric part of config
-    :type metric_cfg: dict or Config
-    """
+    config = MetricsConfig()
 
-    __supported_call__ = ['accuracy', 'DetMetric', 'IoUMetric', 'SRMetric']
-
-    def __init__(self, metric_cfg):
+    def __init__(self, metric_cfg=None):
         """Init Metrics."""
-        metric_config = deepcopy(metric_cfg)
         self.mdict = {}
+        metric_config = obj2config(self.config) if not metric_cfg else deepcopy(metric_cfg)
         if not isinstance(metric_config, list):
             metric_config = [metric_config]
         for metric_item in metric_config:
+            ClassFactory.get_cls(ClassType.METRIC, self.config.type)
             metric_name = metric_item.pop('type')
-            if ClassFactory.is_exists(ClassType.METRIC, metric_name):
-                metric_class = ClassFactory.get_cls(ClassType.METRIC, metric_name)
-            else:
-                metric_class = getattr(importlib.import_module('vega.core.metrics'), metric_name)
+            metric_class = ClassFactory.get_cls(ClassType.METRIC, metric_name)
             if isfunction(metric_class):
-                metric_class = partial(metric_class, **metric_item)
+                metric_class = partial(metric_class, **metric_item.get("params", {}))
             else:
-                metric_class = metric_class(**metric_item)
+                metric_class = metric_class(**metric_item.get("params", {}))
             self.mdict[metric_name] = metric_class
         self.mdict = Config(self.mdict)
 
@@ -436,190 +482,169 @@ class Metrics(object):
         pfms = []
         for key in self.mdict:
             metric = self.mdict[key]
-            if key in self.__supported_call__:
-                pfms.append(metric(output, target, *args, **kwargs))
-        if len(pfms) == 1:
-            return pfms[0]
-        else:
-            return pfms
+            pfms.append(metric(output, target, *args, **kwargs))
+        return pfms
+
+    def reset(self):
+        for val in self.mdict.values():
+            val.reset()
 
     @property
     def results(self):
-        results = [self.mdict[name].summary() for name in self.mdict if name in self.__supported_call__]
-        if len(results) == 1:
-            return deepcopy(results[0])
-        else:
-            return deepcopy(results)
+        res = {}
+        for name, metric in self.mdict.items():
+            res.update(metric.result)
+        return res
+
+    @property
+    def objectives(self):
+        return {name: self.mdict.get(name).objective for name in self.mdict}
+
+    def __getattr__(self, key):
+        return self.mdict[key]
 ```
 
-#### 自定义Trainer
+### 5.5 自定义Trainer
 
-当我们提供的通用trainer的能力不能够满足当前要求，可以使用如下方法自定义自己的trainer
-
-- 使用`@ClassFactory.register(ClassType.TRAINER)`进行注册
-- 继承`vega.core.trainer.trainer.Trainer`基类
-- 覆盖`train_process`方法
+可通过自定义callback的方式来自定义trainer，callback的实现可参考vega提供的缺省的callback。
+如下是其中的ModelStatistics的实现：
 
 ```python
-from vega.core.trainer.trainer import Trainer
-from vega.core.common.class_factory import ClassFactory, ClassType
+@ClassFactory.register(ClassType.CALLBACK)
+class ModelStatistics(Callback):
+    def __init__(self):
+        super(Callback, self).__init__()
+        self.priority = 220
 
-@ClassFactory.register(ClassType.TRAINER)
-class BackboneNasTrainer(Trainer):
+    def before_train(self, logs=None):
+        self.input = None
+        self.gflops = None
+        self.kparams = None
+        self.calc_params_each_epoch = self.trainer.config.calc_params_each_epoch
+        if vega.is_tf_backend():
+            data_iter = self.trainer.valid_input_fn().make_one_shot_iterator()
+            input_data, _ = data_iter.get_next()
+            self.input = input_data[:1]
 
-    def __init__(self, model, id):
-        """Init BackboneNasTrainer."""
-        super(BackboneNasTrainer, self).__init__(model, id)
-        self.best_prec = 0
+    def after_train_step(self, batch_index, logs=None):
+        try:
+            if self.input is None:
+                input, target = logs['train_batch']
+                self.input = torch.unsqueeze(input[0], 0)
+        except Exception as ex:
+            logging.warning("model statics failed, ex=%s", ex)
 
-    def train_process(self):
-        pass 
+    def after_epoch(self, epoch, logs=None):
+        if self.calc_params_each_epoch:
+            self.update_flops_params(epoch=epoch, logs=logs)
+
+    def after_train(self, logs=None):
+        if not self.calc_params_each_epoch:
+            self.update_flops_params(logs=logs)
+
+    def update_flops_params(self, epoch=None, logs=None):
+        self.model = self.trainer.model
+        try:
+            if self.gflops is None:
+                flops_count, params_count = calc_model_flops_params(self.model, self.input)
+                self.gflops, self.kparams = flops_count * 1600 * 1e-9, params_count * 1e-3
+            summary_perfs = logs.get('summary_perfs', {})
+            if epoch:
+                summary_perfs.update(
+                    {'gflops': self.gflops, 'kparams': self.kparams, 'epoch': epoch})
+            else:
+                summary_perfs.update({'gflops': self.gflops, 'kparams': self.kparams})
+            logs.update({'summary_perfs': summary_perfs})
+        except Exception as ex:
+            logging.warning("model statics failed, ex=%s", ex)
 ```
 
-> 备注： 我们可以覆盖更细粒度的方法，如tain和valid，这样可以使用trainer基类提供的部分能力
+## 6. Configuration
 
-## 5. Configuration
+Vega Configuration采用注册机制，所有注册的类都可以采用如下方法调用：
 
-Vega Configuration采用注册机制，可以根据class type动态的映射配置文件中的配置到对应的实例上，从而使得开发者和用户能够直接使用`cfg`属性，无感知配置文件的加载和解析的过程。
+```python
+_cls = ClassFactory.get_cls(class_type, class_name)
+install = _cls(params)
+```
 
-我们首先从如何使用配置开始，来逐步说明配置的机制：
+同时Vega可以根据class type动态的映射配置文件中的配置到对应的实例上，从而使得开发者和用户能够直接使用`config`属性，无感知配置文件的加载和解析的过程。
 
-* **Step1: 用户使用`rega.run()`加载用户定义的配置文件，并运行vega程序**
+比如如下是Prune-EA算法的NAS阶段的配置文件：
 
-    ```python
-    vega.run('config.yml')
-    ```
+```yaml
+nas:
+    pipe_step:
+        type: NasPipeStep
 
-* **Step2: `config.yml`中采用如下定义**
+    dataset:
+        type: Cifar10
+        common:
+            data_path: /cache/datasets/cifar10/
+            train_portion: 0.9
+        test:
+            batch_size: 1024
 
-    ```yaml
-    # 公共配置，包含task和worker相关配置信息
-    general:
-        task:
-            key: value
-        worker:
-            key: value
-    # 指定pipestep的执行顺序
-    pipeline: [nas1, fullytrain1]
-    # pipestep名称
-    nas1:
-        # 采用何种PipeStep
-        pipe_step:
-            type: NasPipeStep
-        # 采用何种SearchAlgrithm算法，其配置有哪些
-        search_algorithm:
-            type: BackboneNas
-            key: value
-        # SearchSpace的配置
-        search_space:
-            type: SearchSpace
-            key: value
-        # Model的配置
-        mode:
-            model_desc: value
-        # Trainer的配置
-        trainer:
-            type: Trainer
-        # Dataset的配置
-        dataset:
-            type: Cifar10
-    ```
-
-* **Step3:  使用`ClassFactory`注册需要使用配置的类**
-
-    `ClassFactory`提供给了多种`ClassType`可供开发者选择，分别对应了`config`文件中的第二层节点
-
-    ```python
-
-    class ClassType(object):
-        """Const class saved defined class type."""
-
-        TRAINER = 'trainer'
-        METRIC = 'trainer.metric'
-        OPTIM = 'trainer.optim'
-        LR_SCHEDULER = 'trainer.lr_scheduler'
-        LOSS = 'trainer.loss'
-        EVALUATOR = 'evaluator'
-        GPU_EVALUATOR = 'evaluator.gpu_evaluator'
-        HAVA_D_EVALUATOR = 'evaluator.hava_d_evaluator'
-        DAVINCI_MOBILE_EVALUATOR = 'evaluator.davinci_mobile_evaluator'
-        SEARCH_ALGORITHM = 'search_algorithm'
-        SEARCH_SPACE = 'search_space'
-        PIPE_STEP = 'pipe_step'
-        GENERAL = 'general'
-        HPO = 'hpo'
-        DATASET = 'dataset'
-        TRANSFORM = 'dataset.transforms'
-        CALLBACK = 'trainer.callback'
-    ```
-
-    算法开发者根据自己的需要选择对应的`ClassType`，并使用`@ClassFactory.register(class type)`将`class`注册到相应的类中。如下样例，我们将`BackboneNas`注册到`ClassType.SEARCH_ALGORITHM`中，`Configuration`根据`config.yml`中的`search_algorithm`下的`type`的值来确定初始化`BackboneNas`并将配置信息绑定到`BackboneNas`的`cfg`属性上。
-
-    如下，开发者可直接使用属性`self.cfg`：
-
-    ```python
-    @ClassFactory.register(ClassType.SEARCH_ALGORITHM)
-    class BackboneNas(SearchAlgorithm):
-        def __init__(self, search_space=None):
-            """Init BackboneNas."""
-            super(BackboneNas, self).__init__(search_space)
-            # ea or random
-            self.search_space = search_space
-            self.codec = Codec(self.cfg.codec, search_space)
-            self.num_mutate = self.policy.num_mutate
-            self.random_ratio = self.policy.random_ratio
-            self.max_sample = self.range.max_sample
-            self.min_sample = self.range.min_sample
-    ```
-
-* **Step4:  开发者需要提供默认的配置，用户配置会覆盖默认配置**
-
-    我们建议每一个开发者在编写算法的时候提供一个默认的配置信息给系统使用，以方便用户配置自己的配置文件。
-
-    我们在`vega.config`目录下为各位提供了分组目录，默认配置文件必须放到相应的目录中：
-
-    ```text
-    vega/config
-    ├── datasets
-    │   └── cifar10.yml
-    ├── general
-    │   └── general.yml
-    ├── search_algorithm
-    │   └── backbone.yml
-    ├── search_space
-    │   └── search_space.yml
-    └── trainer
-        └── trainer.yml
-    ```
-
-    默认的配置采用`key:value`的形式，其中根`key`值对应开发者定义的`Class`的全名
-
-    ```yaml
-    BackboneNas:
-        codec: BackboneNasCodec
+    search_algorithm:
+        type: PruneEA
+        codec: PruneCodec
         policy:
-            num_mutate: 10
-            random_ratio: 0.2
-        range:
-            max_sample: 100
-            min_sample: 10
+            length: 464
+            num_generation: 31
+            num_individual: 32
+            random_models: 64
 
-    ```
+    search_space:
+        type: SearchSpace
+        modules: ['backbone']
+        backbone:
+            name: 'PruneResNet'
+            base_chn: [16,16,16,32,32,32,64,64,64]
+            base_chn_node: [16,16,32,64]
+            num_classes: 10
 
-## 6. pipeline
+    trainer:
+        type: Trainer
+        callbacks: PruneTrainerCallback
+        epochs: 1
+        init_model_file: "/cache/models/resnet20.pth"
+        optim:
+            type: SGD
+            params:
+                lr: 0.1
+                momentum: 0.9
+                weight_decay: !!float 1e-4
+        lr_scheduler:
+            type: StepLR
+            params:
+                step_size: 20
+                gamma: 0.5
+        seed: 10
+        limits:
+            flop_range: [!!float 0, !!float 1e10]
+```
 
-Vega的Pipeline通过加载`config`配置来实现多个`pipestep`的串联，用户执行`vega.run('config.yml')`的时候会先执行`_init_env(cfg_path)`方法加载配置，然后调用`Pipeline().run()`根据配置文件中的定义运行具体的`pipestep`的`do()`函数
+在trainer中，获取dataset和lr_scheduler的代码如下：
 
-### 6.1 配置
+```python
+    dataset_cls = ClassFactory.get_cls(ClassType.DATASET)
+    dataset = dataset_cls(mode=mode)
+    search_alg_cls = ClassFactory.get_cls(ClassType.SEARCH_ALGORITHM)
+    search_alg = search_alg_cls(search_space)
+```
 
+从如上可以看出，并不需要指定类名称，vega通过扫描配置文件，确定当前所在的pipestep，通过类的类型，找到类名称和参数，供classFactory返回正确的类定义。
+Vega支持的pipestep的具体定义可参考[配置参考](../user/config_reference.md)
+
+## 7. pipeline
+
+Vega的Pipeline通过加载`config`配置来实现多个`pipestep`的串联，用户执行`vega.run('config.yml')`的时候会先执行`_init_env(cfg_path)`方法加载配置，然后调用`Pipeline().run()`根据配置文件中的定义运行具体的`pipestep`的`do()`函数。
 在config.yml中使用`pipleline`来定义`pipestep`的执行顺序，如下例中，`pipeline: [nas, fullytrain]`表示首先执行`nas`节点的`pipestep`，然后执行`fullytrain`节点的`pipestep`。
 
 ```yaml
-# 定义pipeline按照顺序执行那些pipestep
 pipeline: [nas, fullytrain]
-# pipestep名称
+
 nas:
-# PipeStep 类型
     pipe_step:
         type: NasPipeStep
 
@@ -628,39 +653,31 @@ fullytrain:
         type: FullyTrainPipeStep
 ```
 
-### 6.2 扩展`pipestep`
+### 7.2 扩展`pipestep`
 
 当前已预置的`pipestep`有：
 
 * NasPipeStep
-* HpoPipeStep
 * FullyTrainPipeStep
+* BechmarkPipeStep
 
 若需要扩展`pipestep`，需要继承基类`PipeStep`，实现`do()`函数即可，具体可参考如上类的实现代码：
 
 ```python
 class PipeStep(object):
 
-    def __init__(self):
-        self.task = TaskUtils(UserConfig().data.general)
-
-    def __new__(cls):
-        """Create pipe step instance by ClassFactory"""
-        t_cls = ClassFactory.get_cls(ClassType.PIPE_STEP)
-        return super().__new__(t_cls)
-
     def do(self):
         """Do the main task in this pipe step."""
-        raise NotImplementedError
+        pass
 ```
 
-## 7. Fully Train
+## 8. Fully Train
 
 在`Fully Train`上，我们支持单卡训练和基于`Horovod`的多机多卡分布式训练，`Fully Train`对应于`pipeline`的`FullyTrainPipeStep`部分。
 
-### 7.1 配置
+### 8.1 配置
 
-如果需要进行`Horovod`分布式训练，需要在`FullyTrainPipeStep`的`trainer`部分的配置文件里加上一个配置项`horovod`，并设置成`True`，如果没有这一项，默认是False，即不使用分布式训练。
+如果需要进行`Horovod`分布式训练，需要在`FullyTrainPipeStep`的`trainer`部分的配置文件里加上一个配置项`distributed`，并设置成`True`，如果没有这一项，默认是False，即不使用分布式训练。
 
 ```yaml
 fullytrain:
@@ -668,55 +685,13 @@ fullytrain:
         type: FullyTrainPipeStep
     trainer:
         type: trainer
-        horovod: True
+        distributed: True
 ```
 
 我们通过`shell`启动`Horovod`分布式训练，已经在镜像里完成不同节点之间的通信配置，开发者可以不用关心`vega`内部是如何启动的。
 
-### 7.2 Trainer支持Horovod分布式
+### 8.2 Trainer支持Horovod分布式
 
 在使用分布式训练时，相对于单卡的训练，`trainer`的网络模型、优化器、数据加载等需要使用`Horovod`封装成分布式的对象。
 
-```python
-def _init_optimizer(self):
-    ...
-    if self.horovod:
-        optimizer = hvd.DistributedOptimizer(optimizer,
-                                             named_parameters=self.model.named_parameters(),
-                                             compression=hvd.Compression.none)
-    return optimizer
-
-def _init_horovod_setting(self):
-    """Init horovod setting."""
-    hvd.broadcast_parameters(self.model.state_dict(), root_rank=0)
-    hvd.broadcast_optimizer_state(self.optimizer, root_rank=0)
-
-def _init_dataloader(self):
-    """Init dataloader."""
-    train_dataset = Dataset(mode='train')
-    valid_dataset = Dataset(mode='test')
-    if self.horovod:
-        train_sampler = torch.utils.data.distributed.DistributedSampler(
-            train_dataset, num_replicas=hvd.size(), rank=hvd.rank())
-        valid_sampler = torch.utils.data.distributed.DistributedSampler(
-            valid_dataset, num_replicas=hvd.size(), rank=hvd.rank())
-        train_dataset.sampler = train_sampler
-        valid_dataset.sampler = valid_sampler
-    self.train_loader = train_dataset.dataloader
-    self.valid_loader = valid_dataset.dataloader
-```
-
 在训练的过程中，单卡和分布式训练的代码几乎是一致的，只是在最后计算验证指标时，需要将不同卡上的指标值综合起来，计算总的平均值。
-
-```python
-def _metric_average(self, val, name):
-    """Do metric average.
-
-    :param val: input value
-    :param name: metric name
-    :return:
-    """
-    tensor = torch.tensor(val)
-    avg_tensor = hvd.allreduce(tensor, name=name)
-    return avg_tensor.item()
-```

@@ -9,19 +9,18 @@
 # MIT License for more details.
 
 """search algorithm for ESR_EA."""
-import os
 import csv
 import logging
-import numpy as np
-import pandas as pd
-from copy import deepcopy
+import os
 from bisect import bisect_right
 from random import random, sample
-from vega.search_space.search_algs.search_algorithm import SearchAlgorithm
-from vega.search_space.codec import Codec
-from vega.search_space.networks import NetworkDesc
+import numpy as np
+import pandas as pd
+from vega.core.common.general import General
+from .conf import ESRConfig
+from vega.core.common import FileOps
 from vega.core.common.class_factory import ClassFactory, ClassType
-from vega.core.common import FileOps, Config, UserConfig
+from vega.search_space.search_algs.search_algorithm import SearchAlgorithm
 from .esr_ea_individual import ESRIndividual
 
 
@@ -29,28 +28,27 @@ from .esr_ea_individual import ESRIndividual
 class ESRSearch(SearchAlgorithm):
     """Evolutionary search algorithm of the efficient super-resolution."""
 
-    def __init__(self, search_space=None):
+    config = ESRConfig()
+
+    def __init__(self, search_space=None, **kwargs):
         """Construct the ESR EA search class.
 
         :param search_space: config of the search space
         :type search_space: dictionary
         """
-        super(ESRSearch, self).__init__(search_space)
-        self.search_space = search_space
-        self.codec = Codec(self.cfg.codec, search_space)
-
-        self.individual_num = self.policy.num_individual
-        self.generation_num = self.policy.num_generation
-        self.elitism_num = self.policy.num_elitism
-        self.mutation_rate = self.policy.mutation_rate
-        self.min_active = self.range.min_active
-        self.max_params = self.range.max_params
-        self.min_params = self.range.min_params
+        super(ESRSearch, self).__init__(search_space, **kwargs)
+        self.individual_num = self.config.policy.num_individual
+        self.generation_num = self.config.policy.num_generation
+        self.elitism_num = self.config.policy.num_elitism
+        self.mutation_rate = self.config.policy.mutation_rate
+        self.min_active = self.config.range.min_active
+        self.max_params = self.config.range.max_params
+        self.min_params = self.config.range.min_params
 
         self.indiv_count = 0
         self.evolution_count = 0
         self.initialize_pop()
-        self.elitism = [ESRIndividual(self.codec, self.cfg) for _ in range(self.elitism_num)]
+        self.elitism = [ESRIndividual(self.codec) for _ in range(self.elitism_num)]
         self.elit_fitness = [0] * self.elitism_num
         self.fitness_pop = [0] * self.individual_num
         self.fit_state = [0] * self.individual_num
@@ -79,7 +77,7 @@ class ESRSearch(SearchAlgorithm):
         :param evaluations: evaluations result
         :type evaluations: list
         """
-        popu_all = [ESRIndividual(self.codec, self.cfg) for _ in range(self.elitism_num + self.individual_num)]
+        popu_all = [ESRIndividual(self.codec) for _ in range(self.elitism_num + self.individual_num)]
         for i in range(self.elitism_num + self.individual_num):
             if i < self.elitism_num:
                 popu_all[i].copy(self.elitism[i])
@@ -115,8 +113,7 @@ class ESRSearch(SearchAlgorithm):
 
     def save_results(self):
         """Save the results of evolution contains the information of pupulation and elitism."""
-        step_name = Config(deepcopy(UserConfig().data)).general.step_name
-        _path = FileOps.join_path(self.local_output_path, step_name)
+        _path = FileOps.join_path(self.local_output_path, General.step_name)
         FileOps.make_dir(_path)
         arch_file = FileOps.join_path(_path, 'arch.txt')
         arch_child = FileOps.join_path(_path, 'arch_child.txt')
@@ -152,8 +149,8 @@ class ESRSearch(SearchAlgorithm):
         :return: the selected parent individuals
         :rtype: list
         """
-        popu_all = [ESRIndividual(self.codec, self.cfg) for _ in range(self.elitism_num + self.individual_num)]
-        parent = [ESRIndividual(self.codec, self.cfg) for _ in range(parent_num)]
+        popu_all = [ESRIndividual(self.codec) for _ in range(self.elitism_num + self.individual_num)]
+        parent = [ESRIndividual(self.codec) for _ in range(parent_num)]
         fitness_all = self.elit_fitness
         for i in range(self.elitism_num + self.individual_num):
             if i < self.elitism_num:
@@ -188,7 +185,7 @@ class ESRSearch(SearchAlgorithm):
 
     def initialize_pop(self):
         """Initialize the population of first generation."""
-        self.pop = [ESRIndividual(self.codec, self.cfg) for _ in range(self.individual_num)]
+        self.pop = [ESRIndividual(self.codec) for _ in range(self.individual_num)]
         for i in range(self.individual_num):
             while self.pop[i].active_num < self.min_active:
                 self.pop[i].mutation_using(self.mutation_rate)
@@ -249,18 +246,16 @@ class ESRSearch(SearchAlgorithm):
         self.get_mutate_child(muta_num)
         self.get_cross_child(muta_num)
 
-    def update(self, local_worker_path):
+    def update(self, record):
         """Update function.
 
         :param local_worker_path: the local path that saved `performance.txt`.
         :type local_worker_path: str
         """
-        update_id = int(os.path.basename(os.path.abspath(local_worker_path)))
-        file_path = os.path.join(local_worker_path, 'performance.txt')
-        with open(file_path, "r") as pf:
-            fitness = float(pf.readline())
-            self.fitness_pop[(update_id - 1) % self.individual_num] = fitness
-            self.fit_state[(update_id - 1) % self.individual_num] = 1
+        worker_id = record.get("worker_id")
+        performance = record.get("rewards")
+        self.fitness_pop[(worker_id - 1) % self.individual_num] = performance
+        self.fit_state[(worker_id - 1) % self.individual_num] = 1
 
     def get_fitness(self):
         """Get the evalutation of each individual.
@@ -283,7 +278,7 @@ class ESRSearch(SearchAlgorithm):
         """
         if self.indiv_count > 0 and self.indiv_count % self.individual_num == 0:
             if np.sum(np.asarray(self.fit_state)) < self.individual_num:
-                return None, None
+                return
             else:
                 self.update_fitness(self.fitness_pop)
                 self.update_elitism(self.fitness_pop)
@@ -297,4 +292,4 @@ class ESRSearch(SearchAlgorithm):
         self.indiv_count += 1
         logging.info('model parameters:{}, model flops:{}'.format(current_indiv.parameter, current_indiv.flops))
         logging.info('model arch:{}'.format(current_indiv.active_net_list()))
-        return self.indiv_count, NetworkDesc(indiv_cfg)
+        return self.indiv_count, indiv_cfg

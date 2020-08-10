@@ -10,6 +10,7 @@
 
 """Util functions."""
 import numpy as np
+import vega
 
 
 class AverageMeter(object):
@@ -40,4 +41,13 @@ def eval_model_parameters(model):
     :return: The number of parameters
     :rtype: Float
     """
-    return np.sum(v.numel() for name, v in model.named_parameters() if "auxiliary" not in name) / 1e6
+    if vega.is_torch_backend():
+        return np.sum(v.numel() for name, v in model.named_parameters() if "auxiliary" not in name) / 1e6
+    else:
+        import tensorflow as tf
+        tf.reset_default_graph()
+        dummy_input = tf.placeholder(dtype=tf.float32, shape=[1, 32, 32, 3])
+        model(dummy_input, training=True)
+        all_weight = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES)
+        weight_op = [t for t in all_weight if "auxiliary" not in t.name]
+        return np.sum([np.prod(t.get_shape().as_list()) for t in weight_op]) * 1e-6

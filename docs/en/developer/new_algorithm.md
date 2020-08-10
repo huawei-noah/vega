@@ -19,6 +19,11 @@ nas:
 
     dataset:
         type: Cifar10
+        common:
+            data_path: /cache/datasets/cifar10/
+            train_portion: 0.9
+        test:
+            batch_size: 1024
 
     search_algorithm:
         type: PruneEA
@@ -26,8 +31,8 @@ nas:
         policy:
             length: 464
             num_generation: 31
-            num_individual: 4
-            random_models: 32
+            num_individual: 32
+            random_models: 64
 
     search_space:
         type: SearchSpace
@@ -41,21 +46,19 @@ nas:
     trainer:
         type: Trainer
         callbacks: PruneTrainerCallback
-        epochs: 2
-        init_model_file: "./bestmodel.pth"
+        epochs: 1
+        init_model_file: "/cache/models/resnet20.pth"
         optim:
             type: SGD
-            lr: 0.1
-            momentum: 0.9
-            weight_decay: !!float 1e-4
+            params:
+                lr: 0.1
+                momentum: 0.9
+                weight_decay: !!float 1e-4
         lr_scheduler:
             type: StepLR
-            step_size: 20
-            gamma: 0.5
-        loss:
-            type: CrossEntropyLoss
-        metrics:
-            type: accuracy
+            params:
+                step_size: 20
+                gamma: 0.5
         seed: 10
         limits:
             flop_range: [!!float 0, !!float 1e10]
@@ -142,23 +145,15 @@ The initialization code of the algorithm is as follows:
 @ClassFactory.register(ClassType.SEARCH_ALGORITHM)
 class PruneEA(SearchAlgorithm):
 
-    def __init__(self, search_space):
-        super(PruneEA, self).__init__(search_space)
-        self.length = self.policy.length
-        self.num_individual = self.policy.num_individual
-        self.num_generation = self.policy.num_generation
-        self.x_axis = 'flops'
-        self.y_axis = 'acc'
-        self.random_models = self.policy.random_models
-        self.codec = Codec(self.cfg.codec, search_space)
+    def __init__(self, search_space, **kwargs):
+        super(PruneEA, self).__init__(search_space, **kwargs)
+        self.length = self.config.policy.length
+        self.num_individual = self.config.policy.num_individual
+        self.num_generation = self.config.policy.num_generation
+        self.random_models = self.config.policy.random_models
         self.random_count = 0
         self.ea_count = 0
         self.ea_epoch = 0
-        self.step_path = FileOps.join_path(self.local_output_path, self.cfg.step_name)
-        self.pd_file_name = FileOps.join_path(self.step_path, "performance.csv")
-        self.pareto_front_file = FileOps.join_path(self.step_path, "pareto_front.csv")
-        self.pd_path = FileOps.join_path(self.step_path, "pareto_front")
-        FileOps.make_dir(self.pd_path)
 ```
 
 Similarly, the PruneEA class needs to be registered with the ClassFactory. The @ClassFactory.register(ClassType.SEARCH_ALGORITHM) in the preceding code completes the registration process.
@@ -169,26 +164,30 @@ The most important function of PruneEA is to implement the search() interface, w
     def search(self):
         if self.random_count < self.random_models:
             self.random_count += 1
-            return self.random_count, self._random_sample()
-        pareto_front_results = self.get_pareto_front()
-        pareto_front = pareto_front_results["encoding"].tolist()
-        if len(pareto_front) < 2:
-            encoding1, encoding2 = pareto_front[0], pareto_front[0]
+            desc = self._random_sample()
+            desc.update({"trainer.codec": dict(desc)})
+            return self.random_count, desc
+        self.ea_epoch += 1
+        records = Report().get_pareto_front_records(self.step_name, self.num_individual)
+        codes = [record.desc.get('backbone').get('encoding') for record in records]
+        logging.info("codes=%s", codes)
+        if len(codes) < 2:
+            encoding1, encoding2 = codes[0], codes[0]
         else:
-            encoding1, encoding2 = random.sample(pareto_front, 2)
+            encoding1, encoding2 = random.sample(codes, 2)
         choice = random.randint(0, 1)
         # mutate
         if choice == 0:
-            encoding1List = str2list(encoding1)
-            encoding_new = self.mutatation(encoding1List)
+            encoding_new = self.mutatation(encoding1)
         # crossover
         else:
-            encoding1List = str2list(encoding1)
-            encoding2List = str2list(encoding2)
-            encoding_new, _ = self.crossover(encoding1List, encoding2List)
+            encoding_new, _ = self.crossover(encoding1, encoding2)
         self.ea_count += 1
-        net_desc = self.codec.decode(encoding_new)
-        return self.random_count + self.ea_count, net_desc
+        if self.ea_count % self.num_individual == 0:
+            self.ea_epoch += 1
+        desc = self.codec.decode(encoding_new)
+        desc.update({"trainer.codec": dict(desc)})
+        return self.random_count + self.ea_count, desc
 ```
 
 The search() function returns the search id and network description to the generator.
@@ -208,7 +207,7 @@ class PruneCodec(Codec):
             "backbone": chn_info
         }
         desc = update_dict(desc, copy.deepcopy(self.search_space))
-        return NetworkDesc(desc)
+        return desc
 ```
 
 The decode() function in the PruneCodec accepts an encoding code parameter and decodes it into the network description of the PruneResNet initialization parameter based on the mapping with the actual network description.
@@ -260,10 +259,8 @@ pipeline: [hpo1]
 hpo1:
     pipe_step:
         type: HpoPipeStep
-
     dataset:
         type: Cifar10
-
     hpo:
         type: MyHpo
         total_epochs: 81
@@ -310,6 +307,8 @@ hpo1:
         type: Evaluator
         gpu_evaluator:
             type: GpuEvaluator
+            metric:
+                type: accuracy
 ```
 
 In the preceding configuration file:

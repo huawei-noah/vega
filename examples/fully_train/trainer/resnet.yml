@@ -6,7 +6,7 @@ fully_train:
     trainer:
         type: Trainer
         report_freq: 100
-        epochs: 4
+        epochs: 1
     model:
         model_desc:
             modules: ["torch_vision_model"]
@@ -17,6 +17,9 @@ fully_train:
         type: Evaluator
         gpu_evaluator:
             type: GpuEvaluator
+            metric:
+                type: accuracy
+
     dataset:
         type: Imagenet
         common:

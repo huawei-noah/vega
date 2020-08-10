@@ -13,14 +13,13 @@
 from __future__ import division
 import argparse
 import os
-import torch
-from mmcv import Config
 import mmcv
 from mmdet import __version__
 from mmdet.apis import (get_root_logger, init_dist, train_detector)
 from mmdet.datasets import build_dataset
 from mmdet.models import build_detector
-from vega.algorithms.nas.sp_nas.spnet import *
+# register SpNet
+from vega.algorithms.nas.sp_nas.spnet import *  # noqa: F401, F403
 from vega.algorithms.nas.sp_nas.utils.config_utils import json_to_dict
 
 
@@ -36,7 +35,7 @@ def parse_args():
         type=int,
         default=1,
         help='number of gpus to use '
-        '(only applicable to non-distributed training)')
+             '(only applicable to non-distributed training)')
     parser.add_argument('--local_rank', type=int, default=0)
     args = parser.parse_args()
     if 'LOCAL_RANK' not in os.environ:

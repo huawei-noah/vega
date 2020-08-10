@@ -17,6 +17,7 @@ from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
 from .rfr import RandomForestWithStdRegressor
 from vega.algorithms.hpo.common.tuner.double_gaussian import DoubleMultiGaussian
+from vega.algorithms.hpo.common.tuner.ParzenEstimator import ParzenEstimator
 
 
 class TunerModel(object):
@@ -28,7 +29,7 @@ class TunerModel(object):
     :type min_count_score: int
     """
 
-    def __init__(self, model_name, min_count_score):
+    def __init__(self, model_name, min_count_score, hyperparameter_list):
         """Init TunerModel."""
         self.model = None
         self.model_name = model_name
@@ -48,7 +49,7 @@ class TunerModel(object):
                                                       min_samples_split=2,
                                                       n_jobs=-1)
         elif 'TPE' in model_name:
-            self.model = DoubleMultiGaussian()
+            self.model = ParzenEstimator(hyperparameter_list)
         elif ('GridSearch' in model_name) | ('RandSearch' in model_name):
             self.model = True
         else:

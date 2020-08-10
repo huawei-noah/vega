@@ -52,7 +52,8 @@ class PBA(object):
         self.local_base_path = local_base_path
         self.is_completed = False
         self.rung_id = 0
-        self.sieve_board = pd.DataFrame(columns=['rung_id', 'config_id', 'status', 'score'])
+        self.sieve_board = pd.DataFrame(
+            columns=['rung_id', 'config_id', 'status', 'score'])
         self.best_score_dict = {}
         self.all_config_dict = {}
         self.total_propose = 0
@@ -103,8 +104,9 @@ class PBA(object):
         :param float score: Description of parameter `score`.
         """
         _key = (self.sieve_board['config_id'] == config_id) & \
-            (self.sieve_board['rung_id'] == rung_id)
-        self.sieve_board.loc[_key, ['status', 'score']] = [StatusType.FINISHED, score]
+               (self.sieve_board['rung_id'] == rung_id)
+        self.sieve_board.loc[_key, ['status', 'score']] = [
+            StatusType.FINISHED, score]
         if rung_id > 0 and config_id not in self.best_score_dict[rung_id]:
             self.best_score_dict[rung_id][config_id] = -1 * float('inf')
         if score > self.best_score_dict[rung_id][config_id]:
@@ -180,7 +182,7 @@ class PBA(object):
                        'epoch': int}
         """
         _key = (self.sieve_board['rung_id'] == self.rung_id) & \
-            (self.sieve_board['status'] == StatusType.WAITTING)
+               (self.sieve_board['status'] == StatusType.WAITTING)
         rung_df = self.sieve_board.loc[_key]
         if rung_df.empty:
             return None
@@ -213,7 +215,7 @@ class PBA(object):
         :type enum: StatusType
         """
         _key = (self.sieve_board['config_id'] == config_id) & \
-            (self.sieve_board['rung_id'] == rung_id)
+               (self.sieve_board['rung_id'] == rung_id)
         change_df = self.sieve_board.loc[_key]
         if change_df.empty:
             tmp_row_data = {'rung_id': rung_id,
@@ -244,14 +246,8 @@ class PBA(object):
         :return: if this rung finished.
         :rtype: bool.
         """
-        current_rung_df = self.sieve_board.loc[
-            (
-                self.sieve_board['rung_id'] == self.rung_id
-            ) & (
-                self.sieve_board['status'].isin([StatusType.WAITTING,
-                                                 StatusType.RUNNING])
-            )
-        ]
+        current_rung_df = self.sieve_board.loc[(self.sieve_board['rung_id'] == self.rung_id) & (
+            self.sieve_board['status'].isin([StatusType.WAITTING, StatusType.RUNNING]))]
         if current_rung_df.empty:
             return True
         else:

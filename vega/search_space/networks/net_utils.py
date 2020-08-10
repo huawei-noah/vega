@@ -18,11 +18,16 @@ class NetTypes(Enum):
     BLOCK = 1
     CUSTOM = 2
     BACKBONE = 3
+    NECK = 4
+    ROI_EXTRACTOR = 5
+    SHARED_HEAD = 6
     HEAD = 7
     LOSS = 8
+    DETECTOR = 9
     SUPER_NETWORK = 10
     ESRBODY = 11
     OPS = 12
+    JDDBODY = 13
     UTIL = 14
     TORCH_VISION_MODEL = 15
     Operator = 16
@@ -32,12 +37,17 @@ NetTypesMap = {
     "block": NetTypes.BLOCK,
     "custom": NetTypes.CUSTOM,
     "backbone": NetTypes.BACKBONE,
+    "neck": NetTypes.NECK,
+    "roi_extractor": NetTypes.ROI_EXTRACTOR,
+    "shared_head": NetTypes.SHARED_HEAD,
     "head": NetTypes.HEAD,
     "loss": NetTypes.LOSS,
+    "detector": NetTypes.DETECTOR,
     "super_network": NetTypes.SUPER_NETWORK,
     "esrbody": NetTypes.ESRBODY,
     "ops": NetTypes.OPS,
     "util": NetTypes.UTIL,
+    "jddbody": NetTypes.JDDBODY,
     "torch_vision_model": NetTypes.TORCH_VISION_MODEL,
     'operator': NetTypes.Operator,
 }

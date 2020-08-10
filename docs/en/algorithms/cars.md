@@ -18,12 +18,6 @@ The CARS in the pipeline integrates the search space of DARTS. The overall struc
 
 ![darts_search_sapce](./images/cars_darts_search_sapce.png)
 
-For the definition of the search space, see the following:
-
-```python
-vega/search_space/networks/super_network/cars_darts.py
-```
-
 For a detailed description of the DARTS search space, see the corresponding  HYPERLINK "https://arxiv.org/abs/1806.09055" ICLR '19 article.
 
 ### 2.2 Configuring the Search Space
@@ -113,7 +107,7 @@ The configuration information of the CIFAR-10 database is as follows:
     dataset:
         type: Cifar10
         common:
-            #data_path: /datasets/cifar10/
+            data_path: /cache/datasets/cifar10/
             num_workers: 8
             train_portion: 0.5
             drop_last: False
@@ -128,7 +122,7 @@ The configuration information of the CIFAR-10 database is as follows:
 
 For details about how to search and train a model, see the following configuration file for parameter setting:
 
-- vega/examples/nas/cars/cars_darts.yml
+- vega/examples/nas/cars/cars.yml
 
 The configuration file is directly transferred to the pipeline through main.py. The two processes are performed in sequence. During the search process, a series of models at the Pareto Front are found. During the training process, the selected models are fully trained to obtain the final performance.
 
@@ -151,7 +145,8 @@ nas:
     trainer:
         type: Trainer
         darts_template_file: "{default_darts_cifar10_template}"
-        callbacks: DartsFullTrainerCallback
+        callbacks: CARSTrainerCallback
+        model_statistics: False
         epochs: 500
         optim:
             type: SGD
@@ -166,8 +161,7 @@ nas:
             type: CrossEntropyLoss
         metric:
             type: accuracy
-            topk: [1, 5]
-        grad_clip: 5.0
+         grad_clip: 5.0
         seed: 10
         unrolled: True
 ```
@@ -175,14 +169,13 @@ nas:
 Configuration of the fully train phase:
 
 ```yaml
-fully_train:
     pipe_step:
         type: FullyTrainPipeStep
         models_folder: "{local_base_path}/output/nas/"
 
     trainer:
         ref: nas.trainer
-        callbacks: CARSFullTrainerCallback
+        callbacks: DartsFullTrainerCallback
         epochs: 600
         lr_scheduler:
             type: CosineAnnealingLR
@@ -199,7 +192,7 @@ fully_train:
     dataset:
         type: Cifar10
         common:
-            #data_path: /datasets/cifar10/
+            data_path: /cache/datasets/cifar10/
             num_workers: 8
             drop_last: False
             batch_size: 96
@@ -221,7 +214,7 @@ fully_train:
                       - 0.24348505
                       - 0.26158768
                 - type: Cutout
-                  length: 8 # pipeline scale this number to 8*20/10
+                  length: 8
         test:
             shuffle: False
 ```
@@ -233,15 +226,7 @@ The models_folder and model_desc_n.json parameters in the fully train are descri
 
 ### 3.3 Algorithm Output
 
-Configure the algorithm output directory.
-
-```yaml
-general:
-    task:
-        local_base_path: "./output"     # output directory. The default value is the output directory in the current directory, which can be changed.
-```
-
-The algorithm creates ./output directory in local_base_path and creates the nas and fully_train directories in the output directory.
+The output:
 
 1. nas directory: outputs multiple optimal model description files.
 2. fully_train: outputs the trained model weight file.

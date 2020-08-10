@@ -60,7 +60,7 @@ class SSA(ShaBase):
         self.s_max = int(log(max_epochs / min_epochs) / log(eta))
         self.single_epoch = min_epochs
         self.sr = 0  # minimum early-stopping rate s
-        self.total_rungs = (self.s_max + 1 - self.sr) * 2 - 1
+        self.total_rungs = self.s_max + 1 - self.sr
         cn = int(math.sqrt(math.log(config_count * eta / (eta - 1))))
         if cn != 1:
             for i in range(cn - 1):
@@ -69,17 +69,11 @@ class SSA(ShaBase):
         self.config_list = []
         current_config_num = config_count
         current_epoch = self.single_epoch
-        for i in range(self.total_rungs):
+        while(current_config_num != 0):
             self.config_list.append(current_config_num)
-            if current_epoch < self.min_epochs:
-                self.budget_list.append(self.min_epochs)
-            else:
-                self.budget_list.append(current_epoch)
-            if current_config_num < eta:
-                break
-            if i % 2 == 1:
-                current_config_num //= eta
-                current_epoch *= eta
+            self.budget_list.append(min(max(current_epoch, self.min_epochs), max_epochs))
+            current_config_num //= eta
+            current_epoch *= eta
 
         if not empty:
             hyperparameter_list = self.get_hyperparameter_space(config_count)
@@ -122,10 +116,8 @@ class SSA(ShaBase):
                        'epoch': int}
 
         """
-        rung_df = self.sieve_board.loc[(
-            self.sieve_board['rung_id'] == self.rung_id) & (
-                self.sieve_board['status'] == StatusType.WAITTING)
-        ]
+        rung_df = self.sieve_board.loc[(self.sieve_board['rung_id'] == self.rung_id) & (
+            self.sieve_board['status'] == StatusType.WAITTING)]
         if rung_df.empty:
             return None
         next_config_id = rung_df['config_id'].min(skipna=True)
@@ -174,7 +166,8 @@ class SSA(ShaBase):
         :rtype: list or None.
 
         """
-        leader_idx = max(self.best_score_dict[self.rung_id].items(), key=operator.itemgetter(1))[0]
+        leader_idx = max(
+            self.best_score_dict[self.rung_id].items(), key=operator.itemgetter(1))[0]
         leader_score_df = self.sieve_board.loc[self.sieve_board['config_id'] == leader_idx]
         score_list = []
         for idx in range(self.config_count):
@@ -183,33 +176,15 @@ class SSA(ShaBase):
                 continue
             score_df = self.sieve_board.loc[self.sieve_board['config_id'] == current_id]
             rung_max = score_df['rung_id'].max(skipna=True)
-            while(rung_max > 0):
+            current_score = 0
+            leader_score = 0
+            while (rung_max > 0):
                 current_score = score_df[score_df['rung_id'] == rung_max]
                 leader_score = leader_score_df[leader_score_df['rung_id'] == rung_max]
                 if current_score.empty or leader_score.empty:
                     rung_max = rung_max - 1
                 else:
                     break
-            current_score = 0
-            leader_score = 0
-            if rung_max % 2 == 1:
-                current_score1 = score_df[score_df['rung_id'] == rung_max]
-                current_score2 = score_df[score_df['rung_id'] == rung_max - 1]
-                if current_score2.empty:
-                    current_score = current_score1['score'].values[0]
-                else:
-                    current_score = max(current_score1['score'].values[0], current_score2['score'].values[0])
-                leader_score1 = leader_score_df[leader_score_df['rung_id'] == rung_max]
-                leader_score2 = leader_score_df[leader_score_df['rung_id'] == rung_max - 1]
-                if leader_score2.empty:
-                    leader_score = leader_score1['score'].values[0]
-                else:
-                    leader_score = (leader_score1['score'].values[0] + leader_score2['score'].values[0]) / 2
-            else:
-                current_score1 = score_df[score_df['rung_id'] == rung_max]
-                current_score = current_score1['score'].values[0]
-                leader_score1 = leader_score_df[leader_score_df['rung_id'] == rung_max]
-                leader_score = leader_score1['score'].values[0]
             sub_score = current_score - leader_score
             score_list.append((current_id, sub_score))
         sort_list = sorted(score_list, key=operator.itemgetter(1), reverse=True)

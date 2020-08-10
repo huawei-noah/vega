@@ -1,0 +1,9 @@
+MOBILE_WORK_DIR=$1
+ONNX_MODEL=$2
+MODEL_NAME=$3
+PRECISON=$4
+LOG_PATH=$5
+
+adb shell "mkdir $MOBILE_WORK_DIR"
+adb push $ONNX_MODEL $MOBILE_WORK_DIR
+adb shell "/data/local/tmp/onnx2bolt $MOBILE_WORK_DIR/ $MODEL_NAME 0 $PRECISON"  >$LOG_PATH/omg.log

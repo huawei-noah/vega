@@ -1,7 +1,6 @@
 general:
     worker:
-        gpus_per_job: 1
-        timeout: 1000
+        devices_per_job: -1
 
 pipeline: [random, mutate]
 # pipeline: [random, mutate, fully_train]
@@ -45,27 +44,43 @@ random:
         type: SRRandom
         codec: SRCodec
         policy:
-            num_sample: 10
+            num_sample: 3 #10
 
     trainer:
         type: Trainer
         callbacks: SREATrainerCallback
-        codec: SRCodec
-        epochs: 50
+        epochs: 2 #50
         optim:
             type: Adam
-            lr: 0.0002
+            params:
+                lr: 0.0002
         lr_scheduler:
             type: StepLR
-            step_size: 2000
-            gamma: 0.5
-            call_point: 'AFTER_EPOCH'
+            params:
+                step_size: 2000
+                gamma: 0.5
         loss:
             type: L1Loss
         metric:
             type: SRMetric
-            method: psnr
-            crop_border: 2
+            params:
+                method: psnr
+                crop_border: 2
+        calc_params_each_epoch: True
+
+    evaluator:
+        type: Evaluator
+        gpu_evaluator:
+            type: GpuEvaluator
+            metric:
+                type: SRMetric
+    #    davinci_mobile_evaluator:
+    #        type: DavinciMobileEvaluator
+    #        framework: "Pytorch"
+    #        backend: "Bolt"
+    #        remote_host: "http://192.168.0.2:8888"
+    #         metric:
+    #             type: SRMetric
 
 mutate:
     pipe_step:
@@ -88,8 +103,7 @@ mutate:
     trainer:
         ref: random.trainer
         callbacks: SREATrainerCallback
-        epochs: 50
-        codec: SRCodec
+        epochs: 2 #50
         save_model_desc: True
 
 fully_train:
@@ -119,21 +133,23 @@ fully_train:
     trainer:
         type: Trainer
         callbacks: SREATrainerCallback
-        codec: SRCodec
         seed: 0
-        epochs: 10000
+        epochs: 2 #10000
         print_step: 50
         val_epoch: 5
         optim:
             type: Adam
-            lr: 0.0002
+            params:
+                lr: 0.0002
         lr_scheduler:
             type: StepLR
-            step_size: 2000
-            gamma: 0.5
+            params:
+                step_size: 2000
+                gamma: 0.5
         loss:
             type: L1Loss
         metric:
             type: SRMetric
-            method: psnr
-            crop_border: 2
+            params:
+                method: psnr
+                crop_border: 2

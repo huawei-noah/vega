@@ -13,10 +13,7 @@ import numpy as np
 import logging
 from vega.core.hyperparameter_space import hp2json
 from .tuner_model import TunerModel
-from .acquire_function import expected_improvement, thompson_sampling, minimize_pdf
-from scipy.optimize import fmin, minimize
-from scipy.stats import multivariate_normal
-import random
+from .acquire_function import expected_improvement, thompson_sampling
 
 LOG = logging.getLogger("vega.hpo")
 
@@ -30,7 +27,7 @@ class TunerBuilder(object):
         :param hyperparameter_space: [HyperparameterSpace]
         :param gridding:
         """
-        self.min_count_score = 2
+        self.min_count_score = 1
         self.hyperparameter_space = hyperparameter_space
         self.hyperparameter_list = hyperparameter_space.get_hyperparameters()
         self.tuner = tuner
@@ -49,7 +46,7 @@ class TunerBuilder(object):
         :param tuner_model:
         :return:
         """
-        self.model = TunerModel(tuner_model, self.min_count_score)
+        self.model = TunerModel(tuner_model, self.min_count_score, self.hyperparameter_list)
         if self.model is None:
             LOG.error('Tuner model not exist, model=%s', tuner_model)
 
@@ -167,12 +164,7 @@ class TunerBuilder(object):
                         'Sample space of HyperparameterSpace acquire failed, ds=%s',
                         self.hyperparameter_space.get_hyperparameter_names())
                     return None
-                if self.tuner == "TPE":
-                    self.mean = self.model.mean()
-                    self.cov = self.model.covariance()
-                    predictions = parameters
-                else:
-                    predictions = self.predict(parameters)
+                predictions = self.predict(parameters)
                 index = self.acquire_function(predictions)
                 param = self.hyperparameter_space.inverse_transform(
                     parameters[index, :])
@@ -200,7 +192,7 @@ class TunerBuilder(object):
         elif ('TS' in self.tuner) | ('SMAC-P' == self.tuner):
             return thompson_sampling(self.feature, predictions)
         elif 'TPE' in self.tuner:
-            return minimize_pdf(predictions, self.mean, self.cov)
+            return expected_improvement(predictions, self._best_score)
         elif 'RandSearch' in self.tuner:
             LOG.info('No need to acquire function, name=%s', self.tuner)
             return np.argmax(predictions)

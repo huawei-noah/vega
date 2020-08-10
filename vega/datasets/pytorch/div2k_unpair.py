@@ -13,17 +13,15 @@ import logging
 import os
 import os.path
 import random
-
-import numpy as np
 from PIL import Image
 from PIL import ImageFile
-import torch
 from .common.dataset import Dataset
 from torchvision import transforms
 from vega.core.common.class_factory import ClassFactory, ClassType
 from vega.core.common.file_ops import FileOps
-ImageFile.LOAD_TRUNCATED_IMAGES = True
+from vega.datasets.conf.div2k import DIV2KConfig
 
+ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 IMG_EXTENSIONS = ['.jpg', '.JPG', '.jpeg', '.JPEG',
                   '.png', '.PNG', '.ppm', '.PPM', '.bmp', '.BMP', ]
@@ -49,6 +47,8 @@ class Div2kUnpair(Dataset):
     :param self.args: the config the dataset need, defaults to None
     :type self.args: yml, py or dict
     """
+
+    config = DIV2KConfig()
 
     def make_dataset(self, dir, max_dataset_size=float("inf")):
         """Generate a list of images.

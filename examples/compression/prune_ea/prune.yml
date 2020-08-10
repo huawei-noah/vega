@@ -1,7 +1,6 @@
 general:
     worker:
-        gpus_per_job: 1
-        group_join_num: 64
+        devices_per_job: 1
 
 pipeline: [nas]
 # pipeline: [nas, fully_train]
@@ -42,45 +41,56 @@ nas:
         init_model_file: "/cache/models/resnet20.pth"
         optim:
             type: SGD
-            lr: 0.1
-            momentum: 0.9
-            weight_decay: !!float 1e-4
+            params:
+                lr: 0.1
+                momentum: 0.9
+                weight_decay: !!float 1e-4
         lr_scheduler:
             type: StepLR
-            step_size: 20
-            gamma: 0.5
-        loss:
-            type: CrossEntropyLoss
-        metrics:
-            type: accuracy
+            params:
+                step_size: 20
+                gamma: 0.5
         seed: 10
         #        encoding: None
         limits:
             flop_range: [!!float 0, !!float 1e10]
+    evaluator:
+        type: Evaluator
+        gpu_evaluator:
+            type: GpuEvaluator
+            metric:
+                type: accuracy
 
-# fully_train:
-#     pipe_step:
-#         type: FullyTrainPipeStep
-#         models_folder: "{local_base_path}/output/nas/"
+#        davinci_mobile_evaluator:
+#            type: DavinciMobileEvaluator
+#            framework: "Pytorch"
+#            backend: "Davinci"
+#            remote_host: "http://192.168.0.2:8888"
 
-#     model:
-#         model_desc_file: "./model_desc.json"
+fully_train:
+    pipe_step:
+        type: FullyTrainPipeStep
+        models_folder: "{local_base_path}/output/nas/"
 
-#     search_space:
-#         type: SearchSpace
-#         modules: ['backbone']
-#         backbone:
-#             name: 'PruneResNet'
-#             base_chn: [16,16,16,32,32,32,64,64,64]
-#             base_chn_node: [16,16,32,64]
-#             num_classes: 10
+    # model:
+    #     model_desc_file: "./model_desc.json"
 
-#     dataset:
-#         ref: nas.dataset
+    search_space:
+        type: SearchSpace
+        modules: ['backbone']
+        backbone:
+            name: 'PruneResNet'
+            base_chn: [16,16,16,32,32,32,64,64,64]
+            base_chn_node: [16,16,32,64]
+            num_classes: 10
 
-#     trainer:
-#         ref: nas.trainer
-#         lr_scheduler:
-#             type: MultiStepLR
-#             milestones: [200,300,375]
-#             gamma: 0.1
+    dataset:
+        ref: nas.dataset
+
+    trainer:
+        ref: nas.trainer
+        lr_scheduler:
+            type: MultiStepLR
+            params:
+                milestones: [200,300,375]
+                gamma: 0.1

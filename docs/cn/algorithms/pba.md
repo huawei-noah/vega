@@ -89,6 +89,8 @@ hpo1:
         type: Evaluator
         gpu_evaluator:
             type: GpuEvaluator
+            metric:
+                type: accuracy
 ```
 
 ## 5. 结果输出

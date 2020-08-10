@@ -31,16 +31,16 @@ There is only one fully train process in the overall cycle SR process. For detai
 
 ```yaml
 cyclegan:
-    input_nc: 3 # Number of input channels
-    output_nc: 3 # Number of output channels
-    ngf: 64 # Number of convolution filters of the generator
-    ndf: 64 # Number of convolution filters of the discriminator
-    n_layers_D: 3 # Number of convolutional layer of the discriminator
-    norm: instance # Type of normalization
-    lambda_cycle: 10.0 # Weight of cycle loss
-    lambda_identity: 0.5 # Weight of identity loss
-    buffer_size: 50 # Shuffle buffer size
-    up_mode: transpose # Type of upsample
+    input_nc: 3             # Number of input channels
+    output_nc: 3            # Number of output channels
+    ngf: 64                 # Number of convolution filters of the generator
+    ndf: 64                 # Number of convolution filters of the discriminator
+    n_layers_D: 3           # Number of convolutional layer of the discriminator
+    norm: instance          # Type of normalization
+    lambda_cycle: 10.0      # Weight of cycle loss
+    lambda_identity: 0.5    # Weight of identity loss
+    buffer_size: 50         # Shuffle buffer size
+    up_mode: transpose      # Type of upsample
 ```
 
 The Cycle GAN model file is located in the
@@ -53,13 +53,13 @@ vega/search_space/networks/cyclesrbodys/trans_model.py
 
 ```yaml
 VDSR:
-    name: VDSR # SR network name
-    SR_nb: 20 # Number of blocks
-    SR_nf: 64 # Number of convolution filters
+    name: VDSR          # SR network name
+    SR_nb: 20           # Number of blocks
+    SR_nf: 64           # Number of convolution filters
     SR_norm_type: batch # Normalization mode batch | instance | none
-    upscale: 4 # Upsampling factor
-    input_nc: 3 # Number of input channels
-    output_nc: 3 # Number of output channels
+    upscale: 4          # Upsampling factor
+    input_nc: 3         # Number of input channels
+    output_nc: 3        # Number of output channels
 ```
 
 The model file of the super-resolution network is stored in the following directory:
@@ -72,11 +72,15 @@ vega/search_space/networks/cyclesrbodys/srmodels.py
 
 ```yaml
 trainer:
-    type: CyclesrTrainer    # trainer type
-    n_epoch: 100              # Number of epochs to decrease the learning rate
-    n_epoch_decay: 100        # Number of epochs that learning rate decreases to 0
-    val_ps_offset: 10       # test image offset
-    lr_policy: linear        # learning rate type
+    type: Trainer
+    callbacks: CyclesrTrainerCallback
+    lazy_built: True
+    n_epoch: 100                # Number of epochs to decrease the learning rate
+    n_epoch_decay: 100          # Number of epochs that learning rate decreases to 0
+    val_ps_offset: 10           # test image offset
+    lr_policy: linear           # learning rate type
+
+model:
     model_desc:
         modules: ["custom"]     # Module type
         custom:
@@ -99,6 +103,7 @@ vega/search_space/networks/cyclesrbodys/cyclesr_net.py
 For details, see the sample code.
 
 The running configuration is located at
+
 ```text
 examples/data_augmentation/cyclesr/cyclesr.yml
 ```

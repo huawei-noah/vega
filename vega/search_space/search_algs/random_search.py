@@ -11,10 +11,8 @@
 """Random Search."""
 
 import numpy as np
-from vega.core.hyperparameter_space import HyperParameter, ParamTypes
+
 from vega.core.hyperparameter_space import DiscreteSpaceBuilder
-from vega.core.common.class_factory import ClassFactory, ClassType
-from .search_algorithm import SearchAlgorithm
 
 
 class RandomSearchAlgorithm(object):
@@ -26,7 +24,7 @@ class RandomSearchAlgorithm(object):
 
     def __init__(self, search_space):
         """Init for RandomSearchAlgorithm."""
-        self.space_builder = DiscreteSpaceBuilder(search_space.search_space)
+        self.space_builder = DiscreteSpaceBuilder(search_space)
         self.discrete_space = self.space_builder.get_discrete_space()
 
     def search(self, n=1):

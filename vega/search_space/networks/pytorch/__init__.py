@@ -5,5 +5,7 @@ from .blocks import *
 from .customs import *
 from .super_network import *
 from .esrbodys import *
-from .operator import *
+from .detectors import *
+from .necks import *
+from .losses import *
 from .cyclesrbodys import *

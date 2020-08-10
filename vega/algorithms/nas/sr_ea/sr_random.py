@@ -10,25 +10,25 @@
 
 """Random search algorithm for SR_EA."""
 import random
+from copy import deepcopy
 from vega.search_space.search_algs.search_algorithm import SearchAlgorithm
-from vega.search_space.codec import Codec
-from vega.search_space.networks import NetworkDesc
 from vega.core.common.class_factory import ClassFactory, ClassType
+from .conf import SRConfig
 
 
 @ClassFactory.register(ClassType.SEARCH_ALGORITHM)
 class SRRandom(SearchAlgorithm):
     """Search algorithm of the random structures."""
 
-    def __init__(self, search_space=None):
+    config = SRConfig()
+
+    def __init__(self, search_space=None, **kwargs):
         """Construct the SRRandom class.
 
         :param search_space: Config of the search space
         """
-        super(SRRandom, self).__init__(search_space)
-        self.search_space = search_space
-        self.codec = Codec(self.cfg.codec, search_space)
-        self.max_sample = self.policy.num_sample
+        super(SRRandom, self).__init__(search_space, **kwargs)
+        self.max_sample = self.config.policy.num_sample
         self.sample_count = 0
 
     @property
@@ -44,7 +44,8 @@ class SRRandom(SearchAlgorithm):
 
         :return: current number of samples, and the model
         """
-        search_desc = self.search_space.search_space.custom
+        desc = deepcopy(self.search_space)
+        search_desc = desc.custom
         num_blocks = random.randint(*search_desc.block_range)
         num_cibs = random.randint(*search_desc.cib_range)
         candidates = search_desc.candidates
@@ -55,13 +56,10 @@ class SRRandom(SearchAlgorithm):
         search_desc['blocks'] = blocks
         search_desc['method'] = "random"
         search_desc = self.codec.encode(search_desc)
+        desc['custom'] = search_desc
         self.sample_count += 1
-        return self.sample_count, NetworkDesc(self.search_space.search_space)
+        return dict(worker_id=self.sample_count, desc=desc)
 
-    def update(self, local_worker_path):
-        """Update function.
-
-        :param local_worker_path: Local path that saved `performance.txt`
-        :type local_worker_path: str
-        """
+    def update(self, record):
+        """Nothing need to update."""
         pass

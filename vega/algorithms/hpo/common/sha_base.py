@@ -63,7 +63,8 @@ class ShaBase(object):
                 return None
             predictions = np.random.rand(parameters.shape[0], 1)
             index = np.argmax(predictions)
-            param = self.hyperparameter_space.inverse_transform(parameters[index, :])
+            param = self.hyperparameter_space.inverse_transform(
+                parameters[index, :])
             params_list.append(param)
         return params_list
 
@@ -90,14 +91,9 @@ class ShaBase(object):
         :return: if this rung finished.
         :rtype: bool.
         """
-        current_rung_df = self.sieve_board.loc[
-            (
-                self.sieve_board['rung_id'] == self.rung_id
-            ) & (
-                self.sieve_board['status'].isin([StatusType.WAITTING,
-                                                 StatusType.RUNNING])
-            )
-        ]
+        current_rung_df = self.sieve_board.loc[(
+            self.sieve_board['rung_id'] == self.rung_id) & (
+            self.sieve_board['status'].isin([StatusType.WAITTING, StatusType.RUNNING]))]
         if current_rung_df.empty:
             return True
         else:
@@ -129,7 +125,5 @@ class ShaBase(object):
                             'status': status}
             self._add_to_board(tmp_row_data)
         else:
-            self.sieve_board.loc[
-                (self.sieve_board['config_id'] == config_id) & (
-                    self.sieve_board['rung_id'] == rung_id), [
-                    'status']] = [status]
+            self.sieve_board.loc[(self.sieve_board['config_id'] == config_id) & (
+                self.sieve_board['rung_id'] == rung_id), ['status']] = [status]

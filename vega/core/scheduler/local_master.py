@@ -9,9 +9,8 @@
 # MIT License for more details.
 
 """The LocalMaster's method is same as Master, and the class is used on single node."""
-import copy
-from vega.core.common.user_config import UserConfig
 from ..trainer.utils import WorkerTypes
+from vega.core.common.general import General
 
 
 class LocalMaster(object):
@@ -19,7 +18,7 @@ class LocalMaster(object):
 
     def __init__(self):
         """Init master."""
-        self.cfg = copy.deepcopy(UserConfig().data.general)
+        self.cfg = General
         self.step_name = None
         self.worker_id = None
 

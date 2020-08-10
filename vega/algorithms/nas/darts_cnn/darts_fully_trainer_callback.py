@@ -10,8 +10,6 @@
 
 """DARTS FUll trainer."""
 from vega.core.common.class_factory import ClassFactory, ClassType
-from vega.datasets.pytorch import Dataset
-from vega.core.common import FileOps, Config, DefaultConfig
 from vega.core.trainer.callbacks import Callback
 
 
@@ -24,4 +22,5 @@ class DartsFullTrainerCallback(Callback):
 
     def before_epoch(self, epoch, logs=None):
         """Be called before each epoach."""
-        self.trainer.model.drop_path_prob = self.trainer.cfg.drop_path_prob * epoch / self.trainer.cfg.epochs
+        self.trainer.config.report_on_epoch = True
+        self.trainer.model.drop_path_prob = self.trainer.config.drop_path_prob * epoch / self.trainer.config.epochs

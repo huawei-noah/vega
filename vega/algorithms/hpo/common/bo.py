@@ -37,7 +37,8 @@ class BO(ShaBase):
         # init all the configs
         self.warmup_count = warmup_count
         self.best_score = -1 * float('inf')
-        self.hp = TunerBuilder(hyperparameter_space=hyperparameter_space, tuner=alg_name)
+        self.hp = TunerBuilder(
+            hyperparameter_space=hyperparameter_space, tuner=alg_name)
         config_list = self.get_hyperparameter_space(self.warmup_count)
         for i, config in enumerate(config_list):
             self.all_config_dict[i] = config
@@ -90,8 +91,7 @@ class BO(ShaBase):
             self.best_score = score
         rung_id = 0
         self.sieve_board.loc[(self.sieve_board['config_id'] == config_id) & (
-            self.sieve_board['rung_id'] == rung_id), ['status', 'score']
-        ] = [StatusType.FINISHED, score]
+            self.sieve_board['rung_id'] == rung_id), ['status', 'score']] = [StatusType.FINISHED, score]
 
         if config_id not in self.best_score_dict:
             self.best_score_dict[config_id] = -1 * float('inf')
@@ -136,15 +136,13 @@ class BO(ShaBase):
                        'epoch': int}
 
         """
-        rung_df = self.sieve_board.loc[
-            (self.sieve_board['rung_id'] == 0) & (
-                self.sieve_board['status'] == StatusType.WAITTING)]
+        rung_df = self.sieve_board.loc[(self.sieve_board['rung_id'] == 0) & (
+            self.sieve_board['status'] == StatusType.WAITTING)]
         if rung_df.empty:
             return None
         next_config_id = rung_df['config_id'].min(skipna=True)
         results = {
             'config_id': next_config_id,
-            'rung_id': 0,
             'configs': self.all_config_dict[next_config_id],
             'epoch': int(self.max_epochs)
         }
@@ -172,18 +170,18 @@ class BO(ShaBase):
         :type enum: StatusType
 
         """
-        change_df = self.sieve_board.loc[
-            (self.sieve_board['config_id'] == config_id) & (
-                self.sieve_board['rung_id'] == rung_id)]
+        change_df = self.sieve_board.loc[(
+            self.sieve_board['config_id'] == config_id) & (
+            self.sieve_board['rung_id'] == rung_id)]
         if change_df.empty:
             tmp_row_data = {'rung_id': rung_id,
                             'config_id': config_id,
                             'status': status}
             self._add_to_board(tmp_row_data)
         else:
-            self.sieve_board.loc[
-                (self.sieve_board['config_id'] == config_id) & (
-                    self.sieve_board['rung_id'] == rung_id), ['status']] = [status]
+            self.sieve_board.loc[(
+                self.sieve_board['config_id'] == config_id) & (
+                self.sieve_board['rung_id'] == rung_id), ['status']] = [status]
 
     def _check_completed(self):
         """Check task is completed.

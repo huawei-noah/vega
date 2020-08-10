@@ -42,10 +42,10 @@ python3 setup.py develop --user
 
 ## 2. Install Vega
 
-After the preceding preparations are complete, download the vega-0.9.1-py3-none-any.whl file in the release directory and run the pip command to install it.
+After the preceding preparations are complete, download the vega-1.0.0-py3-none-any.whl file in the release directory and run the pip command to install it.
 
 ```bash
-pip3 install vega-0.9.1.py3-none-any.whl
+pip3 install vega-1.0.0.py3-none-any.whl
 ```
 
 After the installation is complete, import the VEGA library to Python to ensure that the installation is successful.

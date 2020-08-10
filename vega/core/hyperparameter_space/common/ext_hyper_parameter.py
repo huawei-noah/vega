@@ -203,8 +203,8 @@ class CatHyperParameter(HyperParameter):
         tmp_cat_transform = {each: (0, 0) for each in self.cat_transform.keys()}
         for i in range(len(x)):
             tmp_cat_transform[x[i]] = (
-                tmp_cat_transform[x[i]][0] + y[i],    # sum score
-                tmp_cat_transform[x[i]][1] + 1        # count occurrences
+                tmp_cat_transform[x[i]][0] + y[i],  # sum score
+                tmp_cat_transform[x[i]][1] + 1  # count occurrences
             )
 
         # If we have at least one score, compute the average

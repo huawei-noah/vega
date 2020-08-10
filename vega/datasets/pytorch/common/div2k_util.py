@@ -20,7 +20,6 @@ import numpy as np
 import torch
 import glob
 
-
 IMG_EXTENSIONS = ['.jpg', '.JPG', '.jpeg', '.JPEG',
                   '.png', '.PNG', '.ppm', '.PPM', '.bmp', '.BMP']
 PKL_EXTENSIONS = ['.pkl', '.pt', '.pth']

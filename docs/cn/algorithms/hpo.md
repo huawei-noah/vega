@@ -249,7 +249,8 @@ hpo1:
         type: Evaluator
         gpu_evaluator:
             type: GpuEvaluator
-            ref: trainer
+            metric:
+                type: accuracy
 ```
 
 当前系统支持gpu_evaluator，用于在valid dataset上根据metric配置评估模型性能，并返回评估结果，用于hpo算法进行更新和排序。

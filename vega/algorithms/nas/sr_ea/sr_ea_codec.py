@@ -10,18 +10,20 @@
 
 """Encode and decode the model config."""
 from vega.search_space.codec import Codec
+from vega.core.common.class_factory import ClassType, ClassFactory
 
 
+@ClassFactory.register(ClassType.CODEC)
 class SRCodec(Codec):
     """Codec of the MtMSR search space."""
 
-    def __init__(self, codec_name, search_space=None):
+    def __init__(self, search_space=None, **kwargs):
         """Construct the SRCodec class.
 
         :param codec_name: name of the codec
         :param search_space: Search space of the codec
         """
-        super(SRCodec, self).__init__(codec_name, search_space)
+        super(SRCodec, self).__init__(search_space, **kwargs)
 
     def encode(self, sample_desc):
         """Add the encoded string to decoded config.

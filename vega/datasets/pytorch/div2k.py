@@ -12,10 +12,11 @@
 import os
 import os.path
 from .common import div2k_util as util
-from . import transforms
+from .. import transforms
 from .common.dataset import Dataset
 from vega.core.common.class_factory import ClassFactory, ClassType
 from vega.core.common.file_ops import FileOps
+from vega.datasets.conf.div2k import DIV2KConfig
 
 
 @ClassFactory.register(ClassType.DATASET)
@@ -28,6 +29,8 @@ class DIV2K(Dataset):
     the default config will be used, the default config file is a yml file with the same name of the class
     :type cfg: yml, py or dict
     """
+
+    config = DIV2KConfig()
 
     def __init__(self, **kwargs):
         """Construct the DistributorBaseClass class.."""

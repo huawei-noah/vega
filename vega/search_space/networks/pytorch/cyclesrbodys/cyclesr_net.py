@@ -22,7 +22,7 @@ from vega.search_space.networks.net_utils import NetTypes
 from vega.search_space.networks.network_factory import NetworkFactory
 
 
-def define_SR(opt, use_cuda, use_horovod):
+def define_SR(opt, use_cuda, use_distributed):
     """SR model creation.
 
     :param config: SR model configures
@@ -42,7 +42,7 @@ def define_SR(opt, use_cuda, use_horovod):
         net = SRResNet(in_nc=opt.input_nc, out_nc=opt.input_nc, nf=opt.SR_nf, nb=opt.SR_nb,
                        upscale=opt.upscale, norm_type=opt.SR_norm_type, act_type='relu',
                        up_mode='pixelshuffle')
-    [net] = initialize([net], use_cuda=use_cuda, use_horovod=use_horovod)
+    [net] = initialize([net], use_cuda=use_cuda, use_distributed=use_distributed)
     return net
 
 
@@ -59,7 +59,7 @@ class CycleSRModel(TransModel):
     def __init__(self, cfg):
         """Initialize method."""
         self.use_cuda = cfg.use_cuda
-        self.use_horovod = cfg.use_horovod
+        self.use_distributed = cfg.use_distributed
         self.SR_lr = cfg.SR_lr
         self.cyc_lr = cfg.cyc_lr
         super(CycleSRModel, self).__init__(cfg)
@@ -78,7 +78,7 @@ class CycleSRModel(TransModel):
         self.SR = None
         # add model names
         self.model_names.append("SR")
-        self.netSR = define_SR(cfg.VDSR, self.use_cuda, self.use_horovod)
+        self.netSR = define_SR(cfg.VDSR, self.use_cuda, self.use_distributed)
         self.criterionSR = torch.nn.MSELoss().cuda()
         # initialize optimizers
         self.optimizer_SR = torch.optim.Adam(self.netSR.parameters(), lr=cfg.SR_lr, betas=(0.5, 0.999))

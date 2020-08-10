@@ -11,6 +11,7 @@
 """Defined NetworkFactory."""
 import copy
 from .net_utils import NetTypes, NetworkRegistry, NetTypesMap
+from vega.core.common.class_factory import ClassType, ClassFactory
 
 
 class NetworkFactory(object):
@@ -34,6 +35,9 @@ class NetworkFactory(object):
             if t_cls.__name__ in cls.__network_registry__[net_type]:
                 raise ValueError(
                     "Cannot register duplicate network ({})".format(t_cls.__name__))
+            # TODO: Unified networkFactory and classFactory
+            if net_type == NetTypes.LOSS:
+                ClassFactory.register_cls(t_cls, ClassType.LOSS)
             cls.__network_registry__[net_type][t_cls.__name__] = t_cls
             return t_cls
 

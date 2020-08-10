@@ -1,9 +1,9 @@
 general:
     worker:
-        gpus_per_job: 1
+        devices_per_job: -1
 
 pipeline: [random, mutate]
-# pipeline: [random, mutate, fully_train]
+#pipeline: [random, mutate, fully_train]
 
 random:
     pipe_step:
@@ -12,7 +12,7 @@ random:
     dataset:
         type: Cityscapes
         common:
-            root_dir: /cache/datasets/cityscapes/cs_small
+            root_dir: /cache/datasets/VOC2012
         train:
             list_file: train.txt
             batch_size: 4
@@ -30,7 +30,7 @@ random:
                 rotation_factor: [-10, 10]
                 border_value: [0.485, 0.456, 0.406]
                 fill_label: 255
-        test:
+        val:
             list_file: val.txt
             Rescale:
                 size: 192
@@ -47,35 +47,39 @@ random:
             aux_cell: false
             sep_repeats: 1
             agg_concat: true
-            num_classes: 19
+            num_classes: 21
 
     search_algorithm:
         type: AdelaideRandom
         codec: AdelaideCodec
-        max_sample: 10
+        max_sample: 5 #10
 
     trainer:
         type: Trainer
         callbacks: AdelaideEATrainerCallback
-        codec: AdelaideCodec
         cuda: true
-        horovod: False
+        distributed: False
         seed: 0
-        epochs: 5
+        epochs: 1 #5
         print_step: 5
+        flops_limit: 0.6
         optim:
             type: Adam
-            lr: 0.0002
+            params:
+                lr: 0.0002
         lr_scheduler:
             type: StepLR
-            step_size: 1000
-            gamma: 0.5
+            params:
+                step_size: 1000
+                gamma: 0.5
         loss:
             type: CrossEntropyLoss
-            ignore_index: 255
+            params:
+                ignore_index: 255
         metric:
             type: IoUMetric
-            num_class: 19
+            params:
+                num_class: 21
 
 mutate:
     pipe_step:
@@ -90,20 +94,16 @@ mutate:
     search_algorithm:
         type: AdelaideMutate
         codec: AdelaideCodec
-        max_sample: 10
-        pareto_front_file: "{local_base_path}/output/random/pareto_front.csv"
-        random_file: "{local_base_path}/output/random/random.csv"
+        max_sample: 5 #10
 
     trainer:
         ref: random.trainer
         callbacks: AdelaideEATrainerCallback
-        codec: AdelaideCodec
         save_model_desc: True
 
 fully_train:
     pipe_step:
         type: FullyTrainPipeStep
-        models_folder: "{local_base_path}/output/mutate/"
 
     dataset:
         type: Cityscapes
@@ -118,7 +118,4 @@ fully_train:
         ref: random.trainer
         callbacks: AdelaideEATrainerCallback
         model_statistics: True
-        codec: AdelaideCodec
-        pareto_front_file: "{local_base_path}/output/mutate/pareto_front.csv"
-        random_file: "{local_base_path}/output/random/random.csv"
         epochs: 10

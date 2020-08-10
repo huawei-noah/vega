@@ -1,7 +1,6 @@
 general:
     worker:
-        timeout: 1000
-        gpus_per_job: 1
+        devices_per_job: -1
 
 pipeline: [nas1, hpo1, fullytrain1]
 
@@ -21,7 +20,6 @@ nas1:
         pareto:
             object_count: 2
             max_object_ids: [0]
-        best_desc_file: nas_model_desc.json
 
     search_space:
         type: SearchSpace
@@ -40,17 +38,7 @@ nas1:
         type: Trainer
         with_valid: True
         epochs: 1
-        optim:
-            type: Adam
-            lr: 0.1
-        lr_scheduler:
-            type: MultiStepLR
-            milestones: [75, 150]
-            gamma: 0.5
-        loss:
-            type: CrossEntropyLoss
-        metric:
-            type: accuracy
+
     dataset:
         type: Cifar10
         common:
@@ -58,88 +46,69 @@ nas1:
 
 hpo1:
     pipe_step:
-        type: HpoPipeStep
+        type: NasPipeStep
 
     dataset:
         ref: nas1.dataset
 
-    hpo:
+    search_algorithm:
         type: AshaHpo
-        pareto:
-            object_count: 2
-            max_object_ids: [0,1]
         policy:
             total_epochs: 81
-            config_count: 40
-        hyperparameter_space:
-            hyperparameters:
-                - key: trainer.optim.lr
-                  type: FLOAT_EXP
-                  range: [0.00001, 0.1]
-                - key: trainer.optim.type
-                  type: STRING
-                  range: ['Adam', 'SGD']
-                - key: trainer.optim.momentum
-                  type: FLOAT
-                  range: [0.0, 0.99]
-            condition:
-                - key: condition_for_sgd_momentum
-                  child: trainer.optim.momentum
-                  parent: trainer.optim.type
-                  type: EQUAL
-                  range: ["SGD"]
+
+    search_space:
+        type: SearchSpace
+        hyperparameters:
+            -   key: trainer.optim.params.lr
+                type: FLOAT_EXP
+                range: [0.00001, 0.1]
+            -   key: trainer.optim.type
+                type: STRING
+                range: ['Adam', 'SGD']
+            -   key: trainer.optim.params.momentum
+                type: FLOAT
+                range: [0.0, 0.99]
+        condition:
+            -   key: condition_for_sgd_momentum
+                child: trainer.optim.params.momentum
+                parent: trainer.optim.type
+                type: EQUAL
+                range: ["SGD"]
 
     trainer:
         type: Trainer
-        load_checkpoint: True
-        with_valid: False
         epochs: 10
-        optim:
-            type: Adam
-            lr: 0.1
-        lr_scheduler:
-            type: MultiStepLR
-            milestones: [75, 150]
-            gamma: 0.5
-        metric:
-            type: accuracy
-        loss:
-            type: CrossEntropyLoss
 
     model:
-        model_desc_file: "{local_base_path}/output/nas_model_desc.json"
+        models_folder: "{local_base_path}/output/nas1/"
 
     evaluator:
         type: Evaluator
         gpu_evaluator:
             type: GpuEvaluator
-
+            metric:
+                type: accuracy
 
 fullytrain1:
     pipe_step:
         type: FullyTrainPipeStep
+        models_folder: "{local_base_path}/output/nas1/"
 
     trainer:
         type: Trainer
-        with_valid: True
         epochs: 160
         optim:
             type: SGD
-            lr: 0.1
-            momentum: 0.9
-            weight_decay: 0.0001
+            params:
+                lr: 0.1
+                momentum: 0.9
+                weight_decay: 0.0001
         lr_scheduler:
             type: MultiStepLR
-            milestones: [60, 120]
-            gamma: 0.5
-        loss:
-            type: CrossEntropyLoss
-        metric:
-            type: accuracy
-        hps_file: "{local_base_path}/output/hpo1/best_hps.json"
-
-    model:
-        model_desc_file: "{local_base_path}/output/nas_model_desc.json"
+            params:
+                milestones: [60, 120]
+                gamma: 0.5
+        hps_folder: "{local_base_path}/output/hpo1/"
 
     dataset:
         ref: nas1.dataset

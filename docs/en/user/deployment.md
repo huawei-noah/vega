@@ -9,16 +9,17 @@ The following conditions must be met when the Vega is deployed in a local cluste
 1. Ubuntu 16.04 or later (not tested in other Linux distributions and versions)
 2. CUDA 10.0 [download](https://developer.nvidia.com/cuda-10.0-download-archive) [doc](https://docs.nvidia.com/cuda/archive/10.0/)
 3. Python 3.7 [download](https://www.python.org/downloads/release/python-376/)
-4. install pip
-5. Before deploying a cluster, you need to install some mandatory [software packages]. You can download the script [install_dependencies.sh](../../../deploy/install_dependencies.sh) and install them.
+4. pip
+
+Before deploying a cluster, you need to install some mandatory [software packages]. You can download the script [install_dependencies.sh](../../../deploy/install_dependencies.sh) and install them.
 
 ```bash
 bash install_dependencies.sh
 ```
-6. install `MPI`. For details, see Appendix  [Install MPI](#MPI).
-7. install `MMDectection`(optional, required by the object detection algorithm). For details, see Appendix [Install MMDetection](#mmdetection).
-8. configure [SSH mutual trust](#ssh).
-9. build the [NFS](#nfs).
+
+In addition, you need to install the MMDetection (optional, required by the object detection algorithm) and Horovod software separately. For details, see Appendix [Install MMDetection](#mmdetection) and [Install MPI](#MPI).
+
+After the preceding software is installed on each host, you need to configure [SSH mutual trust](#ssh) and  build the [NFS](#nfs).
 
 After the preceding operations are complete, download the vega deploy package from the Vega library. The deployment package contains the following scripts:
 
@@ -147,15 +148,15 @@ On the Client:
 2. Creating a Local Mount Directory
 
     ```bash
-    sudo mkdir -p /data
+    sudo mkdir -p /mnt/data
     ```
 
 3. Mount the shared directory.
 
     ```bash
-    sudo mount -t nfs <server ip>:/data /data
+    sudo mount -t nfs <server ip>:/data /mnt/data
     ```
-**Notice**: the shared directory(`/data`) can be arbitrary, but please ensure that they are same between server and client.
+
 ### CUDA Installation Guide
 
 CUDA Installation in Ubuntu

@@ -1,0 +1,2 @@
+from .cross_entropy_weight_decay import CrossEntropyWeightDecay
+from .mix_auxiliary_loss import MixAuxiliaryLoss

@@ -16,46 +16,47 @@ import numpy as np
 import logging
 import copy
 from vega.search_space.search_algs.search_algorithm import SearchAlgorithm
-from vega.search_space.codec import Codec
 from vega.core.common.class_factory import ClassFactory, ClassType
-from vega.core.common.file_ops import FileOps
+from vega.core.common import FileOps, TaskOps
 from vega.algorithms.nas.sp_nas.utils import ListDict
+from .conf import SpNasConfig
 
 
 @ClassFactory.register(ClassType.SEARCH_ALGORITHM)
 class SpNas(SearchAlgorithm):
     """Search Algorithm Stage of SPNAS."""
 
-    def __init__(self, search_space=None):
-        super(SpNas, self).__init__(search_space)
+    config = SpNasConfig()
+
+    def __init__(self, search_space=None, **kwargs):
+        super(SpNas, self).__init__(search_space, **kwargs)
         self.search_space = search_space
-        self.codec = Codec(self.cfg.codec, search_space)
-        self.sample_level = self.cfg.sample_level
-        self.max_sample = self.cfg.max_sample
-        self.max_optimal = self.cfg.max_optimal
-        self._total_list_name = self.cfg.total_list
-        self.serial_settings = self.cfg.serial_settings
+        # self.codec = Codec(self.config.codec, search_space)
+        self.sample_level = self.config.sample_level
+        self.max_sample = self.config.max_sample
+        self.max_optimal = self.config.max_optimal
+        self._total_list_file = self.config.total_list.replace(
+            "{local_base_path}", TaskOps().local_base_path)
+        self.serial_settings = self.config.serial_settings
 
         self._total_list = ListDict()
         self.sample_count = 0
         self.init_code = None
-        remote_output_path = FileOps.join_path(self.local_output_path, self.cfg.step_name)
+        self.output_path = TaskOps().local_output_path
 
-        if 'last_search_result' in self.cfg:
-            last_search_file = self.cfg.last_search_result
-            assert FileOps.exists(os.path.join(remote_output_path, last_search_file)
-                                  ), "Not found serial results!"
-            # self.download_task_folder()
-            last_search_results = os.path.join(self.local_output_path, last_search_file)
-            last_search_results = ListDict.load_csv(last_search_results)
+        if self.config.last_search_result:
+            last_search_file = self.config.last_search_result.replace(
+                "{local_base_path}", TaskOps().local_base_path)
+            assert FileOps.exists(last_search_file), "Not found serial results!"
+            last_search_results = ListDict.load_csv(last_search_file)
             pre_worker_id, pre_arch = self.select_from_remote(self.max_optimal, last_search_results)
             # re-write config template
-            if self.cfg.regnition:
+            if self.config.regnition:
                 self.codec.config_template['model']['backbone']['reignition'] = True
-                assert FileOps.exists(os.path.join(remote_output_path,
+                assert FileOps.exists(os.path.join(self.output_path,
                                                    pre_arch + '_imagenet.pth')
                                       ), "Not found {} pretrained .pth file!".format(pre_arch)
-                pretrained_pth = os.path.join(self.local_output_path, pre_arch + '_imagenet.pth')
+                pretrained_pth = os.path.join(self.output_path, pre_arch + '_imagenet.pth')
                 self.codec.config_template['model']['pretrained'] = pretrained_pth
                 pre_worker_id = -1
             # update config template
@@ -89,6 +90,7 @@ class SpNas(SearchAlgorithm):
         :return: worker id and arch encode
         :rtype: int, str
         """
+
         def normalization(x):
             sum_ = sum(x)
             return [float(i) / float(sum_) for i in x]
@@ -141,8 +143,11 @@ class SpNas(SearchAlgorithm):
         net_desc = self.codec.decode(code)
         return self.sample_count, net_desc
 
-    def update(self, worker_result_path):
+    def update(self, record):
         """Update sampler."""
+        step_name = record.get("step_name")
+        worker_id = record.get("worker_id")
+        worker_result_path = TaskOps().get_local_worker_path(step_name, worker_id)
         performance_file = self.performance_path(worker_result_path)
         logging.info(
             "SpNas.update(), performance file={}".format(performance_file))
@@ -152,9 +157,9 @@ class SpNas(SearchAlgorithm):
         else:
             logging.info("SpNas.update(), file is not exited, "
                          "performance file={}".format(performance_file))
-        self.save_output(self.local_output_path)
+        self.save_output(self.output_path)
         if self.backup_base_path is not None:
-            FileOps.copy_folder(self.local_output_path, self.backup_base_path)
+            FileOps.copy_folder(self.output_path, self.backup_base_path)
 
     def performance_path(self, worker_result_path):
         """Get performance path."""
@@ -163,10 +168,9 @@ class SpNas(SearchAlgorithm):
             FileOps.make_dir(performance_dir)
         return os.path.join(performance_dir, 'performance.pkl')
 
-    def save_output(self, local_output_path):
+    def save_output(self, output_path):
         """Save results."""
-        local_totallist_path = os.path.join(local_output_path, self._total_list_name)
-        self._total_list.to_csv(local_totallist_path)
+        self._total_list.to_csv(self._total_list_file)
 
     def _mutate_serialnet(self, arch, num_mutate=3, expend_ratio=0, addstage_ratio=0.95, max_stages=6):
         """Swap & Expend operation in Serial-level searching.
@@ -184,6 +188,7 @@ class SpNas(SearchAlgorithm):
         :return: arch encode after mutate
         :rtype: str
         """
+
         def is_valid(arch):
             stages = arch.split('-')
             for stage in stages:
@@ -250,11 +255,12 @@ class SpNas(SearchAlgorithm):
         :return: parallel arch encode after mutate
         :rtype: str
         """
+
         def limited_random(num_stage):
             p = [0.4, 0.3, 0.2, 0.1]
-            l = np.random.choice(4, size=num_stage, replace=True, p=p)
-            l = [str(i) for i in l]
-            return '-'.join(l)
+            limit = np.random.choice(4, size=num_stage, replace=True, p=p)
+            limit = [str(i) for i in limit]
+            return '-'.join(limit)
 
         num_stage = len(arch.split('-'))
         success = False

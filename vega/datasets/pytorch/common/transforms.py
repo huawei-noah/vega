@@ -9,8 +9,8 @@
 # MIT License for more details.
 
 """This is a class for Transforms."""
-from vega.datasets.pytorch.transforms import Compose
-from vega.datasets.pytorch.transforms import Compose_pair
+from vega.datasets.transforms import Compose
+from vega.datasets.transforms import Compose_pair
 from vega.core.common.class_factory import ClassFactory, ClassType
 
 
@@ -48,7 +48,7 @@ class Transforms(object):
                 elif isinstance(trans, object):
                     self.__transform__.append(trans)
                 else:
-                    raise ValueError("Unsupported type ({}) to create transforms" .format(trans))
+                    raise ValueError("Unsupported type ({}) to create transforms".format(trans))
         else:
             raise ValueError("Transforms ({}) is not a list".format(transform_list))
 

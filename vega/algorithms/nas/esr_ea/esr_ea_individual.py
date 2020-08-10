@@ -12,6 +12,7 @@
 from bisect import bisect_right
 from random import random
 import numpy as np
+from .conf import ESRRangeConfig
 
 
 class ESRIndividual(object):
@@ -23,11 +24,12 @@ class ESRIndividual(object):
     :type init: bool
     """
 
-    def __init__(self, net_info, search_config):
+    config = ESRRangeConfig()
+
+    def __init__(self, net_info):
         """Construct initialize method."""
         self.net_info = net_info
-        self.search_config = search_config
-        self.node_num = self.search_config.range['node_num']
+        self.node_num = self.config.node_num
         self.gene = np.zeros((self.node_num, 2)).astype(int)
         self.init_gene()
         self.active_num = self.using_node_num()
@@ -131,7 +133,6 @@ class ESRIndividual(object):
         :type source: Individual Objects
         """
         self.net_info = source.net_info
-        self.search_config = source.search_config
         self.gene = source.gene.copy()
         self.active_num = source.active_num
         self.active_net = source.active_net

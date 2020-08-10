@@ -1,6 +1,6 @@
 # Quick Start
 
-This tutorial describes how to quickly develop the Vega algorithm. In this tutorial, a simple CNN network architecture search simple_cnn is used as an example. An operation layer and operation parameters of a small convolutional network are searched by using a random algorithm, and a search data set is Cifar-10.
+This tutorial describes how to quickly develop the Vega algorithm. In this tutorial, a simple CNN network architecture search is used as an example. An operation layer and operation parameters of a small convolutional network are searched by using a random algorithm, and a search data set is Cifar-10.
 
 ## 1. Dataset
 
@@ -38,7 +38,7 @@ search_space:
     type: SearchSpace
     module: ['custom']
     custom:
-        type: SimpleCnnModel
+        type: MySimpleCnn
         conv_layer_0:
             kernel_size: [1, 3, 5]
             bn: [False, True]
@@ -73,10 +73,10 @@ The SimpleCnnModel network model is defined and implemented in the simple_cnn_mo
 
 ```python
 @NetworkFactory.register(NetTypes.CUSTOM)
-class SimpleCnn(nn.Module):
+class MySimpleCnn(nn.Module):
 
     def __init__(self, desc):
-        super(SimpleCnn, self).__init__()
+        super(MySimpleCnn, self).__init__()
         self.conv_num = 3
         self.conv_layers = nn.ModuleList([None] * self.conv_num)
         self.bn_layers = nn.ModuleList([None] * self.conv_num)
@@ -129,23 +129,35 @@ The search algorithm and parameters must also be configured in the configuration
 
 ```yml
 search_algorithm:
-    type: RandomSearch
+        type: MyRandomSearch
     max_samples: 100
 ```
 
-This configuration defines the type of the search algorithm (random search).
+This parameter specifies the type of the search algorithm (random search). 
 
-The search algorithm samples a set of hyperparameters from the search space at a time, and Vega generates an object of the SimpleCnn network model by using the set of hyperparameters.
+The search algorithm samples a group of hyperparameters from the search space each time, and Vega generates an object of a CNN network model by using the group of hyperparameters. 
 
-The random search algorithm is defined and implemented in the random_search.py file. The search interface is used to randomly sample samples in the search space.
+The random search algorithm is defined and implemented in the `random_search.py` file. The `search` interface is used to randomly sample samples in the search space each time. 
+
+MyRandomSearchConfig defines MyRandomSearch configuration information, which corresponds to the configuration file. 
+In addition, you need to define `config = MyRandomSearchConfig()` in MyRandomSearch. Vega binds the configuration information in the configuration file to the config member. In this example, the value of `self.config.max_samples` is 100 in the configuration file. 
+
 
 ```python
+
+class MyRandomSearchConfig(object):
+
+    max_samples = 20
+
+
 @ClassFactory.register(ClassType.SEARCH_ALGORITHM)
-class RandomSearch(SearchAlgorithm):
+class MyRandomSearch(SearchAlgorithm):
+
+    config = MyRandomSearchConfig()
+
     def __init__(self, search_space):
-        super(RandomSearch, self).__init__(search_space)
-        self.search_space = copy.deepcopy(search_space.search_space)
-        self.max_samples = self.cfg["max_samples"]
+        super(MyRandomSearch, self).__init__(search_space)
+        self.max_samples = self.config.max_samples
         self.sample_count = 0
 
     def _sub_config(self, config):
@@ -165,8 +177,16 @@ class RandomSearch(SearchAlgorithm):
             desc[key] = module_cfg
         desc = update_dict(desc, self.search_space)
         self.sample_count += 1
-        self._save_model_desc_file(self.sample_count, desc)
-        return self.sample_count, NetworkDesc(desc)
+        return self.sample_count, desc
+
+    def update(self, worker_path):
+        """Update SimpleRand."""
+        pass
+
+    @property
+    def is_completed(self):
+        """Check if the search is finished."""
+        return self.sample_count >= self.max_samples
 ```
 
 ## 4. Complete code
@@ -186,12 +206,6 @@ nas:
         type: Cifar10
         common:
             data_path: '/cache/datasets/cifar10/'
-        train:
-            shuffle: False
-            num_workers: 8
-            batch_size: 256
-            train_portion: 0.9
-        valid:
             shuffle: False
             num_workers: 8
             batch_size: 256
@@ -201,7 +215,7 @@ nas:
         type: SearchSpace
         modules: ['custom']
         custom:
-            name: SimpleCnn
+            name: MySimpleCnn
             conv_layer_0:
                 kernel_size: [1, 3, 5]
                 bn: [False, True]
@@ -221,7 +235,7 @@ nas:
                 output_unit: [16, 20, 24, 28, 32]
 
     search_algorithm:
-        type: RandomSearch
+        type: MyRandomSearch
         max_samples: 20
 
     trainer:
@@ -233,25 +247,21 @@ The complete code file is as follows:
 
 ```python
 # my.py
-
-import os
 import copy
-import json
 import random
 import torch.nn as nn
 import vega
 from vega.core.common.utils import update_dict
 from vega.core.common.class_factory import ClassFactory, ClassType
-from vega.core.common import UserConfig, TaskOps, FileOps
-from vega.search_space.networks import NetTypes, NetworkFactory, NetworkDesc
+from vega.search_space.networks import NetTypes, NetworkFactory
 from vega.search_space.search_algs import SearchAlgorithm
 
 
 @NetworkFactory.register(NetTypes.CUSTOM)
-class SimpleCnn(nn.Module):
+class MySimpleCnn(nn.Module):
 
     def __init__(self, desc):
-        super(SimpleCnn, self).__init__()
+        super(MySimpleCnn, self).__init__()
         self.conv_num = 3
         self.conv_layers = nn.ModuleList([None] * self.conv_num)
         self.bn_layers = nn.ModuleList([None] * self.conv_num)
@@ -296,12 +306,19 @@ class SimpleCnn(nn.Module):
         return x
 
 
+class MyRandomSearchConfig(object):
+
+    max_samples = 20
+
+
 @ClassFactory.register(ClassType.SEARCH_ALGORITHM)
-class RandomSearch(SearchAlgorithm):
+class MyRandomSearch(SearchAlgorithm):
+
+    config = MyRandomSearchConfig()
+
     def __init__(self, search_space):
-        super(RandomSearch, self).__init__(search_space)
-        self.search_space = copy.deepcopy(search_space.search_space)
-        self.max_samples = self.cfg["max_samples"]
+        super(MyRandomSearch, self).__init__(search_space)
+        self.max_samples = self.config.max_samples
         self.sample_count = 0
 
     def _sub_config(self, config):
@@ -321,8 +338,7 @@ class RandomSearch(SearchAlgorithm):
             desc[key] = module_cfg
         desc = update_dict(desc, self.search_space)
         self.sample_count += 1
-        self._save_model_desc_file(self.sample_count, desc)
-        return self.sample_count, NetworkDesc(desc)
+        return self.sample_count, desc
 
     def update(self, worker_path):
         """Update SimpleRand."""
@@ -332,17 +348,6 @@ class RandomSearch(SearchAlgorithm):
     def is_completed(self):
         """Check if the search is finished."""
         return self.sample_count >= self.max_samples
-
-    def _save_model_desc_file(self, id, desc):
-        output_path = TaskOps(UserConfig().data.general).local_output_path
-        desc_file = os.path.join(output_path, "nas", "model_desc_{}.json".format(id))
-        FileOps.make_base_dir(desc_file)
-        output = {}
-        for key in desc:
-            if key in ["type", "modules", "custom"]:
-                output[key] = desc[key]
-        with open(desc_file, "w") as f:
-            json.dump(output, f)
 
 
 if __name__ == "__main__":

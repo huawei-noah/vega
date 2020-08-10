@@ -2,13 +2,24 @@
 
 [中文](./README.cn.md)
 
+**Vega ver1.0.0 released:**
+
+- New algorithms: [auto-lane](./docs/en/algorithms/auto_lane.md), [AutoGate](./docs/en/algorithms/fis-autogate.md.md), [AutoGroup](./docs/en/algorithms/fis-autogroup.md), [MFKD](https://arxiv.org/pdf/2006.08341.pdf).
+- Feature enhancement:
+  - Trainer Callbacks: The trainer supports the callback mechanism and provides nine default callbacks.
+  - Report mechanism: provides a unified data collection and processing mechanism for the AutoML algorithm.
+  - Multi-Backend: TensorFlow is supported.
+  - Evaluator Server: Provides independent evaluation services and model evaluation of Atlas 200DK and Bolt.
+- Community Contributors: [qixiuai](https://github.com/qixiuai), [hasanirtiza](https://github.com/hasanirtiza), [cndylan](https://github.com/cndylan).
+
 ## Introduction
 
 Vega is an AutoML algorithm tool chain developed by Noah's Ark Laboratory, the main features are as follows:
 
 1. Full pipeline capailities: The AutoML capabilities cover key functions such as Hyperparameter Optimization, Data Augmentation, Network Architecture Search (NAS), Model Compression, and Fully Train. These functions are highly decoupled and can be configured as required, construct a complete pipeline.
-2. Industry-leading AutoML algorithms: provides Noah's Ark Laboratory's self-developed [industry-leading algorithm](./docs/en/benchmark/benchmark.md) and  [Model Zoo](./docs/en/model_zoo/model_zoo.md) to download the State-of-the-art (SOTA) model.
+2. Industry-leading AutoML algorithms: provides Noah's Ark Laboratory's self-developed **[industry-leading algorithm](./docs/en/benchmark/benchmark.md)** and  **[Model Zoo](./docs/en/model_zoo/model_zoo.md)** to download the State-of-the-art (SOTA) model.
 3. High-concurrency neural network training capability: Provides high-performance trainers to accelerate model training and evaluation.
+4. Multi-Backend: PyTorch, TensorFlow(trial), MindSpore(coming soon)
 
 ## Algorithm list
 
@@ -20,7 +31,9 @@ Vega is an AutoML algorithm tool chain developed by Noah's Ark Laboratory, the m
 | NAS | [ESR-EA: Efficient Residual Dense Block Search for Image Super-resolution](https://arxiv.org/abs/1909.11409) | Multi-objective image super-resolution based on network architecture search | [ref](./docs/en/algorithms/esr_ea.md) |
 | NAS | [Adelaide-EA: SEGMENTATION-Adelaide-EA-NAS](https://arxiv.org/abs/1810.10804) | Network Architecture Search Algorithm for Image Segmentation | [ref](./docs/en/algorithms/Segmentation-Adelaide-EA-NAS.md) |
 | NAS | [SP-NAS: Serial-to-Parallel Backbone Search for Object Detection](http://openaccess.thecvf.com/content_CVPR_2020/papers/Jiang_SP-NAS_Serial-to-Parallel_Backbone_Search_for_Object_Detection_CVPR_2020_paper.pdf) | Serial-to-Parallel Backbone Search for Object Detection Efficient Search Algorithm for Object Detection and Semantic Segmentation in Trunk Network Architecture | [ref](./docs/en/algorithms/sp-nas.md) |
-| NAS | Auto-Lane: CurveLane-NAS | An End-to-End Framework Search Algorithm for Lane Lines | Coming soon |
+| NAS | Auto-Lane: CurveLane-NAS | An End-to-End Framework Search Algorithm for Lane Lines | [ref](./docs/en/algorithms/auto_lane.md) |
+| NAS | [AutoGate](https://arxiv.org/abs/1909.10072) | An automatic feature selection algorithm for recommender system scenes | [ref](./docs/en/algorithms/fis-autogate.md.md) |
+| NAS | AutoGroup | An automatically learn feature interaction for recommender system scenes | [ref](./docs/en/algorithms/fis-autogroup.md) |
 | Model Compression | Quant-EA: Quantization based on Evolutionary Algorithm | Automatic mixed bit quantization algorithm, using evolutionary strategy to quantize each layer of the CNN network | [ref](./docs/en/algorithms/quant_ea.md) |
 | Model Compression | Prune-EA | Automatic channel pruning algorithm using evolutionary strategies | [ref](./docs/en/algorithms/prune_ea.md) |
 | HPO | [ASHA: Asynchronous Successive Halving Algorithm](https://arxiv.org/abs/1810.05934) | Dynamic continuous halving algorithm | [ref](./docs/en/algorithms/hpo.md) |
@@ -35,37 +48,37 @@ Vega is an AutoML algorithm tool chain developed by Noah's Ark Laboratory, the m
 
 ## Obtaining and Installing
 
-The software has been released on the Releases page. Obtain the latest version and install it by following the instructions provided in the [installation guide](./docs/en/user/install.md).
+The software has been released on the Releases page. Obtain the latest version and install it by following the instructions provided in the **[installation guide](./docs/en/user/install.md)** .
 
-If you want to deploy Vega in local cluster, see the [deployment guide](./docs/en/user/deployment.md).
+If you want to deploy Vega in local cluster, see the **[deployment guide](./docs/en/user/deployment.md)** .
 
 ## Usage Guide
 
 The Vega is highly modularized. You can configure the search space, search algorithm in a pipeline way. To run the Vega application is to load the configuration file and complete the AutoML process based on the configuration.
-Vega provides detailed operation examples for your reference. For details, see the [examples](./docs/en/user/examples.md). Example of running CARS algorithm:
+Vega provides detailed operation examples for your reference. For details, see the **[examples](./docs/en/user/examples.md)** . Example of running CARS algorithm:
 
 ```bash
 cd examples
-python3 ./run_example.py ./nas/cars/cars.yml
+python3 ./run_example.py ./nas/cars/cars.yml pytorch
 ```
 
-Therefore, before using the Vega, you need to fully understand the meaning of the configuration items. For details, see the [Configuration Guide](./docs/en/user/config_reference.md).
+Therefore, before using the Vega, you need to fully understand the meaning of the configuration items. For details, see the **[Configuration Guide](./docs/en/user/config_reference.md)**.
 
 **Note:**
 
-Before running an example, you need to configure the directory where the dataset and pre-trained models are located in the algorithm configuration file. Please refer to [Example Reference](./docs/en/user/examples.md).
+Before running an example, you need to configure the directory where the dataset and pre-trained models are located in the algorithm configuration file. Please refer to **[Example Reference](./docs/en/user/examples.md)** .
 
 ## Developer Guide
 
-The Vega framework components are decoupled, and each functional component is combined using the registration mechanism to facilitate function and algorithm extension. For details about the Vega architecture and main mechanisms, see the [Developer Guide](./docs/en/developer/developer_guide.md).
+The Vega framework components are decoupled, and each functional component is combined using the registration mechanism to facilitate function and algorithm extension. For details about the Vega architecture and main mechanisms, see the **[Developer Guide](./docs/en/developer/developer_guide.md)** .
 
-In addition, you can refer to the [Quick Start Guide](./docs/en/developer/quick_start.md) to implement a simple network search function and quickly enter the Vega application development through practice.
+In addition, you can refer to the **[Quick Start Guide](./docs/en/developer/quick_start.md)** to implement a simple network search function and quickly enter the Vega application development through practice.
 
-During the development of the Vega application, the first problem is how to introduce the service data set to the Vega application. For details, see the [Dataset Guide](./docs/en/developer/datasets.md).
+During the development of the Vega application, the first problem is how to introduce the service data set to the Vega application. For details, see the **[Dataset Guide](./docs/en/developer/datasets.md)** .
 
-For different algorithms, you can refer doc [Algorithm Development Guide](./docs/en/developer/new_algorithm.md). You can add the new algorithm to Vega step by step based on the example provided in this document.
+For different algorithms, you can refer doc **[Algorithm Development Guide](./docs/en/developer/new_algorithm.md)** . You can add the new algorithm to Vega step by step based on the example provided in this document.
 
-In most Automl algorithms, the search space is closely related to the network. We try to unify the definition of the search space so that the same search space can adapt to different search algorithms. This is called the [Fine-Grained Search Space Guide](./docs/en/developer/fine_grained_search_space.md). Welcome to try it.
+In most Automl algorithms, the search space is closely related to the network. We try to unify the definition of the search space so that the same search space can adapt to different search algorithms. This is called the **[Fine-Grained Search Space Guide](./docs/en/developer/fine_grained_search_space.md)** . Welcome to try it.
 
 Of course, this document cannot solve all the problems. If you have any questions, please feel free to provide feedback through the issue. We will reply to you and solve your problems in a timely manner.
 
@@ -73,10 +86,10 @@ Of course, this document cannot solve all the problems. If you have any question
 
 | object | refrence |
 | :--: | :-- |
-| User | [Install Guide](./docs/en/user/install.md), [Deployment Guide](./docs/en/user/deployment.md), [Configuration Guide](./docs/en/user/config_reference.md), [Examples](./docs/en/user/examples.md) |
-| Developer | [API Reference](http://vega.inhuawei.com/releases/0.9.2/api/), [Developer Guide](./docs/en/developer/developer_guide.md), [Quick Start Guide](./docs/en/developer/quick_start.md), [Dataset Guide](./docs/en/developer/datasets.md), [Algorithm Development Guide](./docs/en/developer/new_algorithm.md), [Fine-Grained Search Space Guide](./docs/en/developer/fine_grained_search_space.md) |
+| User | [Install Guide](./docs/en/user/install.md), [Deployment Guide](./docs/en/user/deployment.md), [Configuration Guide](./docs/en/user/config_reference.md), [Examples](./docs/en/user/examples.md), [Evaluate Service](./docs/en/user/evaluate_service.md) |
+| Developer | [Developer Guide](./docs/en/developer/developer_guide.md), [Quick Start Guide](./docs/en/developer/quick_start.md), [Dataset Guide](./docs/en/developer/datasets.md), [Algorithm Development Guide](./docs/en/developer/new_algorithm.md), [Fine-Grained Search Space Guide](./docs/en/developer/fine_grained_search_space.md) |
 
 ## Cooperation and contribution
 
 Welcome to use Vega. If you have any questions, ask for help, fix bugs, contribute algorithms, or improve documents, submit the issue in the community. We will reply to and communicate with you in a timely manner.
-Welcome to join our QQ chatroom (Chinese): 833345709.
+Welcome to join our QQ chatroom (Chinese): **833345709**.

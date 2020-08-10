@@ -25,8 +25,10 @@ from mmdet.core import results2json
 from mmdet.datasets import build_dataloader, build_dataset
 from mmdet.models import build_detector
 from vega.algorithms.nas.sp_nas.utils import Timer, coco_eval
-from vega.algorithms.nas.sp_nas.spnet import *
+# register SpNet
+from vega.algorithms.nas.sp_nas.spnet import *  # noqa: F401, F403
 from vega.algorithms.nas.sp_nas.utils.config_utils import json_to_dict
+from vega.algorithms.nas.sp_nas.ecp.ecp_utils import ecp_eval, results2frame
 
 
 def single_gpu_test(model, data_loader, dump_file=None):
@@ -105,7 +107,7 @@ def collect_results(result_part, size, tmpdir=None):
     if tmpdir is None:
         MAX_LEN = 512
         # 32 is whitespace
-        dir_tensor = torch.full((MAX_LEN, ),
+        dir_tensor = torch.full((MAX_LEN,),
                                 32,
                                 dtype=torch.uint8,
                                 device='cuda')
@@ -166,7 +168,6 @@ def parse_args():
 def main():  # noqa: C901
     """Start test."""
     args = parse_args()
-
     if args.work_dir is not None:
         mmcv.mkdir_or_exist(args.work_dir)
         if args.tmpdir is None:
@@ -223,7 +224,11 @@ def main():  # noqa: C901
         mmcv.dump(outputs, args.out)
         eval_types = args.eval
         if eval_types:
-            if eval_types:
+            if eval_types == ['lamr']:
+                print('Starting evaluate {}'.format(' and '.join(eval_types)))
+                results2frame(dataset, outputs, args.tmpdir)
+                ecp_eval(args.tmpdir, args.tmpdir, cfg.data_root + '/day/labels/val', 'SP-NAS')
+            else:
                 print('Starting evaluate {}'.format(' and '.join(eval_types)))
                 assert not isinstance(outputs[0], dict)
                 result_files = results2json(dataset, outputs, args.out)

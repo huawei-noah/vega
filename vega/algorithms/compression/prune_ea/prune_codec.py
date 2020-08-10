@@ -9,14 +9,17 @@
 # MIT License for more details.
 
 """Codec of Prune EA."""
-import random
 import copy
+import random
+
 from vega.core.common import Config
+from vega.core.common.class_factory import ClassFactory, ClassType
 from vega.core.common.utils import update_dict
 from vega.search_space.codec import Codec
 from vega.search_space.networks import NetworkDesc
 
 
+@ClassFactory.register(ClassType.CODEC)
 class PruneCodec(Codec):
     """Class of Prune EA Codec.
 
@@ -26,10 +29,9 @@ class PruneCodec(Codec):
     :type search_space: SearchSpace
     """
 
-    def __init__(self, codec_name, search_space):
+    def __init__(self, search_space, **kwargs):
         """Init PruneCodec."""
-        super(PruneCodec, self).__init__(codec_name, search_space)
-        self.search_space = search_space.search_space
+        super(PruneCodec, self).__init__(search_space, **kwargs)
 
     def decode(self, code):
         """Decode the code to Network Desc.
@@ -44,7 +46,7 @@ class PruneCodec(Codec):
             "backbone": chn_info
         }
         desc = update_dict(desc, copy.deepcopy(self.search_space))
-        return NetworkDesc(desc)
+        return desc
 
     def _code_to_chninfo(self, code):
         """Transform code to channel info.

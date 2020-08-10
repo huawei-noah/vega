@@ -1,7 +1,5 @@
 # -*- coding: utf-8 -*-.
 """Main function to run a FmdPipeStep."""
-import sys
-import vega
 from vega.search_space.networks.pytorch import NetworkFactory, NetTypes
 from fully_train.fmd.networks.resnet_cifar import resnet_cifar
 

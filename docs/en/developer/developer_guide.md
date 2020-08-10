@@ -73,9 +73,20 @@ The configuration file does not contain all parameters. The search algorithm nee
 When the SearchSpace class is initialized, the search_space attribute is loaded as follows:
 
 ```python
+@ClassFactory.register(ClassType.SEARCH_SPACE)
 class SearchSpace(object):
-    def __init__(self):
-        self.search_space = self.cfg
+
+    config = SearchSpaceConfig()
+
+    def __new__(cls, *args, **kwargs):
+        """Create a new SearchSpace."""
+        t_cls = ClassFactory.get_cls(ClassType.SEARCH_SPACE)
+        return super(SearchSpace, cls).__new__(t_cls)
+
+    @property
+    def search_space(self):
+        """Get hyper parameters."""
+        return obj2config(self.config)
 ```
 
 Another important concept of the search space is the network description. The network description is the result sampled by the search algorithm from the search space and is a possible subset in the search space. The network description class has only one attribute, that is, the network description of the dict type (one or multiple networks). The network description class has only one general interface to_model(), which is responsible for analyzing the network description and automatically resolving the network description into the specific network object in the Networks through NetworFactory.
@@ -87,6 +98,15 @@ class NetworkDesc(object):
 
     def to_model(self):
         pass
+
+class NetworkDesc(object):
+
+    def __init__(self, desc):
+        self._desc = Config(deepcopy(desc))
+
+    def to_model(self):
+        ...
+        return Network(params)
 ```
 
 In general, Vega provides a series of network models (added by developers) and registers them with NetworkFactory. Developers need to write the search space of the network model construction parameters in the configuration file, and use the algorithm to sample and generate the network description NetworkDesc. NetworkDesc automatically parses the corresponding network model.
@@ -106,20 +126,26 @@ The search algorithm provides the following functions:
 The most important of these is the first feature, which is responsible for searching a subset of the SearchSpace objects for a network description.
 
 ```python
-class SearchAlgorithm(TaskUtils):
+class SearchAlgorithm(TaskOps):
+
+    def __new__(cls, *args, **kwargs):
+        t_cls = ClassFactory.get_cls(ClassType.SEARCH_ALGORITHM)
+        return super().__new__(t_cls)
 
     def __init__(self, search_space=None, **kwargs):
-        super(SearchAlgorithm, self).__init__(self.cfg)
+        super(SearchAlgorithm, self).__init__()
+        self.search_space = search_space
+        self.codec = Codec(search_space, type=self.config.codec)
 
     def search(self):
         raise NotImplementedError
 
-    def update(self, local_worker_path):
-        raise NotImplementedError
+    def update(self, record):
+        pass
 
     @property
     def is_completed(self):
-        return False
+        raise NotImplementedError
 ```
 
 Some algorithms (such as EA) may also involve the coding of the search space. Therefore, a codec needs to be implemented in the search algorithm. The codec mainly implements two functions: coding the network description, and decoding the code into the network description.
@@ -138,13 +164,12 @@ The types and parameters of search algorithms need to be written in the configur
 ```yaml
 search_algorithm:
     type: PruneEA
-    length: 464
-    num_generation: 31
-    num_individual: 4
-    metric_x: flops
-    metric_y: acc
-    random_models: 32
     codec: PruneCodec
+    policy:
+        length: 464
+        num_generation: 31
+        num_individual: 32
+        random_models: 64
 ```
 
 In the configuration file, you need to define the type of the search algorithm and the parameters of the search algorithm.
@@ -157,18 +182,17 @@ The NAS search process is completed in NasPipeStep. The main function of NasPipe
 
 ```python
 def do(self):
-        """Do the main task in this pipe step."""
-        logger.info("NasPipeStep started...")
-        while not self.generator.is_completed:
-            id, model = self.generator.sample()
-            cls_trainer = ClassFactory.get_cls('trainer')
-            trainer = cls_trainer(model, id)
-            self.master.run(trainer)
-            finished_trainer_info = self.master.pop_finished_worker()
-            self.update_generator(self.generator, finished_trainer_info)
-        self.master.join()
-        finished_trainer_info = self.master.pop_all_finished_train_worker()
-        self.update_generator(self.generator, finished_trainer_info)
+    while not self.generator.is_completed:
+        res = self.generator.sample()
+        if res:
+            self._dispatch_trainer(res)
+        else:
+            time.sleep(0.5)
+        self._after_train(wait_until_finish=False)
+    self.master.join()
+    self._after_train(wait_until_finish=True)
+    Report().output_pareto_front(General.step_name)
+    self.master.close_client()
 ```
 
 In each cycle, the generator first determines whether the search stops. If the search stops, the search ends, the generator is updated, and a value is returned.
@@ -187,20 +211,21 @@ class Generator(object):
 
     def __init__(self):
         self.search_space = SearchSpace()
-        self.search_alg = SearchAlgorithm(self.search_space)
+        self.search_alg = SearchAlgorithm(self.search_space.search_space)
 
     @property
     def is_completed(self):
         return self.search_alg.is_completed
 
     def sample(self):
-        id, net_desc = self.search_alg.search()
-        model = net_desc.to_model()
-        return id, model
+        id, desc = self.search_alg.search()
+        return id, desc
 
-    def update(self, worker_path):
-        self.search_alg.update(worker_path)
-        return
+    def update(self, step_name, worker_id):
+        report = Report()
+        record = report.receive(step_name, worker_id)
+        logging.debug("Get Record=%s", str(record))
+        self.search_alg.update(record.serialize())
 ```
 
 During initialization, the search space object is generated in the search_space part of the configuration file, and the search space is used as the parameter to initialize the search algorithm object.
@@ -209,9 +234,9 @@ The sample interface in the code is used for each sampling in the NAS. The sampl
 
 In addition, the generator can determine whether the iterative search stops and update the search algorithm.
 
-### 4.2 Trainer
+### 5 Trainer
 
-In NasPipeStep, after the generator generates a network model, a trainer is initialized. The trainer is a complete full trainer process, and its main interfaces are train_process, some standard interfaces such as optimizers, learning rate policies, and loss functions. Vega provides the standard Trainer interface and training process. Developers only need to modify the configuration file to control the training parameters and training process. You can also customize some functions that are not provided.
+The trainer is used to train models. In the NAS, HPO, and fully train phases, the trainer can be configured in the pipe steps of these phases to complete model training.
 
 The trainer configuration is as follows:
 
@@ -220,13 +245,15 @@ trainer:
     type: Trainer
     optim:
         type: SGD
-        lr: 0.1
-        momentum: 0.9
-        weight_decay: !!float 1e-4
+        params:
+            lr: 0.1
+            momentum: 0.9
+            weight_decay: !!float 1e-4
     lr_scheduler:
         type: StepLR
-        step_size: 20
-        gamma: 0.5
+        params:
+            step_size: 20
+            gamma: 0.5
     loss:
         type: CrossEntropyLoss
     metric:
@@ -235,56 +262,93 @@ trainer:
     epochs: 50
 ```
 
-The trainer configuration parameters need to write the names and parameters of the optimizer, learning rate policy, and loss function to the corresponding positions. The standard trainer provides the initialization interface for parsing these objects.
-
 The standard trainer training process is implemented in the train_process interface. The implementation is as follows:
 
 ```python
- def train_process(self):
-        """Whole train process of the TrainWorker specified in config.
+    def train_process(self):
+        self._init_callbacks(self.callbacks)
+        self._train_loop()
 
-        After training, the model and validation results are saved to local_worker_path and s3_path.
-        """
-        self._init_estimator()
-        self._init_dataloader()
-        logging_hook = []
-        if self.horovod:
-            logging_hook += [hvd.BroadcastGlobalVariablesHook(0)]
-        train_steps = self.train_data.data_len
-        valid_steps = self.valid_data.data_len
-        if self.horovod:
-            train_steps = train_steps // hvd.size()
-            valid_steps = valid_steps // hvd.size()
-        start_step = est._load_global_step_from_checkpoint_dir(self.cfg.model_dir)
-        for i in range(self.cfg.epochs):
-            logging.info('train epoch [{0}/{1}]'.format(i, self.cfg.epochs))
-            current_max_step = start_step + train_steps
-            start_step = current_max_step
-            self.estimator.train(input_fn=self.train_data.input_fn,
-                                 max_steps=current_max_step,
-                                 hooks=logging_hook)
-            eval_results = self.estimator.evaluate(input_fn=self.valid_data.input_fn, steps=valid_steps)
-            logging.info(eval_results)
-        self.save_backup(eval_results)
+    def _init_callbacks(self, callbacks):
+        self.callbacks = CallbackList(self.config.callbacks, disables)
+        self.callbacks.set_trainer(self)
+
+    def _train_loop(self):
+        self.callbacks.before_train()
+        for epoch in range(self.epochs):
+            epoch_logs = {'train_num_batches': len(self.train_loader)}
+            if self.do_validation:
+                epoch_logs.update({'valid_num_batches': len(self.valid_loader)})
+            self.callbacks.before_epoch(epoch, epoch_logs)
+            self._train_epoch()
+            if self.do_validation and self._should_run_validation(epoch):
+                self._valid_epoch()
+            self.callbacks.after_epoch(epoch)
+        self.callbacks.after_train()
+        if self.distributed:
+            self._shutdown_distributed()
+
+    def _train_epoch(self):
+        if vega.is_torch_backend():
+            self.model.train()
+            for batch_index, batch in enumerate(self.train_loader):
+                batch = self.make_batch(batch)
+                batch_logs = {'train_batch': batch}
+                self.callbacks.before_train_step(batch_index, batch_logs)
+                train_batch_output = self.train_step(batch)
+                batch_logs.update(train_batch_output)
+                if self.config.is_detection_trainer:
+                    batch_logs.update({'is_detection_trainer': True})
+                self.callbacks.after_train_step(batch_index, batch_logs)
+        elif vega.is_tf_backend():
+            self.estimator.train(input_fn=self.train_input_fn,
+                                 steps=len(self.train_loader),
+                                 hooks=self._init_logging_hook())
+
+    def _valid_epoch(self):
+        self.callbacks.before_valid()
+        valid_logs = None
+        if vega.is_torch_backend():
+            self.model.eval()
+            with torch.no_grad():
+                for batch_index, batch in enumerate(self.valid_loader):
+                    batch = self.make_batch(batch)
+                    batch_logs = {'valid_batch': batch}
+                    self.callbacks.before_valid_step(batch_index, batch_logs)
+                    valid_batch_output = self.valid_step(batch)
+                    self.callbacks.after_valid_step(batch_index, valid_batch_output)
+        elif vega.is_tf_backend():
+            eval_metrics = self.estimator.evaluate(input_fn=self.valid_input_fn,
+                                                   steps=len(self.valid_loader))
+            self.valid_metrics.update(eval_metrics)
+            valid_logs = dict()
+            valid_logs['cur_valid_perfs'] = self.valid_metrics.results
+        self.callbacks.after_valid(valid_logs)
 ```
 
-To facilitate developers, we encapsulate some capabilities to be used in the trainer and provide extension interfaces for the.
+The preceding code indicates that the trainer uses the callback mechanism, before_train(), before_epoch(), before_train_step(), after_train_step(), after_epoch(), before_valid(), before_valid_step(), after_valid_step(), and after_valid_step() are inserted during model training. You can customize callback to complete the specific model training process based on the 10 insertion points _valid() and after_train(). 
 
-#### Optimizer
+In addition, Vega provides the default callback function.
 
-By default, the torch.optim file in the Pytroch library is used. The file is directly used in configuration mode. type indicates the method to be used. Other key values are the input parameters and their values in the method.
+- pytorch:ModelStatistics, MetricsEvaluator, ModelCheckpoint, PerformanceSaver, LearningRateScheduler, ProgressLogger, ReportCallback
+- TensorFlow:ModelStatistics, MetricsEvaluator, PerformanceSaver, ProgressLogger, ReportCallback
+
+### 5.1 Optimizer
+
+By default, the `torch.optim` in the pytroch library is used. The `type` indicates the used method, and other key values are the input parameters and input parameter values in the method.
 
 ```yaml
 optim:
-        type: SGD
+    type: SGD
+    params:
         lr: 0.1
         momentum: 0.9
         weight_decay: !!float 1e-4
 ```
 
-#### Loss
+### 5.2 Loss
 
-By default, all loss functions in the torch.nn file can be directly used in configuration mode. type indicates the method to be used. Other key values are the input parameters and values of the input parameters in the method.
+By default, all loss functions under `torch.nn` can be directly used in configuration mode. `type` indicates the used method, and other key values are the values of input parameters and input parameters in the method.
 
 ```yaml
 loss:
@@ -318,7 +382,7 @@ loss:
         desc: ~
 ```
 
-#### LrScheduler
+### 5.3 LrScheduler
 
 By default, all lr_scheduler functions in torch.optim.lr_scheduler can be directly used in configuration mode. type indicates the method to be used. Other key values are the values of the input parameters in the method.
 
@@ -341,7 +405,7 @@ class WarmupScheduler(_LRScheduler):
          pass
 ```
 
-#### Metrics
+### 5.4 Metrics
 
 Common metrics are preset in VEGA and can be configured in the configuration file. Multiple metrics can be processed for printing and analysis. When there are multiple metrics, the first metric function is automatically used to calculate the loss.
 
@@ -360,24 +424,16 @@ Customize a metric.
 ```python
 @ClassFactory.register(ClassType.METRIC, alias='accuracy')
 class Accuracy(MetricBase):
-    """Calculate classification accuracy between output and target."""
 
     __metric_name__ = 'accuracy'
 
     def __init__(self, topk=(1,)):
-        """Init Accuracy metric."""
         self.topk = topk
         self.sum = [0.] * len(topk)
         self.data_num = 0
         self.pfm = [0.] * len(topk)
 
     def __call__(self, output, target, *args, **kwargs):
-        """Perform top k accuracy.
-
-        :param output: output of classification network
-        :param target: ground truth from dataset
-        :return: pfm
-        """
         if isinstance(output, tuple):
             output = output[0]
         res = accuracy(output, target, self.topk)
@@ -388,180 +444,212 @@ class Accuracy(MetricBase):
         return res
 
     def reset(self):
-        """Reset states for new evaluation after each epoch."""
         self.sum = [0.] * len(self.topk)
         self.data_num = 0
         self.pfm = [0.] * len(self.topk)
 
     def summary(self):
-        """Summary all cached records, here is the last pfm record."""
-        return self.pfm
+        if len(self.pfm) == 1:
+            return self.pfm[0]
+        return {'top{}_{}'.format(self.topk[idx], self.name): value for idx, value in enumerate(self.pfm)}
 ```
 
-#### Customized Trainer
+In addition, we support unified management of multiple metrics. The metrics class is used to manage various types of metrics of the trainer, and the initialization, calling interfaces, and result obtaining methods of each metric are unified.
 
-If the common trainers provided by Huawei cannot meet the current requirements, you can use the following methods to customize the trainers:
-
-- Use the @ClassFactory.register(ClassType.TRAINER) for registration.
-- Inherit the vega.core.trainer.trainer.Trainer base class.
-- The train_process method is overwritten.
-from vega.core.trainer.trainer import Trainer
-from vega.core.common.class_factory import ClassFactory, ClassType
+- Initialize `Metrics` based on the metric part in the configuration file. The `Metrics` is initialized each time when the value is valid.
+- Call `__call__` to calculate the metric and historical average value of each data based on the output data of the network and dataset label data.
+- `results` Returns the historical comprehensive result of the metric.
 
 ```python
-from vega.core.trainer.trainer import Trainer
-from vega.core.common.class_factory import ClassFactory, ClassType
+class Metrics(object):
 
-@ClassFactory.register(ClassType.TRAINER)
-class BackboneNasTrainer(Trainer):
+    config = MetricsConfig()
 
-    def __init__(self, model, id):
-        """Init BackboneNasTrainer."""
-        super(BackboneNasTrainer, self).__init__(model, id)
-        self.best_prec = 0
+    def __init__(self, metric_cfg=None):
+        """Init Metrics."""
+        self.mdict = {}
+        metric_config = obj2config(self.config) if not metric_cfg else deepcopy(metric_cfg)
+        if not isinstance(metric_config, list):
+            metric_config = [metric_config]
+        for metric_item in metric_config:
+            ClassFactory.get_cls(ClassType.METRIC, self.config.type)
+            metric_name = metric_item.pop('type')
+            metric_class = ClassFactory.get_cls(ClassType.METRIC, metric_name)
+            if isfunction(metric_class):
+                metric_class = partial(metric_class, **metric_item.get("params", {}))
+            else:
+                metric_class = metric_class(**metric_item.get("params", {}))
+            self.mdict[metric_name] = metric_class
+        self.mdict = Config(self.mdict)
 
-    def train_process(self):
-        pass
+    def __call__(self, output=None, target=None, *args, **kwargs):
+        pfms = []
+        for key in self.mdict:
+            metric = self.mdict[key]
+            pfms.append(metric(output, target, *args, **kwargs))
+        return pfms
+
+    def reset(self):
+        for val in self.mdict.values():
+            val.reset()
+
+    @property
+    def results(self):
+        res = {}
+        for name, metric in self.mdict.items():
+            res.update(metric.result)
+        return res
+
+    @property
+    def objectives(self):
+        return {name: self.mdict.get(name).objective for name in self.mdict}
+
+    def __getattr__(self, key):
+        return self.mdict[key]
 ```
 
-> Note: We can override finer - grained methods like tain and valid so that we can use some of the capabilities provided by the trainer base class.
+### 5.5 Customizing a Trainer
 
-## 5. Configuration
+You can customize the trainer by customizing the callback function. For details about how to implement the callback function, see the default callback function provided by the VEGA.
+The following is the implementation of ModelStatistics:
 
-The Vega Configuration uses the registration mechanism. It dynamically maps the configuration file to the corresponding instance based on the class type. In this way, developers and users can directly use the cfg attribute without being aware of the loading and parsing process of the configuration file.
+```python
+@ClassFactory.register(ClassType.CALLBACK)
+class ModelStatistics(Callback):
+    def __init__(self):
+        super(Callback, self).__init__()
+        self.priority = 220
 
-The following describes how to use the configuration mechanism:
+    def before_train(self, logs=None):
+        self.input = None
+        self.gflops = None
+        self.kparams = None
+        self.calc_params_each_epoch = self.trainer.config.calc_params_each_epoch
+        if vega.is_tf_backend():
+            data_iter = self.trainer.valid_input_fn().make_one_shot_iterator()
+            input_data, _ = data_iter.get_next()
+            self.input = input_data[:1]
 
-- **Step1: Use rega.run() to load the user-defined configuration file and run the VEGA program.**
+    def after_train_step(self, batch_index, logs=None):
+        try:
+            if self.input is None:
+                input, target = logs['train_batch']
+                self.input = torch.unsqueeze(input[0], 0)
+        except Exception as ex:
+            logging.warning("model statics failed, ex=%s", ex)
 
-    ```python
-    vega.run('config.yml')
-    ```
+    def after_epoch(self, epoch, logs=None):
+        if self.calc_params_each_epoch:
+            self.update_flops_params(epoch=epoch, logs=logs)
 
-- **Step2: Use the following definition in the config.yml file**
+    def after_train(self, logs=None):
+        if not self.calc_params_each_epoch:
+            self.update_flops_params(logs=logs)
 
-    ```yaml
-    # Common configuration, including task and worker configuration information. 
-    general:
-        task:
-            key: value
-        worker:
-            key: value
-    # Pipestep execution sequence
-    pipeline: [nas1, fullytrain1]
-    # pipestep name
-    nas1:
-        pipe_step:
-            type: NasPipeStep
-        search_algorithm:
-            type: BackboneNas
-            key: value
-        search_space:
-            type: SearchSpace
-            key: value
-        mode:
-            model_desc: value
-        trainer:
-            type: Trainer
-        dataset:
-            type: Cifar10
-    ```
+    def update_flops_params(self, epoch=None, logs=None):
+        self.model = self.trainer.model
+        try:
+            if self.gflops is None:
+                flops_count, params_count = calc_model_flops_params(self.model, self.input)
+                self.gflops, self.kparams = flops_count * 1600 * 1e-9, params_count * 1e-3
+            summary_perfs = logs.get('summary_perfs', {})
+            if epoch:
+                summary_perfs.update(
+                    {'gflops': self.gflops, 'kparams': self.kparams, 'epoch': epoch})
+            else:
+                summary_perfs.update({'gflops': self.gflops, 'kparams': self.kparams})
+            logs.update({'summary_perfs': summary_perfs})
+        except Exception as ex:
+            logging.warning("model statics failed, ex=%s", ex)
+```
 
-- **Step3: Use ClassFactory to register the class that needs to be configured.**
+## 6. Configuration
 
-    The ClassFactory provides multiple ClassType options for developers, which correspond to the level-2 nodes in the config file.
+The Vega Configuration uses the registration mechanism. All registered classes can be invoked using the following methods:
 
-    ```python
-    
-    class ClassType(object):
-        """Const class saved defined class type."""
-    
-        TRAINER = 'trainer'
-        METRIC = 'trainer.metric'
-        OPTIM = 'trainer.optim'
-        LR_SCHEDULER = 'trainer.lr_scheduler'
-        LOSS = 'trainer.loss'
-        EVALUATOR = 'evaluator'
-        GPU_EVALUATOR = 'evaluator.gpu_evaluator'
-        HAVA_D_EVALUATOR = 'evaluator.hava_d_evaluator'
-        DAVINCI_MOBILE_EVALUATOR = 'evaluator.davinci_mobile_evaluator'
-        SEARCH_ALGORITHM = 'search_algorithm'
-        SEARCH_SPACE = 'search_space'
-        PIPE_STEP = 'pipe_step'
-        GENERAL = 'general'
-        HPO = 'hpo'
-        DATASET = 'dataset'
-        TRANSFORM = 'dataset.transforms'
-        CALLBACK = 'trainer.callback'
-    ```
+```python
+_cls = ClassFactory.get_cls(class_type, class_name)
+install = _cls(params)
+```
 
-    The algorithm developer selects the corresponding ClassType as required and uses @ClassFactory.register(class type) to register the class to the corresponding class. In the following example, the BackboneNas is registered with ClassType.SEARCH_ALGORITHM. The Configuration module determines to initialize the BackboneNas based on the value of type under search_algorithm in config.yml and binds the configuration information to the cfg attribute of the BackboneNas.
+In addition, Vega can dynamically map the configuration in the configuration file to the corresponding instance based on the class type, so that developers and users can directly use the `config` attribute without being aware of the process of loading and parsing the configuration file.
 
-    Developers can directly use the self.cfg attribute as follows:
-
-    ```python
-    @ClassFactory.register(ClassType.SEARCH_ALGORITHM)
-    class BackboneNas(SearchAlgorithm):
-        def __init__(self, search_space=None):
-            """Init BackboneNas."""
-            super(BackboneNas, self).__init__(search_space)
-            # ea or random
-            self.search_space = search_space
-            self.codec = Codec(self.cfg.codec, search_space)
-            self.num_mutate = self.policy.num_mutate
-            self.random_ratio = self.policy.random_ratio
-            self.max_sample = self.range.max_sample
-            self.min_sample = self.range.min_sample
-    ```
-
-- **Step4: The developer needs to provide the default configuration. The user configuration overwrites the default configuration.**
-
-    It is recommended that each developer provide a default configuration file for the system when compiling an algorithm. This helps users configure their own configuration files.
-
-    In the vega.config directory, you can group directories. The default configuration file must be stored in the corresponding directory.
-
-    ```text
-    vega/config
-    ├── datasets
-    │   └── cifar10.yml
-    ├── general
-    │   └── general.yml
-    ├── search_algorithm
-    │   └── backbone.yml
-    ├── search_space
-    │   └── search_space.yml
-    └── trainer
-        └── trainer.yml
-    ```
-
-    The default configuration uses the key:value format. The root key value corresponds to the full name of the class defined by the developer.
-
-    ```yaml
-    BackboneNas:
-        codec: BackboneNasCodec
-        policy:
-            num_mutate: 10
-            random_ratio: 0.2
-        range:
-            max_sample: 100
-            min_sample: 10
-
-    ```
-
-## 6. pipeline
-
-The pipeline of Vega implements the concatenation of multiple pipelines by loading the config configuration. When the user executes the vega.run('config.yml') method, the _init_env(cfg_path) method is executed to load the configuration, and then the pipeline().run() method is invoked. Run the pipestep do() function according to the definition in the configuration file.
-
-### 6.1 Configuration
-
-In the config.yml file, pipeline is used to define the pipestep execution sequence. In the following example, pipeline: [nas, fully train] indicates that the pipestep of the NAS node is executed first, and then the pipestep of the fully train node is executed.
+For example, the configuration file of the NAS phase of the Prune-EA algorithm is as follows:
 
 ```yaml
-# Define pipelines and execute the pipestep
-pipeline: [nas, fullytrain]
-# pipestep name
 nas:
-# PipeStep type
+    pipe_step:
+        type: NasPipeStep
+
+    dataset:
+        type: Cifar10
+        common:
+            data_path: /cache/datasets/cifar10/
+            train_portion: 0.9
+        test:
+            batch_size: 1024
+
+    search_algorithm:
+        type: PruneEA
+        codec: PruneCodec
+        policy:
+            length: 464
+            num_generation: 31
+            num_individual: 32
+            random_models: 64
+
+    search_space:
+        type: SearchSpace
+        modules: ['backbone']
+        backbone:
+            name: 'PruneResNet'
+            base_chn: [16,16,16,32,32,32,64,64,64]
+            base_chn_node: [16,16,32,64]
+            num_classes: 10
+
+    trainer:
+        type: Trainer
+        callbacks: PruneTrainerCallback
+        epochs: 1
+        init_model_file: "/cache/models/resnet20.pth"
+        optim:
+            type: SGD
+            params:
+                lr: 0.1
+                momentum: 0.9
+                weight_decay: !!float 1e-4
+        lr_scheduler:
+            type: StepLR
+            params:
+                step_size: 20
+                gamma: 0.5
+        seed: 10
+        limits:
+            flop_range: [!!float 0, !!float 1e10]
+```
+
+In the trainer, the code for obtaining the dataset and lr_scheduler is as follows:
+
+```python
+    dataset_cls = ClassFactory.get_cls(ClassType.DATASET)
+    dataset = dataset_cls(mode=mode)
+    search_alg_cls = ClassFactory.get_cls(ClassType.SEARCH_ALGORITHM)
+    search_alg = search_alg_cls(search_space)
+```
+
+As shown in the preceding figure, you do not need to specify the class name. Vega scans the configuration file to determine the current pipe step and finds the class name and parameters based on the class type for classFactory to return the correct class definition.
+For details about the pipestep definition supported by Vega, see [Configuration Reference](../user/config_reference.md)
+
+## 7. pipeline
+
+The pipeline of Vega implements concatenation of multiple `pipesteps' by loading the `config` configuration. When you run the `vega.run('config.yml')` command, the `_init_env(cfg_path)` method is executed to load the configuration, then the `Pipeline().run()` function is invoked to run the `do()` function of the `pipestep` according to the definition in the configuration file.
+
+In config.yml, `pipleline` is used to define the execution sequence of `pipestep`. In the following example, `pipeline: [nas, fullytrain]` indicates that the `pipestep` of the `nas` node is executed first, and then the `pipestep` of the `fullytrain` node is executed.
+
+```yaml
+pipeline: [nas, fullytrain]
+
+nas:
     pipe_step:
         type: NasPipeStep
 
@@ -570,41 +658,31 @@ fullytrain:
         type: FullyTrainPipeStep
 ```
 
-### 6.2 Extended Pipestep
+### 7.2 Extend `pipestep`
 
-The currently preset `pipestep` are:
+Currently, the following `pipesteps' have been preset:
 
-Currently, the following pipesteps have been preset:
+* NasPipeStep
+* FullyTrainPipeStep
+* BechmarkPipeStep
 
-- NasPipeStep
-- HpoPipeStep
-- FullyTrainPipeStep
-
-To extend pipestep, inherit the base class PipeStep and implement the do() function. For details, see the implementation code of the preceding class.
+To extend `pipestep`, inherit the base class `PipeStep` and implement the `do()` function. For details, see the implementation code of the preceding class.
 
 ```python
 class PipeStep(object):
 
-    def __init__(self):
-        self.task = TaskUtils(UserConfig().data.general)
-
-    def __new__(cls):
-        """Create pipe step instance by ClassFactory"""
-        t_cls = ClassFactory.get_cls(ClassType.PIPE_STEP)
-        return super().__new__(t_cls)
-
     def do(self):
         """Do the main task in this pipe step."""
-        raise NotImplementedError
+        pass
 ```
 
-## 7. Fully Train
+## 8. Fully Train
 
-On `Fully Train`, we support single-card training and multi-machine multi-card distributed training based on `Horovod`. `Fully Train` corresponds to `FullyTrainPipeStep` part of `pipeline`.
+On `Fully Train`, we support single-card training and multi-device multi-card distributed training based on `Horovod`. `Fully Train` corresponds to `FullyTrainPipeStep` in `pipeline`.
 
-### 7.1 Configuration
+### 8.1 Configuration
 
-If you need to conduct distributed training of `Horovod`, you need to add a configuration item `horovod` to the configuration file in the `trainer` part of `FullyTrainPipeStep` and set it to `True`. If there is no such item, the default is False, ie Does not use distributed training.
+If you need to perform `Horovod` distributed training, add the configuration item `distributed` to the `trainer` configuration file of `FullyTrainPipeStep` and set it to `True`. If this configuration item is not added, the default value is False, indicating that distributed training is not used.
 
 ```yaml
 fullytrain:
@@ -612,55 +690,13 @@ fullytrain:
         type: FullyTrainPipeStep
     trainer:
         type: trainer
-        horovod: True
+        distributed: True
 ```
 
-We started the `Horovod` distributed training through the `shell`, and the communication configuration between different nodes has been completed in the mirror. The developer can not care about how the `vega` is started internally.
+The `shell` is used to start the `Horovod` distributed training. The communication between different nodes has been configured in the image. Developers do not need to care about how the `vega` is started internally.
 
-### 7.2 Trainer supports Horovod distribution
+### 8.2 Distributed Horovod Supported by Trainers
 
-When using distributed training, in contrast to single-card training, the trainer's network model, optimizer, and data loading need to be packaged into distributed objects using `Horovod`.
+In distributed training, the network model, optimizer, and data loading of the `trainer` need to be encapsulated into distributed objects using the `Horovod`.
 
-```python
-def _init_optimizer(self):
-    ...
-    if self.horovod:
-        optimizer = hvd.DistributedOptimizer(optimizer,
-                                             named_parameters=self.model.named_parameters(),
-                                             compression=hvd.Compression.none)
-    return optimizer
-
-def _init_horovod_setting(self):
-    """Init horovod setting."""
-    hvd.broadcast_parameters(self.model.state_dict(), root_rank=0)
-    hvd.broadcast_optimizer_state(self.optimizer, root_rank=0)
-
-def _init_dataloader(self):
-    """Init dataloader."""
-    train_dataset = Dataset(mode='train')
-    valid_dataset = Dataset(mode='test')
-    if self.horovod:
-        train_sampler = torch.utils.data.distributed.DistributedSampler(
-            train_dataset, num_replicas=hvd.size(), rank=hvd.rank())
-        valid_sampler = torch.utils.data.distributed.DistributedSampler(
-            valid_dataset, num_replicas=hvd.size(), rank=hvd.rank())
-        train_dataset.sampler = train_sampler
-        valid_dataset.sampler = valid_sampler
-    self.train_loader = train_dataset.dataloader
-    self.valid_loader = valid_dataset.dataloader
-```
-
-In the process of training, the codes of single card and distributed training are almost the same, but when the verification index is finally calculated, the index values on different cards need to be combined to calculate the total average.
-
-```python
-def _metric_average(self, val, name):
-    """Do metric average.
-
-    :param val: input value
-    :param name: metric name
-    :return:
-    """
-    tensor = torch.tensor(val)
-    avg_tensor = hvd.allreduce(tensor, name=name)
-    return avg_tensor.item()
-```
+During the training, the code of single-card training is almost the same as that of distributed training. However, during the final calculation of verification indicators, the indicator values on different cards need to be combined to calculate the total average value.

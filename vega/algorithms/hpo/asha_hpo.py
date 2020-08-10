@@ -9,77 +9,53 @@
 # MIT License for more details.
 
 """Defined AshaHpo class."""
-import os
-import logging
-import copy
+
+from math import log
 from vega.algorithms.hpo.common import ASHA
-from vega.core.hyperparameter_space import json_to_hps
 from vega.core.common.class_factory import ClassFactory, ClassType
-from vega.core.pipeline.hpo_generator import HpoGenerator
+from vega.algorithms.hpo.hpo_base import HPOBase
+from .asha_conf import AshaConfig
 
 
-@ClassFactory.register(ClassType.HPO)
-class AshaHpo(HpoGenerator):
+@ClassFactory.register(ClassType.SEARCH_ALGORITHM)
+class AshaHpo(HPOBase):
     """An Hpo of ASHA, inherit from HpoGenerator."""
 
-    def __init__(self):
+    config = AshaConfig()
+
+    def __init__(self, search_space=None, **kwargs):
         """Init AshaHpo."""
-        super(AshaHpo, self).__init__()
-        hps = json_to_hps(self.cfg.hyperparameter_space)
-        self.hpo = ASHA(hps, self.policy.config_count,
-                        self.policy.total_epochs)
+        super(AshaHpo, self).__init__(search_space, **kwargs)
+        num_samples = self.config.policy.num_samples
+        epochs_per_iter = self.config.policy.epochs_per_iter
+        if self.config.policy.total_epochs != -1:
+            num_samples, epochs_per_iter = self.design_parameter(self.config.policy.total_epochs)
+        self.hpo = ASHA(self.hps, num_samples, epochs_per_iter)
 
-    def sample(self):
-        """Sample an id and hps from hpo.
+    def design_parameter(self, total_epochs):
+        """Design parameters based on total_epochs.
 
-        :return: id, hps
-        :rtype: int, dict
+        :param total_epochs: number of epochs the algorithms need.
+        :type total_epochs: int, set by user.
         """
-        sample = self.hpo.propose()
-        if sample is not None:
-            sample = copy.deepcopy(sample)
-            sample_id = sample.get('config_id')
-            self._hps_cache[str(sample_id)] = [copy.deepcopy(sample), []]
-            re_hps = sample.get('configs')
-            if 'epoch' in sample:
-                re_hps['trainer.epochs'] = sample.get('epoch')
-            return sample_id, re_hps
-        else:
-            return None, None
-
-    def update_performance(self, hps, performance):
-        """Update current performance into hpo score board.
-
-        :param hps: hyper parameters need to update
-        :param performance:  trainer performance
-
-        """
-        if isinstance(performance, list) and len(performance) > 0:
-            self.hpo.add_score(int(hps.get('config_id')),
-                               int(hps.get('rung_id')), performance[0])
-        else:
-            self.hpo.add_score(int(hps.get('config_id')),
-                               int(hps.get('rung_id')), -1)
-            logging.error("hpo get empty performance!")
-
-    @property
-    def is_completed(self):
-        """Make hpo pipe step status is completed.
-
-        :return: hpo status
-        :rtype: bool
-
-        """
-        return self.hpo.is_completed
-
-    @property
-    def best_hps(self):
-        """Get best hps."""
-        return self.hpo.best_config()
-
-    def _save_score_board(self):
-        """Save the internal score board for detail analysis."""
-        try:
-            self.hpo.sieve_board.to_csv(self._board_file, index=None, header=True)
-        except Exception as e:
-            logging.error("Failed to save score board file, error={}".format(str(e)))
+        num_samples = 1
+        epochs_per_iter = 1
+        while(num_samples * (1 + log(num_samples, 3)) <= total_epochs):
+            num_samples *= 3
+            epochs_per_iter *= 3
+        epochs_per_iter /= 3
+        for i in range(int(num_samples / 3), num_samples + 1):
+            current_budget = 0
+            current_epochs = 1
+            current_samples = i
+            while(current_samples > 0):
+                current_budget += current_samples * current_epochs
+                current_samples = int(current_samples / 3)
+                current_epochs *= 3
+            if current_budget == total_epochs:
+                num_samples = i
+                break
+            elif current_budget > total_epochs:
+                num_samples = i - 1
+                break
+        return num_samples, epochs_per_iter
