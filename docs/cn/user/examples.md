@@ -55,12 +55,12 @@ python3 ./run_example.py ./nas/cars/cars.yml
 
 | Algorithm | Pre-trained Model | Default Path | Model Source |
 | :--: | :-- | :-- | :--: |
-| Adelaide-EA | mobilenet_v2-b0353104.pth | /cache/models/mobilenet_v2-b0353104.pth | [下载](http://vega.inhuawei.com/models/pretrained/mobilenet_v2-b0353104.pth) |
-| Prune-EA | resnet20.pth | /cache/models/resnet20.pth | [下载](http://vega.inhuawei.com/models/pretrained/prune/resnet20.pth) |
+| Adelaide-EA | mobilenet_v2-b0353104.pth | /cache/models/mobilenet_v2-b0353104.pth | [下载](http://www.noahlab.com.hk/opensource/vega/models/pretrained/mobilenet_v2-b0353104.pth) |
+| Prune-EA | resnet20.pth | /cache/models/resnet20.pth | [下载](http://www.noahlab.com.hk/opensource/vega/models/pretrained/resnet20.pth) |
 | Prune-EA | resnet20.ckpt | /cache/models/resnet20.ckpt | [下载](http://vega.inhuawei.com/models/pretrained/prune/resnet20.ckpt.tar.gz) |
-| SP-NAS | resnet50-19c8e357.pth | /cache/models/resnet50-19c8e357.pth | [下载](http://vega.inhuawei.com/models/pretrained/resnet50-19c8e357.pth) |
-| SP-NAS | SPNet_ECP_ImageNetPretrained_0.7978.pth | /cache/models/SPNet_ECP_ImageNetPretrained_0.7978.pth | [下载](http://vega.inhuawei.com/models/pretrained/SPNet_ECP_ImageNetPretrained_0.7978.pth) |
-| SP-NAS | SPNetXB_COCO_ImageNetPretrained.pth | /cache/models/SPNetXB_COCO_ImageNetPretrained.pth | [下载](http://vega.inhuawei.com/models/pretrained/SPNetXB_COCO_ImageNetPretrained.pth) |
+| SP-NAS | resnet50-19c8e357.pth | /cache/models/resnet50-19c8e357.pth | [下载](http://www.noahlab.com.hk/opensource/vega/models/pretrained/resnet50-19c8e357.pth) |
+| SP-NAS | SPNet_ECP_ImageNetPretrained_0.7978.pth | /cache/models/SPNet_ECP_ImageNetPretrained_0.7978.pth | [下载](http://www.noahlab.com.hk/opensource/vega/models/pretrained/SPNet_ECP_ImageNetPretrained_0.7978.pth) |
+| SP-NAS | SPNetXB_COCO_ImageNetPretrained.pth | /cache/models/SPNetXB_COCO_ImageNetPretrained.pth | [下载](http://www.noahlab.com.hk/opensource/vega/models/pretrained/SPNetXB_COCO_ImageNetPretrained.pth) |
 
 要说明的是，示例中的配置项都设置的很小，是为了更快的运行出结果，但过小的配置会造成运行结果是不理想的，所以大家可以参考各个算法的说明文档，根据需要来修改和调整配置，运行出所需的结果。
 
