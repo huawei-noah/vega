@@ -57,12 +57,12 @@ In addition, for the following algorithm, a pre-trained model needs to be loaded
 
 | Algorithm | Pre-trained Model | Default Path | Model Source |
 | :--: | :-- | :-- | :--: |
-| Adelaide-EA | mobilenet_v2-b0353104.pth | /cache/models/mobilenet_v2-b0353104.pth | [Download](http://vega.inhuawei.com/models/pretrained/mobilenet_v2-b0353104.pth) |
-| Prune-EA | resnet20.pth | /cache/models/resnet20.pth | [Download](http://vega.inhuawei.com/models/pretrained/resnet20.pth) |
+| Adelaide-EA | mobilenet_v2-b0353104.pth | /cache/models/mobilenet_v2-b0353104.pth | [Download](http://www.noahlab.com.hk/opensource/vega/models/pretrained/mobilenet_v2-b0353104.pth) |
+| Prune-EA | resnet20.pth | /cache/models/resnet20.pth | [Download](http://www.noahlab.com.hk/opensource/vega/models/pretrained/resnet20.pth) |
 | Prune-EA | resnet20.ckpt | /cache/models/resnet20.ckpt | [Download](http://vega.inhuawei.com/models/pretrained/resnet20.ckpt.tar.gz) |
-| SP-NAS | resnet50-19c8e357.pth | /cache/models/resnet50-19c8e357.pth | [Download](http://vega.inhuawei.com/models/pretrained/resnet50-19c8e357.pth) |
-| SP-NAS | SPNet_ECP_ImageNetPretrained_0.7978.pth | /cache/models/SPNet_ECP_ImageNetPretrained_0.7978.pth | [download](http://vega.inhuawei.com/models/pretrained/SPNet_ECP_ImageNetPretrained_0.7978.pth) |
-| SP-NAS | SPNetXB_COCO_ImageNetPretrained.pth | /cache/models/SPNetXB_COCO_ImageNetPretrained.pth | [download](http://vega.inhuawei.com/models/pretrained/SPNetXB_COCO_ImageNetPretrained.pth) |
+| SP-NAS | resnet50-19c8e357.pth | /cache/models/resnet50-19c8e357.pth | [Download](http://www.noahlab.com.hk/opensource/vega/models/pretrained/resnet50-19c8e357.pth) |
+| SP-NAS | SPNet_ECP_ImageNetPretrained_0.7978.pth | /cache/models/SPNet_ECP_ImageNetPretrained_0.7978.pth | [download](http://www.noahlab.com.hk/opensource/vega/models/pretrained/SPNet_ECP_ImageNetPretrained_0.7978.pth) |
+| SP-NAS | SPNetXB_COCO_ImageNetPretrained.pth | /cache/models/SPNetXB_COCO_ImageNetPretrained.pth | [download](http://www.noahlab.com.hk/opensource/vega/models/pretrained/SPNetXB_COCO_ImageNetPretrained.pth) |
 
 Note that the configuration items in the example are set to small values to speed up the running. However, if the configuration items are set to small values, the running result may be unsatisfactory. Therefore, you can modify and adjust the configuration items based on the description documents of each algorithm to obtain the required result.
 
