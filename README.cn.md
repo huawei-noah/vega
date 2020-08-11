@@ -10,7 +10,8 @@
   - Report机制：提供统一的AutoML算法的数据收集和处理机制。
   - 多Backend：提供TensorFlow支持，欢迎试用。
   - 评估服务：提供独立的评估服务，提供Atalas 200DK和Bolt的模型评估。
-- 社区贡献者：[qixiuai](https://github.com/qixiuai), [hasanirtiza](https://github.com/hasanirtiza), [cndylan](https://github.com/cndylan)。
+- 社区贡献者：[qixiuai](https://github.com/qixiuai), [hasanirtiza](https://github.com/hasanirtiza), [cndylan](https://github.com/cndylan)，[IlyaTrofimov](https://github.com/IlyaTrofimov)。
+
 
 ## Vega简介
 
