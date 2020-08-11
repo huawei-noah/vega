@@ -1,4 +1,4 @@
-# AutoGate
+# AutoFis
 
 ## 1. Introduction
 
@@ -8,13 +8,13 @@ The existing prediction models are mainly based on FM (factorization machines) f
 However, in practice, not all feature interactions are effective, and noise may be involved, which may impair the accuracy of model prediction.
 Given this, Autogate can automatically learn the effective part of feature interaction from O(N^2) feature space, and shield the redundant interactions through gate function, so as to improve the prediction accuracy. The applicable models for Autogate include FM, FFM and deepfm, etc.
 
-![FIS AutoGate](images/fis_autogate_overview.png)
+![FIS AutoFis](images/fis_autogate_overview.png)
 
 ## 2. Theory
 
 Autogate consists of two phases. In the first stage (search stage), the importance score of each feature interaction is learned by automatic searching; In the second stage (retrain stage), on the basis of the search stage, the unimportant feature interactions are shielded and the model is retrained to achieve better results.
 
-![FIS AutoGate Stage2](images/fis_autogate_avazu_performance.png)
+![FIS AutoFis Stage2](images/fis_autogate_avazu_performance.png)
 
 ### 2.1 Search Space
 
@@ -40,15 +40,15 @@ general:
     worker:                                    # worker
         devices_per_job: -1                    # number of GPUs required by worker (default: -1)
 
-pipeline: [search, retrain]                    # the pipeline of AutoGate (two stage)
+pipeline: [search, retrain]                    # the pipeline of AutoFis (two stage)
 
-search:                                        # the search stage of AutoGate
+search:                                        # the search stage of AutoFis
     pipe_step：                                # the type of pipe_step
     dataset：                                  # the config of dataset
     model：                                    # the config of model parameters and structure
     trainer：                                  # the config of optimizer
     evaluator：                                # the config of evaluator     
-retrain:                                       # the retrain stage of AutoGate
+retrain:                                       # the retrain stage of AutoFis
 
 ```
 
@@ -119,7 +119,7 @@ trainer:
 
 ```
 
-### 3.5 Top-K AutoGate
+### 3.5 Top-K AutoFis
 
 The feature interaction selection of Autogate is sparse selection through gRDA optimizer. In addition, the top-k optimal feature interactions can be selected directly. The corresponding examples can refer to: automl/examples/nas/fis/autogate.yml
 
