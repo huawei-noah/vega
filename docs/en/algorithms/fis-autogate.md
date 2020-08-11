@@ -2,23 +2,23 @@
 
 ## 1. Introduction
 
-Autogate is an automatic feature selection algorithm for recommender system scenes. The neural-network-based prediction model of recommender systems (including but not limited to CTR prediction) can be simply divided into three modules, namely Embedding Layer, Interaction Layer and MLP Layer. 
+AutoFis is an automatic feature selection algorithm for recommender system scenes. The neural-network-based prediction model of recommender systems (including but not limited to CTR prediction) can be simply divided into three modules, namely Embedding Layer, Interaction Layer and MLP Layer. 
 Interaction layer is the key module of the whole prediction model, which is designed for modeling the feature interaction effectively.
 The existing prediction models are mainly based on FM (factorization machines) for feature interaction modeling. In the second-order case, all the second-order feature interactions are modeled, resulting in O(N^2) feature space.
 However, in practice, not all feature interactions are effective, and noise may be involved, which may impair the accuracy of model prediction.
-Given this, Autogate can automatically learn the effective part of feature interaction from O(N^2) feature space, and shield the redundant interactions through gate function, so as to improve the prediction accuracy. The applicable models for Autogate include FM, FFM and deepfm, etc.
+Given this, AutoFis can automatically learn the effective part of feature interaction from O(N^2) feature space, and shield the redundant interactions through gate function, so as to improve the prediction accuracy. The applicable models for AutoFis include FM, FFM and deepfm, etc.
 
 ![FIS AutoFis](images/fis_autogate_overview.png)
 
 ## 2. Theory
 
-Autogate consists of two phases. In the first stage (search stage), the importance score of each feature interaction is learned by automatic searching; In the second stage (retrain stage), on the basis of the search stage, the unimportant feature interactions are shielded and the model is retrained to achieve better results.
+AutoFis consists of two phases. In the first stage (search stage), the importance score of each feature interaction is learned by automatic searching; In the second stage (retrain stage), on the basis of the search stage, the unimportant feature interactions are shielded and the model is retrained to achieve better results.
 
 ![FIS AutoFis Stage2](images/fis_autogate_avazu_performance.png)
 
 ### 2.1 Search Space
 
-For the second-order interaction, the search space of Autogate is the whole second-order interaction, namely N*(N-1)/2 interactions. The weight of each second-order feature interaction is learned through the structure parameter `alpha`.
+For the second-order interaction, the search space of AutoFis is the whole second-order interaction, namely N*(N-1)/2 interactions. The weight of each second-order feature interaction is learned through the structure parameter `alpha`.
 The `alpha` obtained after the model convergence represents the importance of the corresponding feature interaction.
 
 ### 2.2 Search Strategy
@@ -27,7 +27,7 @@ In terms of the search strategy, the structural parameter `alpha`, which represe
 
 In the search stage, the optimizer gRDA [1] is used to optimize the structure parameter `alpha`, and a sparse solution is learned. The sparse solution can drop most useless feature interactions, and only beneficial feature interactions are left.
 
-In the retrain stage, based on the structural parameter `alpha` obtained from the search stage, Autogate gradually blocks the unimportant features interactively and retrains the whole model, so as to further improve the accuracy.
+In the retrain stage, based on the structural parameter `alpha` obtained from the search stage, AutoFis gradually blocks the unimportant features interactively and retrains the whole model, so as to further improve the accuracy.
 
 ## 3. Guidance
 
@@ -54,7 +54,7 @@ retrain:                                       # the retrain stage of AutoFis
 
 ### 3.2 Dataset Setting
 
-The data used by Autogate is a general CTR prediction dataset format, which is represented by sparse matrix and stored as '.npy' files. For example, the feature vector `x = [0,0,0,1,0.5,0,0,0,0,0]` can be represented by these two vectors `feature_id = [3, 4], feature_val = [1, 0.5]`. The first vector represents the ID of non-zero features, and the second vector represents the corresponding values. In many scenarios, `x` is a binary vector. In this case, the `feature_val` is a vector of all 1, which can be omitted.
+The data used by AutoFis is a general CTR prediction dataset format, which is represented by sparse matrix and stored as '.npy' files. For example, the feature vector `x = [0,0,0,1,0.5,0,0,0,0,0]` can be represented by these two vectors `feature_id = [3, 4], feature_val = [1, 0.5]`. The first vector represents the ID of non-zero features, and the second vector represents the corresponding values. In many scenarios, `x` is a binary vector. In this case, the `feature_val` is a vector of all 1, which can be omitted.
 
 Here, we take the public dataset Avazu as an example to introduce how to configure:
 
@@ -69,7 +69,7 @@ dataset:
 
 ### 3.3 Model Setting
 
-Autogate can be used to select the feature interactions of FM, FFM, DeepFM and other models. Taking DeepFM as an example:
+AutoFis can be used to select the feature interactions of FM, FFM, DeepFM and other models. Taking DeepFM as an example:
 
 ```yaml
 model:
@@ -92,7 +92,7 @@ model:
 
 ### 3.4 Optimizer Setting
 
-Adam and gRDA optimizers need to be configured in the search phase of Autogate. The following describes how to configure:
+Adam and gRDA optimizers need to be configured in the search phase of AutoFis. The following describes how to configure:
 
 ```yaml
 trainer:
@@ -121,10 +121,10 @@ trainer:
 
 ### 3.5 Top-K AutoFis
 
-The feature interaction selection of Autogate is sparse selection through gRDA optimizer. In addition, the top-k optimal feature interactions can be selected directly. The corresponding examples can refer to: automl/examples/nas/fis/autogate.yml
+The feature interaction selection of AutoFis is sparse selection through gRDA optimizer. In addition, the top-k optimal feature interactions can be selected directly. The corresponding examples can refer to: automl/examples/nas/fis/autogate.yml
 
-Different from the gRDA version, the top-k version of Autogate only needs Adam one optimizer, so the training is more convenient. The model parameters fis_ratio is used to select the scale of feature interaction.
+Different from the gRDA version, the top-k version of AutoFis only needs Adam one optimizer, so the training is more convenient. The model parameters fis_ratio is used to select the scale of feature interaction.
 
 ### 3.6 Output
 
-The Autogate algorithm will output the best performance of the model and the corresponding model files, including checkpoint and pickle files.
+The AutoFis algorithm will output the best performance of the model and the corresponding model files, including checkpoint and pickle files.
