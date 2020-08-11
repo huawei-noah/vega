@@ -10,7 +10,7 @@
   - Report mechanism: provides a unified data collection and processing mechanism for the AutoML algorithm.
   - Multi-Backend: TensorFlow is supported.
   - Evaluator Server: Provides independent evaluation services and model evaluation of Atlas 200DK and Bolt.
-- Community Contributors: [qixiuai](https://github.com/qixiuai), [hasanirtiza](https://github.com/hasanirtiza), [cndylan](https://github.com/cndylan).
+- Community Contributors: [qixiuai](https://github.com/qixiuai), [hasanirtiza](https://github.com/hasanirtiza), [cndylan](https://github.com/cndylan), [IlyaTrofimov](https://github.com/IlyaTrofimov).
 
 ## Introduction
 
