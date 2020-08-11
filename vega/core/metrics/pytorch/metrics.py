@@ -12,13 +12,18 @@
 from functools import partial
 from inspect import isfunction
 from copy import deepcopy
-import importlib
-from vega.core.common.class_factory import ClassFactory, ClassType
+
+from vega.core import metrics as metrics
 from vega.core.common import Config
+from vega.core.common.class_factory import ClassFactory, ClassType
+from vega.core.common.config import obj2config
+from vega.core.trainer.conf import MetricsConfig
 
 
 class MetricBase(object):
     """Provide base metrics class for all custom metric to implement."""
+
+    __metric_name__ = None
 
     def __call__(self, output, target, *args, **kwargs):
         """Perform top k accuracy. called in train and valid step.
@@ -36,6 +41,27 @@ class MetricBase(object):
         """Summary all cached records, called after valid."""
         raise NotImplementedError
 
+    @property
+    def objective(self):
+        """Define reward mode, default is max."""
+        return 'MAX'
+
+    @property
+    def name(self):
+        """Get metric name."""
+        return self.__metric_name__ or self.__class__.__name__
+
+    @property
+    def result(self):
+        """Call summary to get result and parse result to dict.
+
+        :return dict like: {'acc':{'name': 'acc', 'value': 0.9, 'reward_mode': 'MAX'}}
+        """
+        value = self.summary()
+        if isinstance(value, dict):
+            return value
+        return {self.name: value}
+
 
 class Metrics(object):
     """Metrics class of all metrics defined in cfg.
@@ -44,27 +70,22 @@ class Metrics(object):
     :type metric_cfg: dict or Config
     """
 
-    __supported_call__ = ['accuracy', 'DetMetric', 'IoUMetric', 'SRMetric',
-                          'JDDTrainerPSNRMetric']
+    config = MetricsConfig()
 
-    def __init__(self, metric_cfg):
+    def __init__(self, metric_cfg=None):
         """Init Metrics."""
-        metric_config = deepcopy(metric_cfg)
         self.mdict = {}
+        metric_config = obj2config(self.config) if not metric_cfg else deepcopy(metric_cfg)
         if not isinstance(metric_config, list):
             metric_config = [metric_config]
         for metric_item in metric_config:
+            ClassFactory.get_cls(ClassType.METRIC, self.config.type)
             metric_name = metric_item.pop('type')
-            if ClassFactory.is_exists(ClassType.METRIC, metric_name):
-                metric_class = ClassFactory.get_cls(
-                    ClassType.METRIC, metric_name)
-            else:
-                metric_class = getattr(importlib.import_module(
-                    'vega.core.metrics'), metric_name)
+            metric_class = ClassFactory.get_cls(ClassType.METRIC, metric_name)
             if isfunction(metric_class):
-                metric_class = partial(metric_class, **metric_item)
+                metric_class = partial(metric_class, **metric_item.get("params", {}))
             else:
-                metric_class = metric_class(**metric_item)
+                metric_class = metric_class(**metric_item.get("params", {}))
             self.mdict[metric_name] = metric_class
         self.mdict = Config(self.mdict)
 
@@ -81,13 +102,8 @@ class Metrics(object):
         pfms = []
         for key in self.mdict:
             metric = self.mdict[key]
-            if key in self.__supported_call__:
-                pfms.append(metric(output, target, *args, **kwargs))
+            pfms.append(metric(output, target, *args, **kwargs))
         return pfms
-        # if len(pfms) == 1:
-        #     return pfms[0]
-        # else:
-        #     return pfms
 
     def reset(self):
         """Reset states for new evaluation after each epoch."""
@@ -95,29 +111,17 @@ class Metrics(object):
             val.reset()
 
     @property
-    def names(self):
-        """Return metrics names."""
-        names = [name for name in self.mdict if name in self.__supported_call__]
-        return names
-        # if len(names) == 1:
-        #     return names[0]
-        # else:
-        #     return names
-
-    @property
     def results(self):
         """Return metrics results."""
-        results = [self.mdict[name].summary()
-                   for name in self.mdict if name in self.__supported_call__]
-        return deepcopy(results)
+        res = {}
+        for name, metric in self.mdict.items():
+            res.update(metric.result)
+        return res
 
     @property
-    def results_dict(self):
-        """Return metrics results dict."""
-        rdict = {}
-        for key in self.mdict:
-            rdict[key] = self.mdict[key].summary()
-        return deepcopy(rdict)
+    def objectives(self):
+        """Return objectives results."""
+        return {name: self.mdict.get(name).objective for name in self.mdict}
 
     def __getattr__(self, key):
         """Get a metric by key name.
@@ -126,3 +130,6 @@ class Metrics(object):
         :type key: str
         """
         return self.mdict[key]
+
+
+ClassFactory.register_from_package(metrics, ClassType.METRIC)

@@ -12,7 +12,7 @@ Software environment:
 * Ptyhon 3.7
 * PyTorch 1.2
 * CUDA 10.0
-* Vega 0.9.2
+* Vega 1.0.0
 
 ## Image Classification on ImageNet
 

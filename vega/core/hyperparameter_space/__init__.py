@@ -1,4 +1,3 @@
-
 from .common.param_types import ParamTypes, PARAM_TYPE_MAP
 from .common.hyper_parameter import HyperParameter
 from .common.ext_hyper_parameter import *

@@ -4,7 +4,7 @@
 
 Vega在`Dataset`类中提供了数据转换和采样相关的接口和公共方法，用户数据处理类可继承自`Dataset`类，使用这些公共能力。
 
-Vega提供了常用的数据集类，包括`Cifar10`、`Cifar100`、`ImageNet`、`Coco`、`FMnist`、`Mnist`、`Cityscapes`、`Div2K`等，具体描述，可参考[配置参考](../user/config_reference.md)。
+Vega提供了常用的数据集类，包括`Avazu`、`Cifar10`、`Cifar100`、`ImageNet`、`Coco`、`FMnist`、`Mnist`、`Cityscapes`、`Div2K`等，具体描述，可参考[配置参考](../user/config_reference.md)。
 
 ### 1.1 使用示例
 
@@ -16,7 +16,7 @@ Vega提供了常用的数据集类，包括`Cifar10`、`Cifar100`、`ImageNet`�
     dataset:
         type: Cifar10
         train:
-            data_path: "/data/dataset/"
+            data_path: "/cache/datasets/cifar10/"
      ```
 
 1. 在程序中，使用`ClassFactory`来创建`Dataset`，`mode`来初始化训练集或测试集，并使用`Dataloader`来加载数据，如下：

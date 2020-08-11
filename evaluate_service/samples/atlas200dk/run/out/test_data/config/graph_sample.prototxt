@@ -1,0 +1,42 @@
+graphs {
+  graph_id: 100
+  priority: 1
+  engines {
+    id: 1000
+    engine_name: "SourceEngine"
+    side: HOST
+    thread_num: 1
+  }
+  engines {
+    id: 1002
+    engine_name: "DestEngine"
+    side: HOST
+    thread_num: 1
+  }
+  engines {
+    id: 1003
+    engine_name: "ClassifyNetEngine"
+    side: DEVICE
+    so_name: "./libai_engine.so"
+    thread_num: 1
+    ai_config{
+      items{
+          name: "model_path"
+          value: "./test_data/model/davinci_model.om"
+      }
+    }
+  }
+
+  connects {
+    src_engine_id: 1000
+    src_port_id: 0
+    target_engine_id: 1003
+    target_port_id: 0
+  }
+  connects {
+    src_engine_id: 1003
+    src_port_id: 0
+    target_engine_id: 1002
+    target_port_id: 0
+  }
+}

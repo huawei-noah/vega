@@ -9,13 +9,8 @@
 # MIT License for more details.
 
 """Management class registration and bind configuration properties, provides the type of class supported."""
-import logging
 from copy import deepcopy
-from inspect import isfunction
-
-from .config import Config
-from .utils import update_dict
-from .user_config import UserConfig, DefaultConfig
+from inspect import isfunction, isclass
 
 
 class ClassType(object):
@@ -34,10 +29,11 @@ class ClassType(object):
     SEARCH_SPACE = 'search_space'
     PIPE_STEP = 'pipe_step'
     GENERAL = 'general'
-    HPO = 'hpo'
     DATASET = 'dataset'
     TRANSFORM = 'dataset.transforms'
     CALLBACK = 'trainer.callback'
+    CONFIG = 'CONFIG'
+    CODEC = 'search_algorithm.codec'
 
 
 class ClassFactory(object):
@@ -93,6 +89,23 @@ class ClassFactory(object):
         return t_cls
 
     @classmethod
+    def register_from_package(cls, package, type_name=ClassType.GENERAL):
+        """Register all public class from package.
+
+        :param t_cls: class need to register.
+        :param type_name: type name.
+        :param alias: class name.
+        :return:
+        """
+        for _name in dir(package):
+            if _name.startswith("_"):
+                continue
+            _cls = getattr(package, _name)
+            if not isclass(_cls) and not isfunction(_cls):
+                continue
+            ClassFactory.register_cls(_cls, type_name)
+
+    @classmethod
     def is_exists(cls, type_name, cls_name=None):
         """Determine whether class name is in the current type group.
 
@@ -105,7 +118,7 @@ class ClassFactory(object):
         return type_name in cls.__registry__ and cls_name in cls.__registry__.get(type_name)
 
     @classmethod
-    def get_cls(cls, type_name, t_cls_name=None, bing_cfg=True):
+    def get_cls(cls, type_name, t_cls_name=None):
         """Get class and bind config to class.
 
         :param type_name: type name of class registry
@@ -124,13 +137,19 @@ class ClassFactory(object):
             raise ValueError(
                 "can't find class: {} with class type: {} in registry".format(t_cls_name, type_name))
         t_cls = cls.__registry__.get(type_name).get(t_cls_name)
-        if bing_cfg:
-            try:
-                cls.bind_cfg(t_cls, type_name)
-            except Exception as ex:
-                logging.warning("Failed to bind cfg of class=%s in type_name=%s, ex=%s", t_cls.__name__, type_name,
-                                str(ex))
         return t_cls
+
+    @classmethod
+    def get_instance(cls, type_name, params=None):
+        """Get instance."""
+        try:
+            if not params:
+                return
+            t_cls_name = params.pop('type')
+            t_cls = cls.get_cls(type_name, t_cls_name)
+            return t_cls(**params) if params else t_cls()
+        except Exception as ex:
+            raise Exception("Can't get instance for params:{}, ex={}".format(params, ex))
 
     @classmethod
     def set_current_step(cls, configs):
@@ -141,72 +160,3 @@ class ClassFactory(object):
         if not isinstance(configs, dict):
             raise TypeError("configs should be a dict")
         cls.__configs__ = deepcopy(configs)
-
-    @classmethod
-    def bind_cfg(cls, t_cls, type_name):
-        """Set the configuration information required for the creation of a class.
-
-        :param t_cls: class instance need to bind
-        :param type_name: type name in registry
-        :return: t_cls
-        """
-        cls_dict = deepcopy(cls.get_cfg_dict(type_name, t_cls.__name__))
-        if isfunction(t_cls) or type_name == ClassType.LOSS:
-            cls_dict.pop('type')
-            return t_cls(**cls_dict)
-        else:
-            if UserConfig().data is not None and 'general' in UserConfig().data and cls_dict is not None:
-                cls_dict.update(UserConfig().data.general)
-            # Merge config with base class
-            cls_dict = cls.merge_base_cfg(cls_dict, type_name, t_cls)
-            if not cls_dict:
-                return t_cls
-            setattr(t_cls, 'cfg', deepcopy(Config(cls_dict)))
-            return t_cls
-
-    @classmethod
-    def get_cfg_dict(cls, type_name, name):
-        """Get config dict from default and user config.
-
-        Hierarchical configuration binding is supported if the type name is included.
-        Indicates that other classes are applied to the class, and the system will customize the parser structure
-        to bind the configuration to the corresponding class
-        :param type_name: type name in registry
-        :param name: class name
-        :return: config dict of current cls
-        """
-        cls_dict = deepcopy(DefaultConfig().data.get(name))
-        if cls.__configs__ is not None:
-            current_type_dict = cls.__configs__.copy()
-            current_type_name = None
-            for _type_name in type_name.split('.'):
-                if not current_type_dict or _type_name not in current_type_dict:
-                    break
-                current_type_dict = current_type_dict.get(_type_name)
-                current_type_name = current_type_dict.get('type')
-            if current_type_name == name or current_type_name == 'FineGrainedSpace':
-                cls_dict = current_type_dict
-        return cls_dict
-
-    @classmethod
-    def merge_base_cfg(cls, cls_dict, type_name, t_cls):
-        """Merge config with parent class, configuration in the parent class can be inherited.
-
-        If it is multiple inheritance, configuration will overwritten according to init sequence.
-        Configuration with the same name will apply the first one.
-        The parent class must also be registered in the ClassFactory.
-        :param cls_dict: config dict of cls
-        :param type_name: type name in registry of class
-        :param t_cls: class instance
-        :return: merged dict
-        """
-        base_cls_list = t_cls.__bases__
-        merged_dict = deepcopy(cls_dict)
-        for base_cls in base_cls_list:
-            if base_cls and cls.is_exists(type_name, base_cls.__name__):
-                base_cfg = deepcopy(cls.get_cfg_dict(type_name, base_cls.__name__))
-                if not base_cfg:
-                    continue
-                exclude_keys = ['loss', 'metric', 'lr_scheduler', 'optim', 'model_desc', 'transforms']
-                merged_dict = update_dict(cls_dict, base_cfg, exclude_keys)
-        return merged_dict

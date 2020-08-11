@@ -74,12 +74,16 @@ vega/search_space/networks/cyclesrbodys/srmodels.py
 
 ```yaml
 trainer:
-    type: CyclesrTrainer        # trainer 的类型   
+    type: Trainer
+    callbacks: CyclesrTrainerCallback
+    lazy_built: True
     n_epoch: 100                # 学习率开始下降的epoch数
     n_epoch_decay: 100          # 学习率下降至0的epoch数
     val_ps_offset: 10           # 测试图片偏移量
     save_dir: /cache/logs/      # 保存路径
     lr_policy: linear           # 学习率类型
+
+model:
     model_desc:
         modules: ["custom"]     # module 类型
         custom:
@@ -89,12 +93,6 @@ trainer:
             grad_clip: 50       # 梯度clip阈值
             cyc_lr: !!float 2e-4 # cyclegan学习率
             SR_lr: !!float 1e-4  # SR网络学习率
-```
-
-联合训练的网络文件位于
-
-```text
-vega/search_space/networks/cyclesrbodys/cyclesr_net.py
 ```
 
 ## 3. 使用指导
@@ -107,7 +105,11 @@ vega/search_space/networks/cyclesrbodys/cyclesr_net.py
 examples/data_augmentation/cyclesr/cyclesr.yml
 ```
 
-## 4. 算法输出
+## 4. 数据要求
+
+对于HR需要将一张图片裁剪成像素为`480*480`的多张子图，对于LR需要将一张图片裁剪成像素为`120*120`的多张子图 
+
+## 5. 算法输出
 
  1. 整个训练过程中产生的日志文件，包括控制台输出以及保存在Writer中的events
  2. 网络模型文件

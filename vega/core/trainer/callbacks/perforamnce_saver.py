@@ -9,8 +9,8 @@
 # MIT License for more details.
 
 """PerformanceSaver callback defination."""
-from .callbacks import Callback
-from copy import deepcopy
+import logging
+from .callback import Callback
 from vega.core.common.class_factory import ClassFactory, ClassType
 
 
@@ -20,81 +20,40 @@ class PerformanceSaver(Callback):
 
     def __init__(self, best=True, after_epoch=True, after_train=True):
         """Construct a Performance callback."""
+        super(Callback, self).__init__()
         self.save_best = best
         self.save_after_epoch = after_epoch
         self.save_after_train = after_train
+        self.priority = 250
 
     def before_train(self, logs=None):
         """Be called before the training process."""
         self.is_chief = self.params['is_chief']
         self.do_validation = self.params['do_validation']
         self.summary_perfs = None
+        self.step_name = self.trainer.step_name
+        self.worker_id = self.trainer.worker_id
 
     def after_epoch(self, epoch, logs=None):
-        """Be called after each epoch."""
+        """Be called after the training epoch."""
+        logging.debug("train record: saver performance after epoch run successes.")
         self.summary_perfs = logs.get('summary_perfs', {})
-        if self.is_chief and self.save_after_epoch:
-            if self.do_validation:
-                if self.save_best:
-                    best_changed = logs.get('best_valid_perfs_changed', False)
-                    if best_changed:
-                        best_perf = self._get_best_perf(self.summary_perfs)
-                        self.trainer._save_performance(best_perf)
-                else:
-                    cur_perf = self._get_cur_perf(self.summary_perfs)
-                    self.trainer._save_performance(cur_perf)
-            else:
-                self.trainer._save_performance(self.summary_perfs)
-
-    def after_train(self, logs=None):
-        """Be called after the training process."""
-        if self.is_chief and self.save_after_train:
-            if self.do_validation:
-                best_perf = self._get_best_perf(self.summary_perfs)
-                self.trainer._save_performance(best_perf)
-            else:
-                self.trainer._save_performance(self.summary_perfs)
+        if not (self.is_chief and self.save_after_epoch):
+            return
+        best_changed = logs.get('best_valid_perfs_changed', False)
+        if self.save_best and best_changed:
+            pfm = self._get_best_perf(self.summary_perfs)
+        else:
+            pfm = self._get_cur_perf(self.summary_perfs)
+        if pfm:
+            if self.summary_perfs.get("gflops"):
+                pfm.update({"gflops": self.summary_perfs.get("gflops")})
+            if self.summary_perfs.get("kparams"):
+                pfm.update({"kparams": self.summary_perfs.get("kparams")})
+            self.trainer.performance = pfm
 
     def _get_cur_perf(self, summary_perfs):
-        cur_valid_perfs = summary_perfs.get('cur_valid_perfs', None)
-        first_metric_val = list(cur_valid_perfs.values())[0]
-        return first_metric_val
+        return summary_perfs.get('cur_valid_perfs', None)
 
     def _get_best_perf(self, summary_perfs):
-        best_valid_perfs = summary_perfs.get('best_valid_perfs', None)
-        first_metric_val = list(best_valid_perfs.values())[0]
-        return first_metric_val
-
-    def _flatten_summary_perfs(self, summary_perfs):
-        # This function for future use
-        flatten_summary_perfs = deepcopy(summary_perfs)
-        cur_train_perfs = flatten_summary_perfs.pop('cur_train_perfs', None)
-        if cur_train_perfs is not None:
-            prefix_cur_train_perfs = self._prefix_perfs(
-                cur_train_perfs, 'train')
-            flatten_summary_perfs.update(prefix_cur_train_perfs)
-
-        best_train_perfs = flatten_summary_perfs.pop('best_train_perfs', None)
-        if best_train_perfs is not None:
-            prefix_best_train_perfs = self._prefix_perfs(best_train_perfs,
-                                                         'train_best')
-            flatten_summary_perfs.update(prefix_best_train_perfs)
-
-        cur_valid_perfs = flatten_summary_perfs.pop('cur_valid_perfs', None)
-        if cur_valid_perfs is not None:
-            prefix_cur_valid_perfs = self._prefix_perfs(
-                cur_valid_perfs, 'valid')
-            flatten_summary_perfs.update(prefix_cur_valid_perfs)
-
-        best_valid_perfs = flatten_summary_perfs.pop('best_valid_perfs', None)
-        if best_valid_perfs is not None:
-            prefix_best_valid_perfs = self._prefix_perfs(best_valid_perfs,
-                                                         'valid_best')
-            flatten_summary_perfs.update(prefix_best_valid_perfs)
-        return flatten_summary_perfs
-
-    def _prefix_perfs(self, perfs, prefix):
-        prefix_perfs = {}
-        for name, val in perfs.items():
-            prefix_perfs["{}_{}".format(prefix, name)] = val
-        return prefix_perfs
+        return summary_perfs.get('best_valid_perfs', None)

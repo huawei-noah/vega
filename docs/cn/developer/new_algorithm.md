@@ -20,6 +20,11 @@ nas:
 
     dataset:
         type: Cifar10
+        common:
+            data_path: /cache/datasets/cifar10/
+            train_portion: 0.9
+        test:
+            batch_size: 1024
 
     search_algorithm:
         type: PruneEA
@@ -27,8 +32,8 @@ nas:
         policy:
             length: 464
             num_generation: 31
-            num_individual: 4
-            random_models: 32
+            num_individual: 32
+            random_models: 64
 
     search_space:
         type: SearchSpace
@@ -42,21 +47,19 @@ nas:
     trainer:
         type: Trainer
         callbacks: PruneTrainerCallback
-        epochs: 2
-        init_model_file: "./bestmodel.pth"
+        epochs: 1
+        init_model_file: "/cache/models/resnet20.pth"
         optim:
             type: SGD
-            lr: 0.1
-            momentum: 0.9
-            weight_decay: !!float 1e-4
+            params:
+                lr: 0.1
+                momentum: 0.9
+                weight_decay: !!float 1e-4
         lr_scheduler:
             type: StepLR
-            step_size: 20
-            gamma: 0.5
-        loss:
-            type: CrossEntropyLoss
-        metrics:
-            type: accuracy
+            params:
+                step_size: 20
+                gamma: 0.5
         seed: 10
         limits:
             flop_range: [!!float 0, !!float 1e10]
@@ -143,23 +146,15 @@ class PruneResNet(Network):
 @ClassFactory.register(ClassType.SEARCH_ALGORITHM)
 class PruneEA(SearchAlgorithm):
 
-    def __init__(self, search_space):
-        super(PruneEA, self).__init__(search_space)
-        self.length = self.policy.length
-        self.num_individual = self.policy.num_individual
-        self.num_generation = self.policy.num_generation
-        self.x_axis = 'flops'
-        self.y_axis = 'acc'
-        self.random_models = self.policy.random_models
-        self.codec = Codec(self.cfg.codec, search_space)
+    def __init__(self, search_space, **kwargs):
+        super(PruneEA, self).__init__(search_space, **kwargs)
+        self.length = self.config.policy.length
+        self.num_individual = self.config.policy.num_individual
+        self.num_generation = self.config.policy.num_generation
+        self.random_models = self.config.policy.random_models
         self.random_count = 0
         self.ea_count = 0
         self.ea_epoch = 0
-        self.step_path = FileOps.join_path(self.local_output_path, self.cfg.step_name)
-        self.pd_file_name = FileOps.join_path(self.step_path, "performance.csv")
-        self.pareto_front_file = FileOps.join_path(self.step_path, "pareto_front.csv")
-        self.pd_path = FileOps.join_path(self.step_path, "pareto_front")
-        FileOps.make_dir(self.pd_path)
 ```
 
 同样，`PruneEA`类需要注册到`ClassFactory`中，以上代码中的`@ClassFactory.register(ClassType.SEARCH_ALGORITHM)`完成了注册过程。
@@ -170,26 +165,30 @@ PruneEA中最重要的是要实现`search()`的接口，负责从`search space`�
     def search(self):
         if self.random_count < self.random_models:
             self.random_count += 1
-            return self.random_count, self._random_sample()
-        pareto_front_results = self.get_pareto_front()
-        pareto_front = pareto_front_results["encoding"].tolist()
-        if len(pareto_front) < 2:
-            encoding1, encoding2 = pareto_front[0], pareto_front[0]
+            desc = self._random_sample()
+            desc.update({"trainer.codec": dict(desc)})
+            return self.random_count, desc
+        self.ea_epoch += 1
+        records = Report().get_pareto_front_records(self.step_name, self.num_individual)
+        codes = [record.desc.get('backbone').get('encoding') for record in records]
+        logging.info("codes=%s", codes)
+        if len(codes) < 2:
+            encoding1, encoding2 = codes[0], codes[0]
         else:
-            encoding1, encoding2 = random.sample(pareto_front, 2)
+            encoding1, encoding2 = random.sample(codes, 2)
         choice = random.randint(0, 1)
         # mutate
         if choice == 0:
-            encoding1List = str2list(encoding1)
-            encoding_new = self.mutatation(encoding1List)
+            encoding_new = self.mutatation(encoding1)
         # crossover
         else:
-            encoding1List = str2list(encoding1)
-            encoding2List = str2list(encoding2)
-            encoding_new, _ = self.crossover(encoding1List, encoding2List)
+            encoding_new, _ = self.crossover(encoding1, encoding2)
         self.ea_count += 1
-        net_desc = self.codec.decode(encoding_new)
-        return self.random_count + self.ea_count, net_desc
+        if self.ea_count % self.num_individual == 0:
+            self.ea_epoch += 1
+        desc = self.codec.decode(encoding_new)
+        desc.update({"trainer.codec": dict(desc)})
+        return self.random_count + self.ea_count, desc
 ```
 
 `search()`函数返回的是搜索的`id`和网络描述给`Generator`。
@@ -209,7 +208,7 @@ class PruneCodec(Codec):
             "backbone": chn_info
         }
         desc = update_dict(desc, copy.deepcopy(self.search_space))
-        return NetworkDesc(desc)
+        return desc
 ```
 
 `PruneCodec`中的`decode()`函数接受一个编码`code`参数，通过与实际网络描述的对应关系，解码成`PruneResNet`初始化参数的网络描述。
@@ -310,6 +309,8 @@ hpo1:
         type: Evaluator
         gpu_evaluator:
             type: GpuEvaluator
+            metric:
+                type: accuracy
 ```
 
 在以上的配置文件中：
@@ -391,4 +392,4 @@ class MyAlg(object):
 python main.py
 ```
 
-成功运行后，在算法运行过程中，会在输出目录中输出`best_hps.json`保存当前最佳的超参数，以及`hps.csv`保存超参、id和评分的表格。
+成功运行后，在算法运行过程中，会在输出目录中输出`desc.json`保存当前最佳的超参数，以及`output.csv`保存超参、id和评分的表格。

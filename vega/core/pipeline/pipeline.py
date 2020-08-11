@@ -9,7 +9,6 @@
 # MIT License for more details.
 
 """Pipeline that string up all PipeSteps."""
-import sys
 import os
 import traceback
 import logging
@@ -17,8 +16,10 @@ import signal
 from .pipe_step import PipeStep
 from vega.core.common.user_config import UserConfig
 from vega.core.common.class_factory import ClassFactory
+from vega.core.common.loader import load_conf_from_desc
 from vega.core.scheduler.master import Master
-from copy import deepcopy
+from .conf import PipeStepConfig, PipelineConfig
+from ..common.general import General
 
 logger = logging.getLogger(__name__)
 
@@ -29,15 +30,6 @@ class Pipeline(object):
     In this class, Pipeline will parse all pipe steps from the config data.
     Execute steps one by one and set glob configs with current step config.
     """
-
-    def __init__(self):
-        """Init Pipeline and set task_id and configs."""
-        self.cfg = UserConfig().data
-        # TODO: validate cfg by validator
-        if self.cfg is None:
-            raise ValueError("please load user config before pipeline init.")
-        self._steps = self.cfg.pipeline
-        logger.info("pipeline steps:%s", str(self._steps))
 
     def run(self):
         """Execute the whole pipeline."""
@@ -50,10 +42,12 @@ class Pipeline(object):
         try:
             signal.signal(signal.SIGINT, _shutdown_cluster)
             signal.signal(signal.SIGTERM, _shutdown_cluster)
-            for step_name in self._steps:
-                step_cfg = self.cfg.get(step_name)
-                self.cfg.general["step_name"] = step_name
+            for step_name in PipelineConfig.steps:
+                step_cfg = UserConfig().data.get(step_name)
+                General.step_name = step_name
                 ClassFactory().set_current_step(step_cfg)
+                # load Config obj form desc
+                load_conf_from_desc(PipeStepConfig, step_cfg)
                 logger.info("Start pipeline step: [{}]".format(step_name))
                 PipeStep().do()
         except Exception:

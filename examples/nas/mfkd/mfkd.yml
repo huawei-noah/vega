@@ -9,14 +9,7 @@ nas:
     dataset:
         type: Cifar10
         common:
-            data_path: '~/cache/datasets/cifar10/'
-            download: True
-        train:
-            shuffle: False
-            num_workers: 8
-            batch_size: 256
-            train_portion: 0.1
-        valid:
+            data_path: "/cache/datasets/cifar10/"
             shuffle: False
             num_workers: 8
             batch_size: 256

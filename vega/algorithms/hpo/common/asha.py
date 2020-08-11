@@ -52,20 +52,20 @@ class ASHA(ShaBase):
 
     :param hyperparameter_space: a pre-defined search space.
     :type hyperparameter_space: object, instance os `HyperparameterSpace`.
-    :param int config_count: Total config or hyperparameter count.
-    :param int max_epochs: `max_epochs` is the max epoch that hpo provide.
+    :param int num_samples: Total config or hyperparameter count.
+    :param int epochs_per_iter: `epochs_per_iter` is the max epoch that hpo provide.
     :param min_epochs: `min_epochs` is the init min epoch.
     :type min_epochs: int, default is 1.
     :param eta: rung base `eta`.
     :type eta: int, default is 3.
     """
 
-    def __init__(self, hyperparameter_space, config_count, max_epochs, min_epochs=1,
+    def __init__(self, hyperparameter_space, num_samples, epochs_per_iter, min_epochs=1,
                  eta=3):
         """Init ASHA."""
-        super().__init__(hyperparameter_space, config_count, max_epochs, min_epochs,
+        super().__init__(hyperparameter_space, num_samples, epochs_per_iter, min_epochs,
                          eta)
-        self.s_max = int(log(max_epochs / min_epochs) / log(eta))
+        self.s_max = int(log(epochs_per_iter / min_epochs) / log(eta))
         self.single_epoch = min_epochs
         # minimum early-stopping rate s
         self.sr = 0
@@ -74,7 +74,7 @@ class ASHA(ShaBase):
         # init all the configs
         for i in range(self.total_rungs):
             self.best_score_dict[i] = {}
-        config_list = self.get_hyperparameter_space(config_count)
+        config_list = self.get_hyperparameter_space(num_samples)
         for i, config in enumerate(config_list):
             self.all_config_dict[i] = config
             self.best_score_dict[0][i] = -1 * float('inf')
@@ -118,9 +118,9 @@ class ASHA(ShaBase):
         :param float score: Description of parameter `score`.
 
         """
-        self.sieve_board.loc[(self.sieve_board['config_id'] == config_id) & (
-            self.sieve_board['rung_id'] == rung_id), ['status', 'score']
-        ] = [StatusType.FINISHED, score]
+        self.sieve_board.loc[(
+            self.sieve_board['config_id'] == config_id) & (
+            self.sieve_board['rung_id'] == rung_id), ['status', 'score']] = [StatusType.FINISHED, score]
 
         if rung_id > 0 and config_id not in self.best_score_dict[rung_id]:
             self.best_score_dict[rung_id][config_id] = -1 * float('inf')
@@ -171,7 +171,7 @@ class ASHA(ShaBase):
         # Draw random configuration θ from bottom rung.
         bottom_rung = 0
         _key = (self.sieve_board['rung_id'] == bottom_rung) & \
-            (self.sieve_board['status'] == StatusType.WAITTING)
+               (self.sieve_board['status'] == StatusType.WAITTING)
         rung_df = self.sieve_board.loc[_key]
         if rung_df.empty:
             return None
@@ -207,7 +207,7 @@ class ASHA(ShaBase):
 
         """
         _key = (self.sieve_board['config_id'] == config_id) & \
-            (self.sieve_board['rung_id'] == rung_id)
+               (self.sieve_board['rung_id'] == rung_id)
         change_df = self.sieve_board.loc[_key]
         if change_df.empty:
             tmp_row_data = {'rung_id': rung_id,
@@ -242,7 +242,8 @@ class ASHA(ShaBase):
 
         """
         _key = (self.sieve_board['rung_id'] == rung_id) & \
-            (self.sieve_board['status'].isin([StatusType.FINISHED, StatusType.PORMOTED]))
+               (self.sieve_board['status'].isin(
+                   [StatusType.FINISHED, StatusType.PORMOTED]))
         rung_df = self.sieve_board.loc[_key]
         if rung_df.empty:
             return None

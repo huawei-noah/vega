@@ -37,7 +37,6 @@ Example:
     >>> #    {id1:hp1, id2:hp2, id6:hp6}
 
 """
-import numpy as np
 import pandas as pd
 import pareto
 import copy
@@ -53,14 +52,9 @@ class ParetoFront(object):
     :type cfg: type
     """
 
-    def __init__(self, cfg):
+    def __init__(self, object_count=2, max_object_ids=[]):
         """Init for ParetoFront."""
         logging.info("start init ParetoFront")
-        object_count = 2
-        max_object_ids = []
-        if "pareto" in cfg:
-            object_count = cfg.pareto.object_count
-            max_object_ids = cfg.pareto.max_object_ids
         self.sieve_columns = ['config_id', 'md5', 'config']
         for i in range(0, object_count):
             self.sieve_columns.append("score_{}".format(i))

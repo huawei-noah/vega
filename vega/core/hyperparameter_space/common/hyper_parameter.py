@@ -186,8 +186,9 @@ class HyperParameter(object):
     def __eq__(self, other):
         """If self is equal to other."""
         if isinstance(self, other.__class__):
-            _result = self.param_type is other.param_type and \
-                self.is_integer == other.is_integer and self.range == other.range
+            _result = (self.param_type is other.param_type) and (
+                self.is_integer == other.is_integer) and (
+                self.range == other.range)
             return _result
         return NotImplemented
 

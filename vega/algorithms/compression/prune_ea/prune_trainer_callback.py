@@ -9,87 +9,74 @@
 # MIT License for more details.
 
 """Trainer for searching pruned model."""
-import logging
+import copy
 import os
 import numpy as np
-import copy
-import pandas as pd
-import json
-import torch
-import torch.nn as nn
-import torch.utils.data
-from vega.core.trainer.pytorch import Trainer
+import vega
 from vega.core.common.class_factory import ClassFactory, ClassType
-from vega.core.common import Config
-from vega.core.metrics.pytorch import calc_model_flops_params
-from vega.search_space import SearchSpace
-from vega.search_space.networks import NetworkDesc
-from vega.datasets.pytorch import Dataset
-from .prune_codec import PruneCodec
 from vega.core.common.file_ops import FileOps
-from vega.core.visual import dump_trainer_visual_info
-from vega.core.common.utils import update_dict
+from vega.core.metrics import calc_model_flops_params
 from vega.core.trainer.callbacks import Callback
+from vega.search_space.networks import NetworkDesc
+
+if vega.is_torch_backend():
+    import torch
+    import torch.nn as nn
+elif vega.is_tf_backend():
+    import tensorflow as tf
 
 
 @ClassFactory.register(ClassType.CALLBACK)
 class PruneTrainerCallback(Callback):
     """Callback of Prune Trainer."""
 
+    disable_callbacks = ["ModelStatistics"]
+
+    def __init__(self):
+        super(Callback, self).__init__()
+        self.flops_count = None
+        self.params_count = None
+
     def before_train(self, logs=None):
         """Be called before the train process."""
-        self.cfg = self.trainer.cfg
-        self.trainer.auto_save_ckpt = False
-        self.trainer.auto_save_perf = False
-        self.device = self.cfg.device
-        self.base_net_desc = SearchSpace().cfg
-        self.model = self.trainer.model
-        if self.model is None:
-            self.model = self.trainer._init_model()
-        self.model._init_weights()
-        self.model = self.model.to(self.device)
-        count_input = torch.FloatTensor(1, 3, 32, 32).to(self.device)
-        self.flops_count, self.params_count = calc_model_flops_params(
-            self.model, count_input)
-        if not self.validate():
-            return
-        self.model = self._generate_init_model(self.model).to(self.device)
-        self.trainer.build(self.model)
+        self.config = self.trainer.config
+        self.device = self.trainer.config.device
+        self.base_net_desc = self.trainer.config.codec
+        if vega.is_torch_backend():
+            self.trainer.model._init_weights()
+            count_input = torch.FloatTensor(1, 3, 32, 32).to(self.device)
+        elif vega.is_tf_backend():
+            tf.reset_default_graph()
+            count_input = tf.random_uniform([1, 32, 32, 3], dtype=tf.float32)
+        self.flops_count, self.params_count = calc_model_flops_params(self.trainer.model, count_input)
+        self.validate()
+        self.trainer.model = self._generate_init_model(self.trainer.model)
 
     def after_epoch(self, epoch, logs=None):
-        """Be called after one epoch training."""
-        self.summary_perfs = logs.get('summary_perfs', None)
-        if self.summary_perfs['best_valid_perfs_changed']:
-            self._save_best_model()
+        """Update gflops and kparams."""
+        summary_perfs = logs.get('summary_perfs', {})
+        summary_perfs.update({'gflops': self.flops_count, 'kparams': self.params_count})
+        logs.update({'summary_perfs': summary_perfs})
 
-    def after_train(self, logs=None):
-        """Be called after the whole train process."""
-        self.metric = list(self.summary_perfs['best_valid_perfs'].values())[0][0]
-        self.save_metrics_value()
-        if self.cfg.get('save_model_desc', False):
-            self._save_model_desc()
-
-    def _load_model(self, model_prune):
-        """Load model from file.
+    def _new_model_init(self, model_prune):
+        """Init new model.
 
         :param model_prune: searched pruned model
         :type model_prune: torch.nn.Module
         :return: initial model after loading pretrained model
         :rtype: torch.nn.Module
         """
-        init_model_file = self.cfg.init_model_file
+        init_model_file = self.config.init_model_file
         if ":" in init_model_file:
             local_path = FileOps.join_path(
                 self.trainer.get_local_worker_path(), os.path.basename(init_model_file))
             FileOps.copy_file(init_model_file, local_path)
-            init_model_file = local_path
-        checkpoint = torch.load(init_model_file)
+            self.config.init_model_file = local_path
         network_desc = copy.deepcopy(self.base_net_desc)
         network_desc.backbone.chn = network_desc.backbone.base_chn
         network_desc.backbone.chn_node = network_desc.backbone.base_chn_node
         network_desc.backbone.encoding = model_prune.encoding
         model_init = NetworkDesc(network_desc).to_model()
-        model_init.load_state_dict(checkpoint)
         return model_init
 
     def _init_chn_node_mask(self, model_prune):
@@ -100,11 +87,6 @@ class PruneTrainerCallback(Callback):
         :return: channel node masks
         :rtype: array
         """
-        if model_prune.chn_mask is None:
-            Codec = PruneCodec('PruneCodec', SearchSpace())
-            net_desc = Codec.decode(model_prune.encoding)
-            model_prune.chn_mask = net_desc._desc.backbone.chn_mask
-            model_prune.chn_node_mask = net_desc._desc.backbone.chn_node_mask
         chn_node_mask_tmp = model_prune.chn_node_mask
         chn_node_mask = []
         for i, single_mask in zip([1, 3, 3, 3], chn_node_mask_tmp):
@@ -120,8 +102,34 @@ class PruneTrainerCallback(Callback):
         :return: initial model after loading pretrained model
         :rtype: torch.nn.Module
         """
-        model_init = self._load_model(model_prune)
+        model_init = self._new_model_init(model_prune)
         chn_node_mask = self._init_chn_node_mask(model_prune)
+        if vega.is_torch_backend():
+            return self._load_torch_model(model_prune, model_init, chn_node_mask)
+        elif vega.is_tf_backend():
+            return self._load_tf_model(model_prune, model_init, chn_node_mask)
+
+    def validate(self):
+        """Check whether the model fits in the #flops range or #parameter range specified in config.
+
+        :return: true or false, which specifies whether the model fits in the range
+        :rtype: bool
+        """
+        limits_config = self.config.limits or dict()
+        if "flop_range" in limits_config:
+            flop_range = limits_config["flop_range"]
+            if self.flops_count < flop_range[0] or self.flops_count > flop_range[1]:
+                raise ValueError("flop count exceed limits range.")
+        if "param_range" in limits_config:
+            param_range = limits_config["param_range"]
+            if self.params_count < param_range[0] or self.params_count > param_range[1]:
+                raise ValueError("params count exceed limits range.")
+        return True
+
+    def _load_torch_model(self, model_prune, model_init, chn_node_mask):
+        """Load torch pretrained model."""
+        checkpoint = torch.load(self.config.init_model_file)
+        model_init.load_state_dict(checkpoint)
         chn_node_id = 0
         chn_id = 0
         chn_mask = model_prune.chn_mask
@@ -177,8 +185,7 @@ class PruneTrainerCallback(Callback):
                         mask = np.ones(layer1.weight.data.shape)
                         mask[:, idx0.tolist(), :, :] = 0
                         mask[idx1.tolist(), :, :, :] = 0
-                        layer1.weight.data = layer1.weight.data * \
-                            torch.FloatTensor(mask)
+                        layer1.weight.data = layer1.weight.data * torch.FloatTensor(mask)
                         layer1.weight.data[:, idx0.tolist(
                         ), :, :].requires_grad = False
                         layer1.weight.data[idx1.tolist(
@@ -190,14 +197,10 @@ class PruneTrainerCallback(Callback):
                             np.asarray(np.ones(end_mask.shape) - end_mask)))
                         mask = np.ones(layer1.weight.data.shape)
                         mask[idx1.tolist()] = 0
-                        layer1.weight.data = layer1.weight.data * \
-                            torch.FloatTensor(mask)
-                        layer1.bias.data = layer1.bias.data * \
-                            torch.FloatTensor(mask)
-                        layer1.running_mean = layer1.running_mean * \
-                            torch.FloatTensor(mask)
-                        layer1.running_var = layer1.running_var * \
-                            torch.FloatTensor(mask)
+                        layer1.weight.data = layer1.weight.data * torch.FloatTensor(mask)
+                        layer1.bias.data = layer1.bias.data * torch.FloatTensor(mask)
+                        layer1.running_mean = layer1.running_mean * torch.FloatTensor(mask)
+                        layer1.running_var = layer1.running_var * torch.FloatTensor(mask)
                         layer1.weight.data[idx1.tolist()].requires_grad = False
                         layer1.bias.data[idx1.tolist()].requires_grad = False
                         layer1.running_mean[idx1.tolist()].requires_grad = False
@@ -211,70 +214,76 @@ class PruneTrainerCallback(Callback):
                 mask[:, idx1.tolist()] = 0
                 m1.weight.data = m1.weight.data * torch.FloatTensor(mask)
                 m1.weight.data[:, idx1.tolist()].requires_grad = False
+        model_init.to(self.device)
         return model_init
 
-    def _save_model_desc(self):
-        """Save final model desc of NAS."""
-        pf_file = FileOps.join_path(self.trainer.local_output_path, self.trainer.step_name, "pareto_front.csv")
-        if not FileOps.exists(pf_file):
-            return
-        with open(pf_file, "r") as file:
-            pf = pd.read_csv(file)
-        pareto_fronts = pf["encoding"].tolist()
-        search_space = SearchSpace()
-        codec = PruneCodec('PruneCodec', search_space)
-        for i, pareto_front in enumerate(pareto_fronts):
-            pareto_front = [int(x) for x in pareto_front[1:-1].split(',')]
-            model_desc = Config()
-            model_desc.modules = search_space.search_space.modules
-            model_desc.backbone = codec.decode(pareto_front)._desc.backbone
-            self.trainer.output_model_desc(i, model_desc)
+    def _load_tf_model(self, model_prune, model_init, chn_node_mask):
+        """Load tensorflow pretrained model."""
+        with tf.Session(config=self.trainer._init_session_config()) as sess:
+            saver = tf.train.import_meta_graph("{}.meta".format(self.config.init_model_file))
+            saver.restore(sess, self.config.init_model_file)
+            chn_node_id = 0
+            chn_id = 0
+            chn_mask = model_prune.chn_mask
+            start_mask = []
+            end_mask = []
 
-    def save_metrics_value(self):
-        """Save the metric value of the trained model.
-
-        :return: save_path (local) and s3_path (remote). If s3_path not specified, then s3_path is None
-        :rtype: a tuple of two str
-        """
-        pd_path = FileOps.join_path(
-            self.trainer.local_output_path, self.trainer.step_name, "performance.csv")
-        FileOps.make_base_dir(pd_path)
-        df = pd.DataFrame(
-            [[self.model.encoding, self.flops_count, self.params_count, self.metric]],
-            columns=["encoding", "flops", "parameters", self.cfg.get("valid_metric", "acc")])
-        if not os.path.exists(pd_path):
-            with open(pd_path, "w") as file:
-                df.to_csv(file, index=False)
-        else:
-            with open(pd_path, "a") as file:
-                df.to_csv(file, index=False, header=False)
-        if self.trainer.backup_base_path is not None:
-            FileOps.copy_folder(self.trainer.local_output_path,
-                                self.trainer.backup_base_path)
-
-    def validate(self):
-        """Check whether the model fits in the #flops range or #parameter range specified in config.
-
-        :return: true or false, which specifies whether the model fits in the range
-        :rtype: bool
-        """
-        limits_config = self.cfg.get("limits", dict())
-        if "flop_range" in limits_config:
-            flop_range = limits_config["flop_range"]
-            if self.flops_count < flop_range[0] or self.flops_count > flop_range[1]:
-                return False
-        if "param_range" in limits_config:
-            param_range = limits_config["param_range"]
-            if self.params_count < param_range[0] or self.params_count > param_range[1]:
-                return False
-        return True
-
-    def _save_best_model(self):
-        save_path = FileOps.join_path(
-            self.trainer.get_local_worker_path(), self.trainer.step_name, "best_model.pth")
-        FileOps.make_base_dir(save_path)
-        torch.save(self.model.state_dict(), save_path)
-        if self.trainer.backup_base_path is not None:
-            _dst = FileOps.join_path(
-                self.trainer.backup_base_path, "workers", str(self.trainer.worker_id))
-            FileOps.copy_folder(self.trainer.get_local_worker_path(), _dst)
+            all_weight = tf.get_collection(tf.GraphKeys.VARIABLES)
+            all_weight = [t for t in all_weight if not t.name.endswith('Momentum:0')]
+            for op in all_weight:
+                name = op.name
+                if name.startswith('conv_1'):
+                    end_mask = chn_node_mask[0]
+                    end_mask = np.asarray(end_mask)
+                    idx1 = np.squeeze(np.argwhere(np.asarray(
+                        np.ones(end_mask.shape) - end_mask)))
+                    mask = np.ones(op.get_shape())
+                    mask[:, :, :, idx1.tolist()] = 0
+                    sess.run(tf.assign(op, op * tf.constant(mask, dtype=op.dtype)))
+                elif name.startswith('bn_1'):
+                    idx1 = np.squeeze(np.argwhere(np.asarray(
+                        np.ones(end_mask.shape) - end_mask)))
+                    mask = np.ones(op.get_shape())
+                    mask[idx1.tolist()] = 0
+                    sess.run(tf.assign(op, op * tf.constant(mask, dtype=op.dtype)))
+                elif name.startswith('dense/kernel'):
+                    idx1 = np.squeeze(np.argwhere(
+                        np.asarray(np.ones(end_mask.shape) - end_mask)))
+                    mask = np.ones(op.get_shape())
+                    mask[idx1.tolist(), :] = 0
+                    sess.run(tf.assign(op, op * tf.constant(mask, dtype=op.dtype)))
+                elif name.startswith('layer'):
+                    parsed_name = list(name.split('/'))
+                    layer_idx = parsed_name[0][-1]
+                    block_idx = parsed_name[1][-1]
+                    operation = parsed_name[2]
+                    if operation.startswith('conv'):
+                        if operation == 'conv_1':
+                            start_mask = chn_node_mask[int(layer_idx) - 1]
+                            end_mask = chn_mask[int(block_idx)]
+                        if operation == 'conv_2':
+                            start_mask = end_mask
+                            end_mask = chn_node_mask[int(layer_idx)]
+                        # shortcut
+                        if operation == 'conv_3':
+                            start_mask = chn_node_mask[int(layer_idx) - 1]
+                            end_mask = chn_node_mask[int(layer_idx)]
+                        start_mask = np.asarray(start_mask)
+                        end_mask = np.asarray(end_mask)
+                        idx0 = np.squeeze(np.argwhere(
+                            np.asarray(np.ones(start_mask.shape) - start_mask)))
+                        idx1 = np.squeeze(np.argwhere(
+                            np.asarray(np.ones(end_mask.shape) - end_mask)))
+                        mask = np.ones(op.get_shape())
+                        mask[:, :, idx0.tolist(), :] = 0
+                        mask[:, :, :, idx1.tolist()] = 0
+                        sess.run(tf.assign(op, op * tf.constant(mask, dtype=op.dtype)))
+                    elif operation.startswith('bn'):
+                        idx1 = np.squeeze(np.argwhere(np.asarray(
+                            np.ones(end_mask.shape) - end_mask)))
+                        mask = np.ones(op.get_shape())
+                        mask[idx1.tolist()] = 0
+                        sess.run(tf.assign(op, op * tf.constant(mask, dtype=op.dtype)))
+            save_file = FileOps.join_path(self.trainer.get_local_worker_path(), 'prune_model')
+            saver.save(sess, save_file)
+            return model_init

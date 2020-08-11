@@ -38,17 +38,20 @@ Before running an example, you need to configure the directory where the dataset
 
 Before running the example, you need to download the dataset to the default data configuration directory. Before running the example, you need to create the directory `/cache/datasets/`, then download each dataset to the directory and unzip it. The default directory configuration of each dataset is as follows:
 
-| Dataset | Default Path | Data Source | 
-| :--- | :--- | :--: | 
-| Cifar10 | /cache/datasets/cifar10/ | [Download](https://www.cs.toronto.edu/~kriz/cifar.html) |
-| ImageNet | /cache/datasets/ILSVRC/ | [Download](http://image-net.org/download-images) |
-| COCO | /cache/datasets/COCO2017 | [Download](http://cocodataset.org/#download) |
-| Div2K | /cache/datasets/DIV2K/ | [Download](https://data.vision.ee.ethz.ch/cvl/DIV2K/) |
-| Div2kUnpair | /cache/datasets/DIV2K_unknown | [Download](https://data.vision.ee.ethz.ch/cvl/DIV2K/) |
-| Cityscapes | /cache/datasets/cityscapes/ | [Download](https://www.cityscapes-dataset.com/) |
-| VOC2012 | /cache/datasets/VOC2012/ | [Download](http://host.robots.ox.ac.uk/pascal/VOC/voc2012/#data) |
-| Cifar10TF | /cache/datasets/cifar-10-batches-bin/ | [Download](https://www.cs.toronto.edu/~kriz/cifar-10-binary.tar.gz) |
-| ECP       | /cache/datasets/ECP/    | [Download](https://eurocity-dataset.tudelft.nl/eval/downloads/detection)  |
+| Dataset | Default Path | Data Source | Note |
+| :--- | :--- | :--: | :-- |
+| Cifar10 | /cache/datasets/cifar10/ | [Download](https://www.cs.toronto.edu/~kriz/cifar.html) | |
+| Cifar10TF | /cache/datasets/cifar-10-batches-bin/ | [Download](https://www.cs.toronto.edu/~kriz/cifar-10-binary.tar.gz) | |
+| ImageNet | /cache/datasets/ILSVRC/ | [Download](http://image-net.org/download-images) | |
+| ImageNetTF | /cache/datasets/imagenet_tfrecord/ | [Download](http://image-net.org/download-images) | **Use [code](https://github.com/tensorflow/tpu/blob/master/tools/datasets/imagenet_to_gcs.py) to convert data** |
+| COCO | /cache/datasets/COCO2017 | [Download](http://cocodataset.org/#download) | |
+| Div2K | /cache/datasets/DIV2K/ | [Download](https://data.vision.ee.ethz.ch/cvl/DIV2K/) | |
+| Div2kUnpair | /cache/datasets/DIV2K_unknown | [Download](https://data.vision.ee.ethz.ch/cvl/DIV2K/) | **Used for the CycleSR, trim the data by referring [document](../algorithms/cyclesr.md)** |
+| Cityscapes | /cache/datasets/cityscapes/ | [Download](https://www.cityscapes-dataset.com/) | **Create data index by referring [document](../algorithms/Segmentation-Adelaide-EA-NAS.md)** |
+| VOC2012 | /cache/datasets/VOC2012/ | [Download](http://host.robots.ox.ac.uk/pascal/VOC/voc2012/#data) | **Create data index by referring [document](../algorithms/Segmentation-Adelaide-EA-NAS.md)** |
+| ECP       | /cache/datasets/ECP/    | [Download](https://eurocity-dataset.tudelft.nl/eval/downloads/detection)  | |
+| CULane | /cache/datasets/CULane/ | [Download](https://xingangpan.github.io/projects/CULane.html) | |
+| Avazu | /cache/dataset/Avazu/ | [Download](https://www.kaggle.com/datasets) | |
 
 In addition, for the following algorithm, a pre-trained model needs to be loaded. Before running the example, you need to create the directory /cache/models/, and then download the corresponding model from the corresponding location and place it in this directory:
 
@@ -56,8 +59,10 @@ In addition, for the following algorithm, a pre-trained model needs to be loaded
 | :--: | :-- | :-- | :--: |
 | Adelaide-EA | mobilenet_v2-b0353104.pth | /cache/models/mobilenet_v2-b0353104.pth | [Download](http://www.noahlab.com.hk/opensource/vega/models/pretrained/mobilenet_v2-b0353104.pth) |
 | Prune-EA | resnet20.pth | /cache/models/resnet20.pth | [Download](http://www.noahlab.com.hk/opensource/vega/models/pretrained/resnet20.pth) |
+| Prune-EA | resnet20.ckpt | /cache/models/resnet20.ckpt | [Download](http://vega.inhuawei.com/models/pretrained/resnet20.ckpt.tar.gz) |
 | SP-NAS | resnet50-19c8e357.pth | /cache/models/resnet50-19c8e357.pth | [Download](http://www.noahlab.com.hk/opensource/vega/models/pretrained/resnet50-19c8e357.pth) |
-|        | SPNet_ECP_ImageNetPretrained_0.7978.pth | /cache/models/SPNet_ECP_ImageNetPretrained_0.7978.pth | [Download](http://www.noahlab.com.hk/opensource/vega/models/pretrained/SPNet_ECP_ImageNetPretrained_0.7978.pth) |
+| SP-NAS | SPNet_ECP_ImageNetPretrained_0.7978.pth | /cache/models/SPNet_ECP_ImageNetPretrained_0.7978.pth | [download](http://www.noahlab.com.hk/opensource/vega/models/pretrained/SPNet_ECP_ImageNetPretrained_0.7978.pth) |
+| SP-NAS | SPNetXB_COCO_ImageNetPretrained.pth | /cache/models/SPNetXB_COCO_ImageNetPretrained.pth | [download](http://www.noahlab.com.hk/opensource/vega/models/pretrained/SPNetXB_COCO_ImageNetPretrained.pth) |
 
 Note that the configuration items in the example are set to small values to speed up the running. However, if the configuration items are set to small values, the running result may be unsatisfactory. Therefore, you can modify and adjust the configuration items based on the description documents of each algorithm to obtain the required result.
 
@@ -71,8 +76,10 @@ Note that the configuration items in the example are set to small values to spee
     | :--: | :--: | :-- |
     | nas | Input | Config File: compression/prune-ea/prune.yml <br> Pre-Trained Model: /cache/models/resnet20.pth <br> Dataset: /cache/datasets/cifar10 |
     | nas | Output | Network Description File: tasks/\<task id\>/output/nas/model_desc_\<id\>.json |
+    | nas | approximate running time | (random_models + num_generation * num_individual) * epochs / Number of GPUs * Training time per epoch |
     | fully train | Input | Config File: compression/prune-ea/prune.yml <br> Network Description File: tasks/\<task id\>/output/nas/model_desc_\<id\>.json <br> Dataset: /cache/datasets/cifar10 |
     | fully train | Output | Model: tasks/\<task id\>/output/fully_train/model_\<id\>.pth |
+    | fully train | approximate running time | epochs * Training time per epoch |
 
 2. Quant-EA
 
@@ -80,8 +87,10 @@ Note that the configuration items in the example are set to small values to spee
     | :--: | :--: | :-- |
     | nas | Input | Config File: compression/quant-ea/quant.yml <br> Dataset: /cache/datasets/cifar10 |
     | nas | Output | Network Description File: tasks/\<task id\>/output/nas/model_desc_\<id\>.json |
+    | nas | approximate running time | (random_models + num_generation * num_individual) * epochs / Number of GPUs * Training time per epoch |
     | fully train | Input | Config File: compression/quant-ea/quant.yml <br> Network Description File: tasks/\<task id\>/output/nas/model_desc_\<id\>.json <br> Dataset: /cache/datasets/cifar10 |
     | fully train | Output | Model: tasks/\<task id\>/output/fully_train/model_\<id\>.pth |
+    | fully train | approximate running time | epochs * Training time per epoch |
 
 ### 3.2 NAS
 
@@ -91,8 +100,10 @@ Note that the configuration items in the example are set to small values to spee
     | :--: | :--: | :-- |
     | nas | Input | Config File: nas/cars/cars.yml <br> Dataset: /cache/datasets/cifar10 |
     | nas | Output | Network Description File: tasks/\<task id\>/output/nas/model_desc_\<id\>.json |
+    | nas | approximate running time | epochs * Training time per epoch (The training time is affected by num_individual) |
     | fully train | Input | Config File: nas/cars/cars.yml <br> Network Description File: tasks/\<task id\>/output/nas/model_desc_\<id\>.json <br> Dataset: /cache/datasets/cifar10 |
     | fully train | Output | Model: tasks/\<task id\>/output/fully_train/model_\<id\>.pth |
+    | fully train | approximate running time | epochs * Training time per epoch |
 
 2. Adelaide-EA
 
@@ -100,10 +111,13 @@ Note that the configuration items in the example are set to small values to spee
     | :--: | :--: | :-- |
     | random | Input | Config File: nas/adelaide_ea/adelaide_ea.yml <br> Dataset: /cache/datasets/cityscapes |
     | random | Output | Network Description File: tasks/\<task id\>/output/random/model_desc_\<id\>.json |
+    | random | approximate running time | max_sample * epochs / Number of GPUs * Training time per epoch |
     | mutate | Input | Config File: nas/adelaide_ea/adelaide_ea.yml <br> Dataset: /cache/datasets/cityscapes <br> Network Description File: tasks/\<task id\>/output/random/model_desc_\<id\>.json  |
     | mutate | Output | Network Description File: tasks/\<task id\>/output/mutate/model_desc_\<id\>.json |
+    | mutate | approximate running time | max_sample * epochs / Number of GPUs * Training time per epoch |
     | fully train | Input | Config File: nas/adelaide_ea/adelaide_ea.yml <br> Network Description File: tasks/\<task id\>/output/mutate/model_desc_\<id\>.json <br> Dataset: /cache/datasets/cityscapes |
     | fully train | Output | Model: tasks/\<task id\>/output/fully_train/model_\<id\>.pth |
+    | fully train | approximate running time | epochs * Training time per epoch |
 
 3. ESR-EA
 
@@ -111,8 +125,10 @@ Note that the configuration items in the example are set to small values to spee
     | :--: | :--: | :-- |
     | nas | Input | Config File: nas/esr_ea/esr_ea.yml <br> Dataset: /cache/datasets/DIV2K |
     | nas | Output | Network Description File: tasks/\<task id\>/output/nas/selected_arch.npy |
+    | nas | approximate running time | num_generation * num_individual * epochs / Number of GPUs * Training time per epoch |
     | fully train | Input | Config File: nas/esr_ea/esr_ea.yml <br> Network Description File: tasks/\<task id\>/output/nas/selected_arch.npy <br> Dataset: /cache/datasets/DIV2K |
     | fully train | Output | Model: tasks/\<task id\>/output/fully_train/model_\<id\>.pth |
+    | fully train | approximate running time | epochs * Training time per epoch |
 
 4. SR-EA
 
@@ -120,21 +136,57 @@ Note that the configuration items in the example are set to small values to spee
     | :--: | :--: | :-- |
     | random | Input | Config File: nas/sr_ea/sr_ea.yml <br> Dataset: /cache/datasets/DIV2K |
     | random | Output | Network Description File: tasks/\<task id\>/output/random/model_desc_\<id\>.json |
+    | random | approximate running time | num_sample * epochs / Number of GPUs * Training time per epoch |
     | mutate | Input | Config File: nas/sr_ea/sr_ea.yml <br> Dataset: /cache/datasets/DIV2K <br> Network Description File: tasks/\<task id\>/output/random/model_desc_\<id\>.json  |
     | mutate | Output | Network Description File: tasks/\<task id\>/output/mutate/model_desc_\<id\>.json |
+    | mutate | approximate running time | num_sample * epochs / Number of GPUs * Training time per epoch |
     | fully train | Input | Config File: nas/sr_ea/sr_ea.yml <br> Network Description File: tasks/\<task id\>/output/mutate/model_desc_\<id\>.json <br> Dataset: /cache/datasets/DIV2K |
     | fully train | Output | Model: tasks/\<task id\>/output/fully_train/model_\<id\>.pth |
+    | fully train | approximate running time | epochs * Training time per epoch |
 
 5. SP-NAS
 
     | Stage | Option | Content |
     | :--: | :--: | :-- |
     | nas1 | Input | Config File: nas/sp_nas/spnas.yml <br> Dataset: /cache/datasets/COCO2017 <br> Pre-Trained Model: /cache/models/resnet50-19c8e357.pth <br> Config File:  nas/sp_nas/faster_rcnn_r50_fpn_1x.py |
-    | nas1 | Output | Network Description File: tasks/\<task id\>/output/nas1/model_desc_\<id\>.json <br> Model List: tasks/\<task id\>/output/nas1/total_list_p.csv |
-    | nas2 | Input | Config File: nas/sp_nas/spnas.yml <br> Dataset: /cache/datasets/COCO2017 <br> Network Description File: tasks/\<task id\>/output/nas1/model_desc_\<id\>.json <br> Model List: tasks/\<task id\>/output/nas1/total_list_p.csv <br> Config File:  nas/sp_nas/faster_rcnn_r50_fpn_1x.py |
-    | nas2 | Output | Network Description File: tasks/\<task id\>/output/nas2/model_desc_\<id\>.json <br> Model List: tasks/\<task id\>/output/nas2/total_list_s.csv |
-    | fully train | Input |  Config File: nas/sp_nas/spnas.yml <br> Dataset: /cache/datasets/COCO2017 <br> Network Description File: tasks/\<task id\>/output/nas2/model_desc_\<id\>.json <br> Model List: tasks/\<task id\>/output/nas2/total_list_s.csv <br> Config File:  nas/sp_nas/faster_rcnn_r50_fpn_1x.py |
+    | nas1 | Output | Network Description File: tasks/\<task id\>/output/nas1/model_desc_\<id\>.json <br> Model List: tasks/\<task id\>/output/total_list_p.csv |
+    | nas1 | approximate running time | max_sample * epochs / Number of GPUs * Training time per epoch |
+    | nas2 | Input | Config File: nas/sp_nas/spnas.yml <br> Dataset: /cache/datasets/COCO2017 <br> Network Description File: tasks/\<task id\>/output/nas1/model_desc_\<id\>.json <br> Model List: tasks/\<task id\>/output/total_list_p.csv <br> Config File:  nas/sp_nas/faster_rcnn_r50_fpn_1x.py |
+    | nas2 | Output | Network Description File: tasks/\<task id\>/output/nas2/model_desc_\<id\>.json <br> Model List: tasks/\<task id\>/output/total_list_s.csv |
+    | nas2 | approximate running time | max_sample * epochs / Number of GPUs * Training time per epoch |
+    | fully train | Input |  Config File: nas/sp_nas/spnas.yml <br> Dataset: /cache/datasets/COCO2017 <br> Network Description File: tasks/\<task id\>/output/nas2/model_desc_\<id\>.json <br> Model List: tasks/\<task id\>/output/total_list_s.csv <br> Config File:  nas/sp_nas/faster_rcnn_r50_fpn_1x.py |
     | fully train | Output | Model: tasks/\<task id\>/output/fullytrain/model_\<id\>.pth |
+    | fully train | approximate running time | epochs * Training time per epoch |
+
+6. Auto_Lane
+
+    | Stage | Option | Content |
+    | :--: | :--: | :-- |
+    |nas|Input|Config File：nas/auto_lane/auto_lane.yml <br/> Dataset：/cache/datasets/CULane  OR  /cache/datasets/CurveLane|
+    |nas|Output|Network Description File：tasks/\<task id\>/output/nas/model_desc_\<id\>.json|
+    |nas|approximate running time|max_sample * epoch / Numbers of GPUs * Training time per epoch|
+    |fully train|Input|Config File：nas/sp_nas/auto_lane.yml <br> Dataset：/cache/datasets/CULane  OR      /cache/datasets/CurveLane<br> Network Description File：tasks/\<task id\>/output/nas/model_desc_\<id\>.json|
+    |fully train|Output|Model：tasks/\<task id\>/output/fullytrain/model_\<id\>.pth|
+    |fully train|approximate running time|epochs * Training time per epoch|
+
+7. AutoGroup
+
+    | Stage | Option | Content |
+    | :--: | :--: | :-- |
+    | fully train | Input | Config File nas/fis/autogroup.yml <br> Dataset: /cache/datasets/avazu |
+    | fully train | Output | Network Description File: tasks/\<task id\>/output/mutate/model_desc_\<id\>.json <br> Model: tasks/\<task id\>/output/fully_train/model_0.pth |
+    | fully train | approximate running time | epochs * Training time per epoch |
+
+8. AutoGate
+
+    | Stage | Option | Content |
+    | :--: | :--: | :-- |
+    | search | Input | Config File nas/fis/autogate_grda.yml <br> Dataset: /cache/datasets/avazu |
+    | search | Output | Model: tasks/\<task id\>/output/search/0/model.pth |
+    | search | approximate running time | epochs * Training time per epoch |
+    | retrain | Input | Config File nas/fis/autogate_grda.yml <br> Dataset: /cache/datasets/avazu |
+    | retrain | Output | Model: tasks/\<task id\>/output/retrain/0/model.pth |
+    | retrain | approximate running time | epochs * Training time per epoch | 
 
 ### 3.3 Data Augmentation
 
@@ -144,6 +196,7 @@ Note that the configuration items in the example are set to small values to spee
     | :--: | :--: | :-- |
     | pba | Input | Config File: data_augmentation/pba/pba.yml <br> Dataset: /cache/datasets/cifar10 |
     | pba | Output | Transformer List: tasks/\<task id\>/output/pba/best_hps.json |
+    | pba | approximate running time | total_rungs * each_epochs * config_count / Number of GPUs * Training time per epoch |
 
 2. CycleSR
 
@@ -151,6 +204,7 @@ Note that the configuration items in the example are set to small values to spee
     | :--: | :--: | :-- |
     | fully train | Input | Config File: data_augmentation/cyclesr/cyclesr.yml <br> Dataset: /cache/datasets/DIV2K_unknown |
     | fully train | Output | Model: tasks/\<task id\>/output/fully_train/model_0.pth |
+    | fully train | approximate running time | n_epoch * Training time per epoch |
 
 ### 3.4 HPO
 
@@ -169,6 +223,7 @@ Note that the configuration items in the example are set to small values to spee
     | :--: | :--: | :-- |
     | fully train | Input | Config File: fully_train/efficientnet/efficientnet_b0.yml <br> Dataset: /cache/datasets/ILSVRC |
     | fully train | Output | Network Description File: tasks/\<task id\>/output/mutate/model_desc_\<id\>.json <br> Model: tasks/\<task id\>/output/fully_train/model_\<id\>.pth |
+    | fully train | approximate running time | epochs * Training time per epoch |
 
 2. FMD
 
@@ -176,10 +231,12 @@ Note that the configuration items in the example are set to small values to spee
     | :--: | :--: | :-- |
     | fully train | Input | Config File: fully_train/fmd/fmd.yml <br> Dataset: /cache/datasets/cifar10 |
     | fully train | Output | Network Description File: tasks/\<task id\>/output/mutate/model_desc_\<id\>.json <br> Model: tasks/\<task id\>/output/fully_train/model_0.pth |
+    | fully train | approximate running time | epochs * Training time per epoch |
 
-3. FMD
+3. ResNet
 
     | Stage | Option | Content |
     | :--: | :--: | :-- |
     | fully train | Input | Config File fully_train/trainer/resnet.yml <br> Dataset: /cache/datasets/ILSVRC |
     | fully train | Output | Network Description File: tasks/\<task id\>/output/mutate/model_desc_\<id\>.json <br> Model: tasks/\<task id\>/output/fully_train/model_0.pth |
+    | fully train | approximate running time | epochs * Training time per epoch |

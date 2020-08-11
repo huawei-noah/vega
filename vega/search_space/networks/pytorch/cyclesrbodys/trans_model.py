@@ -29,7 +29,7 @@ class TransModel:
     def __init__(self, cfg):
         opt = cfg.cyclegan
         self.use_cuda = cfg.use_cuda
-        self.use_horovod = cfg.use_horovod
+        self.use_distributed = cfg.use_distributed
         """Initialize method."""
         self.loss_names = ['D_Y', 'G', 'rec_X']
         self.model_names = ['G', 'F', 'D_X', 'D_Y']
@@ -43,7 +43,7 @@ class TransModel:
         # Initialize networks.
         [self.netG, self.netF, self.netD_X, self.netD_Y] = initialize(
             [self.netG, self.netF, self.netD_X, self.netD_Y],
-            use_cuda=self.use_cuda, use_horovod=self.use_horovod)
+            use_cuda=self.use_cuda, use_distributed=self.use_distributed)
         self.fake_X_, self.fake_Y_ = None, None
         self.lambda_idt = opt.lambda_identity
         self.lambda_cycle = opt.lambda_cycle

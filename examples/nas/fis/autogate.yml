@@ -1,0 +1,107 @@
+general:
+    worker:
+        devices_per_job: -1
+
+pipeline: [search, retrain]
+
+search:
+    pipe_step:
+        type: FullyTrainPipeStep
+
+    dataset:
+        type: AvazuDataset
+        batch_size: 2000
+        common:
+            data_path: /cache/datasets/avazu/
+
+    model:
+        model_desc:
+            modules: ["custom"]
+            custom:
+                input_dim: 645195
+                input_dim4lookup: 24
+                embed_dim: 40
+                hidden_dims: [700, 700, 700, 700, 700]
+                dropout_prob: 0.0
+                batch_norm: False
+                layer_norm: True
+                alpha_init_mean: 0.0
+                alpha_activation: 'tanh'
+                selected_pairs: []
+                fis_ratio: 0.3
+                name: AutoGateModel
+    trainer:
+        type: Trainer
+        callbacks: AutoGateS1TrainerCallback
+        epochs: 1
+        optim:
+            type: Adam
+            params:
+                lr: 0.001
+        lr_scheduler:
+            type: StepLR
+            params:
+                step_size: 1000
+                gamma: 0.75
+        metric:
+            type: auc
+        loss:
+            type: BCEWithLogitsLoss
+
+    evaluator:
+        type: Evaluator
+        gpu_evaluator:
+            type: GpuEvaluator
+            ref: trainer
+
+
+retrain:
+    pipe_step:
+        type: FullyTrainPipeStep
+
+    dataset:
+        type: AvazuDatasetNew
+        batch_size: 2000
+        common:
+            data_path: /cache/datasets/avazu/
+
+    model:
+        model_desc:
+            modules: ["custom"]
+            custom:
+                input_dim: 645195
+                input_dim4lookup: 24
+                embed_dim: 40
+                hidden_dims: [700, 700, 700, 700, 700]
+                dropout_prob: 0.0
+                batch_norm: False
+                layer_norm: True
+                alpha_init_mean: 0.0
+                alpha_init_radius: 1e-4
+                alpha_activation: 'tanh'
+                selected_pairs: []
+                fis_ratio: 0.3
+                name: AutoGateModel
+    trainer:
+        type: Trainer
+        callbacks: AutoGateS2TrainerCallback
+        epochs: 1
+        optim:
+            type: Adam
+            params:
+                lr: 0.001
+        lr_scheduler:
+            type: StepLR
+            params:
+                step_size: 1000
+                gamma: 0.75
+        metric:
+            type: auc
+        loss:
+            type: BCEWithLogitsLoss
+
+    evaluator:
+        type: Evaluator
+        gpu_evaluator:
+            type: GpuEvaluator
+            ref: trainer

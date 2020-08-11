@@ -1,0 +1,67 @@
+general:
+    worker:
+        devices_per_job: 1
+
+pipeline: [pba]
+
+pba:
+    pipe_step:
+        type: NasPipeStep
+
+    dataset:
+        type: Cifar10
+        common:
+            data_path: /cache/datasets/cifar10/
+            batch_size: 256
+        train:
+            train_portion: 0.08
+
+    search_algorithm:
+        type: PBAHpo
+        each_epochs: 3
+        config_count: 16
+        total_rungs: 200
+
+    search_space:
+        type: SearchSpace
+        transformers:
+            Cutout: True
+            Rotate: True
+            Translate_X: True
+            Translate_Y: True
+            Brightness: True
+            Color: True
+            Invert: True
+            Sharpness: True
+            Posterize: True
+            Shear_X: True
+            Solarize: True
+            Shear_Y: True
+            Equalize: True
+            AutoContrast: True
+            Contrast: True
+
+    model:
+        model_desc:
+            modules: ["backbone", "head"]
+            backbone:
+                base_channel: 64
+                downsample: [1, 0, 1, 0, 0, 0, 1, 0]
+                base_depth: 18
+                doublechannel: [1, 0, 1, 0, 0, 0, 1, 0]
+                name: ResNetVariant
+            head:
+                num_classes: 10
+                name: LinearClassificationHead
+                base_channel: 512
+
+    trainer:
+        type: Trainer
+        epochs: 1
+
+    evaluator:
+        type: Evaluator
+        gpu_evaluator:
+            type: GpuEvaluator
+            metric:
+                type: accuracy

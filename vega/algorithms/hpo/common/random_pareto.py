@@ -95,7 +95,7 @@ class RandomPareto(ShaBase):
         self.sieve_board.loc[
             (self.sieve_board['config_id'] == config_id),
             tmp_column
-        ] = [StatusType.FINISHED] + score_list
+        ] = [StatusType.FINISHED] + [score_list]
 
         self.is_completed = self._check_completed()
         return
@@ -113,7 +113,6 @@ class RandomPareto(ShaBase):
         next_config_id = rung_df['config_id'].min(skipna=True)
         results = {
             'config_id': int(next_config_id),
-            'rung_id': 0,
             'configs': self.config_list[int(next_config_id)],
             'epoch': int(self.epoch)
         }

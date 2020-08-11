@@ -1,0 +1,59 @@
+general:
+    worker:
+        devices_per_job: 1
+    backend: tensorflow
+
+pipeline: [nas]
+
+nas:
+    pipe_step:
+        type: NasPipeStep
+    search_algorithm:
+        type: SimpleRand
+        count: 0
+        max_num: 50
+    search_space:
+        type: SearchSpace
+        modules: [backbone]
+        backbone:
+            name: SimpleCnn
+            num_class: 10
+            fp16: False
+            blocks: [1, 2, 3, 4]
+            channels: [32, 48, 56, 64]
+    trainer:
+        type: Trainer
+        optim:
+            type: MomentumOptimizer
+            params:
+                learning_rate: 0.01
+                momentum: 0.9
+        lr_scheduler:
+            type: MultiStepLrWarmUp
+            params:
+                base_lr: 0.01
+                warmup: False
+                milestones: [30]
+                decay_rates: [1, 0.1]
+        loss:
+            type: sparse_softmax_cross_entropy
+        metric:
+            type: accuracy
+        epochs: 3
+        save_steps: 250
+        distributed: False
+        num_class: 10
+    model:
+        model_desc:
+            modules: [backbone]
+            backbone:
+                name: SimpleCnn
+                num_class: 10
+                fp16: False
+    dataset:
+        type: Cifar10
+        common:
+            data_path: /cache/datasets/cifar-10-batches-bin
+            batch_size: 64
+            num_parallel_batches: 64
+            fp16: False

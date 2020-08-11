@@ -9,8 +9,14 @@
 # MIT License for more details.
 
 """SearchAlgorithm."""
+import logging
+
+from vega.core.common.config import obj2config
+from vega.core.common.loader import load_conf_from_desc
 from vega.core.common.task_ops import TaskOps
 from vega.core.common.class_factory import ClassFactory, ClassType
+from vega.core.report import Report, ReportRecord
+from vega.search_space.codec import Codec
 
 
 class SearchAlgorithm(TaskOps):
@@ -22,42 +28,48 @@ class SearchAlgorithm(TaskOps):
     :type **kwargs: type
     """
 
-    def __new__(cls, search_space=None, **kwargs):
+    config = None
+
+    def __new__(cls, *args, **kwargs):
         """Create search algorithm instance by ClassFactory."""
-        t_cls = ClassFactory.get_cls(ClassType.SEARCH_ALGORITHM)
+        if cls.__name__ != 'SearchAlgorithm':
+            return super().__new__(cls)
+        if kwargs.get('type'):
+            t_cls = ClassFactory.get_cls(ClassType.SEARCH_ALGORITHM, kwargs.pop('type'))
+        else:
+            t_cls = ClassFactory.get_cls(ClassType.SEARCH_ALGORITHM)
+
         return super().__new__(t_cls)
 
     def __init__(self, search_space=None, **kwargs):
         """Init SearchAlgorithm."""
-        super(SearchAlgorithm, self).__init__(self.cfg)
-        self.policy = self.cfg.get('policy')
-        self.range = self.cfg.get('range')
+        super(SearchAlgorithm, self).__init__()
+        # modify config by kwargs, using local scope
+        if self.config and kwargs:
+            self.config = self.config()
+            load_conf_from_desc(self.config, kwargs)
+        self.search_space = search_space
+        if hasattr(self.config, 'codec'):
+            self.codec = Codec(search_space, type=self.config.codec)
+        else:
+            self.codec = None
+        logging.debug("Config=%s", obj2config(self.config))
+        self.report = Report()
+        self.record = ReportRecord()
+        self.record.step_name = self.step_name
 
     def search(self):
         """Search function, Not Implemented Yet."""
         raise NotImplementedError
 
-    def sample(self):
-        """Sample function, Not Implemented Yet."""
-        raise NotImplementedError
-
-    def update(self, local_worker_path):
+    def update(self, record):
         """Update function, Not Implemented Yet.
 
-        :param local_worker_path: the local path that saved `performance.txt`.
-        :type local_worker_path: str
+        :param record: record dict.
         """
-        raise NotImplementedError
-
-    def save_output(self, local_output_path):
-        """Update function, Not Implemented Yet.
-
-        :param local_output_path: the local output path to save the final results.
-        :type local_output_path: str
-        """
-        return
+        pass
 
     @property
     def is_completed(self):
         """If the search is finished, Not Implemented Yet."""
-        return False
+        raise NotImplementedError

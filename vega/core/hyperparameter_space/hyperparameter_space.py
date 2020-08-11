@@ -294,8 +294,7 @@ class HyperparameterSpace(object):
                 if name in forbidden_conjunction._forbidden_dict:
                     forbidden_flag = True
 
-                    total_len = assigned_forbidden_dict.__len__() + \
-                        forbidden_conjunction._forbidden_dict.__len__()
+                    total_len = assigned_forbidden_dict.__len__() + forbidden_conjunction._forbidden_dict.__len__()
                     union_len = len(set(list(
                         assigned_forbidden_dict.items()
                     ) + list(forbidden_conjunction._forbidden_dict.items())))

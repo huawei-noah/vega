@@ -42,10 +42,10 @@ python3 setup.py develop --user
 
 ## 2. 安装Vega
 
-完成以上准备后，下一步是在`release`下载`vega-0.9.1-py3-none-any.whl`，执行`pip`安装：
+完成以上准备后，下一步是在`release`下载`vega-1.0.0-py3-none-any.whl`，执行`pip`安装：
 
 ```bash
-pip3 install vega-0.9.1.py3-none-any.whl
+pip3 install vega-1.0.0.py3-none-any.whl
 ```
 
 安装完成后，可以尝试在python中引入vega库，确保安装成功：

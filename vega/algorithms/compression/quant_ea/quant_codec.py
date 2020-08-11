@@ -11,10 +11,12 @@
 """Codec for searching quantization model."""
 import copy
 from vega.core.common.utils import update_dict
+from vega.core.common.class_factory import ClassType, ClassFactory
 from vega.search_space.codec import Codec
 from vega.search_space.networks import NetworkDesc
 
 
+@ClassFactory.register(ClassType.CODEC)
 class QuantCodec(Codec):
     """Codec class of QuantEA.
 
@@ -24,9 +26,8 @@ class QuantCodec(Codec):
     :type search_space: dict
     """
 
-    def __init__(self, codec_name, search_space):
-        super(QuantCodec, self).__init__(codec_name, search_space)
-        self.search_space = search_space.search_space
+    def __init__(self, search_space, **kwargs):
+        super(QuantCodec, self).__init__(search_space, **kwargs)
 
     def decode(self, code):
         """Decode the code.
@@ -38,11 +39,8 @@ class QuantCodec(Codec):
         """
         length = len(code)
         desc = {
-            "backbone":
-            {
-                "nbit_w_list": code[: length // 2],
-                "nbit_a_list": code[length // 2:]
-            }
+            "nbit_w_list": code[: length // 2],
+            "nbit_a_list": code[length // 2:]
         }
         desc = update_dict(desc, copy.deepcopy(self.search_space))
-        return NetworkDesc(desc)
+        return desc

@@ -9,125 +9,78 @@
 # MIT License for more details.
 
 """TrainWorker for searching quantization model."""
-import os
-import pandas as pd
-import torch
-import torch.utils.data
-from vega.core.trainer.pytorch import Trainer
+import logging
+import copy
+import vega
 from vega.core.common.class_factory import ClassFactory, ClassType
-from vega.core.common import Config
-from vega.search_space import SearchSpace
-from vega.search_space.codec import Codec
-from vega.datasets.pytorch import Dataset
-from .quant_codec import QuantCodec
-from vega.core.common.file_ops import FileOps
-from .utils.quant_model import Quantizer
-from .utils.flops_params_counter import cal_model_flops, cal_model_params
-from vega.core.visual import dump_trainer_visual_info
 from vega.core.trainer.callbacks import Callback
+from vega.core.metrics import calc_model_flops_params
+
+if vega.is_torch_backend():
+    import torch
+    from .utils.pytorch.quant_model import Quantizer
+    from .utils.pytorch.quant_conv import quant_custom_ops
+elif vega.is_tf_backend():
+    import tensorflow as tf
+    from .utils.tensorflow.quant_model import Quantizer
 
 
 @ClassFactory.register(ClassType.CALLBACK)
 class QuantTrainerCallback(Callback):
     """Callback class for Quant Trainer."""
 
+    disable_callbacks = ["ModelStatistics"]
+
+    def __init__(self):
+        super(Callback, self).__init__()
+        self.flops_count = None
+        self.params_count = None
+
     def before_train(self, logs=None):
         """Be called before the train process."""
-        self.cfg = self.trainer.cfg
-        self.trainer.auto_save_ckpt = False
-        self.trainer.auto_save_perf = False
-        self.save_weight = self.cfg.save_weight
-        self.device = self.cfg.device
-        self.base_net_desc = SearchSpace().cfg
-        self.model_code = self.base_net_desc.backbone.get(
-            'model_code', None)
-        self.model = self.trainer.model
-        if self.model is None:
-            self.model = self.trainer._init_model()
-        self.model._init_weights()
-        self.model = self._quantize_model(self.model).to(self.device)
-        self.flops_count, _ = cal_model_flops(self.model,
-                                              self.device,
-                                              input_size=(1, 3, 32, 32))
-        self.params_count, _ = cal_model_params(self.model,
-                                                self.device,
-                                                input_size=(1, 3, 32, 32))
-        if not self.validate():
-            return
-        self.trainer.build(model=self.model)
+        self.config = self.trainer.config
+        self.device = self.trainer.config.device
+        self.model_code = copy.deepcopy(self.trainer.config.codec)
+        if vega.is_torch_backend():
+            self.trainer.model._init_weights()
+            self.trainer.model = self._quantize_model(self.trainer.model).to(self.device)
+            input = torch.randn(1, 3, 32, 32).to(self.device)
+            self.flops_count, self.params_count = calc_model_flops_params(
+                self.trainer.model, input, quant_custom_ops())
+        elif vega.is_tf_backend():
+            tf.reset_default_graph()
+            self.trainer.model = self._quantize_model(self.trainer.model)
+            quant_info = copy.deepcopy(self.trainer.model.quant_info)
+            input = tf.random_uniform([1, 32, 32, 3], dtype=tf.float32)
+            self.flops_count, self.params_count = calc_model_flops_params(self.trainer.model, input)
+            self.flops_count += quant_info['extra_flops']
+            self.params_count += quant_info['extra_params']
+        self.validate()
 
     def after_epoch(self, epoch, logs=None):
-        """Be called after one epoch training."""
-        self.summary_perfs = logs.get('summary_perfs', None)
-        if self.summary_perfs['best_valid_perfs_changed']:
-            self._save_best_model()
-
-    def after_train(self, logs=None):
-        """Be called after the whole train process."""
-        self.metric = list(self.summary_perfs['best_valid_perfs'].values())[0][0]
-        self.save_metrics_value()
-        if self.cfg.get('save_model_desc', False):
-            self._save_model_desc()
-
-    def _save_model_desc(self):
-        """Save final model desc of NAS."""
-        pf_file = FileOps.join_path(self.trainer.local_output_path, self.trainer.step_name, "pareto_front.csv")
-        if not FileOps.exists(pf_file):
-            return
-        with open(pf_file, "r") as file:
-            pf = pd.read_csv(file)
-        pareto_fronts = pf["encoding"].tolist()
-        search_space = SearchSpace()
-        codec = QuantCodec('QuantCodec', search_space)
-        for i, pareto_front in enumerate(pareto_fronts):
-            pareto_front = [int(x) for x in pareto_front[1:-1].split(',')]
-            model_desc = Config()
-            model_desc.modules = search_space.search_space.modules
-            model_desc.backbone = codec.decode(pareto_front)._desc.backbone
-            self.trainer.output_model_desc(i, model_desc)
+        """Update gflops and kparams."""
+        summary_perfs = logs.get('summary_perfs', {})
+        summary_perfs.update({'gflops': self.flops_count, 'kparams': self.params_count})
+        logs.update({'summary_perfs': summary_perfs})
 
     def _quantize_model(self, model):
         """Quantize the model.
 
-        :param input: pytorch model
-        :type input: nn.Module
+        :param model: pytorch model
+        :type model: nn.Module
         :return: quantized pytorch model
         :rtype: nn.Module
         """
         q = Quantizer()
         if self.model_code is not None:
-            length = len(self.model_code)
-            nbit_w_list = self.model_code[:length // 2]
-            nbit_a_list = self.model_code[length // 2:]
+            nbit_w_list = self.model_code.nbit_w_list
+            nbit_a_list = self.model_code.nbit_a_list
         else:
             nbit_w_list = model.nbit_w_list
             nbit_a_list = model.nbit_a_list
-        print('current code:', nbit_w_list, nbit_a_list)
+        logging.info('current code: %s, %s', nbit_w_list, nbit_a_list)
         model = q.quant_model(model, nbit_w_list, nbit_a_list)
         return model
-
-    def save_metrics_value(self):
-        """Save the metric value of the trained model.
-
-        :return: save_path (local) and s3_path (remote). If s3_path not specified, then s3_path is None
-        :rtype: a tuple of two str
-        """
-        pd_path = FileOps.join_path(
-            self.trainer.local_output_path, self.trainer.step_name, "performace.csv")
-        FileOps.make_base_dir(pd_path)
-        encoding = self.model.nbit_w_list + self.model.nbit_a_list
-        df = pd.DataFrame(
-            [[encoding, self.flops_count, self.params_count, self.metric]],
-            columns=["encoding", "flops", "parameters", self.cfg.get("valid_metric", "acc")])
-        if not os.path.exists(pd_path):
-            with open(pd_path, "w") as file:
-                df.to_csv(file, index=False)
-        else:
-            with open(pd_path, "a") as file:
-                df.to_csv(file, index=False, header=False)
-        if self.trainer.backup_base_path is not None:
-            FileOps.copy_folder(self.trainer.local_output_path,
-                                self.trainer.backup_base_path)
 
     def validate(self):
         """Check whether the model fits in the #flops range or #parameter range specified in config.
@@ -135,23 +88,12 @@ class QuantTrainerCallback(Callback):
         :return: true or false, which specifies whether the model fits in the range
         :rtype: bool
         """
-        limits_config = self.cfg.get("limits", dict())
+        limits_config = self.config.limits or dict()
         if "flop_range" in limits_config:
             flop_range = limits_config["flop_range"]
             if self.flops_count < flop_range[0] or self.flops_count > flop_range[1]:
-                return False
+                raise ValueError("flops count exceed limits range.")
         if "param_range" in limits_config:
             param_range = limits_config["param_range"]
             if self.params_count < param_range[0] or self.params_count > param_range[1]:
-                return False
-        return True
-
-    def _save_best_model(self):
-        save_path = FileOps.join_path(
-            self.trainer.get_local_worker_path(), self.trainer.step_name, "best_model.pth")
-        FileOps.make_base_dir(save_path)
-        torch.save(self.model.state_dict(), save_path)
-        if self.trainer.backup_base_path is not None:
-            _dst = FileOps.join_path(self.trainer.backup_base_path, "workers",
-                                     str(self.trainer.worker_id))
-            FileOps.copy_folder(self.trainer.get_local_worker_path(), _dst)
+                raise ValueError("params count exceed limits range.")

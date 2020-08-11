@@ -92,6 +92,7 @@ class BasicBlock(nn.Module):
                  gen_attention=None,
                  groups=1,
                  base_width=4):
+        """Initialize."""
         super(BasicBlock, self).__init__()
         assert dcn is None, "Not implemented yet."
         assert gen_attention is None, "Not implemented yet."
@@ -225,6 +226,7 @@ class Bottleneck(nn.Module):
                  gen_attention=None,
                  groups=1,
                  base_width=4):
+        """Initialize."""
         super(Bottleneck, self).__init__()
         assert style in ['pytorch', 'caffe']
         assert dcn is None or isinstance(dcn, dict)
@@ -625,6 +627,7 @@ class SpNet(nn.Module):
                  base_width=4,
                  base_channel=64,
                  reignition=False):
+        """Initialize."""
         super(SpNet, self).__init__()
         self.num_stages = num_stages
         self.strides = strides

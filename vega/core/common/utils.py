@@ -11,11 +11,16 @@
 """Utils tools."""
 
 import os
+import shutil
 import sys
 import logging
 import imp
 from functools import wraps
 from copy import deepcopy
+from contextlib import contextmanager
+from vega.core.common.general import General
+from time import ctime, sleep
+logger = logging.getLogger(__name__)
 
 
 def singleton(cls):
@@ -74,7 +79,7 @@ def update_dict_with_flatten_keys(desc, flatten_keys):
     return desc
 
 
-def init_log(level="info", log_file="log.txt"):
+def init_log(level=None, log_file="log.txt"):
     """Init logging configuration."""
     log_path = "./logs/"
     if not os.path.isdir(log_path):
@@ -85,6 +90,8 @@ def init_log(level="info", log_file="log.txt"):
         level=logging.INFO,
         format=fmt,
         datefmt='%Y-%m-%d %H:%M:%S')
+    if not level:
+        level = General.logger.level
     if level == "debug":
         logging.getLogger().setLevel(logging.DEBUG)
     elif level == "info":
@@ -101,6 +108,8 @@ def init_log(level="info", log_file="log.txt"):
     fmt = '%(asctime)s %(levelname)s %(message)s'
     fh.setFormatter(logging.Formatter(fmt))
     logging.getLogger().addHandler(fh)
+    pil_logger = logging.getLogger('PIL')
+    pil_logger.setLevel(logging.INFO)
 
 
 def lazy(func):
@@ -130,3 +139,29 @@ def module_existed(module_name):
         return True
     except ImportError:
         return False
+
+
+@contextmanager
+def switch_directory(dir):
+    """Switch to a directory.
+
+    :param dir: directory
+    :type dir: str
+    """
+    if not os.path.exists(dir):
+        os.makedirs(dir)
+    owd = os.getcwd()
+    try:
+        os.chdir(dir)
+        yield dir
+    finally:
+        os.chdir(owd)
+
+
+def copy_search_file(srcDir, desDir):
+    """Copy files from srcDir to desDir."""
+    ls = os.listdir(srcDir)
+    for line in ls:
+        filePath = os.path.join(srcDir, line)
+        if os.path.isfile(filePath):
+            shutil.copy(filePath, desDir)

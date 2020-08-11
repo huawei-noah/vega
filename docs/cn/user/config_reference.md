@@ -24,36 +24,23 @@ vega的配置可分为两部分：
 ```yaml
 # 此处配置公共配置项，可参考随后的章节介绍
 general:
-    logger:
-        level: info
+    # general configuration
 
 # 定义pipeline。
 pipeline: [my_nas, my_hpo, my_data_augmentation, my_fully_train]
 
 # 定义每个步骤，可参考随后的章节介绍
 my_nas:
-    pipe_step:
-        type: NasPipeStep
-    trainer:
-        type: BackboneNasTrainer
+    # NAS configuration
 
 my_hpo:
-    pipe_step:
-        type: HpoPipeStep
-    trainer:
-        type: Trainer
+    # HPO configuration
 
 my_data_augmentation:
-    pipe_step:
-        type: HpoPipeStep
-    trainer:
-        type: Trainer
+    # Data augmentation configuration
 
 my_fully_train:
-    pipe_step:
-        type: FullyTrainPipeStep
-    trainer:
-        type: Trainer
+    # fully train configuration
 ```
 
 以下详细介绍每个配置项。
@@ -67,7 +54,7 @@ my_fully_train:
 | local_base_path | 工作路径。每次系统运行，会在该路径下生成一个带有时间信息（我们称之为task id）的子文件夹，这样多次运行的输出不会被覆盖。在task id子文件夹下面一般包含output和worker两个子文件夹，output文件夹存储pipeline的每个步骤的输出数据，worker文件夹保存临时信息。 <br> **在集群的场景下，该路径需要设置为每个计算节点都可访问的EFS路径，用于不同节点共享数据。**|
 | backup_base_path | 备份路径，这个设置主要用于云道环境，或者集群环境中，本地路径路径中的output和task会备份到该路径下。|
 | timeout | worker超时时间，单位为小时，若在该时间范围内未完成，worker会被强制结束。单位为小时，缺省值为 10 个小时。|
-| gpus_per_job | 搜索阶段每个worker使用的GPU数目，-1 代表一个worker使用该节点所有GPU，1 代表一个worker使用1个GPU，2 代表一个worker使用两个GPU，以此类推。|
+| devices_per_job | 搜索阶段每个worker使用的GPU数目，-1 代表一个worker使用该节点所有GPU，1 代表一个worker使用1个GPU，2 代表一个worker使用两个GPU，以此类推。|
 | logger.level | 日志级别，可设置为：debug \| info \| warn \| error \| critical，缺省为 info。|
 | cluster.master_ip | 在集群场景下需要设置该参数，设置为master节点的IP地址。 |
 | cluster.listen_port | 在集群场景下需要关注该参数，若出现8000端口被占用，需要调整该监控端口。|
@@ -79,8 +66,7 @@ general:
         local_base_path: "./tasks"
         backup_base_path: ~
     worker:
-        timeout: 10.0
-        gpus_per_job: -1
+        devices_per_job: -1
     logger:
         level: info
     cluster:
@@ -112,7 +98,7 @@ my_nas:
     search_algorithm:                   # 搜索算法设置项，Nas等步骤必须配置该项
         type: BackboneNas               # 搜索算法类型。可参见各个算法文档，了解所支持的搜索算法
         codec: BackboneNasCodec         # 编码器，一般和搜索算法对应
-        policy:                        # 余下为搜索算法的配置项，请参考各个算法文档
+        policy:                         # 余下为搜索算法的配置项，请参考各个算法文档
             num_mutate: 10
             random_ratio: 0.2
         range:
@@ -143,14 +129,9 @@ my_nas:
 | backbone | PruneResNet | ResNet变种网络，用于支持剪枝操作。 | [参考](../algorithms/prune_ea.md) |
 | backbone | QuantResNet | ResNet变种网络，用于支持量化操作。 | [参考](../algorithms/quant_ea.md) |
 | backbone | ResNetVariant | ResNet变种网络，用于支持降采样点位调整等架构调整操作。 | [参考](../algorithms/sm-nas.md) |
-| backbone | ResNet_Det | ResNet变种网络，用于目标检测任务的Backbone。 |  |
 | head | LinearClassificationHead | 用于分类任务的网络分类层，可串接ResNetVariant。 |  |
-| head | BBoxHead | 目标检测任务中的Bounding Box Head检测头。 |  |
 | head | CurveLaneHead | 用于行道线检测的CurveLaneHead检测头。 |  |
-| head | RPNHead | 目标检测任务中的Region Proposal Network Head检测头。 |  |
-| neck | FPN | 目标检测任务中的Feature Pyramid Network。 |  |
-| neck | FPN_CurveLane | 行道线检测任务中的Feature Pyramid Network。 |  |
-| detector | FasterRCNN | 目标检测任务中的FasterRCNN检测网络。 |  |
+| neck | FeatureFusionModule | 行道线检测任务中的Feature Pyramid Network。 |  |
 | detector | AutoLaneDetector | 行道线检测任务中的AutoLaneDetector检测网络。 |  |
 | super_network | DartsNetwork | Darts算法中的super network结构。 | [参考](../algorithms/cars.md) |
 | super_network | CARSDartsNetwork | CARS算法中的super network结构。 | [参考](../algorithms/cars.md) |
@@ -170,7 +151,7 @@ HPO的配置项大概有如下部分：
 
 | 配置项 | 说明 |
 | :--: | :-- |
-| pipe_step | 固定为HpoPipeStep |
+| pipe_step | 固定为NasPipeStep |
 | hpo | 配置超参信息，最主要的配置项是 type 和 hyperparameter_space。前者定义了使用哪种hpo算法，可参考[HPO算法文档](../algorithms/hpo.md)，后者定义了待搜索的超参信息。|
 | trainer | trainer配置信息，请参考[Trainer 配置项](#trainer)。|
 | dataset | 数据集配置，请参考[Dataet 配置项](#dataset)。|
@@ -183,7 +164,7 @@ HPO的配置项大概有如下部分：
 ```yaml
 my_hpo:
     pipe_step:
-        type: HpoPipeStep
+        type: NasPipeStep
     hpo:
         type: AshaHpo
         policy:
@@ -230,7 +211,8 @@ my_hpo:
         type: Evaluator
         gpu_evaluator:
             type: GpuEvaluator
-            ref: trainer
+            metric:
+                type: accuracy
 ```
 
 ## 5. Data-Agumentation配置项
@@ -239,7 +221,7 @@ my_hpo:
 
 | 配置项 | 说明 |
 | :--: | :-- |
-| pipe_step | 固定为HpoPipeStep |
+| pipe_step | 固定为NasPipeStep |
 | hpo | 当前只支持PBA算法，固定为PBAHpo，可参考[PBA算法文档](../algorithms/pba.md)。|
 | trainer | trainer配置信息，请参考[Trainer 配置项](#trainer)。|
 | dataset | 数据集配置，请参考[Dataet 配置项](#dataset)。|
@@ -250,7 +232,7 @@ my_hpo:
 ```yaml
 my_data_augmentation:
     pipe_step:
-        type: HpoPipeStep
+        type: NasPipeStep
     dataset:
         type: Cifar10
     hpo:
@@ -280,6 +262,8 @@ my_data_augmentation:
         type: Evaluator
         gpu_evaluator:
             type: GpuEvaluator
+            metric:
+                type: accuracy
 ```
 
 ## 6. Fully Train配置项
@@ -321,7 +305,7 @@ my_fully_train:
 | lr_scheduler | lr scheduler 及参数 |
 | loss | loss 及参数 |
 | metric | metric 及参数 |
-| horovod | 是否启用horovod进行fully train, 启用horovod后，trainer会在horovod集群中使用所有计算资源训练指定的网络模型。若要启动horovod，必须要设置model选项。同时要注意数据集的shuffle参数设置为False。 |
+| distributed | 是否启用horovod进行fully train, 启用horovod后，trainer会在horovod集群中使用所有计算资源训练指定的网络模型。若要启动horovod，必须要设置model选项。同时要注意数据集的shuffle参数设置为False。 |
 | model_desc | 模型描述信息，和 model_desc_file 互斥，且model_desc_file优先。 |
 | model_desc_file | 模型描述信息所在的文件，和 model_desc 互斥，且model_desc_file优先 |
 | hps_file | 超参文件 |
@@ -335,16 +319,20 @@ my_fully_train:
         epochs: 160
         optim:
             type: Adam
-            lr: 0.1
+            params:
+                lr: 0.1
         lr_scheduler:
             type: MultiStepLR
-            milestones: [75, 150]
-            gamma: 0.5
+            params:
+                milestones: [75, 150]
+                gamma: 0.5
         metric:
             type: accuracy
         loss:
             type: CrossEntropyLoss
-        horovod: False
+        distributed: False
+    dataset:
+        type: Imagenet
     model:
         model_desc:
             modules: ['backbone', 'head']
@@ -453,7 +441,6 @@ Vega提供了常见数据集，如下：
     num_workers: 4          # the worker number to load the data
     shuffle: false          # if True, will shuffle, defaults to False
     distributed: false      # whether to use distributed train
-    imgs_per_gpu: 1         # image number per gpu
     train_portion: 0.5      # the ratio of the train data split from the initial train data
     ```
 
@@ -465,7 +452,6 @@ Vega提供了常见数据集，如下：
     num_workers: 4          # the worker number to load the data
     shuffle: true           # if True, will shuffle, defaults to False
     distributed: false      # whether to use distributed train
-    imgs_per_gpu: 1         # image number per gpu
     ```
 
 3. Cityscapes Default Configuration
@@ -484,7 +470,6 @@ Vega提供了常见数据集，如下：
     shuffle: False          # if True, will shuffle, defaults to False
     distributed: True       # whether to use distributed train
     id_to_trainid: False    # change the random id to continious id,if true, a dict should be obtain
-    imgs_per_gpu: 1         # image number per gpu
     ```
 
 4. DIV2K Default Configuration
@@ -502,7 +487,6 @@ Vega提供了常见数据集，如下：
     vflip: false            # whether to use vertical flip
     rot90: false            # whether to use rotation
     distributed: True       # whether to use distributed train
-    imgs_per_gpu: 1         # image number per gpu
     ```
 
 5. FashionMnist Default Configuration
@@ -513,7 +497,6 @@ Vega提供了常见数据集，如下：
     num_workers: 4          # the worker number to load the data
     shuffle: true           # if True, will shuffle, defaults to False
     distributed: false      # whether to use distributed train
-    imgs_per_gpu: 1         # image number per gpu
     ```
 
 6. Imagenet Default Configuration
@@ -524,7 +507,6 @@ Vega提供了常见数据集，如下：
     num_workers: 4          #  the worker number to load the data
     shuffle: true           #  if True, will shuffle, defaults to False
     distributed: false      #  whether to use distributed train
-    imgs_per_gpu: 1         #  image number per gpu
     ```
 
 7. Mnist Default Configuration
@@ -535,7 +517,6 @@ Vega提供了常见数据集，如下：
     num_workers: 4          # the worker number to load the data
     shuffle: true           # if True, will shuffle, defaults to False
     distributed: false      # whether to use distributed train
-    imgs_per_gpu: 1         # image number per gpu
     ```
 
 ### 8.1 内置Transform

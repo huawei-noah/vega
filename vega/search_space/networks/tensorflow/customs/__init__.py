@@ -1,0 +1,1 @@
+from .adelaide import AdelaideFastNAS

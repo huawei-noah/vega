@@ -16,9 +16,10 @@ import logging
 import horovod.torch as hvd
 from vega.core.common.class_factory import ClassFactory
 from vega.core.common.user_config import UserConfig
+from vega.core.common.general import General
 from vega.core.common.file_ops import FileOps
-from vega.search_space.networks.network_factory import NetworkFactory
-
+from vega.core.common.loader import load_conf_from_desc
+from vega.core.pipeline.conf import PipeStepConfig
 
 parser = argparse.ArgumentParser(description='Horovod Fully Train')
 parser.add_argument('--cf_file', type=str, help='ClassFactory pickle file')
@@ -41,7 +42,9 @@ with open('./cf_file.pickle', 'rb') as f:
 ClassFactory.__configs__ = cf_content.get('configs')
 ClassFactory.__registry__ = cf_content.get('registry')
 UserConfig().__data__ = cf_content.get('data')
-NetworkFactory.__network_registry__ = cf_content.get('network_registry')
+# TODO: need user train config when dataset and model remove from trainer
+load_conf_from_desc(PipeStepConfig, cf_content.get('configs'))
+load_conf_from_desc(General, cf_content.get('general'))
 cls_trainer = ClassFactory.get_cls('trainer')
 trainer = cls_trainer(None, 0)
 trainer.train_process()

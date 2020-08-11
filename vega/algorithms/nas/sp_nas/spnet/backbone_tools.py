@@ -158,6 +158,7 @@ def remove_layers(layer_arch, p_arch, len_dis):
     :return: more expand block name
     :rtype: list
     """
+
     def map_index_to_name(index, layer_arch):
         name = []
         for i in index:

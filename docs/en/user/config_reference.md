@@ -22,38 +22,24 @@ The configuration of the vega can be divided into two parts:
    2. Defines each step in Pipeline. The configuration item name is the name of each step defined in Pipeline.
 
 ```yaml
-# Configure common configuration items.
 general:
-    logger:
-        level: info
+    # general configuration
 
 # Defining a Pipeline.
 pipeline: [my_nas, my_hpo, my_data_augmentation, my_fully_train]
 
 # defines each step. Refer to the following sections for details about
 my_nas:
-    pipe_step:
-        type: NasPipeStep
-    trainer:
-        type: BackboneNasTrainer
+    # NAS configuration
 
 my_hpo:
-    pipe_step:
-        type: HpoPipeStep
-    trainer:
-        type: Trainer
+    # HPO configuration
 
 my_data_augmentation:
-    pipe_step:
-        type: HpoPipeStep
-    trainer:
-        type: Trainer
+    # Data augmentation configuration
 
 my_fully_train:
-    pipe_step:
-        type: FullyTrainPipeStep
-    trainer:
-        type: Trainer
+    # fully train configuration
 ```
 
 The following describes each configuration item in detail.
@@ -67,7 +53,7 @@ The following public configuration items can be configured:
 | local_base_path | Working path. Each time when the system is running, a subfolder with time information (task id) is generated in the path. In this way, the output of multiple running is not overwritten. The task id subfolder contains two subfolders: output and worker. The output folder stores the output data of each step in the pipeline, and the worker folder stores temporary information.  <br> **In the clustered scenario, this path needs to be set to an EFS path that can be accessed by each computing node, and is used by different nodes to share data.**||
 | backup_base_path | Backup path. This parameter is used in the cloud channel environment or cluster environment. The output and task files in the local path are backed up to this path. |
 | timeout | Worker timeout interval, in hours. If the task is not completed within the interval, the worker is forcibly terminated. The unit is hour. The default value is 10. |
-| gpus_per_job | Number of GPUs used by each worker in the search phase, -1 means that one worker uses all GPUs of the node, 1 means one worker uses one GPU, 2 means one worker uses two GPUs, and so on. |
+| devices_per_job | Number of GPUs used by each worker in the search phase, -1 means that one worker uses all GPUs of the node, 1 means one worker uses one GPU, 2 means one worker uses two GPUs, and so on. |
 | logger.level | Log level, which can be set to debug \| info \| warn \| error \| critical. default level is info. |
 | cluster.master_ip | In the cluster scenario, this parameter needs to be set to the IP address of the master node. |
 | cluster.listen_port | In the cluster scenario, you need to pay attention to this parameter. If port 8000 is occupied, you need to adjust the monitoring port. |
@@ -79,8 +65,7 @@ general:
         local_base_path: "./tasks"
         backup_base_path: ~
     worker:
-        timeout: 10.0
-        gpus_per_job: -1
+        devices_per_job: -1
     logger:
         level: info
     cluster:
@@ -143,14 +128,9 @@ The optional models of the search_space configuration item are as follows:
 | backbone | PruneResNet | ResNet variant network, which is used to support the prune operation. | [ref](../algorithms/prune_ea.md) |
 | backbone | QuantResNet | ResNet variant network, which is used to support quantization operations. | [ref](../algorithms/quant_ea.md) |
 | backbone | ResNetVariant | The ResNet variant network is used to support architecture adjustment operations such as down-sampling point adjustment. | [ref](../algorithms/sm-nas.md) |
-| backbone | ResNet_Det | Indicates the ResNet variant network, which is used for the backbone of the target detection task. |  |
 | head | LinearClassificationHead | Network classification layer used to classify tasks, which can be concatenated with ResNetVariant. |  |
-| head | BBoxHead | Bounding box head in the object detection task. |  |
 | head | CurveLaneHead | The CurveLaneHead detection head is used to detect the lane. |  |
-| head | RPNHead | Region Proposal Network Head in the object detection task. |  |
-| neck | FPN | Indicates the feature deployed network in the object detection task. |  |
-| neck | FPN_CurveLane | Indicates the feature dashamid network in the roadway detection task. |  |
-| detector | FasterRCNN | Faster R-CNN detection network in the object detection task. |  |
+| neck | FeatureFusionModule | Indicates the feature dashamid network in the roadway detection task. |  |
 | detector | AutoLaneDetector | AutoLaneDetector detection network in the roadway detection task. |  |
 | super_network | DartsNetwork | Super network structure in the Darts algorithm. | [ref](../algorithms/cars.md) |
 | super_network | CARSDartsNetwork | Super network structure in the CARS algorithm. | [ref](../algorithms/cars.md) |
@@ -170,7 +150,7 @@ The HPO configuration items are as follows:
 
 | Configuration Item | Description |
 | :--: | :-- |
-| pipe_step | The value is fixed at HpoPipeStep. |
+| pipe_step | The value is fixed at NasPipeStep. |
 | hpo | Configure the type and domain_space parameters. The former defines the HPO algorithm to be used. For details, see the [HPO](../algorithms/hpo.md). The latter defines the hyperparameter information to be searched for. |
 | trainer | Trainer configuration information. For details, see the [Trainer Configuration](#trainer). |
 | dataset | Dataset configuration. For details, see the [Dataset Configuration](#dataset). |
@@ -180,7 +160,7 @@ The HPO configuration of the ASHA algorithm is as follows for reference:
 ```yaml
 my_hpo:
     pipe_step:
-        type: HpoPipeStep
+        type: NasPipeStep
     hpo:
         type: AshaHpo
         policy:
@@ -227,7 +207,8 @@ my_hpo:
         type: Evaluator
         gpu_evaluator:
             type: GpuEvaluator
-            ref: trainer
+            metric:
+                type: accuracy
 ```
 
 ## 5. Data-Agumentation configuration item
@@ -236,7 +217,7 @@ The configuration of data augmentation includes:
 
 | Configuration Item | Description |
 | :--: | :-- |
-| pipe_step | The value is fixed at HpoPipeStep. |
+| pipe_step | The value is fixed at NasPipeStep. |
 | hpo | Currently, only the  HYPERLINK "../algorithms/pba.md" PBA algorithm is supported. The value is fixed to PBAHpo. For details, see the [PBA](../algorithms/pba.md). |
 | trainer | Trainer configuration information. For details, see the [Trainer Configuration](#trainer). |
 | dataset | Dataset configuration. For details, see the [Dataset Configuration](#dataset). |
@@ -246,7 +227,7 @@ The following shows the configuration of the PBA algorithm for reference:
 ```yaml
 my_data_augmentation:
     pipe_step:
-        type: HpoPipeStep
+        type: NasPipeStep
     dataset:
         type: Cifar10
     hpo:
@@ -276,6 +257,8 @@ my_data_augmentation:
         type: Evaluator
         gpu_evaluator:
             type: GpuEvaluator
+            metric:
+                type: accuracy
 ```
 
 ## 6. Fully Train Configuration
@@ -318,7 +301,7 @@ In each of the preceding pipeline steps, the configuration item trainer is provi
 | lr_scheduler | lr scheduler and parameters |
 | loss | Loss and Parameters |
 | metric | Metrics and Parameters |
-| horovod | Whether to enable Horovod for fully train. After enabling Horovod, the trainer will use all computing resources in the Horovod cluster to train the specified network model. To start horovod, you must set the `model` option. |
+| distributed | Whether to enable Horovod for fully train. After enabling Horovod, the trainer will use all computing resources in the Horovod cluster to train the specified network model. To start horovod, you must set the `model` option. |
 | model_desc | Model description, which is mutually exclusive with model_desc_file. model_desc_file takes precedence over model_desc_file. And the parameter shuffle of the dataset must be set to False. |
 | model_desc_file | File where the model description information is located. This parameter is mutually exclusive with model_desc, and model_desc_file takes priority over model_desc_file. |
 | hps_file | Hyper-parameter file |
@@ -332,16 +315,18 @@ The following is an example of loading the Torchvision model for training:
         epochs: 160
         optim:
             type: Adam
-            lr: 0.1
+            params:
+                lr: 0.1
         lr_scheduler:
             type: MultiStepLR
-            milestones: [75, 150]
-            gamma: 0.5
+            params:
+                milestones: [75, 150]
+                gamma: 0.5
         metric:
             type: accuracy
         loss:
             type: CrossEntropyLoss
-        horovod: False
+        distributed: False
     dataset:
         type: Imagenet
     model:
@@ -452,7 +437,6 @@ Vega provides the following common data sets:
     num_workers: 4          # the worker number to load the data
     shuffle: false          # if True, will shuffle, defaults to False
     distributed: false      # whether to use distributed train
-    imgs_per_gpu: 1         # image number per gpu
     train_portion: 0.5      # the ratio of the train data split from the initial train data
     ```
 
@@ -464,7 +448,6 @@ Vega provides the following common data sets:
     num_workers: 4          # the worker number to load the data
     shuffle: true           # if True, will shuffle, defaults to False
     distributed: false      # whether to use distributed train
-    imgs_per_gpu: 1         # image number per gpu
     ```
 
 3. Cityscapes Default Configuration
@@ -483,7 +466,6 @@ Vega provides the following common data sets:
     shuffle: False          # if True, will shuffle, defaults to False
     distributed: True       # whether to use distributed train
     id_to_trainid: False    # change the random id to continious id,if true, a dict should be obtain
-    imgs_per_gpu: 1         # image number per gpu
     ```
 
 4. DIV2K Default Configuration
@@ -501,7 +483,6 @@ Vega provides the following common data sets:
     vflip: false            # whether to use vertical flip
     rot90: false            # whether to use rotation
     distributed: True       # whether to use distributed train
-    imgs_per_gpu: 1         # image number per gpu
     ```
 
 5. FashionMnist Default Configuration
@@ -512,7 +493,6 @@ Vega provides the following common data sets:
     num_workers: 4          # the worker number to load the data
     shuffle: true           # if True, will shuffle, defaults to False
     distributed: false      # whether to use distributed train
-    imgs_per_gpu: 1         # image number per gpu
     ```
 
 6. Imagenet Default Configuration
@@ -523,7 +503,6 @@ Vega provides the following common data sets:
     num_workers: 4          #  the worker number to load the data
     shuffle: true           #  if True, will shuffle, defaults to False
     distributed: false      #  whether to use distributed train
-    imgs_per_gpu: 1         #  image number per gpu
     ```
 
 7. Mnist Default Configuration
@@ -534,7 +513,6 @@ Vega provides the following common data sets:
     num_workers: 4          # the worker number to load the data
     shuffle: true           # if True, will shuffle, defaults to False
     distributed: false      # whether to use distributed train
-    imgs_per_gpu: 1         # image number per gpu
     ```
 
 ### 8.1 Built-in Transform

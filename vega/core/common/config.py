@@ -149,3 +149,29 @@ def _dict2config(config, dic):
                 _dict2config(sub_config, value)
             else:
                 config[key] = dic[key]
+
+
+def obj2config(obj, config=None):
+    """Convert obj to config.
+
+    :param obj: obj can be dict or class.
+
+    """
+    if not config:
+        config = Config()
+    if isinstance(obj, dict):
+        return Config(obj)
+    if not isinstance(obj, object):
+        return obj
+    for attr_name in dir(obj):
+        if attr_name.startswith('_'):
+            continue
+        if not isinstance(obj, dict) and hasattr(obj, '_exclude_keys'):
+            exclude_keys = [obj._exclude_keys] if not isinstance(obj._exclude_keys, list) else obj._exclude_keys
+            if attr_name in exclude_keys:
+                continue
+        attr_value = getattr(obj, attr_name)
+        if isinstance(attr_value, type):
+            attr_value = obj2config(attr_value)
+        config[attr_name] = attr_value
+    return copy.deepcopy(config)

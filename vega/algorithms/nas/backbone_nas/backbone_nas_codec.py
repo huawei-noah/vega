@@ -9,12 +9,15 @@
 # MIT License for more details.
 
 """Defined BackboneNasCodec."""
-import random
 import copy
 import logging
+import random
+
+from vega.core.common.class_factory import ClassType, ClassFactory
 from vega.search_space.codec import Codec
 
 
+@ClassFactory.register(ClassType.CODEC)
 class BackboneNasCodec(Codec):
     """BackboneNasCodec.
 
@@ -25,9 +28,9 @@ class BackboneNasCodec(Codec):
 
     """
 
-    def __init__(self, codec_name, search_space=None):
+    def __init__(self, search_space=None, **kwargs):
         """Init BackboneNasCodec."""
-        super(BackboneNasCodec, self).__init__(codec_name, search_space)
+        super(BackboneNasCodec, self).__init__(search_space, **kwargs)
 
     def encode(self, sample_desc, is_random=False):
         """Encode.
@@ -104,10 +107,10 @@ class BackboneNasCodec(Codec):
             if "base_channel" in tmp_dict:
                 if int(tmp_dict["base_depth"]) < 50:
                     out_channel = int(
-                        tmp_dict["base_channel"]) * 2**(sum(tmp_doublechannel))
+                        tmp_dict["base_channel"]) * 2 ** (sum(tmp_doublechannel))
                 else:
                     out_channel = int(
-                        tmp_dict["base_channel"]) * 4 * 2**(sum(tmp_doublechannel))
+                        tmp_dict["base_channel"]) * 4 * 2 ** (sum(tmp_doublechannel))
             if "downsample" in tmp_dict:
                 tmp_dict["downsample"] = code[1]
             if net_name == "head":

@@ -1,2 +1,5 @@
 from .pba_hpo import PBAHpo
-from .cyclesr import CyclesrTrainer
+import os
+
+if os.environ['BACKEND_TYPE'] == 'PYTORCH':
+    from .cyclesr import CyclesrTrainerCallback

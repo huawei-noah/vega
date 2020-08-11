@@ -12,29 +12,30 @@
 import logging
 import numpy as np
 from collections.abc import Iterable
-from .callbacks import Callback
+from .callback import Callback
 from vega.core.common.class_factory import ClassFactory, ClassType
 
 
 @ClassFactory.register(ClassType.CALLBACK)
 class ProgressLogger(Callback):
-    """Callback that shows the progress of evaluating metrics."""
+    """Callback that shows the progress of evaluating metrics.
+
+    :param train_verbose: train verbosity level. 0, 1, or 2, default to 2
+        0 = slient, 1 = one line per epoch, 2 = one line per step.
+    :type train_verbose: integer
+    :param valid_verbose: train verbosity level. 0, 1, or 2, default to 2
+        0 = slient, 1 = one line per epoch, 2 = one line per step.
+    :type valid_verbose: integer
+    :param train_report_steps: report the messages every train steps.
+    :type train_report_steps: integer
+    :param valid_report_steps: report the messages every valid steps.
+    :type valid_report_steps: integer
+    """
 
     def __init__(self, train_verbose=2, valid_verbose=2,
                  train_report_steps=10, valid_report_steps=10):
-        """Initialize a ProgressLogger with user-defined verbose levels.
-
-        :param train_verbose: train verbosity level. 0, 1, or 2, default to 2
-            0 = slient, 1 = one line per epoch, 2 = one line per step.
-        :type train_verbose: integer
-        :param valid_verbose: train verbosity level. 0, 1, or 2, default to 2
-            0 = slient, 1 = one line per epoch, 2 = one line per step.
-        :type valid_verbose: integer
-        :param train_report_steps: report the messages every train steps.
-        :type train_report_steps: integer
-        :param valid_report_steps: report the messages every valid steps.
-        :type valid_report_steps: integer
-        """
+        """Initialize a ProgressLogger with user-defined verbose levels."""
+        super(Callback, self).__init__()
         self.train_verbose = train_verbose
         self.valid_verbose = valid_verbose
         self.train_report_steps = train_report_steps
@@ -43,6 +44,7 @@ class ProgressLogger(Callback):
             self.train_verbose = 0
         if self.valid_report_steps is None:
             self.valid_verbose = 0
+        self.priority = 270
 
     def before_train(self, logs=None):
         """Be called before the training process."""
@@ -61,20 +63,29 @@ class ProgressLogger(Callback):
     def after_train_step(self, batch_index, logs=None):
         """Be called before each batch training."""
         if self.train_verbose >= 2 and self.is_chief \
-           and batch_index % self.train_report_steps == 0:
+                and batch_index % self.train_report_steps == 0:
             metrics_results = logs.get('train_step_metrics', None)
-            cur_loss = logs['cur_loss']
-            loss_avg = logs['loss_avg']
+            try:
+                cur_loss = logs['cur_loss']
+                loss_avg = logs['loss_avg']
+            except Exception:
+                cur_loss = 0
+                loss_avg = 0
+                logging.warning("Cant't get the loss, maybe the loss doesn't update in the metric evaluator.")
             if metrics_results is not None:
-                log_info = "epoch [{}/{}], train step {}, loss [{:8.3f}, {:8.3f}], train metrics {}".format(
-                    self.cur_epoch, self.epochs,
+                log_info = "worker id [{}], epoch [{}/{}], train step {}, loss [{:8.3f}, {:8.3f}], train metrics {}"
+                log_info = log_info.format(
+                    self.trainer.worker_id,
+                    self.cur_epoch + 1, self.epochs,
                     self._format_batch(batch_index, self.train_num_batches),
                     cur_loss, loss_avg,
                     self._format_metrics(metrics_results))
                 logging.info(log_info)
             else:
-                log_info = "epoch [{}/{}], train step {}, loss [{:8.3f}, {:8.3f}]".format(
-                    self.cur_epoch, self.epochs,
+                log_info = "worker id [{}], epoch [{}/{}], train step {}, loss [{:8.3f}, {:8.3f}]".format(
+                    self.trainer.worker_id,
+                    self.cur_epoch + 1,
+                    self.epochs,
                     self._format_batch(batch_index, self.train_num_batches),
                     cur_loss, loss_avg)
                 logging.info(log_info)
@@ -82,11 +93,13 @@ class ProgressLogger(Callback):
     def after_valid_step(self, batch_index, logs=None):
         """Be called after each batch of the validation."""
         if self.valid_verbose >= 2 and self.is_chief \
-           and self.do_validation and batch_index % self.valid_report_steps == 0:
+                and self.do_validation and batch_index % self.valid_report_steps == 0:
             metrics_results = logs.get('valid_step_metrics', None)
             if metrics_results is not None:
-                log_info = "epoch [{}/{}], valid step {}, valid metrics {}".format(
-                    self.cur_epoch, self.epochs,
+                log_info = "worker id [{}], epoch [{}/{}], valid step {}, valid metrics {}".format(
+                    self.trainer.worker_id,
+                    self.cur_epoch + 1,
+                    self.epochs,
                     self._format_batch(batch_index, self.valid_num_batches),
                     self._format_metrics(metrics_results))
                 logging.info(log_info)
@@ -96,8 +109,11 @@ class ProgressLogger(Callback):
         if (self.valid_verbose >= 1 and self.is_chief and self.do_validation):
             cur_valid_perfs = logs.get('cur_valid_perfs', None)
             if cur_valid_perfs is not None:
-                log_info = "epoch [{}/{}], current valid perfs {}".format(
-                    self.cur_epoch, self.epochs, self._format_metrics(cur_valid_perfs))
+                log_info = "worker id [{}], epoch [{}/{}], current valid perfs {}".format(
+                    self.trainer.worker_id,
+                    self.cur_epoch + 1,
+                    self.epochs,
+                    self._format_metrics(cur_valid_perfs))
                 logging.info(log_info)
 
     def after_train(self, logs=None):

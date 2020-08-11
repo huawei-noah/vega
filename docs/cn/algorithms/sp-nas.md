@@ -98,9 +98,10 @@ SP-NAS是面向物体检测及语义分割的高效主干网络架构搜索算�
 
 ```yaml
     trainer:
-        type: SpNasTrainer
-        gpus: 8
-        model_desc: 'r_111-2111-211111-211_0-0-0-0' # resnet50
+        type: Trainer
+        callbacks: SpNasTrainerCallback
+        lazy_built: True
+        model_desc_file: "{local_base_path}/output/total_list_p.csv"
         config_template: "./faster_rcnn_r50_fpn_1x.py"
         regnition: False                # 是否进行过ImageNet regnite
         epoch: 12

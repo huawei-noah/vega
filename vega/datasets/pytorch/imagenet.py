@@ -11,9 +11,10 @@
 """This is a class for Imagenet dataset."""
 from torchvision.datasets import ImageFolder
 from .common.dataset import Dataset
-from vega.datasets.pytorch.transforms import Compose
+from vega.datasets.transforms import Compose
 from vega.core.common.class_factory import ClassFactory, ClassType
 from vega.core.common.file_ops import FileOps
+from vega.datasets.conf.imagenet import ImagenetConfig
 
 
 @ClassFactory.register(ClassType.DATASET)
@@ -26,6 +27,8 @@ class Imagenet(ImageFolder, Dataset):
     the default config will be used, the default config file is a yml file with the same name of the class
     :type cfg: yml, py or dict
     """
+
+    config = ImagenetConfig()
 
     def __init__(self, **kwargs):
         """Construct the Imagenet class."""

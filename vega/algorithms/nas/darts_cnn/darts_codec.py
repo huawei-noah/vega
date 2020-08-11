@@ -13,9 +13,10 @@ import copy
 import numpy as np
 from vega.core.common import Config
 from vega.search_space.codec import Codec
-from vega.search_space.networks import NetworkDesc
+from vega.core.common.class_factory import ClassType, ClassFactory
 
 
+@ClassFactory.register(ClassType.CODEC)
 class DartsCodec(Codec):
     """Class of DARTS codec.
 
@@ -25,10 +26,10 @@ class DartsCodec(Codec):
     :type search_space: SearchSpace
     """
 
-    def __init__(self, codec_name, search_space=None):
+    def __init__(self, search_space=None, **kwargs):
         """Init DartsCodec."""
-        super(DartsCodec, self).__init__(codec_name, search_space)
-        self.darts_cfg = copy.deepcopy(search_space.search_space)
+        super(DartsCodec, self).__init__(search_space, **kwargs)
+        self.darts_cfg = copy.deepcopy(search_space)
         self.super_net = {'normal': self.darts_cfg.super_network.normal.genotype,
                           'reduce': self.darts_cfg.super_network.reduce.genotype}
         self.super_net = Config(self.super_net)
@@ -46,7 +47,16 @@ class DartsCodec(Codec):
         cfg_result = copy.deepcopy(self.darts_cfg)
         cfg_result.super_network.normal.genotype = genotype[0]
         cfg_result.super_network.reduce.genotype = genotype[1]
-        return NetworkDesc(cfg_result)
+        cfg_result.super_network.search = False
+        cfg_result.super_network.auxiliary = True
+        # TODO: need to remove
+        cfg_result.super_network["aux_size"] = 8
+        cfg_result.super_network["auxiliary_layer"] = 13
+        cfg_result.super_network.network = ["PreOneStem", "normal", "normal", "normal", "normal",
+                                            "normal", "normal", "reduce", "normal", "normal", "normal", "normal",
+                                            "normal", "normal",
+                                            "reduce", "normal", "normal", "normal", "normal", "normal", "normal"]
+        return cfg_result
 
     def calc_genotype(self, arch_param):
         """Parse genotype from arch parameters.
@@ -56,6 +66,7 @@ class DartsCodec(Codec):
         :return: genotype
         :rtype: 2 array of [str, int, int]
         """
+
         def _parse(weights, genos):
             gene = []
             n = 2
@@ -64,7 +75,8 @@ class DartsCodec(Codec):
                 end = start + n
                 W = weights[start:end].copy()
                 G = genos[start:end].copy()
-                edges = sorted(range(i + 2), key=lambda x: -max(W[x][k] for k in range(len(W[x])) if G[x][k] != 'none'))[:2]  # noqa: E501
+                edges = sorted(range(i + 2),
+                               key=lambda x: -max(W[x][k] for k in range(len(W[x])) if G[x][k] != 'none'))[:2]
                 for j in edges:
                     k_best = None
                     for k in range(len(W[j])):
@@ -75,6 +87,7 @@ class DartsCodec(Codec):
                 start = end
                 n += 1
             return gene
+
         normal_param = np.array(self.darts_cfg.super_network.normal.genotype)
         reduce_param = np.array(self.darts_cfg.super_network.reduce.genotype)
         geno_normal = _parse(arch_param[0], normal_param[:, 0])

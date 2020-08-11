@@ -10,19 +10,22 @@
 
 """Encode and decode the model config."""
 import numpy as np
+
+from vega.core.common.class_factory import ClassType, ClassFactory
 from vega.search_space.codec import Codec
 
 
+@ClassFactory.register(ClassType.CODEC)
 class AdelaideCodec(Codec):
     """Codec of the Adelaide search space."""
 
-    def __init__(self, codec_name, search_space=None):
+    def __init__(self, search_space=None, **kwargs):
         """Construct the AdelaideCodec class.
 
         :param codec_name: name of the codec
         :param search_space: Search space of the codec
         """
-        super(AdelaideCodec, self).__init__(codec_name, search_space)
+        super(AdelaideCodec, self).__init__(search_space, **kwargs)
 
     def encode(self, sample_desc):
         """Add the encoded string to decoded config.
@@ -30,6 +33,7 @@ class AdelaideCodec(Codec):
         :param sample_desc: config of decoded structure, which contains the key "config"
         :return: config of encoded structure, which contains the key "code"
         """
+
         def num_to_str(number):
             return np.base_repr(number, 36)
 
@@ -49,6 +53,7 @@ class AdelaideCodec(Codec):
         :param sample: config of encoded structure, which contains the key "code"
         :return: config of decoded structure, which contains the key "config"
         """
+
         def str_to_num(number):
             return int(number, 36)
 

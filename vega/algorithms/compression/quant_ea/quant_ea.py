@@ -9,14 +9,14 @@
 # MIT License for more details.
 
 """SEARCH_ALGORITHM for searching quantization model."""
-import numpy as np
+import logging
 import random
-import pandas as pd
-from vega.search_space.search_algs import SearchAlgorithm
+from copy import deepcopy
+import numpy as np
+from .conf import QuantConfig
 from vega.core.common.class_factory import ClassFactory, ClassType
-from vega.search_space.search_algs.nsga_iii import SortAndSelectPopulation
-from vega.search_space.codec import Codec
-from vega.core.common.file_ops import FileOps
+from vega.core.report import Report
+from vega.search_space.search_algs import SearchAlgorithm
 
 
 @ClassFactory.register(ClassType.SEARCH_ALGORITHM)
@@ -27,48 +27,18 @@ class QuantEA(SearchAlgorithm):
     :type search_space: SearchSpace
     """
 
-    def __init__(self, search_space):
-        super(QuantEA, self).__init__(search_space)
-        self.length = self.policy.length
-        self.num_individual = self.policy.num_individual
-        self.num_generation = self.policy.num_generation
-        self.x_axis = 'flops'
-        self.y_axis = 'acc'
-        self.random_models = self.policy.random_models
-        self.codec = Codec(self.cfg.codec, search_space)
-        self.bit_candidates = self.codec.search_space.bit_candidates
+    config = QuantConfig()
+
+    def __init__(self, search_space, **kwargs):
+        super(QuantEA, self).__init__(search_space, **kwargs)
+        self.length = self.config.policy.length
+        self.num_individual = self.config.policy.num_individual
+        self.num_generation = self.config.policy.num_generation
+        self.random_models = self.config.policy.random_models
+        self.bit_candidates = self.search_space.bit_candidates
         self.random_count = 0
         self.ea_count = 0
         self.ea_epoch = 0
-        self.step_path = FileOps.join_path(self.local_output_path, self.cfg.step_name)
-        self.pd_file_name = FileOps.join_path(self.step_path, "performace.csv")
-        self.pareto_front_file = FileOps.join_path(self.step_path, "pareto_front.csv")
-        self.pd_path = FileOps.join_path(self.step_path, "pareto_front")
-        FileOps.make_dir(self.pd_path)
-
-    def get_pareto_front(self):
-        """Get pareto front from remote result file.
-
-        :return: pareto front
-        :rtype: dataframe
-        """
-        with open(self.pd_file_name, "r") as file:
-            df = pd.read_csv(file)
-        fitness = df[[self.x_axis, self.y_axis]].values.transpose()
-        # acc2error
-        fitness[1, :] = 1 - fitness[1, :]
-        _, _, selected = SortAndSelectPopulation(fitness, self.num_individual)
-        result = df.loc[selected, :]
-        if self.ea_count % self.num_individual == 0:
-            file_name = "{}_epoch.csv".format(
-                str(self.ea_epoch))
-            pd_result_file = FileOps.join_path(self.pd_path, file_name)
-            with open(pd_result_file, "w") as file:
-                result.to_csv(file, index=False)
-            with open(self.pareto_front_file, "w") as file:
-                result.to_csv(file, index=False)
-            self.ea_epoch += 1
-        return result
 
     def crossover(self, ind0, ind1):
         """Cross over operation in EA algorithm.
@@ -111,27 +81,33 @@ class QuantEA(SearchAlgorithm):
         :return: search id, network desc
         :rtype: int, NetworkDesc
         """
+        desc = deepcopy(self.search_space)
         if self.random_count < self.random_models:
-            return self.random_count, self._random_sample()
-        pareto_front_results = self.get_pareto_front()
-        pareto_front = pareto_front_results["encoding"].tolist()
-        if len(pareto_front) < 2:
-            encoding1, encoding2 = pareto_front[0], pareto_front[0]
+            codec = self._random_sample()
+            desc.update({"trainer.codec": codec})
+            return self.random_count, desc
+        self.ea_epoch += 1
+        # todo: according to gflops and acc.
+        records = Report().get_pareto_front_records(self.step_name, self.num_individual)
+        codes = [record.desc.get('nbit_w_list') + record.desc.get('nbit_a_list') for record in records]
+        logging.info("codes=%s", codes)
+        if len(codes) < 2:
+            encoding1, encoding2 = codes[0], codes[0]
         else:
-            encoding1, encoding2 = random.sample(pareto_front, 2)
+            encoding1, encoding2 = random.sample(codes, 2)
         choice = random.randint(0, 1)
         # mutate
         if choice == 0:
-            encoding1List = str2list(encoding1)
-            encoding_new = self.mutatation(encoding1List)
+            encoding_new = self.mutatation(encoding1)
         # crossover
         else:
-            encoding1List = str2list(encoding1)
-            encoding2List = str2list(encoding2)
-            encoding_new, _ = self.crossover(encoding1List, encoding2List)
+            encoding_new, _ = self.crossover(encoding1, encoding2)
         self.ea_count += 1
-        net_desc = self.codec.decode(encoding_new)
-        return self.random_count + self.ea_count, net_desc
+        if self.ea_count % self.num_individual == 0:
+            self.ea_epoch += 1
+        codec = self.codec.decode(encoding_new)
+        desc.update({"trainer.codec": codec})
+        return self.random_count + self.ea_count, desc
 
     def _random_sample(self):
         """Choose one sample randomly.
@@ -145,11 +121,6 @@ class QuantEA(SearchAlgorithm):
         self.random_count += 1
         return self.codec.decode(individual)
 
-    def update(self, worker_path):
-        """Update QuantEA."""
-        if self.backup_base_path is not None:
-            FileOps.copy_folder(self.local_output_path, self.backup_base_path)
-
     @property
     def is_completed(self):
         """Whether to complete algorithm.
@@ -158,15 +129,3 @@ class QuantEA(SearchAlgorithm):
         :rtype: bool
         """
         return self.random_count >= self.random_models and self.ea_epoch >= self.num_generation
-
-
-def str2list(encoding):
-    """Transform a string encoding to a list.
-
-    :param encoding: encoding
-    :type encoding: string
-    :return: list of bits
-    :rtype: list
-    """
-    encodingList = [int(x) for x in encoding[1:-1].split(',')]
-    return encodingList

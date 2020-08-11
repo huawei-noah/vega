@@ -6,6 +6,8 @@ fully_train:
 
     dataset:
         type: Div2kUnpair
+        common:
+            upscale: 4
         train:
             HR_dir: "/cache/datasets/DIV2K_unknown/DIV2K_HR_sub480"
             LR_dir: "/cache/datasets/DIV2K_unknown/DIV2K_unknown_sub120"
@@ -15,7 +17,9 @@ fully_train:
             LR_dir: "/cache/datasets/DIV2K_unknown/DIV2K_valid_LR_unknown"
 
     trainer:
-        type: CyclesrTrainer
+        type: Trainer
+        callbacks: CyclesrTrainerCallback
+        lazy_built: True
         epoch_count: 1
         n_epoch: 100
         n_epoch_decay: 100
@@ -26,7 +30,7 @@ fully_train:
         lr_policy: linear
         verbose: False
         cuda: True
-        horovod: False
+        distributed: False
         model_desc:
             modules: ["custom"]
             custom:
@@ -37,7 +41,7 @@ fully_train:
                 cyc_lr: !!float 2e-4
                 SR_lr: !!float 1e-4
                 use_cuda: True
-                use_horovod: False
+                use_distributed: False
                 cyclegan:
                     input_nc: 3
                     output_nc: 3
