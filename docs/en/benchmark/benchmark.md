@@ -133,3 +133,13 @@ Software environment:
 | ------- | ---------- | ------------ | ------- | ------- | ------ |
 | **Adelaide_EA** | - | **10.6** | **0.5784** | **3822.14** | **0.7602** |
 | MV2 + LW RefineNet | - | - | 0.92 |  4163 | 0.7313 |
+
+## Click-Through Rate Prediction on Avazu
+
+| Method  | Model Name | Model Size/M | Accuracy |
+| ------- | ---------- | -------| ------ |
+| **auto_group** | - | **111** | **0.790** |
+| **auto_fis** | - | **500** | **0.788** |
+| FM | - | 111 | 0.7793 |
+| DeepFM | - | 111 | 0.7836 |
+
