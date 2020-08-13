@@ -13,9 +13,9 @@ Supported Models and Hardware Devices:
 
 | Algorithm | Model | Atalas 200 DK | Bolt |
 | :--: | :--: | :--: | :--: |
-| Prune-EA | PruneResNet | supported | supported |
+| Prune-EA | PruneResNet | supported | coming soon |
 | Quant-EA | ResNet-Quant | | |
-| ESR-EA | ESRN | | supported|
+| ESR-EA | ESRN | | coming soon|
 | CycleSR | CycleSRModel | | | |
 | CARS | CARSDartsNetwork | | |
 | Adlaide-EA | AdelaideFastNAS | | |
@@ -25,7 +25,7 @@ Supported Models and Hardware Devices:
 | SM-NAS | ResNet_Variant |
 | SM-NAS | ResNet_Variant |
 | SP-NAS | spnet_fpn |
-| SR-EA | MtMSR | | supported|
+| SR-EA | MtMSR | | coming soon|
 
 ## 3. Evaluation Service Deployment
 
