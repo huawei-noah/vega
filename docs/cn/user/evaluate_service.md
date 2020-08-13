@@ -5,7 +5,7 @@
 模型评估服务是用于评估模型在特定硬件设备上的性能，如评估剪枝和量化后的模型在Atalas 200 DK上的准确率、模型大小和时延等。
 评估服务目前支持的硬件设备为Davincit推理芯片（Atalas200 DK、ATLAS300产品和开发板环境Evb)和手机，后继会扩展支持更多的设备。
 
-评估服务为CS架构， 评估服务在服务端部署， 客户端通过`rset`接口向服务端发送评估请求和获取结果。Vega在进行网络架构搜索时，可以利用评估服务进行实时检测模型性能。在搜索阶段产生备选网络后，可以将该网络模型发送给评估服务，评估服务完成模型评估后，返回评估结果给Vega，Vega根据评估结果，进行后继的搜索。这种实时的在实际的设备上的评估，有利于搜索出对实际硬件更加友好的网络结构。
+评估服务为CS架构， 评估服务在服务端部署， 客户端通过`REST`接口向服务端发送评估请求和获取结果。Vega在进行网络架构搜索时，可以利用评估服务进行实时检测模型性能。在搜索阶段产生备选网络后，可以将该网络模型发送给评估服务，评估服务完成模型评估后，返回评估结果给Vega，Vega根据评估结果，进行后继的搜索。这种实时的在实际的设备上的评估，有利于搜索出对实际硬件更加友好的网络结构。
 
 ## 2. 规格
 
@@ -13,9 +13,9 @@
 
 | 算法 | 模型 | Atalas 200 DK | Bolt |
 | :--: | :--: | :--: | :--: |
-| Prune-EA | PruneResNet | 支持 | 支持 |
+| Prune-EA | PruneResNet | 支持 | coming soon |
 | Quant-EA | ResNet-Quant | | |
-| ESR-EA | ESRN | | 支持|
+| ESR-EA | ESRN | | coming soon |
 | CycleSR | CycleSRModel | | | |
 | CARS | CARSDartsNetwork | | |
 | Adlaide-EA | AdelaideFastNAS | | |
@@ -25,7 +25,7 @@
 | SM-NAS | ResNet_Variant |
 | SM-NAS | ResNet_Variant |
 | SP-NAS | spnet_fpn |
-| SR-EA | MtMSR | | 支持|
+| SR-EA | MtMSR | | coming soon |
 
 ## 3. 评估服务部署
 
