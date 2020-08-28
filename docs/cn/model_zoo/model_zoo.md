@@ -4,35 +4,35 @@
 
 | Model | Model Size(M) | Flops(M) | Top-1 ACC | Inference Time(μs) | Inference Device | Download |
 |---|---|---|---|---|---|:--:|
-| CARS-A | 7.72 | 469 | 95.923477 | 51.28 | V100 | [tar](http://www.noahlab.com.hk/opensource/vega/model_zoo/cars/cars_a.zip) |
-| CARS-B | 8.45 | 548 | 96.584535 | 69.00 | V100 | [tar](http://www.noahlab.com.hk/opensource/vega/model_zoo/cars/cars_b.zip) |
-| CARS-C | 9.32 | 620 | 96.744791 | 71.62 | V100 | [tar](http://www.noahlab.com.hk/opensource/vega/model_zoo/cars/cars_c.zip) |
-| CARS-D | 10.5 | 729 | 97.055288 | 82.72 | V100 | [tar](http://www.noahlab.com.hk/opensource/vega/model_zoo/cars/cars_d.zip) |
-| CARS-E | 11.3 | 786 | 97.245592 | 88.98 | V100 | [tar](http://www.noahlab.com.hk/opensource/vega/model_zoo/cars/cars_e.zip) |
-| CARS-F | 16.7 | 1234 | 97.295673 | 244.07 | V100 | [tar](http://www.noahlab.com.hk/opensource/vega/model_zoo/cars/cars_f.zip) |
-| CARS-G | 19.1 | 1439 | 97.375801 | 391.20 | V100 | [tar](http://www.noahlab.com.hk/opensource/vega/model_zoo/cars/cars_g.zip) |
-| CARS-H | 19.6 | 1464 | 97.415865 | 398.19 | V100 | [tar](http://www.noahlab.com.hk/opensource/vega/model_zoo/cars/cars_h.zip) |
-| CARS-I | 19.7 | 1456 | 97.425881 | 398.88 | V100 | [tar](http://www.noahlab.com.hk/opensource/vega/model_zoo/cars/cars_i.zip) |
+| CARS-A | 7.72 | 469 | 95.923477 | 51.28 | V100 | [tar](https://box.saas.huaweicloud.com/p/bef2bcf575db82eeaf0b344b04a27002) |
+| CARS-B | 8.45 | 548 | 96.584535 | 69.00 | V100 | [tar](https://box.saas.huaweicloud.com/p/868026b6e897fc5d95cc4afafd31e5a2) |
+| CARS-C | 9.32 | 620 | 96.744791 | 71.62 | V100 | [tar](https://box.saas.huaweicloud.com/p/683a63d576a52f1229aecdcd646b0ea9) |
+| CARS-D | 10.5 | 729 | 97.055288 | 82.72 | V100 | [tar](https://box.saas.huaweicloud.com/p/36c558492319c3b362110bedc96d9680) |
+| CARS-E | 11.3 | 786 | 97.245592 | 88.98 | V100 | [tar](https://box.saas.huaweicloud.com/p/1f5c292d15bb29d2b82664691d07b9cb) |
+| CARS-F | 16.7 | 1234 | 97.295673 | 244.07 | V100 | [tar](https://box.saas.huaweicloud.com/p/846a7460c15699cb95d6f43f5e9d0598) |
+| CARS-G | 19.1 | 1439 | 97.375801 | 391.20 | V100 | [tar](https://box.saas.huaweicloud.com/p/1d8bec17e7a4a58474631bdca7c588ce) |
+| CARS-H | 19.6 | 1464 | 97.415865 | 398.19 | V100 | [tar](https://box.saas.huaweicloud.com/p/723c1a6d820ed63aed73a774c9344b81) |
+| CARS-I | 19.7 | 1456 | 97.425881 | 398.88 | V100 | [tar](https://box.saas.huaweicloud.com/p/5b0e5dc2fc9160559ed214d5caa0402b) |
 
 ## Image Classification on ImageNet
 
 | Model | Model Size(M) | Flops(G) | Top-1 ACC | Inference Time(s) | Download |
 |---|---|---|---|---|:--:|
-| EfficientNet:B0 | 20.3 | 0.40 | 76.82 | 0.0088s/iters | [tar](http://www.noahlab.com.hk/opensource/vega/model_zoo/effecientnet/b0.zip) |
-| EfficientNet:B4 | 74.3 | 4.51 | 82.87 | 0.015s/iters | [tar](http://www.noahlab.com.hk/opensource/vega/model_zoo/effecientnet/b4.zip) |
-| EfficientNet:B8:672 | 88 | 63 | 85.7 | 0.98s/iters | [tar](http://www.noahlab.com.hk/opensource/vega/model_zoo/effecientnet/b8_672.zip) |
-| EfficientNet:B8:800 | 88 | 97 | 85.8 | 1.49s/iters | [tar](http://www.noahlab.com.hk/opensource/vega/model_zoo/effecientnet/b8_800.zip) |
+| EfficientNet:B0 | 20.3 | 0.40 | 76.82 | 0.0088s/iters | [tar](https://box.saas.huaweicloud.com/p/24c9e4ae3a74c361a5b34ed3b37def29) |
+| EfficientNet:B4 | 74.3 | 4.51 | 82.87 | 0.015s/iters | [tar](https://box.saas.huaweicloud.com/p/256d3b2dffdcf9bcf317dbe5554ed604) |
+| EfficientNet:B8:672 | 88 | 63 | 85.7 | 0.98s/iters | [tar](https://box.saas.huaweicloud.com/p/f49bc1afd817562deb1e6d461d8cebfd) |
+| EfficientNet:B8:800 | 88 | 97 | 85.8 | 1.49s/iters | [tar](https://box.saas.huaweicloud.com/p/287cb98d96152053d24fb7afc3e9e0be) |
 
 ## Detection on COCO-minival
 
 | Model | Model Size(M) | Flops(G) | mAP | Inference Time(ms) | Inference Device | Download |
 |---|---|---|---|---|---|:--:|
-| SM-NAS:E0 | 16.23 | 22.01 | 27.11 | 24.56 | V100 | [tar](http://www.noahlab.com.hk/opensource/vega/model_zoo/sm_nas/E0.tar.gz) |
-| SM-NAS:E1 | 37.83 | 64.72 | 34.20 | 32.07 | V100 | [tar](http://www.noahlab.com.hk/opensource/vega/model_zoo/sm_nas/E1.tar.gz) |
-| SM-NAS:E2 | 33.02 | 77.04 | 40.04 | 39.50 | V100 | [tar](http://www.noahlab.com.hk/opensource/vega/model_zoo/sm_nas/E2.tar.gz) |
-| SM-NAS:E3 | 52.05 | 116.22 | 42.68 | 50.71 | V100 | [tar](http://www.noahlab.com.hk/opensource/vega/model_zoo/sm_nas/E3.tar.gz) |
-| SM-NAS:E4 | 92 | 115.51 | 43.89 | 80.22 | V100 | [tar](http://www.noahlab.com.hk/opensource/vega/model_zoo/sm_nas/E4.tar.gz) |
-| SM-NAS:E5 | 90.47 | 249.14 | 46.05 | 108.07 | V100 | [tar](http://www.noahlab.com.hk/opensource/vega/model_zoo/sm_nas/E5.tar.gz) |
+| SM-NAS:E0 | 16.23 | 22.01 | 27.11 | 24.56 | V100 | [tar](https://box.saas.huaweicloud.com/p/2db2953a19106ca0de3bad4d96cefd1d) |
+| SM-NAS:E1 | 37.83 | 64.72 | 34.20 | 32.07 | V100 | [tar](https://box.saas.huaweicloud.com/p/3e0691a8e820cad41ad4ac01bc7d13b3) |
+| SM-NAS:E2 | 33.02 | 77.04 | 40.04 | 39.50 | V100 | [tar](https://box.saas.huaweicloud.com/p/c4212a0daab666298bb46373bfdde9e4) |
+| SM-NAS:E3 | 52.05 | 116.22 | 42.68 | 50.71 | V100 | [tar](https://box.saas.huaweicloud.com/p/840164137ef02ea5d5072c8e577ac663) |
+| SM-NAS:E4 | 92 | 115.51 | 43.89 | 80.22 | V100 | [tar](https://box.saas.huaweicloud.com/p/85ed655da827564752ed460119416ef3) |
+| SM-NAS:E5 | 90.47 | 249.14 | 46.05 | 108.07 | V100 | [tar](https://box.saas.huaweicloud.com/p/252a999404f1f93d4c953ac1b13aebad) |
 
 ## Detection on CULane
 
