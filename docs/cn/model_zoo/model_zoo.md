@@ -38,7 +38,9 @@
 
 | Model | Flops(G) | F1 Score | Inference Time(ms) | Inference Device | Download |
 |---|---|---|---|---|:--:|
-| AutoLane | 86.5 | 74.8 | 44.94 | V100 | [tar](http://vega.inhuawei.com/model_zoo/auto_lane/auto_lane.tar.gz) |
+| AutoLane: CULane-s | 66.5 | 71.5 | - | V100 | [tar](https://box.saas.huaweicloud.com/p/18bcca1d2e3f19bcf52e1408a0853931) |
+| AutoLane: CULane-m | 66.9 | 74.6 | - | V100 | [tar](https://box.saas.huaweicloud.com/p/398d76084a3a89c656cc2671a9edab12) |
+| AutoLane: CULane-l | 273 | 75.2 | - | V100 | [tar](https://box.saas.huaweicloud.com/p/e4bd2cba73fee6012bbc4ef9ed3699b9) |
 
 ## Detection on ECP
 
