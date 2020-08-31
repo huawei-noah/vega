@@ -48,6 +48,17 @@ Software environment:
 | ProxylessNAS | -          | 5.70      | 97.92    |
 | StacNAS      | -          | 3.90      | 97.98    |
 
+## Detection on CULane
+
+| Method       | Model Name | Flops(G) | F1 Score |
+| ------------ | ---------- | --------- | -------- |
+| **Auto-Lane**  | **CULane-S** | **66.5** | **71.5** |
+|                | **CULane-M** | **66.9** | **74.6** |
+|                | **CULane-L** | **273** | **75.2** |
+| SCNN      | - | 328.4 | 71.6 |
+| SAD       | - | 162.2 | 71.8 |
+| PointLane | - | 25.1  | 70.2 |
+
 ## Detection on ECP
 
 | Method                   | LAMR \(reasonable\)  | LAMR \(small\) | LAMR \(occluded\) | LAMR \(all\) |
