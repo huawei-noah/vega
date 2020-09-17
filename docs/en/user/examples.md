@@ -57,12 +57,12 @@ In addition, for the following algorithm, a pre-trained model needs to be loaded
 
 | Algorithm | Pre-trained Model | Default Path | Model Source |
 | :--: | :-- | :-- | :--: |
-| Adelaide-EA | mobilenet_v2-b0353104.pth | /cache/models/mobilenet_v2-b0353104.pth | [Download](http://www.noahlab.com.hk/opensource/vega/models/pretrained/mobilenet_v2-b0353104.pth) |
-| Prune-EA | resnet20.pth | /cache/models/resnet20.pth | [Download](http://www.noahlab.com.hk/opensource/vega/models/pretrained/resnet20.pth) |
-| Prune-EA | resnet20.ckpt | /cache/models/resnet20.ckpt | [Download](http://vega.inhuawei.com/models/pretrained/resnet20.ckpt.tar.gz) |
-| SP-NAS | resnet50-19c8e357.pth | /cache/models/resnet50-19c8e357.pth | [Download](http://www.noahlab.com.hk/opensource/vega/models/pretrained/resnet50-19c8e357.pth) |
-| SP-NAS | SPNet_ECP_ImageNetPretrained_0.7978.pth | /cache/models/SPNet_ECP_ImageNetPretrained_0.7978.pth | [download](http://www.noahlab.com.hk/opensource/vega/models/pretrained/SPNet_ECP_ImageNetPretrained_0.7978.pth) |
-| SP-NAS | SPNetXB_COCO_ImageNetPretrained.pth | /cache/models/SPNetXB_COCO_ImageNetPretrained.pth | [download](http://www.noahlab.com.hk/opensource/vega/models/pretrained/SPNetXB_COCO_ImageNetPretrained.pth) |
+| Adelaide-EA | mobilenet_v2-b0353104.pth | /cache/models/mobilenet_v2-b0353104.pth | [Download](https://box.saas.huaweicloud.com/p/e9e06f49505a1959da6cba9401b2bf38) |
+| Prune-EA | resnet20.pth | /cache/models/resnet20.pth | [Download](https://box.saas.huaweicloud.com/p/67cd96e5da41b1c5a88f2b323446c0f8) |
+| Prune-EA | resnet20.ckpt | /cache/models/resnet20.ckpt | [Download](https://box.saas.huaweicloud.com/p/7f1743a041a0ede7f68713d1360a57d5) |
+| SP-NAS | resnet50-19c8e357.pth | /cache/models/resnet50-19c8e357.pth | [Download](https://box.saas.huaweicloud.com/p/f2ab3a1869f55de2053fb1404fc1c6d3) |
+| SP-NAS | SPNet_ECP_ImageNetPretrained_0.7978.pth | /cache/models/SPNet_ECP_ImageNetPretrained_0.7978.pth | [download](https://box.saas.huaweicloud.com/p/6d6e3c9483793d252a8f7b2387174e78) |
+| SP-NAS | SPNetXB_COCO_ImageNetPretrained.pth | /cache/models/SPNetXB_COCO_ImageNetPretrained.pth | [download](https://box.saas.huaweicloud.com/p/40b2259114ac0e3343e278258a60d1fb) |
 
 Note that the configuration items in the example are set to small values to speed up the running. However, if the configuration items are set to small values, the running result may be unsatisfactory. Therefore, you can modify and adjust the configuration items based on the description documents of each algorithm to obtain the required result.
 
