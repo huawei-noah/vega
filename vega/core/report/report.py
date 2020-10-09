@@ -195,7 +195,7 @@ class Report(object):
                         _file_name = "desc_{}.json".format(idx)
                         _file = FileOps.join_path(_path, _file_name)
                         with open(_file, "w") as f:
-                            json.dump(record_value, f)
+                            json.dump(value, f)
                 else:
                     _file_name = None
                     if record_name == "desc":
@@ -204,7 +204,7 @@ class Report(object):
                         _file_name = "performance_{}.json".format(worker_id)
                     _file = FileOps.join_path(_path, _file_name)
                     with open(_file, "w") as f:
-                        json.dump(record_value, f)
+                        json.dump(value, f)
             except Exception as ex:
                 logging.error("Failed to save {}, file={}, desc={}, msg={}".format(
                     record_name, _file, record_value, str(ex)))
