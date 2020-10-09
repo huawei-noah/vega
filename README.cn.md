@@ -18,7 +18,7 @@
 Vega是诺亚方舟实验室自研的AutoML算法工具链，有主要特点：
 
 1. 完备的AutoML能力：涵盖HPO(超参优化, HyperParameter Optimization)、Data-Augmentation、NAS(网络架构搜索， Network Architecture Search)、Model Compression、Fully Train等关键功能，同时这些功能自身都是高度解耦的，可以根据需要进行配置，构造完整的pipeline。
-2. 业界标杆的自研算法：提供了诺亚方舟实验室自研的 **[业界标杆](./docs/cn/benchmark/benchmark.md)** 算法，并提供 **[Model Zoo](./docs/cn/model_zoo/model_zoo.md)** 下载SOTA(State-of-the-art)模型。
+2. 业界标杆的自研算法：提供了诺亚方舟实验室自研的 **[业界标杆](./docs/cn/benchmark/benchmark.md)** 算法，并提供 **[Model Zoo](./docs/en/model_zoo/model_zoo.md)** 下载SOTA(State-of-the-art)模型。
 3. 高并发模型训练能力：提供高性能Trainer，加速模型训练和评估。
 4. 多Backend支持：支持PyTorch，TensorFlow（试用中），MindSpore（开发中）。
 
