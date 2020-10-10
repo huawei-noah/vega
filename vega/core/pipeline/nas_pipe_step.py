@@ -12,11 +12,12 @@
 import logging
 import time
 import traceback
+from copy import deepcopy
 from .pipe_step import PipeStep
 from .generator import Generator
 from ..scheduler.master import Master
 from ..common.class_factory import ClassFactory, ClassType
-from vega.core.common.loader import load_conf_from_desc
+from vega.core.common.utils import update_dict
 from vega.search_space.networks.network_desc import NetworkDesc
 from ..pipeline.conf import PipeStepConfig
 from vega.core.report import Report
@@ -66,7 +67,11 @@ class NasPipeStep(PipeStep):
     def _dispatch_trainer(self, samples):
         for (id_ele, desc) in samples:
             cls_trainer = ClassFactory.get_cls('trainer')
-            load_conf_from_desc(PipeStepConfig, desc)
+            if "modules" in desc:
+                PipeStepConfig.model.model_desc = deepcopy(desc)
+            elif "network" in desc:
+                origin_desc = PipeStepConfig.model.model_desc
+                desc = update_dict(desc["network"], origin_desc)
             model_ele = NetworkDesc(desc).to_model()
             trainer = cls_trainer(model_ele, id_ele, hps=desc)
             logging.info("submit trainer, id={}".format(id_ele))

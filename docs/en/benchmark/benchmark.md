@@ -48,6 +48,17 @@ Software environment:
 | ProxylessNAS | -          | 5.70      | 97.92    |
 | StacNAS      | -          | 3.90      | 97.98    |
 
+## Detection on CULane
+
+| Method       | Model Name | Flops(G) | F1 Score |
+| ------------ | ---------- | --------- | -------- |
+| **Auto-Lane**  | **CULane-S** | **66.5** | **71.5** |
+|                | **CULane-M** | **66.9** | **74.6** |
+|                | **CULane-L** | **273** | **75.2** |
+| SCNN      | - | 328.4 | 71.6 |
+| SAD       | - | 162.2 | 71.8 |
+| PointLane | - | 25.1  | 70.2 |
+
 ## Detection on ECP
 
 | Method                   | LAMR \(reasonable\)  | LAMR \(small\) | LAMR \(occluded\) | LAMR \(all\) |
@@ -133,3 +144,13 @@ Software environment:
 | ------- | ---------- | ------------ | ------- | ------- | ------ |
 | **Adelaide_EA** | - | **10.6** | **0.5784** | **3822.14** | **0.7602** |
 | MV2 + LW RefineNet | - | - | 0.92 |  4163 | 0.7313 |
+
+## Click-Through Rate Prediction on Avazu
+
+| Method  | Model Name | Model Size/M | Accuracy |
+| ------- | ---------- | -------| ------ |
+| **auto_group** | - | **111** | **0.790** |
+| **auto_fis** | - | **500** | **0.788** |
+| FM | - | 111 | 0.7793 |
+| DeepFM | - | 111 | 0.7836 |
+

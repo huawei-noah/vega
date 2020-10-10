@@ -18,7 +18,7 @@
 Vega是诺亚方舟实验室自研的AutoML算法工具链，有主要特点：
 
 1. 完备的AutoML能力：涵盖HPO(超参优化, HyperParameter Optimization)、Data-Augmentation、NAS(网络架构搜索， Network Architecture Search)、Model Compression、Fully Train等关键功能，同时这些功能自身都是高度解耦的，可以根据需要进行配置，构造完整的pipeline。
-2. 业界标杆的自研算法：提供了诺亚方舟实验室自研的 **[业界标杆](./docs/cn/benchmark/benchmark.md)** 算法，并提供 **[Model Zoo](./docs/cn/model_zoo/model_zoo.md)** 下载SOTA(State-of-the-art)模型。
+2. 业界标杆的自研算法：提供了诺亚方舟实验室自研的 **[业界标杆](./docs/cn/benchmark/benchmark.md)** 算法，并提供 **[Model Zoo](./docs/en/model_zoo/model_zoo.md)** 下载SOTA(State-of-the-art)模型。
 3. 高并发模型训练能力：提供高性能Trainer，加速模型训练和评估。
 4. 多Backend支持：支持PyTorch，TensorFlow（试用中），MindSpore（开发中）。
 
@@ -32,7 +32,7 @@ Vega是诺亚方舟实验室自研的AutoML算法工具链，有主要特点：
 | NAS | [ESR-EA: Efficient Residual Dense Block Search for Image Super-resolution](https://arxiv.org/abs/1909.11409) | 基于网络架构搜索的多目标图像超分方法 | [参考](./docs/cn/algorithms/esr_ea.md) |
 | NAS | [Adelaide-EA: SEGMENTATION-Adelaide-EA-NAS](https://arxiv.org/abs/1810.10804) | 图像分割网络架构搜索算法 | [参考](./docs/cn/algorithms/Segmentation-Adelaide-EA-NAS.md) |
 | NAS | [SP-NAS: Serial-to-Parallel Backbone Search for Object Detection](http://openaccess.thecvf.com/content_CVPR_2020/papers/Jiang_SP-NAS_Serial-to-Parallel_Backbone_Search_for_Object_Detection_CVPR_2020_paper.pdf) | 面向物体检测及语义分割的高效主干网络架构搜索算法 | [参考](./docs/cn/algorithms/sp-nas.md) |
-| NAS | Auto-Lane: CurveLane-NAS | 一种端到端的车道线架构搜索算法 | [参考](./docs/cn/algorithms/auto_lane.md) |
+| NAS | [Auto-Lane: CurveLane-NAS](https://arxiv.org/abs/2007.12147) | 一种端到端的车道线架构搜索算法 | [参考](./docs/cn/algorithms/auto_lane.md) |
 | NAS | [AutoFIS](https://arxiv.org/pdf/2003.11235.pdf) | 一种适用于推荐搜索场景下的自动特征选择算法 | [参考](./docs/cn/algorithms/fis-autogate.md) |
 | NAS | [AutoGroup](https://dl.acm.org/doi/pdf/10.1145/3397271.3401082) | 一种适用于推荐搜素场景下的自动特征交互建模算法 | [参考](./docs/cn/algorithms/fis-autogroup.md) |
 | Model Compression | Quant-EA: Quantization based on Evolutionary Algorithm | 自动混合比特量化算法，使用进化策略对CNN网络结构每层量化位宽进行搜索 | [参考](./docs/cn/algorithms/quant_ea.md) |
