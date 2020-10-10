@@ -18,9 +18,10 @@ pba:
 
     search_algorithm:
         type: PBAHpo
-        each_epochs: 3
-        config_count: 16
-        total_rungs: 200
+        policy:
+            each_epochs: 3
+            config_count: 16
+            total_rungs: 200
 
     search_space:
         type: SearchSpace
@@ -65,3 +66,16 @@ pba:
             type: GpuEvaluator
             metric:
                 type: accuracy
+
+fully_train:
+    pipe_step:
+        type: FullyTrainPipeStep
+    hps_file:
+    dataset:
+        ref: pba.dataset
+    model:
+        ref: pba.model
+    trainer:
+        ref: pba.trainer
+        epochs: 2000
+        hps_folder: "{local_base_path}/output/pba/"
