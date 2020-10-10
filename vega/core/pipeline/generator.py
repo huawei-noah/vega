@@ -49,8 +49,9 @@ class Generator(object):
                 sample = dict(worker_id=sample[0], desc=sample[1])
             record = self.record.load_dict(sample)
             logging.debug("Broadcast Record=%s", str(record))
-            Report().broadcast(record)
             desc = self._decode_hps(record.desc)
+            record.desc = desc
+            Report().broadcast(record)
             out.append((record.worker_id, desc))
         return out
 
