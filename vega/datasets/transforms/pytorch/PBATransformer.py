@@ -38,7 +38,7 @@ class PBATransformer(object):
         :param raw_policys: raw policys which got from .csv file
         :type raw_policys: array
         """
-        split = len(raw_policys) / 2
+        split = len(raw_policys) // 2
         if split % 2 == 1:
             raise ValueError(
                 'set raw_policys illegal, length of raw_policys should be even number!')
@@ -66,9 +66,6 @@ class PBATransformer(object):
         :return: the image after transform
         :rtype: numpy or tensor
         """
-        from torchvision.transforms import functional as F
-        if F._is_pil_image(img):
-            img = F.to_tensor(img)
         count = np.random.choice([0, 1, 2], p=[0.2, 0.3, 0.5])
         policys = self.policys
         np.random.shuffle(policys)
