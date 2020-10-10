@@ -354,7 +354,7 @@ class Trainer(DistributedWorker):
             return loader
         if mode == "train" and self.hps is not None and self.hps.get("dataset") is not None:
             dataset_cls = ClassFactory.get_cls(ClassType.DATASET)
-            dataset = dataset_cls(mode=mode, hp=self.hps.get("dataset"))
+            dataset = dataset_cls(mode=mode, hps=self.hps.get("dataset"))
         else:
             dataset_cls = ClassFactory.get_cls(ClassType.DATASET)
             dataset = dataset_cls(mode=mode)
