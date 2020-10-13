@@ -2,6 +2,7 @@
 """Setuptools of vega."""
 import setuptools
 import sys
+import cv2
 
 
 if sys.version_info < (3, 6):
