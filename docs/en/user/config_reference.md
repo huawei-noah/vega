@@ -427,7 +427,6 @@ Vega provides the following common data sets:
 | Cityscapes | The Cityscape is a large-scale dataset that contains a diverse set of stereo video sequences recorded in street scenes from 50 different cities, with high quality pixel-level annotations of 5 000 frames in addition to a larger set of 20 000 weakly annotated frames. | [download](https://www.cityscapes-dataset.com/) |
 | Cifar10TF | The CIFAR-10-bin dataset consists of 60000 32x32 colour images in 10 classes, with 6000 images per class. There are 50000 training images and 10000 test images | [download](https://www.cs.toronto.edu/~kriz/cifar-10-binary.tar.gz) |
 | Div2kUnpair | DIV2K dataset: DIVerse 2K resolution high quality images as used for the challenges @ NTIRE (CVPR 2017 and CVPR 2018) and @ PIRM (ECCV 2018)|[download](https://data.vision.ee.ethz.ch/cvl/DIV2K/) |
-| ECP    | The ECP dataset. Focus on Persons in Urban Traffic Scenes.With over 238200 person instances manually labeled in over 47300 images, EuroCity Persons is nearly one order of magnitude larger than person datasets used previously for benchmarking.|[download](https://eurocity-dataset.tudelft.nl/eval/downloads/detection) |
 
 1. Cifar10 Default Configuration
 

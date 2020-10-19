@@ -42,12 +42,6 @@
 | AutoLane: CULane-m | 66.9 | 74.6 | - | V100 | [tar](https://box.saas.huaweicloud.com/p/398d76084a3a89c656cc2671a9edab12) |
 | AutoLane: CULane-l | 273 | 75.2 | - | V100 | [tar](https://box.saas.huaweicloud.com/p/e4bd2cba73fee6012bbc4ef9ed3699b9) |
 
-## Detection on ECP
-
-| Model | Model Size(M) | Flops(G) | F1 Score | Inference Time(ms) | Inference Device | Download |
-|---|---|---|---|---|---|:--:|
-| SP-NAS | 115.9 | 984.2 | 0.024 | 322.00 | V100 | [tar](https://box.saas.huaweicloud.com/p/69b0cb14a6e7af3ae9d0ab8d0061a0de) |
-
 ## Super-Resolution on Urban100, B100, Set14, Set5
 
 <table>
