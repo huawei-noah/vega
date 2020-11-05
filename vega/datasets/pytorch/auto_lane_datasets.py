@@ -109,7 +109,7 @@ class AutoLaneDataset(Dataset):
         self.encode_lane = self.codec_obj.encode_lane
         read_funcs = dict(
             CULane=_read_culane_type_annot,
-            CurveLane=_read_culane_type_annot,
+            CurveLane=_read_curvelane_type_annot,
         )
         if self.args.dataset_format not in read_funcs:
             raise NotImplementedError(f'dataset_format should be one of {read_funcs.keys()}')
