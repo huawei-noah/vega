@@ -10,7 +10,7 @@ Vega提供了丰富的AutoML任务，用户可根据下表选择合适的算法�
 
 <table>
   <tr><th>任务</th><th>分类</th><th>参考算法</th></tr>
-  <tr><td rowspan="3">图像分类</td><td>网络架构搜索</td><td><a href="../algorithms/cars.md">CARS</a>、<td><a href="../algorithms/nago.md">NAGO</a>、BackboneNas、DartsCNN、GDAS、EfficientNet</td></tr>
+  <tr><td rowspan="3">图像分类</td><td>网络架构搜索</td><td><a href="../algorithms/cars.md">CARS</a>、<a href="../algorithms/nago.md">NAGO</a>、BackboneNas、DartsCNN、GDAS、EfficientNet</td></tr>
   <tr><td>超参优化</td><td><a href="../algorithms/hpo.md">ASHA、BOHB、BOSS、BO、TPE、Random、Random-Pareto</a></td></tr>
   <tr><td>数据增广</td><td><a href="../algorithms/pba.md">PBA</a></td></tr>
   <tr><td rowspan="2">模型压缩</td><td>模型剪枝</td><td><a href="../algorithms/prune_ea.md">Prune-EA</a></td></tr>
