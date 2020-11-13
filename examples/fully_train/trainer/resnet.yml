@@ -11,7 +11,7 @@ fully_train:
         model_desc:
             modules: ["torch_vision_model"]
             torch_vision_model:
-                name: resnet18
+                type: torchvision_resnet18
                 pretrained: False
     evaluator:
         type: Evaluator

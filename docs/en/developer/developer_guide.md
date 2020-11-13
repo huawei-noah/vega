@@ -73,40 +73,49 @@ The configuration file does not contain all parameters. The search algorithm nee
 When the SearchSpace class is initialized, the search_space attribute is loaded as follows:
 
 ```python
-@ClassFactory.register(ClassType.SEARCH_SPACE)
+@ClassFactory.register(ClassType.NETWORK)
 class SearchSpace(object):
 
     config = SearchSpaceConfig()
 
     def __new__(cls, *args, **kwargs):
-        """Create a new SearchSpace."""
-        t_cls = ClassFactory.get_cls(ClassType.SEARCH_SPACE)
+        t_cls = ClassFactory.get_cls(ClassType.NETWORK)
         return super(SearchSpace, cls).__new__(t_cls)
 
     @property
     def search_space(self):
-        """Get hyper parameters."""
-        return obj2config(self.config)
+        return self.config.to_json()
 ```
 
 Another important concept of the search space is the network description. The network description is the result sampled by the search algorithm from the search space and is a possible subset in the search space. The network description class has only one attribute, that is, the network description of the dict type (one or multiple networks). The network description class has only one general interface to_model(), which is responsible for analyzing the network description and automatically resolving the network description into the specific network object in the Networks through NetworFactory.
 
 ```python
 class NetworkDesc(object):
-    def __init__(self, desc):
-        self.desc = Config(desc)
-
-    def to_model(self):
-        pass
-
-class NetworkDesc(object):
 
     def __init__(self, desc):
         self._desc = Config(deepcopy(desc))
+        self._model_type = None
+        self._model_name = None
 
     def to_model(self):
-        ...
-        return Network(params)
+        model = FineGrainedNetWork(self._desc).to_model()
+        if model is not None:
+            return model
+        networks = []
+        module_types = self._desc.get('modules')
+        for module_type in module_types:
+            network = self.to_coarse_network(module_type)
+            networks.append((module_type, network))
+        if len(networks) == 1:
+            return networks[0][1]
+        else:
+            if vega.is_torch_backend():
+                import torch.nn as nn
+                networks = OrderedDict(networks)
+                return nn.Sequential(networks)
+            elif vega.is_tf_backend():
+                from .tensorflow import Sequential
+                return Sequential(networks)
 ```
 
 In general, Vega provides a series of network models (added by developers) and registers them with NetworkFactory. Developers need to write the search space of the network model construction parameters in the configuration file, and use the algorithm to sample and generate the network description NetworkDesc. NetworkDesc automatically parses the corresponding network model.
@@ -234,6 +243,136 @@ The sample interface in the code is used for each sampling in the NAS. The sampl
 
 In addition, the generator can determine whether the iterative search stops and update the search algorithm.
 
+### 4.2 Quota
+
+Quota is an optional plugin that enables users to define specific rules to control nas search process for special purpose.
+Currently, Quota provides avaliable abilities as follows:
+
+- Search control: halt nas search process if reaching user-defined constraints
+- Sample filtering: throw away sample from search algorithm if disatisfying user-defined limitations 
+
+The implementation of Quota is show below.
+
+```python
+class Quota(object):
+
+    def __new__(cls, *args, **kwargs):
+        return super().__new__(cls)
+
+    def __init__(self):
+        self.strategies = []
+        self.filters = []
+        # check whether quota is configured
+        pipe_config = UserConfig().data.get(General.step_name)
+        if not pipe_config.get('quota'):
+            return
+        else:
+            # get quota configuration
+            quota_config = pipe_config.get('quota')
+        # get all defined strategies if any
+        if quota_config.get('strategy'):
+            strategy_types = quota_config['strategy']
+            for type_name in strategy_types:
+                t_cls = ClassFactory.get_cls(ClassType.QUOTA, type_name)
+                self.strategies.append(t_cls())
+        # get all defined limitations if any
+        if quota_config.get('filter'):
+            filter_types = quota_config['filter']
+            for type_name in filter_types:
+                t_cls = ClassFactory.get_cls(ClassType.QUOTA, type_name)
+                self.filters.append(t_cls())
+
+    def halt(self):
+        raise NotImplementedError
+
+    def filter(self, res):
+        raise NotImplementedError
+
+    def is_halted(self):
+        for strategy in self.strategies:
+            if strategy.halt():
+                return True
+        return False
+
+    # check whether some defined filters are satisfied.
+    # If reaching constraints, just return false. Otherwise, always return False.
+    def is_filtered(self, res=None):
+        for flt in self.filters:
+            if flt.filter(res):
+                logging.info("Sample was throw away by strategy = %s", flt.__class__.__name__)
+                return True
+        return False
+```
+
+While initializing, Quota tries to find whether users set Quota's configuration or not. If setted, Quota gets all user-defined strategies and filters. Quota allows multiple defined rules, and users can give multi rule names in one list. All of the strategies work with a union relationship, which means they make effect at the same time. If not setted, Quota will have nothing influnce on Vega's running.
+
+To take advantage of Quota, there are four steps users should walk with. First, construct a strategy or filter class, which is inherited from Quota base class. Second, overwrite the abstract function of "halt()" and "filter()" to put on users' self-defined approach. Third, regist finished  concrete class into class factory. At the end, add quota configuration setting item into user configuration file, and then Vega will automatically hold on the rest of things.
+
+Here is an configuration example of Quota:
+
+```yml
+general:
+
+pipeline: [nas]
+
+nas:
+    pipe_step:
+        type: NasPipeStep
+
+    quota:
+        strategy: [MaxDurationStrategy, MaxTrialNumberStrategy]
+        filter: [FlopParamFliter]
+        policy:
+            max_duration_time: 3000
+            max_trial_num: 300
+            flop_range: [!!float 0, !!float 0.6]
+            param_range: [!!float 0, !!float 1e10]
+
+```
+
+Quota configuration item is put under the converage of each pipeline, and only has responsibility of each pipeline step, so users need to add Quota setting in each single pipeline step if they want Quota makes effect on different pipeline steps. In Quota's setting paragraph, users can selectively give their own defined strategies and filters by classname which are implemented free and registed into class factory by type "QUOTA". Relavant parameters can be difined into "policy" and refered in strategy class by UserConfig().
+
+```python
+class Generator(object):
+    """Convert search space and search algorithm, sample a new model."""
+
+    def __init__(self):
+        ...
+        self.quota = Quota()
+        ...
+    @property
+    def is_completed(self):
+        return self.search_alg.is_completed or self.quota.is_halted()
+
+    def sample(self):
+        """Sample a work id and model from search algorithm."""
+        res = self.search_alg.search()
+        if not res:
+            return None
+        if not isinstance(res, list):
+            res = [res]
+        if self.quota.is_filtered(res):
+            return None
+        if len(res) == 0:
+            return None
+        out = []
+        for sample in res:
+            if isinstance(sample, tuple):
+                sample = dict(worker_id=sample[0], desc=sample[1])
+            record = self.record.load_dict(sample)
+            logging.debug("Broadcast Record=%s", str(record))
+            Report().broadcast(record)
+            desc = self._decode_hps(record.desc)
+            out.append((record.worker_id, desc))
+        return out
+```
+
+It should be anounced how Quota works in a round of nas search process. In each nas pipeline step, Vega first check whether the search procedure has completed or arrived at the user-defined halting conditions. If getting to the stop condition, the current nas pipeline step will halt at once.
+
+In proposing samples, after receiving a sample res from search algorithm, the res sample is handed to quota to filter. The filtering rules is defined by users in the function"fliter()" in concrete class. Users can throw away any sample that don't reach their expectation. Afterwards, generator gets all satisfactory samples and go for further processing.
+
+Vega now provides two kinds of halting strategies and one kind of sample filter. The two exisitng halting strategies allow the pipe step to stop by sample trials number and pipe step running time, respectively. These two strategies all support "out of box". The fliter example enables users to remove the sample they don't want by evaluating the flops and parameters of the sample network before training them. Calculating flops and parameters needs to know the dataset's information, so users have to write a "data_case()" interface in related dataset class or just give their own method to compute flops and parameters.
+
 ### 5 Trainer
 
 The trainer is used to train models. In the NAS, HPO, and fully train phases, the trainer can be configured in the pipe steps of these phases to complete model training.
@@ -335,7 +474,7 @@ In addition, Vega provides the default callback function.
 
 ### 5.1 Optimizer
 
-By default, the `torch.optim` in the pytroch library is used. The `type` indicates the used method, and other key values are the input parameters and input parameter values in the method.
+By default, the `torch.optim` in the pytorch library is used. The `type` indicates the used method, and other key values are the input parameters and input parameter values in the method.
 
 ```yaml
 optim:
@@ -417,7 +556,7 @@ metric:
 Customize a metric.
 
 - Use **@ClassFactory.register(ClassType.METRIC)** for registration.
-- Inherited from **vega.core.metrics.metrics_base.MetricsBase**
+- Inherited from **zeus.metrics.metrics_base.MetricsBase**
 - Specify __metric_name__ for recording and printing metrics.
 - Implement the __call__ and **summay** and **reset** methods. The call method is invoked at each step, and the summay method is invoked after each epoch.
 
@@ -522,8 +661,8 @@ class ModelStatistics(Callback):
 
     def before_train(self, logs=None):
         self.input = None
-        self.gflops = None
-        self.kparams = None
+        self.flops = None
+        self.params = None
         self.calc_params_each_epoch = self.trainer.config.calc_params_each_epoch
         if vega.is_tf_backend():
             data_iter = self.trainer.valid_input_fn().make_one_shot_iterator()
@@ -549,15 +688,15 @@ class ModelStatistics(Callback):
     def update_flops_params(self, epoch=None, logs=None):
         self.model = self.trainer.model
         try:
-            if self.gflops is None:
+            if self.flops is None:
                 flops_count, params_count = calc_model_flops_params(self.model, self.input)
-                self.gflops, self.kparams = flops_count * 1600 * 1e-9, params_count * 1e-3
+                self.flops, self.params = flops_count * 1600 * 1e-9, params_count * 1e-3
             summary_perfs = logs.get('summary_perfs', {})
             if epoch:
                 summary_perfs.update(
-                    {'gflops': self.gflops, 'kparams': self.kparams, 'epoch': epoch})
+                    {'flops': self.flops, 'params': self.params, 'epoch': epoch})
             else:
-                summary_perfs.update({'gflops': self.gflops, 'kparams': self.kparams})
+                summary_perfs.update({'flops': self.flops, 'params': self.params})
             logs.update({'summary_perfs': summary_perfs})
         except Exception as ex:
             logging.warning("model statics failed, ex=%s", ex)
@@ -656,6 +795,34 @@ nas:
 fullytrain:
     pipe_step:
         type: FullyTrainPipeStep
+```
+
+### 7.1 Report
+
+A pipeline contains multiple steps. Data can be transferred between these steps through the Report. The Report collects the training process data and evaluation results of each step in real time. In addition, the Report data is saved to files in real time.
+
+The Report provides the following interfaces. During model training, the `broadcast()` interface needs to be invoked to save the training result. The search algorithm can invoke the `pareto_front()` interface to obtain the evaluation result. These two interfaces are the most commonly used interfaces.
+The trainer has integrated the report scheduling function. After training and evaluation, the trainer automatically calls the report interface to collect the result data for the search algorithm.
+
+```python
+@singleton
+class Report(object):
+
+    @property
+    def all_records(self):
+
+    def pareto_front(self, step_name=None, nums=None, records=None):
+
+    def dump_report(self, step_name=None, record=None):
+
+    @classmethod
+    def receive(cls, step_name, worker_id):
+
+    @classmethod
+    def broadcast(cls, record):
+
+    @classmethod
+    def close(cls, step_name, worker_id):
 ```
 
 ### 7.2 Extend `pipestep`

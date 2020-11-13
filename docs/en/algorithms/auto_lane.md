@@ -15,42 +15,39 @@ This Algorithm is mainly designed for the application of automatic driving indus
 
 1. the design of search algorithm
 
-   Gradient-based search method, RL-based search method and EA-based search method are the main stream in the research field. Gradient-based search methods are fast but unreliable, and there is a big gap between search and final training. The RL-based search  methods requiring a large number of samples are inefficient in data utilization, which is not suitable for lane line detection. Auto_Lane uses the EA-based method to search for networks and encodes the network architecture based on experience. The algorithm generates the initial sample by using the random sampling method, the samples located at the Pareto frontier are selected to generate the child sample by using the evolution algorithm and the partial order pruning algorithm, after multiple generation of search, the candidate sample located on the Pareto front edge are obtained. 
+   Gradient-based search method, RL-based search method and EA-based search method are the main stream in the research field. Gradient-based search methods are fast but unreliable, and there is a big gap between search and final training. The RL-based search  methods requiring a large number of samples are inefficient in data utilization, which is not suitable for lane line detection. Auto_Lane uses the EA-based method to search for networks and encodes the network architecture based on experience. The algorithm generates the initial sample by using the random sampling method, the samples located at the Pareto frontier are selected to generate the child sample by using the evolution algorithm and the partial order pruning algorithm, after multiple generation of search, the candidate sample located on the Pareto front edge are obtained.
 
 2. the design of search space
 
-  - the search space of backbone
+   - the search space of backbone
 
     The search space of backbone consists of two series: `ResNetVariantDet`and `ResNeXtVariantDet`，The two series have the same coding scheme but different block which is the atom structure of a model, The coding structure is described as follows.
 
     ![auto_lane_backbone](./images/auto_lane_backbone.png)
 
-    The preceding figure shows the model of  `basicblock 28 121-211-1111-12111`，`basicblock` indicates that the block used by the model is `basicblock`. `-` indicates that the model is divided into different stages based on the resolution. ，`1` indicates that the number of channels is not increased. `2` indicates that the number of channels is doubled.   
+    The preceding figure shows the model of  `basicblock 28 121-211-1111-12111`，`basicblock` indicates that the block used by the model is `basicblock`. `-` indicates that the model is divided into different stages based on the resolution. ，`1` indicates that the number of channels is not increased. `2` indicates that the number of channels is doubled.
 
-- the search space of feature fusion
+   - the search space of feature fusion
 
-  Based on experience and the validity of feature fusion, the following four model structures are provided: ['012-022', '012-122', '122-022', and '-']. The hyphen, `-` indicates that the feature fusion module is not used, which regard the output of phase 4 of the model as the input of the head. `['012-022', '012-122', '122-022']` indicates the true type structure. The following figure shows the model structure. 
+    Based on experience and the validity of feature fusion, the following four model structures are provided: ['012-022', '012-122', '122-022', and '-']. The hyphen, `-` indicates that the feature fusion module is not used, which regard the output of phase 4 of the model as the input of the head. `['012-022', '012-122', '122-022']` indicates the true type structure. The following figure shows the model structure.
 
-  ![auto_lane_neck](./images/auto_lane_neck.png)
+    ![auto_lane_neck](./images/auto_lane_neck.png)
 
-  The preceding figure shows the model structure of `012-022`. The detail of code scheme is described in the figure on the right. 
+    The preceding figure shows the model structure of `012-022`. The detail of code scheme is described in the figure on the right.
 
-3. evaluation function 
+3. evaluation function
 
-   We use F1 of evaluation result on data set as evaluation function. Unlike the evaluation of solid object detection, lane is irregularly shaped which is pathological for evaluation. Bit-wise IoU is utilized as measure to judge whether a predict lane hit the ground truth or not. Given the cartesian product between the prediction set and the labeling set, The Kuhn-Munkres Algorithm is used to associate the prediction result with the labeling result. If the IoU of the corresponding pair is greater than 0.5, the association is successful. Otherwise, the association fails. Denote the number of instances that are successfully associated in the test set as TP. Denote the number of positive instances that are not correctly predicted in the test set  as FN. Denote the number of positive instances that are incorrectly predicted in the test set as FP. 
+   We use F1 of evaluation result on data set as evaluation function. Unlike the evaluation of solid object detection, lane is irregularly shaped which is pathological for evaluation. Bit-wise IoU is utilized as measure to judge whether a predict lane hit the ground truth or not. Given the cartesian product between the prediction set and the labeling set, The Kuhn-Munkres Algorithm is used to associate the prediction result with the labeling result. If the IoU of the corresponding pair is greater than 0.5, the association is successful. Otherwise, the association fails. Denote the number of instances that are successfully associated in the test set as TP. Denote the number of positive instances that are not correctly predicted in the test set  as FN. Denote the number of positive instances that are incorrectly predicted in the test set as FP.
 
-   ![auto_lane_metric](./images/auto_lane_metric.png)
+    ![auto_lane_metric](./images/auto_lane_metric.png)
 
    Then
 
-   
+    ![image-20200809212334473](./images/auto_lane_eq1.png)
 
-![image-20200809212334473](./images/auto_lane_eq1.png)
-
-4. search policy 
+4. search policy
 
    We adopt the multi-objective search strategy considering the model efficiency (measured by indicators such as inference time/FLOPs) and model performance (measured by F1) at the same time. Non-dominate sorting is used to construct a Pareto front to obtain a series of network structures optimal for multiple objectives.
-
 
 ## 4. How -to
 
@@ -58,41 +55,41 @@ This Algorithm is mainly designed for the application of automatic driving indus
 
    Before running this algorithm, be sure to read the [Installation Guide] (.. /user/install.md), [Deployment Guide] (.. /user/deployment.md), [Configuration Guide] (.. /user/config_reference.md), [Example reference](.. /user/examples.md) and confirm it.
 
-   The `benchmark/algs/nas/auto_lane.yml` configuration file that can be used to run the benchmark is provided here. Go to the `examples` directory and execute the following command to run the example: 
+   The `benchmark/algs/nas/auto_lane.yml` configuration file that can be used to run the benchmark is provided here. Go to the `examples` directory and execute the following command to run the example:
 
     ```bash
-    python3 ./run_example.py benchmark/algs/nas/auto_lane.yml
+    python3 ./run_pipeline.py benchmark/algs/nas/auto_lane.yml
     ```
 
 2. How to set search algorithm parameter
 
-   The search algorithm is a mixture of random sampling and evolution algorithm, which is controlled by the search_algorithm subtree in the configuration tree. The configuration items are as follows: 
+   The search algorithm is a mixture of random sampling and evolution algorithm, which is controlled by the search_algorithm subtree in the configuration tree. The configuration items are as follows:
 
    ```yaml
        search_algorithm:
            type: AutoLaneNas        # Set the search algorithm
-           codec: AutoLaneNasCodec	 # Set the codec to be used
+           codec: AutoLaneNasCodec  # Set the codec to be used
            random_ratio: 0.5        # Set the sampling ratio of random sampling to the total number of samples. 
            num_mutate: 10           # Set Genetic Algebra for Genetic Algorithm 
            max_sample: 100          # Set the maximum number of samples 
            min_sample: 10           # Set the minimum number of samples 
    ```
-   
+
 3. How to set search space
 
      the search space provided by the algorithm composed of `backbone` and `neck`. The specific configurable content is as follows: 
-     
+
      | component |                  module                  |
      | :-------: | :--------------------------------------: |
      | backbone  | `ResNetVariantDet`,  `ResNeXtVariantDet` |
      |   neck    |          `FeatureFusionModule`           |
-     
+
      The configuration is determined by the `search_space` configuration subtree in the configuration file. ：
-     
+
      ```yaml
      search_space:
          type: SearchSpace
-         modules: ['backbone','neck']		   # Module to be searched for (Do not modify this item.) 
+         modules: ['backbone','neck']           # Module to be searched for (Do not modify this item.) 
          backbone:
              ResNetVariantDet:                   # Set the ResNetVariantDet trunk series. This subtree can be deleted if not needed. 
                  base_depth: [18, 34, 50, 101]   # The value 18, 34 indicates that the basic block is used.The value 50, 101 indicates that the bottleneck block is used
@@ -101,14 +98,14 @@ This Algorithm is mainly designed for the application of automatic driving indus
                  base_depth: [18, 34, 50, 101]   # The value 18, 34 indicates that the basic block is used.The value 50, 101 indicates that the bottleneck block is used
                  base_channel: [32, 48, 56, 64]  # Set the basic channel to a multiple of 2. 
          neck:
-             FeatureFusionModule:                      
+             FeatureFusionModule:
                  fusion_arch: ['012-022', '012-122', '122-022','-']
      ```
-     
+
 4. How to config trainer
-   
+
      The configuration items of the trainer are as follows: 
-     
+
      ```yaml
      trainer:
          type: Trainer
@@ -148,26 +145,7 @@ This Algorithm is mainly designed for the application of automatic driving indus
      ```
 
 5. How to configure dataset
-   The interface of the CULane dataset and the CurveLanes dataset are provided here. After downloaded the correspond dataset to the target place, You can configure and use the interfaces by implement a `dataset.py`. The following three functions need to be implemented in `dataset.py`:`create_train_subset`, `create_test_subset`, `create_valid_subset`. The return value of the functions should be a list that consists of serval dictionaries, in which two keys, `image_path` and `annot_path` are required.`image_path` indicates the absolute path of an image in the dataset, and `annot_path` indicates the location of the labeling file corresponding to the image. Sampled models are  trained according to the list generated by create_train_subset, and are evaluated according to the list generated by `create_valid_subset`. 
-
-   ```python
-   # dataset.py
-   def create_train_subset(num=None):
-       return [{'image_path':'/the/path/to/train/image1.jpg',
-                'annot_path':'/the/path/to/train/image1.lines.json'},
-              {'image_path':'/the/path/to/train/image2.jpg',
-                'annot_path':'/the/path/to/train/image2.lines.json'},...]
-   def create_test_subset(num=None):
-       return [{'image_path':'/the/path/to/test/image1.jpg',
-                'annot_path':'/the/path/to/test/image1.lines.json'},
-              {'image_path':'/the/path/to/test/image2.jpg',
-                'annot_path':'/the/path/to/test/image2.lines.json'},...]
-   def create_valid_subset(num=None):
-       return [{'image_path':'/the/path/to/val/image1.jpg',
-                'annot_path':'/the/path/to/val/image1.lines.json'},
-              {'image_path':'/the/path/to/val/image2.jpg',
-                'annot_path':'/the/path/to/val/image2.lines.json'},...]
-   ```
+   The interface of the CULane dataset and the CurveLanes dataset are provided here. After downloaded the correspond dataset to the target place, You can configure and use the dataset.
 
    Dataset configuration parameters: 
 
@@ -177,7 +155,7 @@ This Algorithm is mainly designed for the application of automatic driving indus
        common:
            batch_size: 32
            num_workers: 12
-           dataset_file: "/path/to/dataset.py"
+           dataset_path: "/cache/datasets/CULane/"
            dataset_format: CULane
        train:
            with_aug: False                       # Set this parameter to True when fullytrain.
@@ -189,3 +167,6 @@ This Algorithm is mainly designed for the application of automatic driving indus
            shuffle: False
    ```
 
+## 5. Benchmark
+
+Benchmark configuration: [auto_lane.yml](https://github.com/huawei-noah/vega/tree/master/benchmark/algs/nas/auto_lane.yml)

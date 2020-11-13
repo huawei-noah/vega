@@ -11,9 +11,10 @@
 
 import logging
 import pandas as pd
-from vega.core.common.class_factory import ClassFactory, ClassType
-from vega.core.common import FileOps
+from zeus.common import ClassFactory, ClassType
+from zeus.common import FileOps
 from vega.algorithms.nas.fis.ctr_trainer_callback import CtrTrainerCallback
+from vega.core.pipeline.conf import ModelConfig
 
 logger = logging.getLogger(__name__)
 
@@ -41,11 +42,10 @@ class AutoGateGrdaS2TrainerCallback(CtrTrainerCallback):
         logging.info("loading stage1_hpo_result \n{}".format(hpo_result))
 
         self.selected_pairs = hpo_result['feature_interaction']
-        print('feature_interaction:', self.selected_pairs)
+        logging.info('feature_interaction:', self.selected_pairs)
 
-        model_cfg = ClassFactory.__configs__.get('model')
         # add selected_pairs
-        setattr(model_cfg["model_desc"]["custom"], 'selected_pairs', self.selected_pairs)
+        setattr(ModelConfig.model_desc['custom'], 'selected_pairs', self.selected_pairs)
 
     def after_train(self, logs=None):
         """Call after_train of the managed callbacks."""

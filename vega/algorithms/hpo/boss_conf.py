@@ -9,20 +9,21 @@
 # MIT License for more details.
 
 """Defined Configs."""
+from zeus.common import ConfigSerializable
 
 
-class BossPolicyConfig(object):
+class BossPolicyConfig(ConfigSerializable):
     """Boss Policy Config."""
 
     # TODO: validation >=3
     total_epochs = 81
-    epochs_per_iter = 81
+    max_epochs = 81
     num_samples = 40
     config_count = 1
     repeat_times = 2
 
 
-class BossConfig(object):
+class BossConfig(ConfigSerializable):
     """Boss Config."""
 
     policy = BossPolicyConfig

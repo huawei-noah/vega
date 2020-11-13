@@ -43,49 +43,47 @@ from .sha_base import ShaBase
 import random
 from .sha import SHA
 from .tuner import TunerBuilder
-from vega.core.hyperparameter_space import HyperparameterSpace
+from vega.core.search_space.search_space import SearchSpace
 
 
 class BOHB(ShaBase):
     """BOHB: Bayesian Optimization and Hyperband, combines Bayesian optimization and Hyperband.
 
-    :param hyperparameter_space: a pre-defined search space.
-    :type hyperparameter_space: object, instance os `HyperparameterSpace`.
+    :param search_space: a pre-defined search space.
+    :type search_space: object, instance os `SearchSpace`.
     :param int num_samples: Total config or hyperparameter count.
-    :param int epochs_per_iter: `epochs_per_iter` is the max epoch that hpo provide.
+    :param int max_epochs: `max_epochs` is the max epoch that hpo provide.
     :param min_epochs: `min_epochs` is the init min epoch.
     :type min_epochs: int, default is 1.
     :param eta: rung base `eta`.
     :type eta: int, default is 3.
     """
 
-    def __init__(self, hyperparameter_space, num_samples, epochs_per_iter, repeat_times, min_epochs=1,
-                 eta=3):
+    def __init__(self, search_space, num_samples, max_epochs, repeat_times, min_epochs=1, eta=3):
         """Init BOHB."""
-        super().__init__(hyperparameter_space, num_samples, epochs_per_iter, min_epochs,
-                         eta)
+        super().__init__(search_space, num_samples, max_epochs, min_epochs, eta)
         # init all the configs
         self.repeat_times = repeat_times
-        self.epochs_per_iter = epochs_per_iter
-        self.hp = TunerBuilder(hyperparameter_space, tuner='GPEI')
+        self.max_epochs = max_epochs
+        self.hp = TunerBuilder(search_space, tuner='GPEI')
         self.iter_list, self.min_epoch_list = self._get_total_iters(
-            num_samples, epochs_per_iter, self.repeat_times, min_epochs, eta)
+            num_samples, max_epochs, self.repeat_times, min_epochs, eta)
         self.config_dict = {}
 
         # init the empty sha config list, all sha object need to be set_config_list
         self.sha_list = self._get_sha_list(self.iter_list, self.min_epoch_list, self.repeat_times)
         # init the first sha with first config list
-        self.config_dict[0] = self.get_hyperparameter_space(self.iter_list[0])
+        self.config_dict[0] = self.get_hyperparameters(self.iter_list[0])
         self.sha_list[0].set_config_list(self.config_dict[0], start_id=0)
         return
 
-    def _get_total_iters(self, num_samples, epochs_per_iter, repeat_times, min_epochs=1, eta=3):
+    def _get_total_iters(self, num_samples, max_epochs, repeat_times, min_epochs=1, eta=3):
         """Calculate each rung for all iters of Hyper Band algorithm.
 
         n = |(B/R)*η^s/(s+1)e|,  r = R*η^(−s)
 
         :param num_samples: int, Total config count to optimize.
-        :param epochs_per_iter: int, max epochs of evaluate function.
+        :param max_epochs: int, max epochs of evaluate function.
         :param min_epochs: int, the epoch start with min epochs, default 1.
         :param eta: int, default 3.
         :return:  iter_list, min_ep_list
@@ -120,8 +118,8 @@ class BOHB(ShaBase):
             iter_list.sort(reverse=True)
             for i in range(len(iter_list)):
                 temp_ep = int(min_epochs * math.pow(eta, i))
-                if temp_ep > epochs_per_iter:
-                    temp_ep = epochs_per_iter
+                if temp_ep > max_epochs:
+                    temp_ep = max_epochs
                 min_ep_list.append(temp_ep)
             iter_list_hl.append(iter_list)
             min_ep_list_hl.append(min_ep_list)
@@ -145,8 +143,8 @@ class BOHB(ShaBase):
         """
         sha_list = []
         for i in range(len(iter_list)):
-            tmp_hps = HyperparameterSpace()
-            tmp_sha = SHA(tmp_hps, iter_list[i], self.epochs_per_iter,
+            tmp_hps = SearchSpace()
+            tmp_sha = SHA(tmp_hps, iter_list[i], self.max_epochs,
                           min_epoch_list[i], self.eta, empty=True)
             sha_list.append(tmp_sha)
         return sha_list

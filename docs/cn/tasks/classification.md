@@ -64,11 +64,11 @@ Vega当前支持这两类约束，通过网络架构搜索等手段，生成多�
 
 ### 2.4 场景C：使用预训练模型和少量训练数据搜索和训练在本地或云端使用的模型
 
-这种场景下可考虑Vega的[Model Zoo](../../en/model_zoo/model_zoo.md)中提供的`EfficientNet B8`模型，使用少量的训练数据进行fine tune，这里不再详述。
+这种场景下可考虑Vega的[Model Zoo](../model_zoo/model_zoo.md)中提供的`EfficientNet B8`模型，使用少量的训练数据进行fine tune，这里不再详述。
 
 ### 2.5 场景C：使用预训练模型和少量训练数据搜索和训练在终端使用的模型
 
-这种场景下可考虑Vega的[Model Zoo](../../en/model_zoo/model_zoo.md)中提供的`EfficientNet B8`模型，使用少量的训练数据进行fine tune，然后再考虑使用剪枝（待提供）和量化方法（待提供）将模型小型化，并使用模型评估服务进行模型评估，这里不再详述。
+这种场景下可考虑Vega的[Model Zoo](../model_zoo/model_zoo.md)中提供的`EfficientNet B8`模型，使用少量的训练数据进行fine tune，然后再考虑使用剪枝（待提供）和量化方法（待提供）将模型小型化，并使用模型评估服务进行模型评估，这里不再详述。
 
 ## 3. pipeline
 

@@ -136,3 +136,7 @@ The following results can be obtained based on the benchmark configuration:
 ```text
 [1] Chu, X.; Zhang, B.; Ma, H.; Xu, R.; Li, J.; and Li, Q. 2019. Fast, accurate and lightweight super-resolution with neural architecture search. arXiv preprint arXiv:1901.07261.
 ```
+
+## 6. Benchmark
+
+Benchmark configuration: [esr_ea.yml](https://github.com/huawei-noah/vega/tree/master/benchmark/algs/nas/esr_ea.yml)

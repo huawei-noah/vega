@@ -19,13 +19,13 @@
 
 这种场景下，可考虑使用Adelaide-EA算法，该算法采用了进化算法，可在相对较短的时间里，搜索出一组语义分割模型，经过fully train后，评估各个模型的性能，选择最合适的模型。
 
-具体的算法介绍，可参考[Adelaide-EA算法](../algorithms/Segmentation-Adelaide-EA-NAS.md)
+具体的算法介绍，可参考[Adelaide-EA算法](../algorithms/adelaide_ea.md)
 
 ### 2.2 场景C：搜索语义分割网络backbone
 
 Vega提供了SP-NAS算法，该算法用以搜索面向物体检测及语义分割的高效主干网络架构，使用这类算法需要一定深度网络架构知识。
 
-具体请参考[SP-NAS算法](../algorithms/sp-nas.md)
+具体请参考[SP-NAS算法](../algorithms/sp_nas.md)
 
 ### 3. pipeline
 

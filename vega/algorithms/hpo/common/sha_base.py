@@ -17,16 +17,15 @@ from .status_type import StatusType
 class ShaBase(object):
     """A Base class for successive halving and hyperband algorithm.
 
-    :param hyperparameter_space: a pre-defined search space.
-    :type hyperparameter_space: object, instance os `HyperparameterSpace`.
+    :param search_space: a pre-defined search space.
+    :type search_space: object, instance os `SearchSpace`.
     :param int config_count: Description of parameter `config_count`.
     :param int max_epochs: Description of parameter `max_epochs`.
     :param int min_epochs: Description of parameter `min_epochs`.
     :param int eta: Description of parameter `eta`.
     """
 
-    def __init__(self, hyperparameter_space, config_count, max_epochs, min_epochs,
-                 eta):
+    def __init__(self, search_space, config_count, max_epochs, min_epochs, eta):
         """Init for ShaBase class."""
         # hyperband algorithm init params
         self.eta = eta
@@ -37,10 +36,8 @@ class ShaBase(object):
         self.rung_id = 0
         # init all the configs
         self.current_iter = 0
-        self.hyperparameter_space = hyperparameter_space
-        self.hyperparameter_list = self.get_hyperparameter_space(
-            config_count)
-
+        self.search_space = search_space
+        self.hyperparameter_list = self.get_hyperparameters(config_count)
         self.sieve_board = pd.DataFrame(
             columns=['rung_id', 'config_id', 'status', 'score'])
         self.config_dict = {}
@@ -48,8 +45,8 @@ class ShaBase(object):
         self.all_config_dict = {}
         self.total_propose = 0
 
-    def get_hyperparameter_space(self, num):
-        """Use the trained model to propose a set of params from HyperparameterSpace.
+    def get_hyperparameters(self, num):
+        """Use the trained model to propose a set of params from SearchSpace.
 
         :param int num: number of random samples from hyperparameter space.
         :return: list of random sampled config from hyperparameter space.
@@ -58,13 +55,12 @@ class ShaBase(object):
         """
         params_list = []
         for i in range(num):
-            parameters = self.hyperparameter_space.get_sample_space()
+            parameters = self.search_space.get_sample_space()
             if parameters is None:
                 return None
             predictions = np.random.rand(parameters.shape[0], 1)
             index = np.argmax(predictions)
-            param = self.hyperparameter_space.inverse_transform(
-                parameters[index, :])
+            param = self.search_space.decode(parameters[index, :])
             params_list.append(param)
         return params_list
 
@@ -91,8 +87,7 @@ class ShaBase(object):
         :return: if this rung finished.
         :rtype: bool.
         """
-        current_rung_df = self.sieve_board.loc[(
-            self.sieve_board['rung_id'] == self.rung_id) & (
+        current_rung_df = self.sieve_board.loc[(self.sieve_board['rung_id'] == self.rung_id) & (
             self.sieve_board['status'].isin([StatusType.WAITTING, StatusType.RUNNING]))]
         if current_rung_df.empty:
             return True
@@ -117,13 +112,13 @@ class ShaBase(object):
 
         """
         change_df = self.sieve_board.loc[
-            (self.sieve_board['config_id'] == config_id) & (
-                self.sieve_board['rung_id'] == rung_id)]
+            (self.sieve_board['config_id'] == config_id) & (self.sieve_board['rung_id'] == rung_id)]
         if change_df.empty:
             tmp_row_data = {'rung_id': rung_id,
                             'config_id': config_id,
                             'status': status}
             self._add_to_board(tmp_row_data)
         else:
-            self.sieve_board.loc[(self.sieve_board['config_id'] == config_id) & (
-                self.sieve_board['rung_id'] == rung_id), ['status']] = [status]
+            self.sieve_board.loc[
+                (self.sieve_board['config_id'] == config_id) & (self.sieve_board['rung_id'] == rung_id), ['status']] = [
+                status]

@@ -10,28 +10,29 @@
 
 """Defined Configs."""
 
-from vega.search_space.search_algs import ParetoFrontConfig
+from vega.core.search_algs import ParetoFrontConfig
+from zeus.common import ConfigSerializable
 
 
-class BackboneNasPolicyConfig(object):
+class BackboneNasPolicyConfig(ConfigSerializable):
     """BackboneNas Policy Config."""
 
     random_ratio = 0.2
     num_mutate = 10
 
 
-class BackboneNasRangeConfig(object):
+class BackboneNasRangeConfig(ConfigSerializable):
     """BackboneNas Range Config."""
 
     max_sample = 100
     min_sample = 10
 
 
-class BackboneNasConfig(object):
+class BackboneNasConfig(ConfigSerializable):
     """BackboneNas Config."""
 
     codec = 'BackboneNasCodec'
-    policy = BackboneNasPolicyConfig()
-    range = BackboneNasRangeConfig()
-    pareto = ParetoFrontConfig()
+    policy = BackboneNasPolicyConfig
+    range = BackboneNasRangeConfig
+    pareto = ParetoFrontConfig
     objective_keys = 'accuracy'

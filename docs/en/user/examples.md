@@ -11,7 +11,7 @@ In the following example, the following directory is generated after the package
 | compression | compression algorithm usage example, including [Quant-EA](../algorithms/quant_ea.md)、 [Prune-EA](../algorithms/prune_ea.md). |
 | data augmentation | Example of using the data augmentation algorithm, including the [PBA](../algorithms/pba.md). |
 | hpo | hyperparameter optimization algorithm use examples, including  [ASHA](../algorithms/hpo.md), [BO](../algorithms/hpo.md), [TPE](../algorithms/hpo.md), [BOHB](../algorithms/hpo.md), [BOSS](../algorithms/hpo.md). |
-| nas | Examples of network architecture search, including [SM-NAS](../algorithms/sm-nas.md), [CARS](../algorithms/cars.md), [SP-NAS](../algorithms/sp-nas.md), [auto-lane](../algorithms/auto_lane.md), [SR-EA](../algorithms/sr-ea.md), [ESR-EA](../algorithms/esr_ea.md), [Adelaide-EA](../algorithms/Segmentation-Adelaide-EA-NAS.md) |
+| nas | Examples of network architecture search, including [CARS](../algorithms/cars.md), [SP-NAS](../algorithms/sp_nas.md), [auto-lane](../algorithms/auto_lane.md), [SR-EA](../algorithms/sr_ea.md), [ESR-EA](../algorithms/esr_ea.md), [Adelaide-EA](../algorithms/adelaide_ea.md), [NAGO](../algorithms/nago.md) |
 | searchspace | [fine grained search space](../developer/fine_grained_search_space.md) |
 | fully train | Samples related to fully train, including RESTNET18 and CARS models for training the torch model. |
 | tasks/classification | An example of using NAS + HPO + FullyTrain to complete an image classification task |
@@ -23,13 +23,13 @@ Generally, an algorithm example contains a configuration file, some algorithms, 
 You can execute the following commands in the `examples` directory:
 
 ```bash
-python3 ./run_example.py <algorithm config file>
+python3 ./run_pipeline.py <algorithm config file>
 ```
 
 For example, the command of CARS example is as follows:
 
 ```bash
-python3 ./run_example.py ./nas/cars/cars.yml
+python3 ./run_pipeline.py ./nas/cars/cars.yml
 ```
 
 All information is stored in configuration files. Configuration items are classified into public configuration items and algorithm configuration items. For details about public configuration items, see the [configuration reference](./config_reference.md). For details about algorithm configuration, see the reference documents of each algorithm.Error! Hyperlink reference not valid.
@@ -37,22 +37,6 @@ All information is stored in configuration files. Configuration items are classi
 Before running an example, you need to configure the directory where the dataset is located in the algorithm configuration file. The root directory of the default dataset is `/cache/datasets/`, for example, the directory of the `Cifar10` is `/cache/datasets/cifar10/`.
 
 Before running the example, you need to download the dataset to the default data configuration directory. Before running the example, you need to create the directory `/cache/datasets/`, then download each dataset to the directory and unzip it. The default directory configuration of each dataset is as follows:
-
-| Dataset | Default Path | Data Source | Note |
-| :--- | :--- | :--: | :-- |
-| Cifar10 | /cache/datasets/cifar10/ | [Download](https://www.cs.toronto.edu/~kriz/cifar.html) | |
-| Cifar10TF | /cache/datasets/cifar-10-batches-bin/ | [Download](https://www.cs.toronto.edu/~kriz/cifar-10-binary.tar.gz) | |
-| ImageNet | /cache/datasets/ILSVRC/ | [Download](http://image-net.org/download-images) | |
-| ImageNetTF | /cache/datasets/imagenet_tfrecord/ | [Download](http://image-net.org/download-images) | **Use [code](https://github.com/tensorflow/tpu/blob/master/tools/datasets/imagenet_to_gcs.py) to convert data** |
-| COCO | /cache/datasets/COCO2017 | [Download](http://cocodataset.org/#download) | |
-| Div2K | /cache/datasets/DIV2K/ | [Download](https://data.vision.ee.ethz.ch/cvl/DIV2K/) | |
-| Div2kUnpair | /cache/datasets/DIV2K_unknown | [Download](https://data.vision.ee.ethz.ch/cvl/DIV2K/) | **Used for the CycleSR, trim the data by referring [document](../algorithms/cyclesr.md)** |
-| Cityscapes | /cache/datasets/cityscapes/ | [Download](https://www.cityscapes-dataset.com/) | **Create data index by referring [document](../algorithms/Segmentation-Adelaide-EA-NAS.md)** |
-| VOC2012 | /cache/datasets/VOC2012/ | [Download](http://host.robots.ox.ac.uk/pascal/VOC/voc2012/#data) | **Create data index by referring [document](../algorithms/Segmentation-Adelaide-EA-NAS.md)** |
-| CULane | /cache/datasets/CULane/ | [Download](https://xingangpan.github.io/projects/CULane.html) | |
-| Avazu | /cache/dataset/Avazu/ | [Download](https://www.kaggle.com/datasets) | |
-
-In addition, for the following algorithm, a pre-trained model needs to be loaded. Before running the example, you need to create the directory /cache/models/, and then download the corresponding model from the corresponding location and place it in this directory:
 
 | Algorithm | Pre-trained Model | Default Path | Model Source |
 | :--: | :-- | :-- | :--: |
@@ -175,7 +159,7 @@ Note that the configuration items in the example are set to small values to spee
     | fully train | Output | Network Description File: tasks/\<task id\>/output/mutate/model_desc_\<id\>.json <br> Model: tasks/\<task id\>/output/fully_train/model_0.pth |
     | fully train | approximate running time | epochs * Training time per epoch |
 
-8. AutoGate
+8. AutoFis
 
     | Stage | Option | Content |
     | :--: | :--: | :-- |
@@ -200,7 +184,7 @@ Note that the configuration items in the example are set to small values to spee
 
     | Stage | Option | Content |
     | :--: | :--: | :-- |
-    | fully train | Input | Config File: data_augmentation/cyclesr/cyclesr.yml <br> Dataset: /cache/datasets/DIV2K_unknown |
+    | fully train | Input | Config File: data_augmentation/cyclesr/cyclesr.yml <br> Dataset: /cache/datasets/DIV2K_unpair |
     | fully train | Output | Model: tasks/\<task id\>/output/fully_train/model_0.pth |
     | fully train | approximate running time | n_epoch * Training time per epoch |
 
@@ -210,8 +194,8 @@ Note that the configuration items in the example are set to small values to spee
 
     | Stage | Option | Content |
     | :--: | :--: | :-- |
-    | hpo1 | Input | Config File: hpo/asha\|bohb\|boss/hpo/asha\|bohb\|boss.yml <br> Dataset: /cache/datasets/cifar10 |
-    | hpo1 | Output | Hyperparameter file: tasks/\<task id\>/output/hpo1/best_hps.json |
+    | hpo | Input | Config File: hpo/asha\|bohb\|boss/hpo/asha\|bohb\|boss.yml <br> Dataset: /cache/datasets/cifar10 |
+    | hpo | Output | Hyperparameter file: tasks/\<task id\>/output/hpo/best_hps.json |
 
 ### 3.5 Fully Train
 

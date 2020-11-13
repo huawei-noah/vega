@@ -9,13 +9,14 @@
 # MIT License for more details.
 
 """Defined Configs."""
+from zeus.common import ConfigSerializable
 
 
-class AdelaideConfig(object):
+class AdelaideConfig(ConfigSerializable):
     """AdelaideMutate Config."""
 
     codec = 'AdelaideCodec'
     max_sample = 10
-    pareto_front_file = "{local_base_path}/output/random1/pareto_front.csv"
-    random_file = "{local_base_path}/output/random1/random.csv"
-    objective_keys = ['IoUMetric', 'gflops']
+    pareto_front_file = "{local_base_path}/output/random/pareto_front.csv"
+    random_file = "{local_base_path}/output/random/random.csv"
+    objective_keys = ['IoUMetric', 'flops']

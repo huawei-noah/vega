@@ -13,8 +13,8 @@ import os
 import copy
 import shutil
 from vega.algorithms.data_augmentation.common import PBA
-from vega.core.common.class_factory import ClassFactory, ClassType
-from vega.core.common.file_ops import FileOps
+from zeus.common import ClassFactory, ClassType
+from zeus.common import FileOps
 from vega.algorithms.hpo.hpo_base import HPOBase
 from .pba_conf import PBAConfig
 
@@ -29,10 +29,7 @@ class PBAHpo(HPOBase):
         """Init PBAHpo."""
         super(PBAHpo, self).__init__(search_space, **kwargs)
         self.transformers = search_space.transformers
-        self.operation_names = []
-        for operation, w_o in self.transformers.items():
-            if w_o:
-                self.operation_names.append(operation)
+        self.operation_names = [list(op.keys())[0] for op in self.transformers if list(op.values())[0]]
         num_operation = len(self.operation_names)
         self.hpo = PBA(self.config.policy.config_count, self.config.policy.each_epochs,
                        self.config.policy.total_rungs, self.local_base_path, num_operation)
@@ -47,7 +44,8 @@ class PBAHpo(HPOBase):
         sample_id = sample.get('config_id')
         trans_para = sample.get('configs')
         rung_id = sample.get('rung_id')
-        re_hps['dataset.transforms'] = [{'type': 'PBATransformer', 'para_array': trans_para,
+        all_para = sample.get('all_configs')
+        re_hps['dataset.transforms'] = [{'type': 'PBATransformer', 'para_array': trans_para, 'all_para': all_para,
                                          'operation_names': self.operation_names}]
         checkpoint_path = FileOps.join_path(self.local_base_path, 'cache', 'pba', str(sample_id), 'checkpoint')
         FileOps.make_dir(checkpoint_path)

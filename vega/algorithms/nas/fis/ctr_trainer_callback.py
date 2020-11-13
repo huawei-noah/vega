@@ -11,8 +11,8 @@
 """Base CTR model TrainerCallback."""
 
 import logging
-from vega.core.common.class_factory import ClassFactory, ClassType
-from vega.core.trainer.callbacks import Callback
+from zeus.common import ClassFactory, ClassType
+from zeus.trainer.callbacks import Callback
 
 logger = logging.getLogger(__name__)
 

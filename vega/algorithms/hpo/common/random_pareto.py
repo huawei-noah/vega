@@ -19,8 +19,8 @@ from .status_type import StatusType
 class RandomPareto(ShaBase):
     """Random Pareto Search from a given search hyperparameter_space.
 
-    :param hyperparameter_space: a pre-defined search space.
-    :type hyperparameter_space: object, instance os `HyperparameterSpace`.
+    :param search_space: a pre-defined search space.
+    :type search_space: object, instance os `SearchSpace`.
     :param int config_count: Total config or hyperparameter count.
     :param int epoch: init epoch for each propose.
     :param int object_count: pareto objects count, default is `2`.
@@ -28,9 +28,9 @@ class RandomPareto(ShaBase):
         objects use minimum. default is empty.
     """
 
-    def __init__(self, hyperparameter_space, config_count, epoch, object_count=2, max_object_ids=[]):
+    def __init__(self, search_space, config_count, epoch, object_count=2, max_object_ids=[]):
         """Init random pareto search."""
-        super().__init__(hyperparameter_space, config_count, epoch, 1, 3)
+        super().__init__(search_space, config_count, epoch, 1, 3)
         self.sieve_columns = ['rung_id', 'config_id', 'status']
         for i in range(0, object_count):
             self.sieve_columns.append("score_{}".format(i))
@@ -40,7 +40,7 @@ class RandomPareto(ShaBase):
             self.max_object_ids = [x + 3 for x in max_object_ids]
         self.pareto_cols = [x + 3 for x in range(0, object_count)]
         # init the config list
-        self.config_list = self.get_hyperparameter_space(config_count)
+        self.config_list = self.get_hyperparameters(config_count)
         self.epoch = epoch
         for i, config in enumerate(self.config_list):
             tmp_row_data = {'rung_id': 0,
@@ -113,8 +113,7 @@ class RandomPareto(ShaBase):
         next_config_id = rung_df['config_id'].min(skipna=True)
         results = {
             'config_id': int(next_config_id),
-            'configs': self.config_list[int(next_config_id)],
-            'epoch': int(self.epoch)
+            'configs': self.config_list[int(next_config_id)]
         }
         self._change_status(rung_id=0,
                             config_id=next_config_id,

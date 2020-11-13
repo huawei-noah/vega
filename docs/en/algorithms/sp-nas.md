@@ -112,3 +112,7 @@ trainer:
 
 - The optimal models with fully training.
 - Logs of all models during the entire search process, and logs for models from the Pareto front(pareto_front.csv).
+
+## Benchmark
+
+Benchmark configuration: [sp_name.yml](https://github.com/huawei-noah/vega/tree/master/benchmark/algs/nas/sp_nas.yml)

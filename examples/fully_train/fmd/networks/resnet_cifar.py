@@ -2,8 +2,8 @@
 """ResNet models for cifar10."""
 import math
 import torch.nn as nn
-from vega.search_space.networks.pytorch.ops.fmdunit import FMDUnit, LinearScheduler
-from vega.search_space.networks.pytorch import Network
+from zeus.networks.pytorch.ops.fmdunit import FMDUnit, LinearScheduler
+from zeus.modules.module import Module
 
 
 def conv1x1(in_plane, out_plane, stride=1):
@@ -167,7 +167,7 @@ class BasicBlock_fmd(nn.Module):
         return out
 
 
-class resnet_cifar(Network):
+class resnet_cifar(Module):
     """Define PreResNet on small data sets.
 
     :param depth: depth of network
@@ -205,7 +205,7 @@ class resnet_cifar(Network):
             if isinstance(modulelist[idb], FMDUnit):
                 self.dploc.append(idb)
                 for iconv in range(idb, num_module):
-                    if isinstance(modulelist[iconv], nn.Conv2d) and not('downsample' in namlist[iconv]):
+                    if isinstance(modulelist[iconv], nn.Conv2d) and not ('downsample' in namlist[iconv]):
                         self.convloc.append(iconv)
                         break
 

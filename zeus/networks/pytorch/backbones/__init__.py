@@ -1,0 +1,2 @@
+from .resnet_variant_det import ResNetVariantDet
+from .resnext_variant_det import ResNeXtVariantDet

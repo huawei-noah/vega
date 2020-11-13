@@ -12,7 +12,7 @@
 
 import logging
 import torch.optim as optim
-from vega.core.common.class_factory import ClassFactory, ClassType
+from zeus.common import ClassFactory, ClassType
 from .ctr_trainer_callback import CtrTrainerCallback
 
 logger = logging.getLogger(__name__)
@@ -100,7 +100,8 @@ class AutoGroupTrainerCallback(CtrTrainerCallback):
         self.struc_optimizer.step()
 
         return {'loss': loss.item(),
-                'train_batch_output': output}
+                'train_batch_output': output,
+                'lr': self.trainer.lr_scheduler.get_lr()}
 
     def valid_step(self, batch):
         """

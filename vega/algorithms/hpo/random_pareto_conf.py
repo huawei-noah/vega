@@ -10,17 +10,18 @@
 
 """Defined Configs."""
 
-from vega.search_space.search_algs import ParetoFrontConfig
+from vega.core.search_algs import ParetoFrontConfig
+from zeus.common import ConfigSerializable
 
 
-class RandomParetoPolicyConfig(object):
+class RandomParetoPolicyConfig(ConfigSerializable):
     """Random Pareto Policy Config."""
 
     total_epochs = 10
-    epochs_per_iter = 1
+    max_epochs = 1
 
 
-class RandomParetoConfig(object):
+class RandomParetoConfig(ConfigSerializable):
     """Random Pareto Config."""
 
     policy = RandomParetoPolicyConfig

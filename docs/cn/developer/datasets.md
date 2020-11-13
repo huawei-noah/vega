@@ -19,12 +19,13 @@ Vega提供了常用的数据集类，包括`Avazu`、`Cifar10`、`Cifar100`、`I
             data_path: "/cache/datasets/cifar10/"
      ```
 
-1. 在程序中，使用`ClassFactory`来创建`Dataset`，`mode`来初始化训练集或测试集，并使用`Dataloader`来加载数据，如下：
+1. 在程序中，使用`ClassFactory`来创建`Dataset`，`mode`来初始化训练集或测试集，通过`Adapter`适配不同框架， 最后通过``来加载数据，如下：
 
     ```python
     dataset = ClassFactory.get_cls(Classtype.DATASET)
     train_data, test_data = dataset(mode='train'), dataset(mode='test')
-    data_loader = train_data.dataloader
+    train_data_loader = Adapter(train_data).loader
+    test_data_loader = Adapter(test_data).loader
     for input, target in data_loader:
         process_data(input, target)
     ```
@@ -35,129 +36,178 @@ Vega的所有数据集类都继承自基类`Dataset`，`Dataset`基类定义了�
 
 ## 2. 自定义Dataset
 
-假设用户数据为100张图片，放在一个文件夹中，我们需要实现一个名为 `MyDataset` 的数据集类，我们需要按照如下步骤进行:
+假设用户训练数据集为100张图片，放在10个文件夹中，文件夹名称是分类标签，验证集和测试集也是同样的文件目录。我们需要实现一个名为 `ClassificationDataset` 的数据集类，我们需要按照如下步骤进行:
 
-1. 规划数据集。
-2. 实现`Dataloader`。
-3. 实现`Transform`。
+1. 定义数据集配置。
+2. 实现数据集。
 
-如上所述，类 `MyDataset` 继承自 `Dataset`，如下：
+## 2.1 定义数据集配置
+
+数据集的配置类为`ClassificationDatasetConfig`，包含四部分：train、val、test、common，在公共配置中有一些缺省的配置项，如下：
 
 ```python
-from vega.datasets.pytorch.common.dataset import Dataset
-from vega.core.common.class_factory import ClassFactory, ClassType
+from zeus.common import ConfigSerializable
+
+
+class ClassificationDatasetCommonConfig(ConfigSerializable):
+    data_path = None
+    batch_size = 1
+    shuffle = True
+    drop_last = True
+    n_class = None
+    train_portion = 1.0
+    n_images = None
+    cached = True
+    transforms = []
+    num_workers = 1
+    distributed = False
+    pin_memory = False
+
+
+class ClassificationDatasetTraineConfig(ClassificationDatasetCommonConfig):
+    pass
+
+
+class ClassificationDatasetValConfig(ClassificationDatasetCommonConfig):
+    pass
+
+
+class ClassificationDatasetTestConfig(ClassificationDatasetCommonConfig):
+    shuffle = False
+
+
+class ClassificationDatasetConfig(ConfigSerializable):
+    common = ClassificationDatasetCommonConfig
+    train = ClassificationDatasetTraineConfig
+    val = ClassificationDatasetValConfig
+    test = ClassificationDatasetTestConfig
+
+```
+
+## 2.2 实现Dataset
+
+实现Dataset需要注意：
+
+1. 使用`@ClassFactory.register(ClassType.DATASET)`注册数据类。
+2. 重载`__len__()`和`__getitem__()`，提供给dataloader使用。
+3. 实现`input_shape()`接口，其返回值要和`__getitem__`的数据的shape相对应。
+
+代码如下：
+
+```python
+import numpy as np
+import random
+import cv2
+import os
+import vega
+from zeus.common import ClassFactory, ClassType
+from zeus.common import FileOps
+from zeus.datasets.conf.cls_ds import ClassificationDatasetConfig
+from zeus.datasets.common.utils.dataset import Dataset
 
 
 @ClassFactory.register(ClassType.DATASET)
-class MyDataset(Dataset):
-    def __init__(self， **kwargs):
-        super(MyDataset, self).__init__(**kwargs)
-```
+class ClassificationDataset(Dataset):
 
-以上代码中，`@ClassFactory.register(ClassType.DATASET)` 是将 `MyDataset` 注册到`Vega` 库中。
+    config = ClassificationDatasetConfig()
 
-## 2.1 规划数据集
+    def __init__(self, **kwargs):
+        Dataset.__init__(self, **kwargs)
+        self.args.data_path = FileOps.download_dataset(self.args.data_path)
+        sub_path = os.path.abspath(os.path.join(self.args.data_path, self.mode))
+        if not os.path.exists(sub_path):
+            raise("dataset path is not existed, path={}".format(sub_path))
+        self._load_file_indexes(sub_path)
+        self._load_data()
+        self._shuffle()
 
-将数据集分为训练集和测试集，训练集用于训练模型，测试集用于验证模型。假设示例中的图片都用于训练，则需要指定一个文件位置的配置参数 `data_path` 。
-
-在模型训练过程中，一般也会动态的将数据集划分为训练集和验证集，需要确定采样方式，顺序采样，还是随机采样，需要增加一个配置参数 `shuffle` 。配置信息如下：
-
-```yaml
-    dataset:
-        type: MyDataset
-        train:
-            data_path: "/data/"
-            shuffle: false
-        valid:
-            data_path: "/data/"
-            shuffle: false
-```
-
-## 2.2 实现Dataloader
-
-假定我们从数据集中每次加载1张图片，每次都从文件加载，使用cv2来加载图片，代码如下：
-
-```python
-import cv2
-
-
-class MyDataset(Dataset):
+    def _load_file_indexes(self, sub_path):
+        self.classes = [_file for _file in os.listdir(sub_path) if os.path.isdir(os.path.join(sub_path, _file))]
+        if not self.classes:
+            raise("data folder has not sub-folder, path={}".format(sub_path))
+        self.n_class = len(self.classes)
+        self.classes.sort()
+        self.file_indexes = []
+        for _cls in self.classes:
+            _path = os.path.join(sub_path, _cls)
+            self.file_indexes += [(_cls, os.path.join(_path, _file)) for _file in os.listdir(_path)]
+        if not self.file_indexes:
+            raise("class folder has not image, path={}".format(sub_path))
+        self.args.n_images = len(self.file_indexes)
+        self.data = None
 
     def __len__(self):
-        return len(self.file)
+        return len(self.file_indexes)
 
-    def __getitem__(self, idx):
-        img_file = self.file[idx]
-        img = cv2.imread(img_file)
-        return img
+    def __getitem__(self, index):
+        if self.args.cached:
+            (label, _, image) = self.data[index]
+        else:
+            (label, _file) = self.file_indexes[index]
+            image = self._load_image(_file)
+        image, label = self.transforms(image, label)
+        n_label = self.classes.index(label)
+        return image, n_label
+
+    def _load_data(self):
+        if not self.args.cached:
+            return
+        self.data = [(_cls, _file, self._load_image(_file)) for (_cls, _file) in self.file_indexes]
+
+    def _load_image(self, image_file):
+        img = cv2.imread(image_file)
+        img = img / 255
+        img = img.astype(np.float32)
+        width, height, channel = img.shape
+        return img.reshape(channel, height, width)
+
+    def _to_tensor(self, data):
+        if vega.is_torch_backend():
+            import torch
+            return torch.tensor(data)
+        elif vega.is_tf_backend():
+            import tensorflow as tf
+            return tf.convert_to_tensor(data)
+
+    def _shuffle(self):
+        if self.args.cached:
+            random.shuffle(self.data)
+        else:
+            random.shuffle(self.file_indexes)
+
+    def input_shape(self, batch_size=1):
+        (_, _file) = self.file_indexes[0]
+        image = self._load_image(_file)
+        img_shape = image.shape
+        shape = [batch_size, img_shape[0], img_shape[1], img_shape[2]]
+        return shape
 ```
 
-## 2.3  实现Transform
+## 2.3 调测
 
-当前 `Vega` 已提供了多种 `Transform` 供[参考](../user/config_reference.md)。
-
-假设 `MyDataset` 需要实现一个把图片翻转的 `Transform`，输入为一张原始图片，输出为翻转后的图片，假设 `Vega` 并未提供该 `Transform`，我们需要调用 `ImageOps` 的翻转函数来实现，代码如下：
-
-```python
-import ImageOps
-
-
-@TransformFactory.register()
-class MyTransform():
-
-    def __call__(self, img):
-        return ImageOps.invert(img.convert('RGB'))
-```
-
-使用时只需在配置文件中加入该transform即可，如下：
-
-```yaml
-dataset:
-    type: MyDataset
-    train:
-        data_path: "/data/dataset/"
-        transforms:
-            - type: MyTransform
-```
-
-若在模型训练过程中调整 `Transfroms` ，可参考[调整Transforms](#transforms2)。
-
-## 2.5 调测
-
-以下是调测新实现的 `MyDataset` 类，代码如下：
+以上实现可以直接用于Vega中的PipeStep，也可以单独调用，单独调用的代码如下：
 
 ```python
 import unittest
-import torchvision.transforms as  tf
-from roma.env import register_roma_env
-from vega.core.pipeline.pipe_step import PipeStep
-from vega.core.common.class_factory import ClassFactory, ClassType
 import vega
-
-
-@ClassFactory.register(ClassType.PIPE_STEP)
-class FakePipeStep(PipeStep, unittest.TestCase):
-
-    def __init__(self):
-        PipeStep.__init__(self)
-        unittest.TestCase.__init__(self)
-
-    def do(self):
-        dataset = ClassFactory.get_cls(ClassType.DATASET)(mode="train")
-        train = dataset.dataloader
-        self.assertEqual(len(train), 100)
-        for input, target in train:
-            self.assertEqual(len(input), 1)
-            break
+from zeus.common import ClassFactory, ClassType
 
 
 class TestDataset(unittest.TestCase):
 
     def test_cifar10(self):
-        vega.run('./dataset.yml')
+        from zeus.datasets import Adapter
+        dataset_cls = ClassFactory.get_cls(ClassType.DATASET, "ClassificationDataset")
+        dataset = dataset_cls(mode="train", data_path="/cache/datasets/classification/")
+        dataloader = Adapter(dataset).loader
+        for input, target in dataloader:
+            self.assertEqual(len(input), 1)
+            # process(input, target)
+            break
 
 
 if __name__ == "__main__":
+    vega.set_backend("pytorch")
     unittest.main()
 ```
 
@@ -169,77 +219,9 @@ Ran 1 test in 12.119s
 OK
 ```
 
-## 2.6 完整代码
+## 2.4 完整代码
 
-配置文件：
+完整代码可参考：
 
-```yaml
-pipeline: [fake]
-
-fake:
-    pipe_step:
-        type: FakePipeStep
-
-    dataset:
-        type: MyDataset
-        train:
-            data_path: "/data/dataset/train/"
-            shuffle: false
-            transform:
-                - type: MyTransform
-        valid:
-            data_path: "/data/dataset/valid/"
-            shuffle: false
-```
-
-代码：
-
-```python
-
-import cv2
-
-
-class MyDataset(Dataset):
-
-    def __init__(self, **kwargs):
-    """Construct the MyDataset class."""
-        Dataset.__init__(self, **kwargs)
-        self.args.data_path = FileOps.download_dataset(self.args.data_path)
-
-    def __len__(self):
-    """Get the length of the dataset."""
-        return len(self.file)
-
-    def __getitem__(self, idx):
-    """Get an item of the dataset according to the index."""
-        img_file = self.file[idx]
-        img = cv2.imread(img_file)
-        return img
-
-```
-
-## 3. 参考
-
-<span id=transform2></span>
-
-1. 初始化 `dataset` 时指定Transforms
-
-   ```python
-    dataset = ClassFactory.get_cls(ClassType.DATASET)(
-        mode="train",
-        transforms=[tf.RandomCrop(32, padding=4), tf.RandomHorizontalFlip()]
-        )
-   ```
-
-1. 在模型训练过程中动态调整 `Transforms`
-
-   提供了 `append()`， `insert()`, `remove()`, `replace()` 等方法，分别提供了追加、插入、删除和替换方法，如下:
-
-    ```python
-    dataset.transforms.append(tf.ToTensor())
-    dataset.transforms.insert(2, "Color", level=2)
-    dataset.transforms.remove("Color")
-    dataset.transforms.replace(
-        [tf.RandomCrop(32, padding=4), tf.RandomHorizontalFlip()]
-        )
-    ```
+1. 数据集配置：[cls_ds.py](https://github.com/huawei-noah/vega/blob/master/vega/datasets/conf/cls_ds.py)
+2. 数据集实现：[cls_ds.py](https://github.com/huawei-noah/vega/blob/master/vega/datasets/common/cls_ds.py)

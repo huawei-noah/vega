@@ -10,8 +10,8 @@
 """AutoGate Grda version Stage1 TrainerCallback."""
 
 import logging
-from vega.core.common.class_factory import ClassFactory, ClassType
-from vega.core.common import FileOps
+from zeus.common import ClassFactory, ClassType
+from zeus.common import FileOps
 from vega.algorithms.nas.fis.ctr_trainer_callback import CtrTrainerCallback
 import torch.optim as optim
 from vega.algorithms.nas.fis.grda import gRDA

@@ -137,40 +137,41 @@ The function is to start the VEGA pipeline for HPO and load the asha.yml configu
 （1）The example configuration contains the general setting for task and worker to start the pipeline.
 
 ```yaml
-pipeline: [hpo1]
+pipeline: [hpo]
 ```
 
-This current pipeline contains only one hpo pipestep named hpo1.
+This current pipeline contains only one hpo pipestep named hpo.
 
-(2) In the pipestep of hpo1,  an HPO configuration part is required to set the HPO algorithm configuration, including total_epochs, config_count, and search space hyperparameter_space.
+(2) In the pipestep of hpo,  an HPO configuration part is required to set the HPO algorithm configuration, including total_epochs, config_count, and search space hyperparameter_space.
 
 ```yaml
-hpo1:
-    hpo:
+hpo:
+    search_algorithm:
         type: AshaHpo
         policy:
-            total_epochs: 81
-            config_count: 40
-        hyperparameter_space:
-            hyperparameters:
-                -   key: dataset.batch_size
-                    type: INT_CAT
-                    range: [8, 16, 32, 64, 128, 256]
-                -   key: trainer.optim.lr
-                    type: FLOAT_EXP
-                    range: [0.00001, 0.1]
-                -   key: trainer.optim.type
-                    type: STRING
-                    range: ['Adam', 'SGD']
-                -   key: trainer.optim.momentum
-                    type: FLOAT
-                    range: [0.0, 0.99]
-            condition:
-                -   key: condition_for_sgd_momentum
-                    child: trainer.optim.momentum
-                    parent: trainer.optim.type
-                    type: EQUAL
-                    range: ["SGD"]
+            total_epochs: 20
+
+    search_space:
+        type: SearchSpace
+        hyperparameters:
+            -   key: dataset.batch_size
+                type: CATEGORY
+                range: [8, 16, 32, 64, 128, 256]
+            -   key: trainer.optimizer.params.lr
+                type: FLOAT_EXP
+                range: [0.00001, 0.1]
+            -   key: trainer.optimizer.type
+                type: CATEGORY
+                range: ['Adam', 'SGD']
+            -   key: trainer.optimizer.params.momentum
+                type: FLOAT
+                range: [0.0, 0.99]
+        condition:
+            -   key: condition_for_sgd_momentum
+                child: trainer.optimizer.params.momentum
+                parent: trainer.optimizer.type
+                type: EQUAL
+                range: ["SGD"]
 ```
 
 config_count indicates the total number of hyperparameter combinations for sampling. In the ASHA algorithm, total_epochs indicates the maximum number of epochs for training one model, hyperparameter_space indicates the current hyperparameter search space, the condition part contains the sub-hyperparameters : "sgd_momentum" is selected only when "parent": "optimizer" is set to "SGD".
@@ -178,20 +179,13 @@ config_count indicates the total number of hyperparameter combinations for sampl
 (3) The following information needs to be configured for the trainer:
 
 ```yaml
-hpo1:
+hpo:
     model:
         model_desc:
-            modules: ["backbone", "head"]
+            modules: ["backbone"]
             backbone:
-                base_channel: 64
-                downsample: [0, 0, 1, 0, 1, 0, 1, 0]
-                base_depth: 18
-                doublechannel: [0, 0, 1, 0, 1, 0, 1, 0]
-                name: ResNetVariant
-            head:
-                num_classes: 10
-                name: LinearClassificationHead
-                base_channel: 512
+                type: ResNet
+                depth: 18
     trainer:
         type: Trainer
         epochs: 1
@@ -213,7 +207,7 @@ In addition to the basic configuration of a trainer, the model_desc of a current
 (4) Configure the evaluator.
 
 ```yaml
-hpo1:
+hpo:
     evaluator:
         type: Evaluator
         gpu_evaluator:

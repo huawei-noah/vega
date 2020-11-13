@@ -34,7 +34,7 @@ At the same time, Vega will also add more object detection algorithms in specifi
 
 Vega provides the SP-NAS algorithm, which is used to search for an efficient backbone network architecture for object detection and semantic segmentation. The use of such algorithms requires a certain amount of deep network architecture knowledge.
 
-For details, please refer to [SP-NAS Algorithm](../algorithms/sp-nas.md)
+For details, please refer to [SP-NAS Algorithm](../algorithms/sp_nas.md)
 
 ## 3. pipeline
 

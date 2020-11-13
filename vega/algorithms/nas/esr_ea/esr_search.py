@@ -16,11 +16,11 @@ from bisect import bisect_right
 from random import random, sample
 import numpy as np
 import pandas as pd
-from vega.core.common.general import General
+from zeus.common.general import General
 from .conf import ESRConfig
-from vega.core.common import FileOps
-from vega.core.common.class_factory import ClassFactory, ClassType
-from vega.search_space.search_algs.search_algorithm import SearchAlgorithm
+from zeus.common import FileOps
+from zeus.common import ClassFactory, ClassType
+from vega.core.search_algs import SearchAlgorithm
 from .esr_ea_individual import ESRIndividual
 
 
@@ -293,3 +293,8 @@ class ESRSearch(SearchAlgorithm):
         logging.info('model parameters:{}, model flops:{}'.format(current_indiv.parameter, current_indiv.flops))
         logging.info('model arch:{}'.format(current_indiv.active_net_list()))
         return self.indiv_count, indiv_cfg
+
+    @property
+    def max_samples(self):
+        """Get max samples number."""
+        return self.generation_num * self.individual_num

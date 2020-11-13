@@ -130,12 +130,8 @@ def package_check(master_ip, node_ip):
             result = subprocess.call(cmd, shell=True)
             if result != 0:
                 raise ValueError("Node ({}) has no package and can't install".format(node))
-            whl = "{}/deploy/vega*.whl".format(tempfile.gettempdir())
-            info = subprocess.call(["ssh", node, 'pip3', 'install', whl])
-            if info != 0:
-                raise ValueError("Node ({}) can't install vega".format(node))
     # master
-    info = subprocess.call("/bin/bash ./install_dependencies.sh; pip3 install vega*.whl", shell=True)
+    info = subprocess.call("/bin/bash ./install_dependencies.sh", shell=True)
     if info != 0:
         raise ValueError("Master ({}) can't install vega".format(master_ip))
 

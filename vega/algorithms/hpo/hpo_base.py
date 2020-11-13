@@ -11,8 +11,7 @@
 """Defined AshaHpo class."""
 import logging
 import copy
-from vega.core.hyperparameter_space import json_to_hps
-from vega.search_space.search_algs.search_algorithm import SearchAlgorithm
+from vega.core.search_algs import SearchAlgorithm
 
 
 class HPOBase(SearchAlgorithm):
@@ -20,8 +19,8 @@ class HPOBase(SearchAlgorithm):
 
     def __init__(self, search_space=None, **kwargs):
         super(HPOBase, self).__init__(search_space, **kwargs)
-        self.hps = json_to_hps(search_space)
         self.hpo = None
+        self.search_space = search_space
 
     @property
     def is_completed(self):

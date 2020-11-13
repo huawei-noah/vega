@@ -168,61 +168,55 @@ if __name__ == '__main__':
 （1）当前example配置文件中包含标准任务的配置general项之下的task和worker，以及设置pipeline:
 
 ```yaml
-pipeline: [hpo1]
+pipeline: [hpo]
 ```
 
-用于说明当前pipeline里只包含一个名为hpo1的pipestep，并在下面给出该pipestep的具体配置。
+用于说明当前pipeline里只包含一个名为hpo的pipestep，并在下面给出该pipestep的具体配置。
 
-（2）在`hpo1`这个pipestep下，除了设置pipe_step的类型以及设置数据集配置外，需要提供一个hpo配置部分主要用于设置hpo的算法配置，包括`total_epochs`，`config_count`和搜索空间`hyperparameter_space`：
+（2）在`hpo`这个pipestep下，除了设置pipe_step的类型以及设置数据集配置外，需要提供一个hpo配置部分主要用于设置hpo的算法配置，包括`total_epochs`，`config_count`和搜索空间`hyperparameters`：
 
 ```yaml
-hpo1:
-    hpo:
+hpo:
+    search_algorithm:
         type: AshaHpo
         policy:
-            total_epochs: 81
-            config_count: 40
-        hyperparameter_space:
-            hyperparameters:
-                -   key: dataset.batch_size
-                    type: INT_CAT
-                    range: [8, 16, 32, 64, 128, 256]
-                -   key: trainer.optim.lr
-                    type: FLOAT_EXP
-                    range: [0.00001, 0.1]
-                -   key: trainer.optim.type
-                    type: STRING
-                    range: ['Adam', 'SGD']
-                -   key: trainer.optim.momentum
-                    type: FLOAT
-                    range: [0.0, 0.99]
-            condition:
-                -   key: condition_for_sgd_momentum
-                    child: trainer.optim.momentum
-                    parent: trainer.optim.type
-                    type: EQUAL
-                    range: ["SGD"]
+            total_epochs: 20
+
+    search_space:
+        type: SearchSpace
+        hyperparameters:
+            -   key: dataset.batch_size
+                type: CATEGORY
+                range: [8, 16, 32, 64, 128, 256]
+            -   key: trainer.optimizer.params.lr
+                type: FLOAT_EXP
+                range: [0.00001, 0.1]
+            -   key: trainer.optimizer.type
+                type: CATEGORY
+                range: ['Adam', 'SGD']
+            -   key: trainer.optimizer.params.momentum
+                type: FLOAT
+                range: [0.0, 0.99]
+        condition:
+            -   key: condition_for_sgd_momentum
+                child: trainer.optimizer.params.momentum
+                parent: trainer.optimizer.type
+                type: EQUAL
+                range: ["SGD"]
 ```
 
-`config_count`表示总共会采样的超参数组合的个数，在ASHA算法中`total_epochs`表示每个模型最多会训练多少epochs，`hyperparameter_space`为设置当前的超参搜索空间，其中的`"condition"`部分表示当前子超参`"child": "sgd_momentum"`只有在`"parent": "optimizer"`等于`"SGD"`的时候才会被选中。
+`config_count`表示总共会采样的超参数组合的个数，在ASHA算法中`total_epochs`表示每个模型最多会训练多少epochs，`hyperparameters`为设置当前的超参搜索空间，其中的`"condition"`部分表示当前子超参`"child": "sgd_momentum"`只有在`"parent": "optimizer"`等于`"SGD"`的时候才会被选中。
 
 （3）下面需要配置trainer的部分：
 
 ```yaml
-hpo1:
+hpo:
     model:
         model_desc:
-            modules: ["backbone", "head"]
+            modules: ["backbone"]
             backbone:
-                base_channel: 64
-                downsample: [0, 0, 1, 0, 1, 0, 1, 0]
-                base_depth: 18
-                doublechannel: [0, 0, 1, 0, 1, 0, 1, 0]
-                name: ResNetVariant
-            head:
-                num_classes: 10
-                name: LinearClassificationHead
-                base_channel: 512
+                type: ResNet
+                depth: 18
     trainer:
         type: Trainer
         epochs: 1
@@ -244,7 +238,7 @@ hpo1:
 （4）配置evaluator的部分：
 
 ```yaml
-hpo1:
+hpo:
     evaluator:
         type: Evaluator
         gpu_evaluator:

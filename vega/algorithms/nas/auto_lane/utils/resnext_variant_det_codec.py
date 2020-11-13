@@ -113,7 +113,7 @@ class ResNeXtVariantDetCodec(ResNetVariantDetCodec):
         :rtype: str
         """
         config = OrderedDict(
-            name='ResNeXtVariantDet',
+            type='ResNeXtVariantDet',
             arch=self.arch,
             base_depth=self.base_depth,
             base_channel=self.base_channel,

@@ -9,11 +9,11 @@
 # MIT License for more details.
 
 """Encode and decode the model config. for ESR."""
-from vega.search_space.codec import Codec
+from vega.core.search_algs.codec import Codec
 from copy import deepcopy
 import numpy as np
 import logging
-from vega.core.common.class_factory import ClassType, ClassFactory
+from zeus.common import ClassType, ClassFactory
 
 
 @ClassFactory.register(ClassType.CODEC)

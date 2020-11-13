@@ -1,7 +1,5 @@
 general:
-    worker:
-        devices_per_job: 1
-    backend: tensorflow
+    backend: pytorch   #pytorch, tensorflow or mindspore
 
 pipeline: [nas]
 
@@ -9,51 +7,55 @@ nas:
     pipe_step:
         type: NasPipeStep
     search_algorithm:
-        type: SimpleRand
-        count: 0
-        max_num: 50
+        type: RandomSearch
+        policy:
+            num_sample: 50
+
     search_space:
-        type: SearchSpace
-        modules: [backbone]
-        backbone:
-            name: SimpleCnn
-            num_class: 10
-            fp16: False
-            blocks: [1, 2, 3, 4]
-            channels: [32, 48, 56, 64]
+        hyperparameters:
+            -   key: network.backbone.blocks
+                type: CATEGORY
+                range: [1, 2, 3, 4]
+            -   key: network.backbone.channels
+                type: CATEGORY
+                range:  [32, 48, 56, 64]
+
+    model:
+        model_desc:
+            modules: [backbone]
+            backbone:
+                type: SimpleCnn
+                num_class: 10
+                fp16: False
+
     trainer:
         type: Trainer
-        optim:
-            type: MomentumOptimizer
+        optimizer:
+            type: SGD
             params:
-                learning_rate: 0.01
+                lr: 0.01
                 momentum: 0.9
         lr_scheduler:
-            type: MultiStepLrWarmUp
+            type: MultiStepLR
             params:
-                base_lr: 0.01
                 warmup: False
                 milestones: [30]
-                decay_rates: [1, 0.1]
+                gamma: 0.5
         loss:
-            type: sparse_softmax_cross_entropy
+            type: CrossEntropyLoss
+            params:
+                is_grad: False
+                sparse: True
         metric:
             type: accuracy
         epochs: 3
         save_steps: 250
         distributed: False
         num_class: 10
-    model:
-        model_desc:
-            modules: [backbone]
-            backbone:
-                name: SimpleCnn
-                num_class: 10
-                fp16: False
     dataset:
         type: Cifar10
         common:
-            data_path: /cache/datasets/cifar-10-batches-bin
+            data_path: /cache/datasets/cifar10/
             batch_size: 64
             num_parallel_batches: 64
             fp16: False

@@ -9,19 +9,22 @@
 # MIT License for more details.
 
 """Defined Configs."""
+from zeus.common import ConfigSerializable
 
 
-class BohbPolicyConfig(object):
+class BohbPolicyConfig(ConfigSerializable):
     """Bohb Policy Config."""
 
     total_epochs = 81
-    epochs_per_iter = 81
+    min_epochs = 1
+    max_epochs = 81
     num_samples = 40
     config_count = 1
     repeat_times = 1
+    eta = 3
 
 
-class BohbConfig(object):
+class BohbConfig(ConfigSerializable):
     """Bobh Config."""
 
     policy = BohbPolicyConfig

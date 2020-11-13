@@ -11,7 +11,7 @@
 """Function for pNSGA-III."""
 import numpy as np
 import random
-from vega.core.report.nsga_iii import NonDominatedSorting
+from zeus.report import NonDominatedSorting
 
 
 def CARS_NSGA(target, objs, N):
@@ -35,7 +35,8 @@ def CARS_NSGA(target, objs, N):
     while (np.sum(selected) < N):
         current_front = []
         for i in range(len(Fs)):
-            current_front.append(Fs[i][stage])
+            if len(Fs[i]) > stage:
+                current_front.append(Fs[i][stage])
         current_front = [np.array(c) for c in current_front]
         current_front = np.hstack(current_front)
         current_front = list(set(current_front))
@@ -43,7 +44,10 @@ def CARS_NSGA(target, objs, N):
             for i in current_front:
                 selected[i] = 1
         else:
-            current_front = random.sample(current_front, N - np.sum(selected).astype(np.int32))
+            not_selected_indices = np.arange(len(selected))[selected == 0]
+            crt_front = [index for index in current_front if index in not_selected_indices]
+            num_to_select = N - np.sum(selected).astype(np.int32)
+            current_front = crt_front if len(crt_front) <= num_to_select else random.sample(crt_front, num_to_select)
             for i in current_front:
                 selected[i] = 1
         stage += 1

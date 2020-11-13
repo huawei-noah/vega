@@ -1,5 +1,6 @@
 from .auto_lane_nas_algorithm import AutoLaneNas
 from .auto_lane_nas_codec import AutoLaneNasCodec
-import os
-if os.environ['BACKEND_TYPE'] == 'PYTORCH':
+import vega
+
+if vega.is_torch_backend():
     from .auto_lane_trainer_callback import AutoLaneTrainerCallback

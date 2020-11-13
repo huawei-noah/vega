@@ -11,8 +11,8 @@
 """Encode and decode the model config."""
 import numpy as np
 
-from vega.core.common.class_factory import ClassType, ClassFactory
-from vega.search_space.codec import Codec
+from zeus.common import ClassType, ClassFactory
+from vega.core.search_algs.codec import Codec
 
 
 @ClassFactory.register(ClassType.CODEC)

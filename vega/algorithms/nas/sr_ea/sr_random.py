@@ -11,8 +11,8 @@
 """Random search algorithm for SR_EA."""
 import random
 from copy import deepcopy
-from vega.search_space.search_algs.search_algorithm import SearchAlgorithm
-from vega.core.common.class_factory import ClassFactory, ClassType
+from vega.core.search_algs import SearchAlgorithm
+from zeus.common import ClassFactory, ClassType
 from .conf import SRConfig
 
 
@@ -63,3 +63,8 @@ class SRRandom(SearchAlgorithm):
     def update(self, record):
         """Nothing need to update."""
         pass
+
+    @property
+    def max_samples(self):
+        """Get max samples number."""
+        return self.max_sample

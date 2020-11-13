@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-.
 """Main function to run a FmdPipeStep."""
-from vega.search_space.networks.pytorch import NetworkFactory, NetTypes
+from zeus.common import ClassFactory, ClassType
 from fully_train.fmd.networks.resnet_cifar import resnet_cifar
 
 
-@NetworkFactory.register(NetTypes.CUSTOM)
+@ClassFactory.register(ClassType.NETWORK)
 class FmdNetwork(resnet_cifar):
     """Wrapper a custom network resnet_cifar.
 
@@ -12,8 +12,8 @@ class FmdNetwork(resnet_cifar):
     :type desc: dict
     """
 
-    def __init__(self, desc):
-        depth = desc.depth
+    def __init__(self, **desc):
+        depth = desc.get("depth")
         wide_factor = desc.get("wide_factor", 1)
         num_classes = desc.get("num_classes", 10)
         args = desc.get("args", None)

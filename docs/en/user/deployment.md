@@ -6,9 +6,9 @@
 
 The following conditions must be met when the Vega is deployed in a local cluster:
 
-1. Ubuntu 16.04 or later (not tested in other Linux distributions and versions)
-2. CUDA 10.0 [download](https://developer.nvidia.com/cuda-10.0-download-archive) [doc](https://docs.nvidia.com/cuda/archive/10.0/)
-3. Python 3.7 [download](https://www.python.org/downloads/release/python-376/)
+1. Ubuntu 18.04 or later (not tested in other Linux distributions and versions)
+2. CUDA 10.0
+3. Python 3.7
 4. pip
 
 Before deploying a cluster, you need to install some mandatory [software packages]. You can download the script [install_dependencies.sh](../../../deploy/install_dependencies.sh) and install them.
@@ -67,10 +67,11 @@ After the preceding operations are complete, download the vega deploy package fr
     sudo python3 setup.py develop
     ```
 
-### <span id="Horovod"> Install Horovod</span>
+### <span id="MPI"> Install Horovod</span>
 
 
 **Install MPI：**
+
 1. Use the apt tool to install MPI directly
 
     ```bash
@@ -83,19 +84,7 @@ After the preceding operations are complete, download the vega deploy package fr
     mpirun
     ```
 
-### Install Apex
-
-Installing the Apex
-
-1. Download the source code from <https://github.com/NVIDIA/apex>
-
-2. Decompress the package and switch to the corresponding directory.
-
-   ```bash
-   pip3 install -v --no-cache-dir --global-option="--cpp_ext" --global-option="--cuda_ext" ./
-   ```
-
-### <span id="ssh"> Configuring SSH Mutual Trust </span>
+### <span id="ssh"> Configure SSH mutual trust </span>
 
 Any two hosts on the network must support SSH mutual trust. The configuration method is as follows:
 
@@ -155,49 +144,4 @@ On the Client:
 
     ```bash
     sudo mount -t nfs <server ip>:/data /mnt/data
-    ```
-
-### CUDA Installation Guide
-
-CUDA Installation in Ubuntu
-
-1. Download the installation package cuda_10.0.130_410.48_linux.run from the NVIDIA official website.
-
-2. Run the following installation command:
-
-    ```bash
-    sudo sh cuda_10.0.130_410.48_linux.run
-    ```
-
-    During the execution, a series of prompts are displayed. Retain the default settings. Note that you need to select no for Install NVIDIA Accelerated Graphics Driver for Linux-x86_64? when the system asks you whether to install the NVIDIA Accelerated Graphics Driver.
-
-3. Run the following command to configure environment variables:
-
-    ```bash
-    sudo gedit /etc/profile
-    ```
-
-    Add the following content to the end of the profile file:
-
-    ```bash
-    export PATH=/usr/local/cuda/bin:$PATH
-    export LD_LIBRARY_PATH=/usr/local/cuda/lib64:$LD_LIBRARY_PATH
-    ```
-
-    Save the profile file and run the following command to make the environment variables take effect immediately:
-
-    ```bash
-    source /etc/profile
-    ```
-
-4. To install the CUDA sample, go to /usr/local/cuda/samples and run the following command to build the samples:
-
-    ```bash
-    sudo make all -j8
-    ```
-
-    After the compilation is complete, go to /usr/local/cuda/samples/1_Utilities/deviceQuery, and run the following command:
-
-    ```bash
-    ./deviceQuery
     ```

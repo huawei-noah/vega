@@ -8,21 +8,36 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 # MIT License for more details.
 
-"""Defined RandomHpo class."""
-from vega.algorithms.hpo.common import RandomSearch
-from vega.core.common.class_factory import ClassFactory, ClassType
-from vega.algorithms.hpo.hpo_base import HPOBase
+"""Defined RandomSearch class."""
+from zeus.common import ClassFactory, ClassType
+from vega.core.search_algs import SearchAlgorithm
 from .random_conf import RandomConfig
 
 
 @ClassFactory.register(ClassType.SEARCH_ALGORITHM)
-class RandomHpo(HPOBase):
+class RandomSearch(SearchAlgorithm):
     """An Hpo of Random, inherit from HpoGenerator."""
 
     config = RandomConfig()
 
     def __init__(self, search_space=None, **kwargs):
-        """Init RandomHpo."""
-        super(RandomHpo, self).__init__(search_space, **kwargs)
-        config_count = self.config.policy.total_epochs // self.config.policy.epochs_per_iter
-        self.hpo = RandomSearch(self.hps, config_count, self.config.policy.epochs_per_iter)
+        """Init RandomSearch."""
+        super(RandomSearch, self).__init__(search_space, **kwargs)
+        self.sample_count = 0
+        self.max_sample = self.config.policy.num_sample
+
+    def search(self):
+        """Search function, Not Implemented Yet."""
+        self.sample_count += 1
+        params = self.search_space.sample()
+        return self.sample_count, params
+
+    @property
+    def is_completed(self):
+        """Check is completed."""
+        return self.sample_count >= self.max_sample
+
+    @property
+    def max_samples(self):
+        """Get max samples number."""
+        return self.max_sample

@@ -9,12 +9,13 @@ fully_train:
         common:
             upscale: 4
         train:
-            HR_dir: "/cache/datasets/DIV2K_unknown/DIV2K_HR_sub480"
-            LR_dir: "/cache/datasets/DIV2K_unknown/DIV2K_unknown_sub120"
-            batch_size: 16
+            HR_dir: "/cache/datasets/DIV2K_unpair/DIV2K_HR_sub480"
+            LR_dir: "/cache/datasets/DIV2K_unpair/DIV2K_unknown_sub120"
+            batch_size: 64
         test:
-            HR_dir: "/cache/datasets/DIV2K_unknown/DIV2K_valid_HR"
-            LR_dir: "/cache/datasets/DIV2K_unknown/DIV2K_valid_LR_unknown"
+            HR_dir: "/cache/datasets/DIV2K_unpair/DIV2K_valid_HR"
+            LR_dir: "/cache/datasets/DIV2K_unpair/DIV2K_valid_LR_unknown"
+            batch_size: 1
 
     trainer:
         type: Trainer
@@ -28,13 +29,11 @@ fully_train:
         val_ps_offset: 10
         continue_train: !!null
         lr_policy: linear
-        verbose: False
-        cuda: True
         distributed: False
         model_desc:
             modules: ["custom"]
             custom:
-                name: CycleSRModel
+                type: CycleSRModel
                 SR_lam: 1000
                 cycleSR_lam: 1000
                 grad_clip: 50

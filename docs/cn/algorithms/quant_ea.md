@@ -63,7 +63,7 @@ CIFAR-10数据集集配置信息如下：
 
 ### 4.3 运行环境配置
 
-在配置文件中进行参数配置，包括搜索量化模型、训练量化模型2个过程，对应配置文件``examples/compression/quant_ea/config.yml``中的`nas1`和`fully_train`。
+在配置文件中进行参数配置，包括搜索量化模型、训练量化模型2个过程，对应配置文件``examples/compression/quant_ea/config.yml``中的`nas`和`fully_train`。
 
 配置文件在`main.py`中直接传入给pipeline，两个过程会依次进行，搜索过程会搜出Pareto前沿，然后训练过程会把前沿的模型训到底，得到最终的表现。
 

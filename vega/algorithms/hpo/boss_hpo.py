@@ -11,7 +11,7 @@
 """Defined BohbHpo class."""
 from math import log, pow, sqrt
 from vega.algorithms.hpo.common import BOSS
-from vega.core.common.class_factory import ClassFactory, ClassType
+from zeus.common import ClassFactory, ClassType
 from vega.algorithms.hpo.hpo_base import HPOBase
 from .boss_conf import BossConfig
 
@@ -25,15 +25,15 @@ class BossHpo(HPOBase):
     def __init__(self, search_space=None, **kwargs):
         """Init BossHpo."""
         super(BossHpo, self).__init__(search_space, **kwargs)
-        if self.config.policy.epochs_per_iter < 3:
+        if self.config.policy.max_epochs < 3:
             raise ValueError('set total_epochs illegal, count not less than 3!')
         num_samples = self.config.policy.num_samples
-        epochs_per_iter = self.config.policy.epochs_per_iter
+        max_epochs = self.config.policy.max_epochs
         repeat_times = self.config.policy.repeat_times
         if self.config.policy.total_epochs != -1:
             total_epochs = self.config.policy.total_epochs
-            num_samples, epochs_per_iter = self.design_parameter(total_epochs, repeat_times)
-        self.hpo = BOSS(self.hps, num_samples, epochs_per_iter, repeat_times)
+            num_samples, max_epochs = self.design_parameter(total_epochs, repeat_times)
+        self.hpo = BOSS(self.search_space, num_samples, max_epochs, repeat_times)
 
     def design_parameter(self, total_epochs, repeat_times):
         """Design parameters based on total_epochs.
@@ -67,8 +67,8 @@ class BossHpo(HPOBase):
             elif current_budget > total_epochs:
                 num_samples -= 1
                 break
-        epochs_per_iter = max(min_epoch_list)
-        return num_samples, epochs_per_iter
+        max_epochs = max(min_epoch_list)
+        return num_samples, max_epochs
 
     def get_iter_epoch_list(self, num_samples, repeat_times):
         """Calculate each rung for all iters of Hyper Band algorithm.

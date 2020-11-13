@@ -18,15 +18,17 @@ import numpy as np
 import torch
 import json
 from tensorboardX import SummaryWriter
-from vega.datasets.pytorch.common.dataset import Dataset
-from vega.core.common import init_log, TaskOps, FileOps
-from vega.core.report.report import Report, ReportRecord
-from vega.core.common.class_factory import ClassFactory, ClassType
-from vega.core.trainer.trainer import Trainer
-from vega.search_space.networks import NetworkDesc
-from vega.core.trainer.callbacks import Callback
+from zeus.datasets import Adapter
+from zeus.datasets.common.utils.dataset import Dataset
+from zeus.common import init_log, FileOps
+from zeus.common.general import General
+from zeus.report import Report, ReportRecord
+from zeus.common import ClassFactory, ClassType
+from zeus.networks.network_desc import NetworkDesc
+from zeus.trainer.callbacks import Callback
 from .utils import AverageMeter
 from .utils import TensorNorm
+
 
 try:
     import horovod.torch as hvd
@@ -42,7 +44,7 @@ class CyclesrTrainerCallback(Callback):
     """A special callback for Trainer."""
 
     disable_callbacks = ["ModelStatistics", "MetricsEvaluator", "ModelCheckpoint", "PerformanceSaver",
-                         "LearningRateScheduler", "ProgressLogger", "ReportCallback"]
+                         "LearningRateScheduler", "ProgressLogger", "ReportCallback", "ModelBuilder"]
 
     def __init__(self):
         """Initialize method."""
@@ -54,8 +56,6 @@ class CyclesrTrainerCallback(Callback):
         self.trainer._train_loop = self.train_process
         self.cfg = self.trainer.config
         self._worker_id = self.trainer._worker_id
-        if hasattr(self.cfg, "kwargs") and "spnas_sample" in self.cfg.kwargs:
-            self.sample_result = self.cfg.kwargs["spnas_sample"]
         self.worker_path = self.trainer.get_local_worker_path()
         self.output_path = self.trainer.local_output_path
         self.best_model_name = "model_best"
@@ -278,7 +278,9 @@ class CyclesrTrainerCallback(Callback):
     def train_process(self):
         """Whole train and validate process for the fully train cyclesr."""
         # self._init_all_settings()
-        init_log(log_file="worker_{}.txt".format(self.trainer.worker_id))
+        init_log(level=General.logger.level,
+                 log_file="log_worker_{}.txt".format(self.trainer.worker_id),
+                 log_path=self.trainer.local_log_path)
         self._init_report()
         if self.cfg.cuda:
             self.trainer._init_cuda_setting()
@@ -288,8 +290,8 @@ class CyclesrTrainerCallback(Callback):
             self._init_horovod_setting()
         self.train_data = self._init_dataloader('train')
         self.valid_data = self._init_dataloader('test')
-        train_dataloader = self.train_data.dataloader
-        valid_dataloader = self.valid_data.dataloader
+        train_dataloader = Adapter(self.train_data).loader
+        valid_dataloader = Adapter(self.valid_data).loader
 
         writer = SummaryWriter(self.worker_path)
 
