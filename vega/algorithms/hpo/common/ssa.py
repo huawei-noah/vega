@@ -39,8 +39,8 @@ import random
 class SSA(ShaBase):
     """SSA (Successive Halving Algorithm).
 
-    :param hyperparameter_space: a pre-defined search space.
-    :type hyperparameter_space: object, instance os `HyperparameterSpace`.
+    :param search_space: a pre-defined search space.
+    :type search_space: object, instance os `SearchSpace`.
     :param int config_count: Description of parameter `config_count`.
     :param int max_epochs: Description of parameter `max_epochs`.
     :param min_epochs: Description of parameter `min_epochs`.
@@ -50,11 +50,10 @@ class SSA(ShaBase):
     :param bool empty: default `False`.
     """
 
-    def __init__(self, hyperparameter_space, config_count, max_epochs, min_epochs=1,
+    def __init__(self, search_space, config_count, max_epochs, min_epochs=1,
                  eta=3, empty=False):
         """Init SSA."""
-        super().__init__(hyperparameter_space, config_count, max_epochs, min_epochs,
-                         eta)
+        super().__init__(search_space, config_count, max_epochs, min_epochs, eta)
         # hyperband algorithm init params
         self.start_id = 0
         self.s_max = int(log(max_epochs / min_epochs) / log(eta))
@@ -69,14 +68,14 @@ class SSA(ShaBase):
         self.config_list = []
         current_config_num = config_count
         current_epoch = self.single_epoch
-        while(current_config_num != 0):
+        while (current_config_num != 0):
             self.config_list.append(current_config_num)
             self.budget_list.append(min(max(current_epoch, self.min_epochs), max_epochs))
             current_config_num //= eta
             current_epoch *= eta
 
         if not empty:
-            hyperparameter_list = self.get_hyperparameter_space(config_count)
+            hyperparameter_list = self.get_hyperparameters(config_count)
             for i in range(self.total_rungs):
                 self.best_score_dict[i] = {}
             for i in range(0, len(hyperparameter_list)):

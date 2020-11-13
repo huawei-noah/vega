@@ -55,34 +55,38 @@ PBA搜索过程通常为如下步骤：
 在配置文件中，可以调整使用的数据增广操作。
 
 ```yaml
-pipeline: [hpo1]
+pipeline: [hpo]
 
-hpo1:
+hpo:
     pipe_step:
-        type: HpoPipeStep
+        type: NasPipeStep
     dataset:
         type: Cifar10
-    hpo:
-        type: PBAHpo              # 优化方法
-        each_epochs: 3            # 每轮trainer需要训练的epoch数目
-        config_count: 16          # 搜索算法并行训练的模型组数
-        total_rungs: 200          # 搜索算法迭代轮数
+    search_space:
+        type: SearchSpace
         transformers:
-            Cutout: True
-            Rotate: True
-            Translate_X: True
-            Translate_Y: True
-            Brightness: True
-            Color: True
-            Invert: True
-            Sharpness: True
-            Posterize: True
-            Shear_X: True
-            Solarize: True
-            Shear_Y: True
-            Equalize: True
-            AutoContrast: True
-            Contrast: True
+            - Cutout: True
+            - Rotate: True
+            - Translate_X: True
+            - Translate_Y: True
+            - Brightness: True
+            - Color: True
+            - Invert: True
+            - Sharpness: True
+            - Posterize: True
+            - Shear_X: True
+            - Solarize: True
+            - Shear_Y: True
+            - Equalize: True
+            - AutoContrast: True
+            - Contrast: True
+
+    search_algorithm:
+        type: PBAHpo
+        policy:
+            each_epochs: 3            # 每轮trainer需要训练的epoch数目
+            config_count: 16          # 搜索算法并行训练的模型组数
+            total_rungs: 200          # 搜索算法迭代轮数
     trainer:
         type: Trainer
     evaluator:
@@ -110,9 +114,13 @@ output:
     hps.csv:          其中为pba算法搜索阶段得到的16组数据增广策略表的ID与得分
     score_board.csv:  其中为pba算法搜索阶段得到的16组数据增广操作每轮迭代过程中的具体得分与状态
 workers:
-    hpo1:             其中16个文件夹分别为16组模型的最终结果，包括得分与模型等
+    hpo:             其中16个文件夹分别为16组模型的最终结果，包括得分与模型等
         0:
         1:
         ...
         16:
 ```
+
+## 6. Benchmark
+
+Benchmark配置信息请参考: [pba.yml](https://github.com/huawei-noah/vega/tree/master/benchmark/algs/data_augmentation/pba.yml)

@@ -1,2 +1,2 @@
-from .master import Master
-from .local_master import LocalMaster
+from .create_master import create_master
+from .shutdown_cluster import shutdown_cluster

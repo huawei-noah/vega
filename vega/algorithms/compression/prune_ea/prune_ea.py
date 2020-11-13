@@ -13,9 +13,9 @@ import logging
 import random
 import numpy as np
 from .conf import PruneConfig
-from vega.core.common.class_factory import ClassFactory, ClassType
-from vega.core.report import Report
-from vega.search_space.search_algs import SearchAlgorithm
+from zeus.common import ClassFactory, ClassType
+from zeus.report import Report
+from vega.core.search_algs import SearchAlgorithm
 
 
 @ClassFactory.register(ClassType.SEARCH_ALGORITHM)
@@ -80,9 +80,8 @@ class PruneEA(SearchAlgorithm):
         if self.random_count < self.random_models:
             self.random_count += 1
             desc = self._random_sample()
-            desc.update({"trainer.codec": dict(desc)})
+            # desc.update({"trainer.codec": dict(desc)})
             return self.random_count, desc
-        self.ea_epoch += 1
         records = Report().get_pareto_front_records(self.step_name, self.num_individual)
         codes = [record.desc.get('backbone').get('encoding') for record in records]
         logging.info("codes=%s", codes)
@@ -101,7 +100,6 @@ class PruneEA(SearchAlgorithm):
         if self.ea_count % self.num_individual == 0:
             self.ea_epoch += 1
         desc = self.codec.decode(encoding_new)
-        desc.update({"trainer.codec": dict(desc)})
         return self.random_count + self.ea_count, desc
 
     def _random_sample(self):
@@ -120,3 +118,8 @@ class PruneEA(SearchAlgorithm):
     def is_completed(self):
         """Whether to complete algorithm."""
         return self.ea_epoch >= self.num_generation
+
+    @property
+    def max_samples(self):
+        """Get max samples number."""
+        return self.num_individual * self.num_generation + self.random_models

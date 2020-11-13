@@ -1,7 +1,3 @@
-general:
-    worker:
-        devices_per_job: -1
-
 pipeline: [search, retrain]
 
 search:
@@ -12,12 +8,13 @@ search:
         type: AvazuDataset
         batch_size: 2000
         common:
-            data_path: /cache/datasets/avazu/
+            data_path: /cache/datasets/Avazu/
 
     model:
         model_desc:
             modules: ["custom"]
             custom:
+                type: AutoGateModel
                 input_dim: 645195
                 input_dim4lookup: 24
                 embed_dim: 40
@@ -29,12 +26,12 @@ search:
                 alpha_activation: 'tanh'
                 selected_pairs: []
                 fis_ratio: 0.3
-                name: AutoGateModel
+
     trainer:
         type: Trainer
         callbacks: AutoGateS1TrainerCallback
         epochs: 1
-        optim:
+        optimizer:
             type: Adam
             params:
                 lr: 0.001
@@ -52,7 +49,9 @@ search:
         type: Evaluator
         gpu_evaluator:
             type: GpuEvaluator
-            ref: trainer
+            metric:
+                type: auc
+
 
 
 retrain:
@@ -63,7 +62,7 @@ retrain:
         type: AvazuDatasetNew
         batch_size: 2000
         common:
-            data_path: /cache/datasets/avazu/
+            data_path: /cache/datasets/Avazu/
 
     model:
         model_desc:
@@ -81,12 +80,12 @@ retrain:
                 alpha_activation: 'tanh'
                 selected_pairs: []
                 fis_ratio: 0.3
-                name: AutoGateModel
+                type: AutoGateModel
     trainer:
         type: Trainer
         callbacks: AutoGateS2TrainerCallback
         epochs: 1
-        optim:
+        optimizer:
             type: Adam
             params:
                 lr: 0.001
@@ -104,4 +103,6 @@ retrain:
         type: Evaluator
         gpu_evaluator:
             type: GpuEvaluator
-            ref: trainer
+            metric:
+                type: auc
+

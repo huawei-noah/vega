@@ -19,7 +19,7 @@ import logging
 import time
 from datetime import datetime
 from distributed import Client
-from ..trainer import utils
+from zeus.trainer import utils
 import shutil
 
 
@@ -30,13 +30,13 @@ class DaskEnv(object):
          contain `init_method`, `rank` and `world_size`.
     :param str master_path: a python path that need to add in SYSPATH before
         all environment been setup.
-    :param int devices_per_job: .
+    :param int devices_per_trainer: .
     :param float worker_portion: the portion of workers that must wait to
          till connected with dask-scheduler.
 
     """
 
-    def __init__(self, args, master_path, devices_per_job, temp_path, worker_portion=1.0):
+    def __init__(self, args, master_path, devices_per_trainer, temp_path, worker_portion=1.0):
         """Init DaskEnv and set basic attrs."""
         self.args = args
         self.worker_portion = worker_portion
@@ -49,7 +49,7 @@ class DaskEnv(object):
         self.slave_num = None
         self.slave_proc_num = None
         self.slave_device_num_per_proc = None
-        self._set_slave_num(devices_per_job)
+        self._set_slave_num(devices_per_trainer)
         self._cluster_pid = []
         self.slaves = []
         if 'slaves' in self.args and self.args.slaves:
@@ -150,7 +150,7 @@ class DaskEnv(object):
 
         if self.args.rank == 0:
             # host = utils.get_local_address()
-            utils.write_ip(the_ip, the_port, self.args)
+            utils.save_master_ip(the_ip, the_port, self.args)
             address = "--node-ip-address={}".format(the_ip)
             port = "--port={}".format(the_port)
             try:

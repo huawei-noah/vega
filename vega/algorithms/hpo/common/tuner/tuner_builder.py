@@ -11,7 +11,6 @@
 """Base Tuner."""
 import numpy as np
 import logging
-from vega.core.hyperparameter_space import hp2json
 from .tuner_model import TunerModel
 from .acquire_function import expected_improvement, thompson_sampling
 
@@ -21,19 +20,19 @@ LOG = logging.getLogger("vega.hpo")
 class TunerBuilder(object):
     """A Base class for Tuner."""
 
-    def __init__(self, hyperparameter_space, gridding=False, tuner='GPEI'):
+    def __init__(self, search_space, gridding=False, tuner='GPEI'):
         """Init TunerBuilder.
 
-        :param hyperparameter_space: [HyperparameterSpace]
+        :param search_space: [SearchSpace]
         :param gridding:
         """
         self.min_count_score = 1
-        self.hyperparameter_space = hyperparameter_space
-        self.hyperparameter_list = hyperparameter_space.get_hyperparameters()
+        self.search_space = search_space
+        self.params = search_space.params()
         self.tuner = tuner
         self._init_model(tuner)
         self._best_score = -1 * float('inf')
-        self._best_hyperparams = None
+        self._best_params = None
         self.grid = gridding
         self.feature_raw = None
         self.label_raw = np.array([])
@@ -46,13 +45,9 @@ class TunerBuilder(object):
         :param tuner_model:
         :return:
         """
-        self.model = TunerModel(tuner_model, self.min_count_score, self.hyperparameter_list)
+        self.model = TunerModel(tuner_model, self.min_count_score, self.params)
         if self.model is None:
             LOG.error('Tuner model not exist, model=%s', tuner_model)
-
-    def get_best_hyperparams(self):
-        """Get best hyperparams."""
-        return self._best_hyperparams, self._best_score
 
     def add(self, feature, label):
         """Add feature and label to train model.
@@ -78,12 +73,12 @@ class TunerBuilder(object):
         # transform hyperparameter based on its dtype
         feature_trans = np.array([], dtype=np.float64)
         if len(self.feature_raw.shape) > 1 and self.feature_raw.shape[1] > 0:
-            feature_trans = self.hyperparameter_list[0].fit_transform(
+            feature_trans = self.params[0].encode(
                 self.feature_raw[:, 0], self.label_raw
             ).astype(float).reshape(-1, 1)
 
             for i_feature_row in range(1, self.feature_raw.shape[1]):
-                trans = self.hyperparameter_list[i_feature_row].fit_transform(
+                trans = self.params[i_feature_row].encode(
                     self.feature_raw[:, i_feature_row], self.label_raw
                 ).astype(float).reshape(-1, 1)
                 feature_trans = np.column_stack((feature_trans, trans))
@@ -102,7 +97,7 @@ class TunerBuilder(object):
                 self._best_score = label[i_feature]
                 self._best_hyperparams = feature[i_feature]
             tmp_param_list = []
-            for param in self.hyperparameter_list:
+            for param in self.params:
                 if param.get_name() in each:
                     tmp_param_list.append(each[param.get_name()])
                 else:
@@ -135,21 +130,21 @@ class TunerBuilder(object):
         """
         params_list = []
         for param in self._propose(num):
-            params_list.append(hp2json(param))
+            params_list.append(dict(param))
         return params_list
 
     def _propose(self, num):
-        """Use the trained model to propose a set of params from HyperparameterSpace.
+        """Use the trained model to propose a set of params from SearchSpace.
 
         :param num: int, number of hps to propose.
         :return list<HyperParameter>
         """
         params_list = []
         if self.tuner == 'GridSearch':
-            params = self.hyperparameter_space.get_sample_space(gridding=True)
+            params = self.search_space.get_sample_space(gridding=True)
             LOG.info('Start to transform hyper-parameters')
             for param in params:
-                param = self.hyperparameter_space.inverse_transform(param)
+                param = self.search_space.deocde(param)
                 # Remove duplicate hyper-parameters
                 if param not in params_list:
                     params_list.append(param)
@@ -157,17 +152,15 @@ class TunerBuilder(object):
                      len(params_list))
         else:
             for _ in range(num):
-                parameters = self.hyperparameter_space.get_sample_space(
-                    gridding=self.grid, n=1000)
+                parameters = self.search_space.get_sample_space(gridding=self.grid, n=1000)
                 if parameters is None:
                     LOG.error(
-                        'Sample space of HyperparameterSpace acquire failed, ds=%s',
-                        self.hyperparameter_space.get_hyperparameter_names())
+                        'Sample space of SearchSpace acquire failed, ds=%s',
+                        self.search_space.get_hyperparameter_names())
                     return None
                 predictions = self.predict(parameters)
                 index = self.acquire_function(predictions)
-                param = self.hyperparameter_space.inverse_transform(
-                    parameters[index, :])
+                param = self.search_space.decode(parameters[index, :])
                 params_list.append(param)
         return params_list
 

@@ -11,9 +11,10 @@
 
 import logging
 import pandas as pd
-from vega.core.common.class_factory import ClassFactory, ClassType
-from vega.core.common import FileOps
+from zeus.common import ClassFactory, ClassType
+from zeus.common import FileOps
 from vega.algorithms.nas.fis.ctr_trainer_callback import CtrTrainerCallback
+from vega.core.pipeline.conf import ModelConfig
 
 logger = logging.getLogger(__name__)
 
@@ -45,16 +46,15 @@ class AutoGateS2TrainerCallback(CtrTrainerCallback):
         sorted_pairs = sorted(feature_interaction_score.items(),
                               key=lambda x: abs(x[1]), reverse=True)
 
-        model_cfg = ClassFactory.__configs__.get('model')
-        if model_cfg:
-            fis_ratio = model_cfg["model_desc"]["custom"]["fis_ratio"]
+        if ModelConfig.model_desc:
+            fis_ratio = ModelConfig.model_desc["custom"]["fis_ratio"]
         else:
             fis_ratio = 1.0
         top_k = int(len(feature_interaction_score) * min(1.0, fis_ratio))
         self.selected_pairs = list(map(lambda x: x[0], sorted_pairs[:top_k]))
 
         # add selected_pairs
-        setattr(model_cfg["model_desc"]["custom"], 'selected_pairs', self.selected_pairs)
+        setattr(ModelConfig.model_desc['custom'], 'selected_pairs', self.selected_pairs)
 
     def after_train(self, logs=None):
         """Call after_train of the managed callbacks."""

@@ -12,17 +12,17 @@
 import logging
 import copy
 import vega
-from vega.core.common.class_factory import ClassFactory, ClassType
-from vega.core.trainer.callbacks import Callback
-from vega.core.metrics import calc_model_flops_params
+from zeus.common import ClassFactory, ClassType
+from zeus.trainer.callbacks import Callback
+from zeus.metrics import calc_model_flops_params, calc_forward_latency
+from zeus.networks.quant import Quantizer
+from zeus.trainer.modules.lr_schedulers import LrScheduler
+from zeus.trainer.modules.optimizer import Optimizer
 
 if vega.is_torch_backend():
     import torch
-    from .utils.pytorch.quant_model import Quantizer
-    from .utils.pytorch.quant_conv import quant_custom_ops
 elif vega.is_tf_backend():
     import tensorflow as tf
-    from .utils.tensorflow.quant_model import Quantizer
 
 
 @ClassFactory.register(ClassType.CALLBACK)
@@ -35,52 +35,41 @@ class QuantTrainerCallback(Callback):
         super(Callback, self).__init__()
         self.flops_count = None
         self.params_count = None
+        self.latency_count = None
 
     def before_train(self, logs=None):
         """Be called before the train process."""
         self.config = self.trainer.config
-        self.device = self.trainer.config.device
-        self.model_code = copy.deepcopy(self.trainer.config.codec)
+        model_code = copy.deepcopy(self.trainer.model.desc)
+        model = self.trainer.model
+        logging.info('current code: %s, %s', model_code.nbit_w_list, model_code.nbit_a_list)
+        quantizer = Quantizer(model, model_code.nbit_w_list, model_code.nbit_a_list)
+        model = quantizer()
+        self.trainer.model = model
+        count_input = [1, 3, 32, 32]
+        sess_config = None
         if vega.is_torch_backend():
-            self.trainer.model._init_weights()
-            self.trainer.model = self._quantize_model(self.trainer.model).to(self.device)
-            input = torch.randn(1, 3, 32, 32).to(self.device)
-            self.flops_count, self.params_count = calc_model_flops_params(
-                self.trainer.model, input, quant_custom_ops())
+            model = model.cuda()
+            self.trainer.optimizer = Optimizer()(model=self.trainer.model, distributed=self.trainer.distributed)
+            self.trainer.lr_scheduler = LrScheduler()(self.trainer.optimizer)
+            count_input = torch.FloatTensor(*count_input).cuda()
         elif vega.is_tf_backend():
-            tf.reset_default_graph()
-            self.trainer.model = self._quantize_model(self.trainer.model)
-            quant_info = copy.deepcopy(self.trainer.model.quant_info)
-            input = tf.random_uniform([1, 32, 32, 3], dtype=tf.float32)
-            self.flops_count, self.params_count = calc_model_flops_params(self.trainer.model, input)
-            self.flops_count += quant_info['extra_flops']
-            self.params_count += quant_info['extra_params']
+            tf.compat.v1.reset_default_graph()
+            count_input = tf.random.uniform(count_input, dtype=tf.float32)
+            sess_config = self.trainer._init_session_config()
+        self.flops_count, self.params_count = calc_model_flops_params(model, count_input,
+                                                                      custom_hooks=quantizer.custom_hooks())
+        self.latency_count = calc_forward_latency(model, count_input, sess_config)
+        logging.info("after quant model glops=%sM, params=%sK, latency=%sms",
+                     self.flops_count * 1e-6, self.params_count * 1e-3, self.latency_count * 1000)
         self.validate()
 
     def after_epoch(self, epoch, logs=None):
-        """Update gflops and kparams."""
+        """Update flops and params."""
         summary_perfs = logs.get('summary_perfs', {})
-        summary_perfs.update({'gflops': self.flops_count, 'kparams': self.params_count})
+        summary_perfs.update({'flops': self.flops_count * 1e-6, 'params': self.params_count * 1e-3,
+                              'latency': self.latency_count * 1000})
         logs.update({'summary_perfs': summary_perfs})
-
-    def _quantize_model(self, model):
-        """Quantize the model.
-
-        :param model: pytorch model
-        :type model: nn.Module
-        :return: quantized pytorch model
-        :rtype: nn.Module
-        """
-        q = Quantizer()
-        if self.model_code is not None:
-            nbit_w_list = self.model_code.nbit_w_list
-            nbit_a_list = self.model_code.nbit_a_list
-        else:
-            nbit_w_list = model.nbit_w_list
-            nbit_a_list = model.nbit_a_list
-        logging.info('current code: %s, %s', nbit_w_list, nbit_a_list)
-        model = q.quant_model(model, nbit_w_list, nbit_a_list)
-        return model
 
     def validate(self):
         """Check whether the model fits in the #flops range or #parameter range specified in config.

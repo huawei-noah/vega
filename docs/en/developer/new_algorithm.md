@@ -1,393 +1,392 @@
 # Algorithm Development Guide
 
-Add new algorithms to the Vega library, such as the new network search algorithm, model compression algorithm, hyperparameter optimization algorithm, and data augmentation algorithm. The algorithms need to be extended based on the basic class provided by Vega and the new files need to be stored in an appropriate directory.
+New algorithms, such as new network search algorithms, model compression algorithm, hyperparameter optimization algorithms, and data augmentation algorithms, need to be extended based on the basic classes provided by Vega. The core of the AutoML algorithm is search space, search algorithm, network construction and evaluation. The new algorithm mainly considers these aspects.
 
-## 1. Added architecture search or model compression algorithm
+## 1. Add a schema search algorithm
 
-The procedure for adding an architecture search algorithm is similar to that for adding a model compression algorithm. The following uses the compression algorithm Prune-EA model as an example to describe how to add an architecture search algorithm or model compression algorithm to the Vega algorithm library.
+The compression algorithm `BackboneNAS` model is used as an example to describe how to add an architecture search algorithm to the Vega algorithm library.
 
 ### 1.1 Starting from the configuration file
 
-First, we start from the configuration file. Any Vega algorithm is configured through the configuration items in the configuration file, and the configuration information is loaded during the running. The components of the algorithm are combined to form a complete algorithm, and the configuration file controls the running process of the algorithm. For the new Prune-EA algorithm, the following configuration file can be used:
+First, let's start from the configuration file. Any algorithm of Vega is configured through configuration items in the configuration file and loaded during running. All components of the algorithm are combined to form a complete algorithm. A configuration file is used to control the algorithm running process.
+
+For the new BackboneNas algorithm, the configuration file is as follows:
 
 ```yaml
-pipeline: [nas]
-
 nas:
     pipe_step:
         type: NasPipeStep
+
+    search_algorithm:
+        type: BackboneNas
+        codec: BackboneNasCodec
+        policy:
+            num_mutate: 10
+            random_ratio: 0.2
+        range:
+            max_sample: 100
+            min_sample: 10
+
+    search_space:
+        hyperparameters:
+            -   key: network.backbone.depth
+                type: CATEGORY
+                range: [18, 34, 50, 101]
+            -   key: network.backbone.base_channel
+                type: CATEGORY
+                range:  [32, 48, 56, 64]
+            -   key: network.backbone.doublechannel
+                type: CATEGORY
+                range: [3, 4]
+            -   key: network.backbone.downsample
+                type: CATEGORY
+                range: [3, 4]
+    model:
+        model_desc:
+            modules: ['backbone']
+            backbone:
+                type: ResNet
+
+    trainer:
+        type: Trainer
+        epochs: 1
+        loss:
+            type: CrossEntropyLoss
+            params:
+                sparse: True
 
     dataset:
         type: Cifar10
         common:
             data_path: /cache/datasets/cifar10/
-            train_portion: 0.9
-        test:
-            batch_size: 1024
-
-    search_algorithm:
-        type: PruneEA
-        codec: PruneCodec
-        policy:
-            length: 464
-            num_generation: 31
-            num_individual: 32
-            random_models: 64
-
-    search_space:
-        type: SearchSpace
-        modules: ['backbone']
-        backbone:
-            name: 'PruneResNet'
-            base_chn: [16,16,16,32,32,32,64,64,64]
-            base_chn_node: [16,16,32,64]
-            num_classes: 10
-
-    trainer:
-        type: Trainer
-        callbacks: PruneTrainerCallback
-        epochs: 1
-        init_model_file: "/cache/models/resnet20.pth"
-        optim:
-            type: SGD
-            params:
-                lr: 0.1
-                momentum: 0.9
-                weight_decay: !!float 1e-4
-        lr_scheduler:
-            type: StepLR
-            params:
-                step_size: 20
-                gamma: 0.5
-        seed: 10
-        limits:
-            flop_range: [!!float 0, !!float 1e10]
 ```
 
-In the preceding configuration file:
+In the configuration file, the search_algorithm, search_space, and model sections define the search algorithm, search space, and network model respectively. The following sections describe the three sections in detail.
 
-1. The pipeline configuration item is an array that contains multiple pipeline steps. The Vega loads these steps in sequence to form a complete running process. In this example, there is only one step, nas1. You can customize the name.
-2. The type attribute of the pipe_step configuration item under the configuration item nas1 is NasPipeStep provided by the Vega library, which is dedicated to network architecture search and model compression.
-3. The dataset under the configuration item nas1 is the data set used by the algorithm. Currently, the database class Cifar10 in Vega is configured.
-4. The other three configuration items under the configuration item nas1 are search_space, search_algorithm, and trainer, which are closely related to the algorithm. The four configuration items correspond to the classes PruneResNet, PruneEA, and PruneTrainer respectively, this article will then focus on these three parts.
+### 1.2 Design Search Space and Network Architecture
 
-### 1.2 Design the search space.
-
-Assume that the compression algorithm model is a pruning algorithm. For a ResNet network, one or more layers of the network are pruned. Assume that the search space provided by the Vega library does not meet the requirements of the algorithm. You need to add a search space. The network corresponding to the search space is named PruneResNet. The key attributes of the network are base channel and base channel node. The search space of the algorithm can be defined as follows:
+For the ResNet network, the search space is defined as depth, base_channel, doublechannel, and downsample. The search space and network structure can be defined as follows:
 
 ```yaml
     search_space:
-        type: SearchSpace
-        modules: ['backbone']
-        backbone:
-            name: 'PruneResNet'
-            base_chn: [16,16,16,32,32,32,64,64,64]
-            base_chn_node: [16,16,32,64]
-            num_classes: 10
+        hyperparameters:
+            -   key: network.backbone.depth
+                type: CATEGORY
+                range: [18, 34, 50, 101]
+            -   key: network.backbone.base_channel
+                type: CATEGORY
+                range:  [32, 48, 56, 64]
+            -   key: network.backbone.doublechannel
+                type: CATEGORY
+                range: [3, 4]
+            -   key: network.backbone.downsample
+                type: CATEGORY
+                range: [3, 4]
+    model:
+        model_desc:
+            modules: ['backbone']
+            backbone:
+                type: ResNet
 ```
 
-The initialization algorithm for the network is as follows:
+The initialization algorithm for this network is as follows:
 
 ```python
-@NetworkFactory.register(NetTypes.BACKBONE)
-class PruneResNet(Network):
+@ClassFactory.register(ClassType.NETWORK)
+class ResNet(Module):
+    """Create ResNet SearchSpace."""
 
-    def __init__(self, descript):
-        super(PruneResNet, self).__init__()
-        self.net_desc = descript
-        block = descript.get('block', 'PruneBasicBlock')
-        if block == 'PruneBasicBlock':
-            self.block = eval(block)
-        else:
-            raise TypeError('Do not have this block type: {}'.format(block))
-        self.encoding = descript.get('encoding')
-        self.chn = descript.get('chn')
-        self.chn_node = descript.get('chn_node')
-        self.chn_mask = descript.get('chn_mask', None)
-        self.chn_node_mask = descript.get('chn_node_mask', None)
-        num_blocks = descript.get('num_blocks', [3, 3, 3])
-        num_classes = descript.get('num_classes', 10)
-        self.in_planes = self.chn_node[0]
-        self.conv1 = nn.Conv2d(
-            3, self.chn_node[0], kernel_size=3, stride=1, padding=1, bias=False)
-        self.bn1 = nn.BatchNorm2d(self.chn_node[0])
-        self.layer1 = self._make_layer(
-            self.block, self.chn_node[1], self.chn[0:3], num_blocks[0], stride=1)
-        self.layer2 = self._make_layer(
-            self.block, self.chn_node[2], self.chn[3:6], num_blocks[1], stride=2)
-        self.layer3 = self._make_layer(
-            self.block, self.chn_node[3], self.chn[6:9], num_blocks[2], stride=2)
-        self.linear = nn.Linear(self.chn_node[3], num_classes)
+    def __init__(self, depth=18, base_channel=64, out_plane=None, stage=4, num_class=10, small_input=True,
+                 doublechannel=None, downsample=None):
+        """Create layers.
+
+        :param num_reps: number of layers
+        :type num_reqs: int
+        :param items: channel and stride of every layer
+        :type items: dict
+        :param num_class: number of class
+        :type num_class: int
+        """
+        super(ResNet, self).__init__()
+        self.backbone = ResNetGeneral(small_input, base_channel, depth, stage, doublechannel, downsample)
+        self.adaptiveAvgPool2d = AdaptiveAvgPool2d(output_size=(1, 1))
+        self.view = View()
+        out_plane = out_plane or self.backbone.output_channel
+        self.head = Linear(in_features=out_plane, out_features=num_class)
 ```
 
-The constructor takes only one descriptor parameter of the dict type, which contains all parameters required for constructing PruneResNet. The initializer needs to parse the descriptor parameter to a specific value to generate the network structure.
-
-PruneResNet also needs to be registered with NetworkFactory and classified as NetTypes.BACKBONE. In the example, the @NetworkFactory.register(NetTypes.BACKBONE) completes the registration process.
+The constructor of the network accepts parameters such as depth, base_channel, doublechannel, and downsample. These parameters are passed through the search algorithm. For details about the implementation of ResNetGeneral, see <https://github.com/huawei-noah/vega/blob/master/zeus/networks/resnet_general.py>.
 
 ### 1.3 Designing a Search Algorithm
 
-Assume that the new algorithm uses the evolutionary algorithm and the algorithms provided by Vega do not meet the requirements. The new evolutionary algorithm PruneEA needs to be implemented to adapt to PruneResNet. For the evolutionary algorithm, we need to provide the evolutionary algebra and population quantity. In addition, we need to define the function of evolutionary encoding and decoding, the configuration file is as follows:
+The BackboneNas algorithm uses an evolutionary algorithm. Therefore, we need to define the encoding and decoding functions of the evolutionary algorithm.
+
+The configuration file is as follows:
 
 ```yaml
     search_algorithm:
-        type: PruneEA
-        codec: PruneCodec
+        type: BackboneNas
+        codec: BackboneNasCodec
         policy:
-            length: 464
-            num_generation: 31
-            num_individual: 4
-            random_models: 32
+            num_mutate: 10
+            random_ratio: 0.2
+        range:
+            max_sample: 3 #100
+            min_sample: 1 #10
+
+    search_space:
+        hyperparameters:
+            -   key: network.backbone.depth
+                type: CATEGORY
+                range: [18, 34, 50, 101]
+            -   key: network.backbone.base_channel
+                type: CATEGORY
+                range:  [32, 48, 56, 64]
+            -   key: network.backbone.doublechannel
+                type: CATEGORY
+                range: [3, 4]
+            -   key: network.backbone.downsample
+                type: CATEGORY
+                range: [3, 4]
 ```
 
-The initialization code of the algorithm is as follows:
+The search algorithm code is as follows:
 
 ```python
 @ClassFactory.register(ClassType.SEARCH_ALGORITHM)
-class PruneEA(SearchAlgorithm):
+class BackboneNas(SearchAlgorithm):
+    """BackboneNas.
 
-    def __init__(self, search_space, **kwargs):
-        super(PruneEA, self).__init__(search_space, **kwargs)
-        self.length = self.config.policy.length
-        self.num_individual = self.config.policy.num_individual
-        self.num_generation = self.config.policy.num_generation
-        self.random_models = self.config.policy.random_models
-        self.random_count = 0
-        self.ea_count = 0
-        self.ea_epoch = 0
-```
+    :param search_space: input search_space
+    :type: SeachSpace
+    """
 
-Similarly, the PruneEA class needs to be registered with the ClassFactory. The @ClassFactory.register(ClassType.SEARCH_ALGORITHM) in the preceding code completes the registration process.
+    config = BackboneNasConfig()
 
-The most important function of PruneEA is to implement the search() interface, which is used to search for a network description from the search space. The implementation code is as follows:
-
-```python
-    def search(self):
-        if self.random_count < self.random_models:
-            self.random_count += 1
-            desc = self._random_sample()
-            desc.update({"trainer.codec": dict(desc)})
-            return self.random_count, desc
-        self.ea_epoch += 1
-        records = Report().get_pareto_front_records(self.step_name, self.num_individual)
-        codes = [record.desc.get('backbone').get('encoding') for record in records]
-        logging.info("codes=%s", codes)
-        if len(codes) < 2:
-            encoding1, encoding2 = codes[0], codes[0]
-        else:
-            encoding1, encoding2 = random.sample(codes, 2)
-        choice = random.randint(0, 1)
-        # mutate
-        if choice == 0:
-            encoding_new = self.mutatation(encoding1)
-        # crossover
-        else:
-            encoding_new, _ = self.crossover(encoding1, encoding2)
-        self.ea_count += 1
-        if self.ea_count % self.num_individual == 0:
-            self.ea_epoch += 1
-        desc = self.codec.decode(encoding_new)
-        desc.update({"trainer.codec": dict(desc)})
-        return self.random_count + self.ea_count, desc
-```
-
-The search() function returns the search id and network description to the generator.
-
-The PruneEA search algorithm uses codes. Therefore, a codec is required to parse the codes into network descriptions. The implementation code of the PruneCodec is as follows:
-
-```python
-class PruneCodec(Codec):
-
-    def __init__(self, codec_name, search_space):
-        super(PruneCodec, self).__init__(codec_name, search_space)
-        self.search_space = search_space.search_space
-
-    def decode(self, code):
-        chn_info = self._code_to_chninfo(code)
-        desc = {
-            "backbone": chn_info
-        }
-        desc = update_dict(desc, copy.deepcopy(self.search_space))
-        return desc
-```
-
-The decode() function in the PruneCodec accepts an encoding code parameter and decodes it into the network description of the PruneResNet initialization parameter based on the mapping with the actual network description.
-
-### 1.4 Customized Model Training Process
-
-In the pruning algorithm, some steps in the training process are unique, for example, loading and saving the model. The functions in the standard Trainer need to be rewritten on the two interfaces.
-
-In the loading model, the pre-trained model file of the pruning model is the model before pruning. Therefore, the model needs to be loaded to the model before pruning, and then pruning is performed based on the location that needs to be masked of the pruned model.
-
-When saving a model, a pruned model not only stores a trained model weight, but also stores model flaps, a parameter size, accuracy, model coding information, and the like of the model.
-
-Refer to [prunetrainer](../../../vega/algorithms/compression/prune_ea/prune_trainer_callback.py) for relevant codes.
-
-### 1.5 Example
-
-The complete implementation of the pruning algorithm can be implemented by using the code in the vega/algorithms/compression/prune_ea directory of the Vega SDK parameter.
-
-```python
-import vega
-
-
-if __name__ == '__main__':
-    vega.run('./prune.yml')
-```
-
-Execute the following command:
-
-```bash
-python main.py
-```
-
-After running, it will be saved as a file, and the model description file and performance evaluation results will be saved in the output directory.
-
-## 2. Add a new hyperparameter optimization algorithm
-
-The new hyper-parameter optimization algorithm can be implemented by referring to the existing hyperparameter optimization algorithm. This example describes how to add the hyperparameter optimization algorithm MyHpo to the Vega algorithm library.
-
-Because a current hyperparameter search space is relatively fixed, a hyperparameter optimization algorithm in Vega requires that the hyperparameter optimization algorithm can be conveniently replaced, that is, for a same search task and a same search space, another hyperparameter optimization algorithm can be directly replaced. Therefore, the example of adding MyHpo is directly used as the example of asha in examples, and the algorithm is replaced with MyHpo.
-
-### 2.1 Configuration Files
-
-First, we start from the configuration file. Any Vega algorithm is configured through the configuration items in the configuration file, and the configuration information is loaded during the running. The components of the algorithm are combined to form a complete algorithm, and the configuration file controls the running process of the algorithm. For the new MyHpo algorithm, the following configuration file similar to the asha file can be used:
-
-```yaml
-# 'myhpo.yml'
-pipeline: [hpo1]
-
-hpo1:
-    pipe_step:
-        type: HpoPipeStep
-    dataset:
-        type: Cifar10
-    hpo:
-        type: MyHpo
-        total_epochs: 81
-        config_count: 40
-        hyperparameter_space:
-            hyperparameters:
-                - key: dataset.batch_size
-                  type: INT_CAT
-                  range: [8, 16, 32, 64, 128, 256]
-                - key: trainer.optim.lr
-                  type: FLOAT_EXP
-                  range: [0.00001, 0.1]
-                - key: trainer.optim.type
-                  type: STRING
-                  range: ['Adam', 'SGD']
-                - key: trainer.optim.momentum
-                  type: FLOAT
-                  range: [0.0, 0.99]
-            condition:
-                - key: condition_for_sgd_momentum
-                  child: trainer.optim.momentum
-                  parent: trainer.optim.type
-                  type: EQUAL
-                  range: ["SGD"]
-
-    trainer:
-        type: Trainer
-
-    model:
-        model_desc:
-            modules: ["backbone", "head"]
-            backbone:
-                base_channel: 64
-                downsample: [1, 0, 1, 0, 0, 0, 1, 0]
-                base_depth: 18
-                doublechannel: [1, 0, 1, 0, 0, 0, 1, 0]
-                name: ResNetVariant
-            head:
-                num_classes: 10
-                name: LinearClassificationHead
-                base_channel: 512
-
-    evaluator:
-        type: Evaluator
-        gpu_evaluator:
-            type: GpuEvaluator
-            metric:
-                type: accuracy
-```
-
-In the preceding configuration file:
-
-1. The pipeline configuration item is an array that contains multiple pipeline steps. The Vega loads these steps in sequence to form a complete running process. In this example, there is only one step, hpo1. You can customize the name.
-2. The type attribute of the pipe_step configuration item in the hpo1 configuration item is HpoPipeStep provided by the Vega library, which is used for hyperparameter optimization. The PipeStep uses the Trainer to train the model and sends the model to the Evaluator for model evaluation.
-3. The dataset under the configuration item hpo1 is the data set used by the algorithm. Currently, the database class Cifar10 in Vega is configured.
-4. The other three configuration items under hpo1 are hpo, trainer, and evaluator. The hpo configuration item specifies whether to use the type=MyHpo algorithm, hyper-parameter space setting, or space setting in the asha example. Trainer and evaluator correspond to the configurations of the current model training and model evaluation, respectively. Here, the default Trainer and Evaluator are used. A randomly generated ResNetVarient is selected for the model, and the configuration is similar to that of the ASA example. The only difference between the configuration item and the ASHA example is that the algorithm type in the HPO is changed from AshaHpo to MyHpo. By default, no more special configuration items are added for the new algorithm. If there are special configuration items, add them to the HPO.
-
-### 2.2 Design Generator
-
-To decouple the core algorithm and vega.pipestep, an intermediate layer, that is, HpoGenerator, is added to interconnect with the pipestep interface and shield the differences between bottom-layer optimization algorithms. Therefore, you need to add a MyHpo class that inherits the vega.core.pipeline.hpo_generator.HpoGenerator base class provided by VEGA.
-
-The MyHpo class needs to implement interfaces such as proposal, is_completed, best_hps, and update_performance. When implementing these interfaces, the class needs to invoke the corresponding methods in the core optimization algorithm MyAlg implemented by the user, such as proposal, is_completed, and update, the MyHpo class is mainly used to solve the problem of interface combination at both ends and eliminate differences.
-
-```python
-@ClassFactory.register(ClassType.HPO)
-class MyHpo(HpoGenerator):
-    def __init__(self):
-        super(MyHpo, self).__init__()
-        hps = json_to_hps(self.cfg.hyperparameter_space)
-        self.hpo = MyAlg(hps, self.cfg.config_count,
-                        self.cfg.total_epochs)
-    def proposal(self):
-        # more adaptation operations
-        sample = self.hpo.propose()
-        # more adaptation operations
-        return sample
+    def __init__(self, search_space=None, **kwargs):
+        """Init BackboneNas."""
+        super(BackboneNas, self).__init__(search_space, **kwargs)
+        # ea or random
+        self.num_mutate = self.config.policy.num_mutate
+        self.random_ratio = self.config.policy.random_ratio
+        self.max_sample = self.config.range.max_sample
+        self.min_sample = self.config.range.min_sample
+        self.sample_count = 0
+        logging.info("inited BackboneNas")
+        self.pareto_front = ParetoFront(
+            self.config.pareto.object_count, self.config.pareto.max_object_ids)
+        self._best_desc_file = 'nas_model_desc.json'
 
     @property
     def is_completed(self):
-        return self.hpo.is_completed
+        """Check if NAS is finished."""
+        return self.sample_count > self.max_sample
+
+    def search(self):
+        """Search in search_space and return a sample."""
+        sample = {}
+        while sample is None or 'code' not in sample:
+            pareto_dict = self.pareto_front.get_pareto_front()
+            pareto_list = list(pareto_dict.values())
+            if self.pareto_front.size < self.min_sample or random.random() < self.random_ratio or len(
+                    pareto_list) == 0:
+                sample_desc = self.search_space.sample()
+                sample = self.codec.encode(sample_desc)
+            else:
+                sample = pareto_list[0]
+            if sample is not None and 'code' in sample:
+                code = sample['code']
+                code = self.ea_sample(code)
+                sample['code'] = code
+            if not self.pareto_front._add_to_board(id=self.sample_count + 1,
+                                                   config=sample):
+                sample = None
+        self.sample_count += 1
+        logging.info(sample)
+        sample_desc = self.codec.decode(sample)
+        print(sample_desc)
+        return dict(worker_id=self.sample_count, desc=sample_desc)
+
+    def random_sample(self):
+        """Random sample from search_space."""
+        sample_desc = self.search_space.sample()
+        sample = self.codec.encode(sample_desc, is_random=True)
+        return sample
+
+    def ea_sample(self, code):
+        """Use EA op to change a arch code.
+
+        :param code: list of code for arch
+        :type code: list
+        :return: changed code
+        :rtype: list
+        """
+        new_arch = code.copy()
+        self._insert(new_arch)
+        self._remove(new_arch)
+        self._swap(new_arch[0], self.num_mutate // 2)
+        self._swap(new_arch[1], self.num_mutate // 2)
+        return new_arch
+
+    def update(self, record):
+        """Use train and evaluate result to update algorithm.
+
+        :param performance: performance value from trainer or evaluator
+        """
+        perf = record.get("rewards")
+        worker_id = record.get("worker_id")
+        logging.info("update performance={}".format(perf))
+        self.pareto_front.add_pareto_score(worker_id, perf)
+
+    def _insert(self, arch):
+        """Random insert to arch code.
+
+        :param arch: input arch code
+        :type arch: list
+        :return: changed arch code
+        :rtype: list
+        """
+        idx = np.random.randint(low=0, high=len(arch[0]))
+        arch[0].insert(idx, 1)
+        idx = np.random.randint(low=0, high=len(arch[1]))
+        arch[1].insert(idx, 1)
+        return arch
+
+    def _remove(self, arch):
+        """Random remove one from arch code.
+
+        :param arch: input arch code
+        :type arch: list
+        :return: changed arch code
+        :rtype: list
+        """
+        # random pop arch[0]
+        ones_index = [i for i, char in enumerate(arch[0]) if char == 1]
+        idx = random.choice(ones_index)
+        arch[0].pop(idx)
+        # random pop arch[1]
+        ones_index = [i for i, char in enumerate(arch[1]) if char == 1]
+        idx = random.choice(ones_index)
+        arch[1].pop(idx)
+        return arch
+
+    def _swap(self, arch, R):
+        """Random swap one in arch code.
+
+        :param arch: input arch code
+        :type arch: list
+        :return: changed arch code
+        :rtype: list
+        """
+        while True:
+            not_ones_index = [i for i, char in enumerate(arch) if char != 1]
+            idx = random.choice(not_ones_index)
+            r = random.randint(1, R)
+            direction = -r if random.random() > 0.5 else r
+            try:
+                arch[idx], arch[idx + direction] = arch[idx + direction], arch[
+                    idx]
+                break
+            except Exception:
+                continue
+        return arch
 
     @property
-    def best_hps(self):
-        return self.hpo.best_config()
-
-    def update_performance(self, hps, performance):
-        # more adaptation operations
-        self.hpo.add_score(hps, performance)
-        # more adaptation operations
-
-    def _save_score_board(self):
-        pass
+    def max_samples(self):
+        """Get max samples number."""
+        return self.max_sample
 ```
 
-In addition, the HpoGenerator base class provides some methods for saving the HPO intermediate result and final result. You can implement interfaces such as _save_score_board to output the intermediate result of algorithm running. For details, see the intermediate result output of similar algorithms implemented in VEGA.
-
-### 2.3 Designing MyAlg
-
-The specific hyperparameter optimization algorithm is implemented in MyAlg. The domain_space is provided to map the current hyperparameter space, restrict the hyperparameters in the space, and provide the sampling and reverse mapping functions from the hyperparameter space.
-
-MyAlg can design different interfaces based on the design personnel's requirements. Different interfaces can be encapsulated and shielded by using the MyHpo class to ensure that the interfaces exposed to the Pipestep are unified.
-
-For details about the MyAlg design, refer to the hyperparameter optimization algorithms that have been implemented in VEGA.
+The encoding and decoding codes are as follows:
 
 ```python
-class MyAlg(object):
-    def __init__(self, hyperparameter_space, *args, **kargs):
-        self.is_completed = False
-        self.hyperparameter_space = hyperparameter_space
-        parameters = self.hyperparameter_space.get_sample_space()
 
-    def propose(self):
-        raise NotImplementedError
+@ClassFactory.register(ClassType.CODEC)
+class BackboneNasCodec(Codec):
+    """BackboneNasCodec.
 
-    def add_score(self, config_id, rung_id, score):
-        raise NotImplementedError
+    :param codec_name: name of current Codec.
+    :type codec_name: str
+    :param search_space: input search_space.
+    :type search_space: SearchSpace
 
-    def best_config(self):
-        raise NotImplementedError
+    """
+
+    def __init__(self, search_space=None, **kwargs):
+        """Init BackboneNasCodec."""
+        super(BackboneNasCodec, self).__init__(search_space, **kwargs)
+
+    def encode(self, sample_desc, is_random=False):
+        """Encode.
+
+        :param sample_desc: a sample desc to encode.
+        :type sample_desc: dict
+        :param is_random: if use random to encode, default is False.
+        :type is_random: bool
+        :return: an encoded sample.
+        :rtype: dict
+
+        """
+        layer_to_block = {18: (8, [0, 0, 1, 0, 1, 0, 1, 0]),
+                          34: (16, [0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0]),
+                          50: (16, [0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0]),
+                          101: (33, [0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0,
+                                     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0])}
+        default_count = 3
+        base_depth = sample_desc['network.backbone.depth']
+        double_channel = sample_desc['network.backbone.doublechannel']
+        down_sample = sample_desc['network.backbone.downsample']
+        if double_channel != down_sample:
+            return None
+        code = [[], []]
+        if base_depth in layer_to_block:
+            if is_random or double_channel != default_count:
+                rand_index = random.sample(
+                    range(0, layer_to_block[base_depth][0]), double_channel)
+                code[0] = [0] * layer_to_block[base_depth][0]
+                for i in rand_index:
+                    code[0][i] = 1
+            else:
+                code[0] = copy.deepcopy(layer_to_block[base_depth][1])
+            if is_random or down_sample != default_count:
+                rand_index = random.sample(
+                    range(0, layer_to_block[base_depth][0]), down_sample)
+                code[1] = [0] * layer_to_block[base_depth][0]
+                for i in rand_index:
+                    code[1][i] = 1
+            else:
+                code[1] = copy.deepcopy(layer_to_block[base_depth][1])
+        sample = copy.deepcopy(sample_desc)
+        sample['code'] = code
+        return sample
+
+    def decode(self, sample):
+        """Decode.
+
+        :param sample: input sample to decode.
+        :type sample: dict
+        :return: return a decoded sample desc.
+        :rtype: dict
+
+        """
+        if 'code' not in sample:
+            raise ValueError('No code to decode in sample:{}'.format(sample))
+        code = sample.pop('code')
+        desc = copy.deepcopy(sample)
+        if "network.backbone.doublechannel" in desc:
+            desc["network.backbone.doublechannel"] = code[0]
+        if "network.backbone.downsample" in desc:
+            desc["network.backbone.downsample"] = code[1]
+        if len(desc["network.backbone.downsample"]) != len(desc["network.backbone.doublechannel"]):
+            return None
+        logging.info("decode:{}".format(desc))
+        return desc
 ```
 
-### 2.4 Commissioning
+### 1.4 Example
 
-The next step is to perform the commissioning in the environment where Vega is installed. The command is as follows:
+The complete implementation of the pruning algorithm can be specified by the code in the <https://github.com/huawei-noah/vega/tree/master/vega/algorithms/nas/backbone_nas> directory of the Vega SDK.
 
-```bash
-python main.py
-```
+## 2. The hyperparameter optimization algorithm is added
 
-After the algorithm is successfully executed, the best_hps.json file is generated in the output directory to save the optimal hyperparameters, and the hps.csv file is used to save the hyperparameter, ID, and score tables.
+The new hyperparameter optimization algorithm is similar to the NAS algorithm. For details, see the algorithms in <https://github.com/huawei-noah/vega/tree/master/vega/algorithms/hpo>.

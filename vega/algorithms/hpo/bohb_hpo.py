@@ -11,7 +11,7 @@
 """Defined BohbHpo class."""
 from math import pow
 from vega.algorithms.hpo.common import BOHB
-from vega.core.common.class_factory import ClassFactory, ClassType
+from zeus.common import ClassFactory, ClassType
 from vega.algorithms.hpo.hpo_base import HPOBase
 from .bohb_conf import BohbConfig
 
@@ -26,25 +26,29 @@ class BohbHpo(HPOBase):
         """Init BohbHpo."""
         super(BohbHpo, self).__init__(search_space, **kwargs)
         num_samples = self.config.policy.num_samples
-        epochs_per_iter = self.config.policy.epochs_per_iter
-        repeat_times = self.config.policy.repeat_times
+        max_epochs = self.config.policy.max_epochs
         if self.config.policy.total_epochs != -1:
-            num_samples, epochs_per_iter = self.design_parameter(
-                self.config.policy.total_epochs, repeat_times)
-        self.hpo = BOHB(self.hps, num_samples, epochs_per_iter, repeat_times)
+            num_samples, max_epochs = self.design_parameter()
+        self.hpo = BOHB(self.search_space,
+                        num_samples,
+                        max_epochs,
+                        self.config.policy.repeat_times,
+                        self.config.policy.min_epochs,
+                        self.config.policy.eta)
 
-    def design_parameter(self, total_epochs, repeat_times):
+    def design_parameter(self):
         """Design parameters based on total_epochs.
 
         :param total_epochs: number of epochs the algorithms need.
         :type total_epochs: int, set by user.
         """
+        total_epochs = self.config.policy.total_epochs
         num_samples = 1
         iter_list = []
         min_epoch_list = []
         for num_samples in range(4, total_epochs):
             iter_list, min_epoch_list = self.get_iter_epoch_list(
-                num_samples, repeat_times)
+                num_samples)
             current_budget = 0
             for i in range(len(iter_list)):
                 current_samples = iter_list[i]
@@ -58,18 +62,19 @@ class BohbHpo(HPOBase):
             elif current_budget > total_epochs:
                 num_samples -= 1
                 break
-        epochs_per_iter = max(min_epoch_list)
-        return num_samples, epochs_per_iter
+        max_epochs = max(min_epoch_list)
+        return num_samples, max_epochs
 
-    def get_iter_epoch_list(self, num_samples, repeat_times):
+    def get_iter_epoch_list(self, num_samples):
         """Calculate each rung for all iters of Hyper Band algorithm.
 
         :param num_samples: int, Total config count to optimize.
         :param repeat_times: int, repeat times of algorithm.
         :return:  iter_list, min_ep_list
         """
-        min_epochs = 1
-        eta = 3
+        min_epochs = self.config.policy.min_epochs
+        eta = self.config.policy.eta
+        repeat_times = self.config.policy.repeat_times
         each_count = (num_samples + repeat_times - 1) // repeat_times
         rest_count = num_samples
         count_list = []

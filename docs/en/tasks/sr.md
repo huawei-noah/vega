@@ -6,7 +6,7 @@ Image super-resolution is widely used in scenes such as photographing, security,
 
 ## 2. Algorithm selection
 
-Vega provides two super-resolution network search algorithms, [SR-EA](../ algorithms / sr-ea.md) and [ESR-EA](../ algorithms / esr_ea.md), the two algorithms The goal is the same, it is to search for a light-weight super-point network that is friendly to the end side. The implementation method is different. For the specific difference, please refer to the algorithm documentation of these two algorithms.
+Vega provides two super-resolution network search algorithms, [SR-EA](../ algorithms / sr_ea.md) and [ESR-EA](../ algorithms / esr_ea.md), the two algorithms The goal is the same, it is to search for a light-weight super-point network that is friendly to the end side. The implementation method is different. For the specific difference, please refer to the algorithm documentation of these two algorithms.
 
 It is recommended that users try these two super-score algorithms. For different data sets, the performance of these two algorithms has different results.
 

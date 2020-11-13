@@ -48,8 +48,8 @@ class Evaluate(Resource):
 
     def parse_paras(self):
         """Parse the parameters in the request from the client."""
-        self.framework = request.form["framework"]
         self.backend = request.form["backend"]
+        self.hardware = request.form["hardware"]
 
     def upload_files(self):
         """Upload the files from the client to the service."""
@@ -74,25 +74,25 @@ class Evaluate(Resource):
 
     def convert_model(self):
         """Convert the tf/caffe model to om model in Davinc and convert the tf model to tflite model in Bolt."""
-        if self.backend == "Davinci":
+        if self.hardware == "Davinci":
             self.convert_model_Davinci()
-        elif self.backend == "Bolt":
+        elif self.hardware == "Bolt":
             self.convert_model_Bolt()
         else:
-            raise ValueError("The backend only support Davinci and Bolt.")
+            raise ValueError("The hardware only support Davinci and Bolt.")
 
     def inference(self):
         """Interface in Davinci or Bolt and return the latency."""
-        if self.backend == "Davinci":
+        if self.hardware == "Davinci":
             self.inference_Davinci()
-        elif self.backend == "Bolt":
+        elif self.hardware == "Bolt":
             self.inference_Bolt()
         else:
-            raise ValueError("The backend only support Davinci and Bolt.")
+            raise ValueError("The hardware only support Davinci and Bolt.")
 
     def convert_model_Davinci(self):
         """Convert the tf/caffe/Pytorch model to om model in Davinci."""
-        if self.framework == "Tensorflow":
+        if self.backend == "tensorflow":
             model_path = self.locate_file(self.upload_file_path, ".pb")
             om_save_path = self.upload_file_path
             if davinci_environment_type == "ATLAS200DK":
@@ -105,7 +105,7 @@ class Evaluate(Resource):
                 logging.warning("convert tf model to om model failed. the return code is : {}." .format(exc.returncode))
                 result["status_code"] = STATUS_CODE_MAP["MODEL_CONVERT_FAILED"]
 
-        elif self.framework == "Caffe":
+        elif self.backend == "caffe":
             model_path = self.locate_file(self.upload_file_path, ".prototxt")
             weight_path = self.locate_file(self.upload_file_path, ".caffemodel")
             om_save_path = self.upload_file_path
@@ -123,7 +123,7 @@ class Evaluate(Resource):
                                 .format(exc.returncode))
                 result["status_code"] = STATUS_CODE_MAP["MODEL_CONVERT_FAILED"]
 
-        elif self.framework == "Pytorch":
+        elif self.backend == "pytorch":
             model_path = self.locate_file(self.upload_file_path, ".onnx")
             model_name = os.path.basename(model_path).split(".")[0]
             pb_model_path = os.path.join(self.upload_file_path, model_name + ".pb")
@@ -143,7 +143,7 @@ class Evaluate(Resource):
 
     def convert_model_Bolt(self):
         """Convert the tf model to tflite model in Bolt."""
-        if self.framework == "Tensorflow":
+        if self.backend == "tensorflow":
             model_path = self.locate_file(self.upload_file_path, ".pb")
             model_name = os.path.basename(model_path).split(".")[0]
             tflite_model_path = os.path.join(self.upload_file_path, model_name + ".tflite")
@@ -160,7 +160,7 @@ class Evaluate(Resource):
                                 .format(exc.returncode))
                 result["status_code"] = STATUS_CODE_MAP["MODEL_CONVERT_FAILED"]
 
-        elif self.framework == "Caffe":
+        elif self.backend == "caffe":
             model_path = self.locate_file(self.upload_file_path, ".prototxt")
             weight_path = self.locate_file(self.upload_file_path, ".caffemodel")
             mobile_dir = "/data/evaluate_service/" + self.now_time
@@ -182,7 +182,7 @@ class Evaluate(Resource):
                                 .format(exc.returncode))
                 result["status_code"] = STATUS_CODE_MAP["MODEL_CONVERT_FAILED"]
 
-        elif self.framework == "Pytorch":
+        elif self.backend == "pytorch":
             model_path = self.locate_file(self.upload_file_path, ".onnx")
             mobile_dir = "/sdcard/evaluate_service/" + self.now_time
             model_name = os.path.basename(model_path).split(".")[0]
@@ -233,9 +233,9 @@ class Evaluate(Resource):
         """Interface in Bolt and return the latency."""
         mobile_dir = "/sdcard/evaluate_service/" + self.now_time
         data_path = self.locate_file(self.upload_file_path, ".bin")
-        if self.framework == "Tensorflow":
+        if self.backend == "tensorflow":
             suffix = ".pb"
-        elif self.framework == "Caffe":
+        elif self.backend == "caffe":
             suffix = ".prototxt"
         else:
             suffix = ".onnx"
@@ -295,7 +295,7 @@ class Evaluate(Resource):
         log_file = os.path.join(self.upload_file_path, "ome.log")
         logging.warning("The log file is {}.".format(log_file))
         # command_line = "cat  log.txt |grep costTime | awk -F  ' '  '{print $NF}' "
-        command_line = ["bash", self.current_path + "/utils/get_latency_from_log.sh", log_file, self.backend]
+        command_line = ["bash", self.current_path + "/utils/get_latency_from_log.sh", log_file, self.hardware]
         try:
             latency = subprocess.check_output(command_line)
             return str(latency, 'utf-8').split("\n")[0]
@@ -319,23 +319,16 @@ class Evaluate(Resource):
 
     def get_output_bolt(self):
         """Get output data of bolt."""
-        # sparse the output dim
-        output_dim_file = os.path.join(self.upload_file_path, "output_dim.txt")
-        with open(output_dim_file, 'r') as f:
-            dims = f.readline()
-        dim = int(dims.split("(")[0])
-        shapes_str = dims.split("(")[1].split(")")[0].split(",")
-        shapes = []
-        for index in range(0, dim):
-            shape = int(shapes_str[index])
-            shapes.append(shape)
-        # sparse the output data
-        output_file = os.path.join(self.upload_file_path, "result.txt")
+        output_file = os.path.join(self.upload_file_path, "BoltResult.txt")
         with open(output_file, 'r') as f:
             values = f.readlines()
         output = []
-        for value in values:
-            output.append(np.float(value))
+        for index, value in enumerate(values):
+            if index == 0:
+                shapes = value.strip().split(",")
+                shapes = [int(i) for i in shapes]
+            else:
+                output.append(np.float(value))
         output = np.array(output).reshape(shapes).tolist()
         return output
 

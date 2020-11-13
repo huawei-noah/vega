@@ -31,7 +31,7 @@ import shutil
 import numpy as np
 import pandas as pd
 from .status_type import StatusType
-from vega.core.common.file_ops import FileOps
+from zeus.common import FileOps
 
 
 class PBA(object):
@@ -191,6 +191,7 @@ class PBA(object):
             'config_id': next_config_id,
             'rung_id': self.rung_id,
             'configs': self.all_config_dict[next_config_id][self.rung_id],
+            'all_configs': self.all_config_dict[next_config_id],
             'epoch': int(self.each_epochs)
         }
         self._change_status(rung_id=self.rung_id,

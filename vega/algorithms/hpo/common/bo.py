@@ -19,8 +19,8 @@ from .tuner import TunerBuilder
 class BO(ShaBase):
     """A Bayesian Optimization framework.
 
-    :param hyperparameter_space: a pre-defined search space.
-    :type hyperparameter_space: object, instance os `HyperparameterSpace`.
+    :param search_space: a pre-defined search space.
+    :type search_space: object, instance os `SearchSpace`.
     :param int config_count: Total config or hyperparameter count.
     :param int max_epochs: `max_epochs` is the max epoch that hpo provide.
     :param warmup_count: `warmup_count` is the random sample count, to warm up bo alg.
@@ -29,17 +29,16 @@ class BO(ShaBase):
     :type alg_name: string, ('SMAC', 'GPEI'), default is 'SMAC'.
     """
 
-    def __init__(self, hyperparameter_space, config_count, max_epochs, warmup_count=10,
+    def __init__(self, search_space, config_count, max_epochs, warmup_count=10,
                  alg_name='SMAC'):
         """Init BO."""
-        super().__init__(hyperparameter_space, config_count, max_epochs, 1, 3)
+        super().__init__(search_space, config_count, max_epochs, 1, 3)
 
         # init all the configs
         self.warmup_count = warmup_count
         self.best_score = -1 * float('inf')
-        self.hp = TunerBuilder(
-            hyperparameter_space=hyperparameter_space, tuner=alg_name)
-        config_list = self.get_hyperparameter_space(self.warmup_count)
+        self.hp = TunerBuilder(search_space=search_space, tuner=alg_name)
+        config_list = self.get_hyperparameters(self.warmup_count)
         for i, config in enumerate(config_list):
             self.all_config_dict[i] = config
             self.best_score_dict[i] = -1 * float('inf')
@@ -170,17 +169,15 @@ class BO(ShaBase):
         :type enum: StatusType
 
         """
-        change_df = self.sieve_board.loc[(
-            self.sieve_board['config_id'] == config_id) & (
-            self.sieve_board['rung_id'] == rung_id)]
+        change_df = self.sieve_board.loc[
+            (self.sieve_board['config_id'] == config_id) & (self.sieve_board['rung_id'] == rung_id)]
         if change_df.empty:
             tmp_row_data = {'rung_id': rung_id,
                             'config_id': config_id,
                             'status': status}
             self._add_to_board(tmp_row_data)
         else:
-            self.sieve_board.loc[(
-                self.sieve_board['config_id'] == config_id) & (
+            self.sieve_board.loc[(self.sieve_board['config_id'] == config_id) & (
                 self.sieve_board['rung_id'] == rung_id), ['status']] = [status]
 
     def _check_completed(self):

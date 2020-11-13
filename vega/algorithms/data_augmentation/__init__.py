@@ -1,5 +1,6 @@
 from .pba_hpo import PBAHpo
-import os
+from .pba_trainer_callback import PbaTrainerCallback
+import vega
 
-if os.environ['BACKEND_TYPE'] == 'PYTORCH':
+if vega.is_torch_backend():
     from .cyclesr import CyclesrTrainerCallback

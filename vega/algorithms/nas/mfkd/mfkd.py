@@ -17,13 +17,14 @@ import logging
 from sklearn import preprocessing
 from sklearn.gaussian_process import GaussianProcessRegressor as GPR
 from sklearn.gaussian_process.kernels import RBF
-from vega.core.report import Report
-from vega.core.common.utils import update_dict
-from vega.core.common.class_factory import ClassFactory, ClassType
-from vega.search_space.search_algs import SearchAlgorithm
+from zeus.report import Report
+from zeus.common import update_dict
+from zeus.common import ClassFactory, ClassType
+from vega.core.search_algs import SearchAlgorithm
+from zeus.common import ConfigSerializable
 
 
-class MFKD1Config(object):
+class MFKD1Config(ConfigSerializable):
     """Configure of MFKD1."""
 
     max_samples = 5
@@ -39,7 +40,6 @@ class MFKD1(SearchAlgorithm):
     def __init__(self, search_space):
         """Initialize."""
         super(MFKD1, self).__init__(search_space)
-        self.max_samples = self.config.max_samples
         self.sample_count = 0
         self.acc_list = []
         self._get_all_arcs()
@@ -133,3 +133,8 @@ class MFKD1(SearchAlgorithm):
         record.performance = {"accuracy": 100}
         record.desc = desc
         Report().broadcast(record)
+
+    @property
+    def max_samples(self):
+        """Get max samples number."""
+        return self.config.max_samples

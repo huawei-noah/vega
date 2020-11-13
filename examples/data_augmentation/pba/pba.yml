@@ -1,6 +1,5 @@
 general:
-    worker:
-        devices_per_job: 1
+    parallel_search: True
 
 pipeline: [pba]
 
@@ -13,25 +12,26 @@ pba:
         common:
             data_path: /cache/datasets/cifar10/
             batch_size: 256
+            train_portion: 0.08
 
     search_space:
         type: SearchSpace
         transformers:
-            Cutout: True,
-            Rotate: True,
-            Translate_X: True,
-            Translate_Y: True,
-            Brightness: True,
-            Color: True,
-            Invert: True,
-            Sharpness: True,
-            Posterize: True,
-            Shear_X: True,
-            Solarize: True,
-            Shear_Y: True,
-            Equalize: True,
-            AutoContrast: True,
-            Contras: True
+            -   Cutout: True
+            -   Rotate: True
+            -   Translate_X: True
+            -   Translate_Y: True
+            -   Brightness: True
+            -   Color: True
+            -   Invert: True
+            -   Sharpness: True
+            -   Posterize: True
+            -   Shear_X: True
+            -   Solarize: True
+            -   Shear_Y: True
+            -   Equalize: True
+            -   AutoContrast: True
+            -   Contrast: True
 
     search_algorithm:
         type: PBAHpo
@@ -42,17 +42,10 @@ pba:
 
     model:
         model_desc:
-            modules: ["backbone", "head"]
+            modules: ["backbone"]
             backbone:
-                base_channel: 64
-                downsample: [1, 0, 1, 0, 0, 0, 1, 0]
-                base_depth: 18
-                doublechannel: [1, 0, 1, 0, 0, 0, 1, 0]
-                name: ResNetVariant
-            head:
-                num_classes: 10
-                name: LinearClassificationHead
-                base_channel: 512
+                type: ResNet
+                depth: 18
 
     trainer:
         type: Trainer
@@ -64,3 +57,20 @@ pba:
             type: GpuEvaluator
             metric:
                 type: accuracy
+
+fully_train:
+    pipe_step:
+        type: FullyTrainPipeStep
+    hps_file:
+    dataset:
+        ref: pba.dataset
+    model:
+        ref: pba.model
+    trainer:
+        ref: pba.trainer
+        callbacks: PbaTrainerCallback
+        epochs: 2000
+        hps_folder: "{local_base_path}/output/pba/"
+
+benchmark:
+    pipeline: [pba, fully_train]

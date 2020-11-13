@@ -1,6 +1,6 @@
 general:
-    worker:
-        devices_per_job: -1
+    parallel_search: False
+    parallel_fully_train: False
 
 pipeline: [nas1]
 # pipeline: [nas1, nas2, fullytrain]
@@ -66,7 +66,7 @@ nas2:
 
 fullytrain:
     pipe_step:
-        type: FullyTrainPipeStep
+        type: SpNasFullyTrain
 
     trainer:
         type: Trainer
@@ -79,3 +79,20 @@ fullytrain:
         config_template: "./nas/sp_nas/faster_rcnn_r50_fpn_1x.py"
         regnition: False
         epoch: 1
+
+benchmark:
+    pipeline: [nas1, nas2, fullytrain]
+    nas1:
+        search_space:
+            config_template_file: ./nas/sp_nas/faster_rcnn_r50_fpn_1x.py
+        trainer:
+            config_template_file: ./nas/sp_nas/faster_rcnn_r50_fpn_1x.py
+    nas2:
+        search_space:
+            ref: nas1.search_space
+    fully_train:
+        trainer:
+            config_template_file: ./nas/sp_nas/faster_rcnn_r50_fpn_1x.py
+            regnition: True
+            epoch: 26
+    

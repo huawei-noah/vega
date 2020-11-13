@@ -12,6 +12,7 @@ Vega的重点特性是网络架构搜索和超参优化，在网络架构搜索�
 
 ![Search Space流程图](./images/search_space_flow.png)
 
+
 以下就分别介绍下面几个部分：
 
 * 搜索空间
@@ -72,40 +73,49 @@ search_space:
 `SearchSpace`类初始化时，加载搜索空间配置文件为`search_space`属性，如下：
 
 ```python
-@ClassFactory.register(ClassType.SEARCH_SPACE)
+@ClassFactory.register(ClassType.NETWORK)
 class SearchSpace(object):
 
     config = SearchSpaceConfig()
 
     def __new__(cls, *args, **kwargs):
-        """Create a new SearchSpace."""
-        t_cls = ClassFactory.get_cls(ClassType.SEARCH_SPACE)
+        t_cls = ClassFactory.get_cls(ClassType.NETWORK)
         return super(SearchSpace, cls).__new__(t_cls)
 
     @property
     def search_space(self):
-        """Get hyper parameters."""
-        return obj2config(self.config)
+        return self.config.to_json()
 ```
 
 搜索空间还有一个重要的概念是网络描述`NetworkDesc`，网络描述是搜索算法从`SearchSpace`里采样出来的结果，它是`Search Space`中的一种可能性子集。网络描述类里只有一个属性，就是dict类型的网络描述（可以是一个网络或者多个网络）。网络描述类只一个通用的`to_model()`的接口，负责分析网络描述并通过`NetworFactory`自动解析成`Networks`里具体的网络对象。
 
 ```python
 class NetworkDesc(object):
-    def __init__(self, desc):
-        self.desc = Config(desc)
-
-    def to_model(self):
-        pass
-
-class NetworkDesc(object):
 
     def __init__(self, desc):
         self._desc = Config(deepcopy(desc))
+        self._model_type = None
+        self._model_name = None
 
     def to_model(self):
-        ...
-        return Network(params)
+        model = FineGrainedNetWork(self._desc).to_model()
+        if model is not None:
+            return model
+        networks = []
+        module_types = self._desc.get('modules')
+        for module_type in module_types:
+            network = self.to_coarse_network(module_type)
+            networks.append((module_type, network))
+        if len(networks) == 1:
+            return networks[0][1]
+        else:
+            if vega.is_torch_backend():
+                import torch.nn as nn
+                networks = OrderedDict(networks)
+                return nn.Sequential(networks)
+            elif vega.is_tf_backend():
+                from .tensorflow import Sequential
+                return Sequential(networks)
 ```
 
 总的来说，Vega提供预定义（支持开发者新增）的一系列网络模型`Networks`，并注册到`NetworkFactory`，开发者需要将网络模型构造参数的搜索空间写在配置文件中，通过算法去采样和生成网络描述`NetworkDesc`，`NetworkDesc`自动解析出相应的网络模型。
@@ -230,6 +240,136 @@ class Generator(object):
 代码中的sample接口即是NAS中每一次采样，首先调用搜索算法search出一个网络描述，再通过网络描述生成网络模型。
 此外，Generator还具有判断迭代搜索是否停止以及更新搜索算法等功能。
 
+### 4.2 Quota
+
+Quota是一个可选的插件，允许用户定义特定的规则来控制nas搜索过程并实现自定义功能。
+Quota目前提供的功能包括：
+
+- 搜索过程控制：如果达到用户定义的条件限制，则停止nas搜索过程
+- Sample过滤：如果sample不满足用户定义的条件限制，则丢弃不符合要求的sample
+
+Quota的实现如下：
+
+```python
+class Quota(object):
+
+    def __new__(cls, *args, **kwargs):
+        return super().__new__(cls)
+
+    def __init__(self):
+        self.strategies = []
+        self.filters = []
+        # check whether quota is configured
+        pipe_config = UserConfig().data.get(General.step_name)
+        if not pipe_config.get('quota'):
+            return
+        else:
+            # get quota configuration
+            quota_config = pipe_config.get('quota')
+        # get all defined strategies if any
+        if quota_config.get('strategy'):
+            strategy_types = quota_config['strategy']
+            for type_name in strategy_types:
+                t_cls = ClassFactory.get_cls(ClassType.QUOTA, type_name)
+                self.strategies.append(t_cls())
+        # get all defined limitations if any
+        if quota_config.get('filter'):
+            filter_types = quota_config['filter']
+            for type_name in filter_types:
+                t_cls = ClassFactory.get_cls(ClassType.QUOTA, type_name)
+                self.filters.append(t_cls())
+
+    def halt(self):
+        raise NotImplementedError
+
+    def filter(self, res):
+        raise NotImplementedError
+
+    def is_halted(self):
+        for strategy in self.strategies:
+            if strategy.halt():
+                return True
+        return False
+
+    # check whether some defined filters are satisfied.
+    # If reaching constraints, just return false. Otherwise, always return False.
+    def is_filtered(self, res=None):
+        for flt in self.filters:
+            if flt.filter(res):
+                logging.info("Sample was throw away by strategy = %s", flt.__class__.__name__)
+                return True
+        return False
+```
+
+Quota在初始化时首先尝试检查用户是否开启了Quota配置。如果设置开启Quota，Quota将读取所有用户自定义的搜索停止策略和过滤器。Quota允许用户同时定义多个规则，规则名称同时指定在一个list中。同时定义的多个搜索停止策略属于并列关系，将同时起作用。如果未设置Quota，不会对Vega的运行造成任何影响。
+
+Quota的配置使用需要完成四个步骤。首先，继承Quota基类，根据自定义需求构造strategy或filter类。其次，覆写Quota基类中的“halt()”和“filter()”抽象函数，并在其中实现用户的自定义策略。第三，将自定义实现的strategy和filter在Class Factory中进行注册。最后，在用户配置文件中添加Quota配置项和配置参数。之后Vega将自动执行Quota配置的策略。
+
+以下是一个Quota的配置样例:
+
+```yml
+general:
+
+pipeline: [nas]
+
+nas:
+    pipe_step:
+        type: NasPipeStep
+
+    quota:
+        strategy: [MaxDurationStrategy, MaxTrialNumberStrategy]
+        filter: [FlopParamFliter]
+        policy:
+            max_duration_time: 3000
+            max_trial_num: 300
+            flop_range: [!!float 0, !!float 0.6]
+            param_range: [!!float 0, !!float 1e10]
+
+```
+
+Quota的配置项位于每个具体的pipeline之下，如上述配置中名为“nas”的pipeline，因此，一个Quota配置只对自己所在的Pipeline负责和起作用.如果用户希望Quota对不同的Pipeline步骤生效，则需要在每个流水线步骤中都添加Quota配置。在Quota的配置中，用户可以添加任意自定义的strategy和filter，只需将自定义的具体Quota类使用“QUOTA”关键字注册到类工厂中即可被Vega索引。与Quota相关的参数可以定义到“policy”字段中，在实现具体的Quota类时，可以通过UserConfig()对定义在用户配置中的参数进行使用。
+
+```python
+class Generator(object):
+    """Convert search space and search algorithm, sample a new model."""
+
+    def __init__(self):
+        ...
+        self.quota = Quota()
+        ...
+    @property
+    def is_completed(self):
+        return self.search_alg.is_completed or self.quota.is_halted()
+
+    def sample(self):
+        """Sample a work id and model from search algorithm."""
+        res = self.search_alg.search()
+        if not res:
+            return None
+        if not isinstance(res, list):
+            res = [res]
+        if self.quota.is_filtered(res):
+            return None
+        if len(res) == 0:
+            return None
+        out = []
+        for sample in res:
+            if isinstance(sample, tuple):
+                sample = dict(worker_id=sample[0], desc=sample[1])
+            record = self.record.load_dict(sample)
+            logging.debug("Broadcast Record=%s", str(record))
+            Report().broadcast(record)
+            desc = self._decode_hps(record.desc)
+            out.append((record.worker_id, desc))
+        return out
+```
+
+下面是关于Quota在Vega中工作的流程。在每个Pipeline中，Vega首先检查nas搜索是否完成（is_completed()）或是否达到用户定义的停止条件（is_halted()）。如果搜索完成，或者达到用户定义的停止条件所到达停止条件，当前pipeline将被立即停止。
+
+在准备sample的阶段，generator首先在从搜索算法中获取待评估的sample，这些sample被移交给Quota进行过滤（is_filtered()）。过滤规则由用户在具体Quota类的“filter()”函数中定义。任何不满足用户定义过滤规则的的样本将不会被用来训练并被直接丢弃。过滤完成后，Quota将所有满足条件的Sample传递给generator，之后将完成训练。
+
+Vega现在为用户提供两种pipeline停止策略和一种样本过滤器。现有的两种停止策略分别是利用最大采样次数和最长运行时间来作为终止条件。这两种策略都支持“开箱即用”。内置的样本过滤器则允许用户在搜索算法搜索到sample之后立即评估sample的flops和parameters参数来决定是否要保留该sample。由于计算flops和parameters需要知道数据集的相关信息，因此用户必须在相关的数据集类中提供一个“data_case()”接口，或者提供自定义的方法来计算flops和parameters。
+
 ## 5 Trainer
 
 Trainer用于训练模型，在NAS、HPO、fully train等阶段，可将trainer配置这些阶段的pipestep中，完成模型的训练。
@@ -331,7 +471,7 @@ trainer的主要函数是train_process()，该函数定义如下：
 
 ### 5.1 Optimizer
 
-默认使用pytroch库上的`torch.optim`，采用配置方式直接使用，`type`表示使用的方法，其他键值为方法中的入参和入参的值
+默认使用pytorch库上的`torch.optim`，采用配置方式直接使用，`type`表示使用的方法，其他键值为方法中的入参和入参的值
 
 ```yaml
 optim:
@@ -413,7 +553,7 @@ metric:
 自定义一个metric
 
 - 使用`@ClassFactory.register(ClassType.METRIC)`进行注册
-- 继承`vega.core.metrics.metrics_base.MetricBase`
+- 继承`zeus.metrics.metrics_base.MetricBase`
 - 指定`__metric_name__`，供记录打印metrics使用
 - 实现`__call__`、`summay`、`reset`方法，call是在每轮step的时候调用，summay是每轮epoch结束后调用
 
@@ -518,8 +658,8 @@ class ModelStatistics(Callback):
 
     def before_train(self, logs=None):
         self.input = None
-        self.gflops = None
-        self.kparams = None
+        self.flops = None
+        self.params = None
         self.calc_params_each_epoch = self.trainer.config.calc_params_each_epoch
         if vega.is_tf_backend():
             data_iter = self.trainer.valid_input_fn().make_one_shot_iterator()
@@ -545,15 +685,15 @@ class ModelStatistics(Callback):
     def update_flops_params(self, epoch=None, logs=None):
         self.model = self.trainer.model
         try:
-            if self.gflops is None:
+            if self.flops is None:
                 flops_count, params_count = calc_model_flops_params(self.model, self.input)
-                self.gflops, self.kparams = flops_count * 1600 * 1e-9, params_count * 1e-3
+                self.flops, self.params = flops_count * 1e-9, params_count * 1e-3
             summary_perfs = logs.get('summary_perfs', {})
             if epoch:
                 summary_perfs.update(
-                    {'gflops': self.gflops, 'kparams': self.kparams, 'epoch': epoch})
+                    {'flops': self.flops, 'params': self.params, 'epoch': epoch})
             else:
-                summary_perfs.update({'gflops': self.gflops, 'kparams': self.kparams})
+                summary_perfs.update({'flops': self.flops, 'params': self.params})
             logs.update({'summary_perfs': summary_perfs})
         except Exception as ex:
             logging.warning("model statics failed, ex=%s", ex)
@@ -651,6 +791,34 @@ nas:
 fullytrain:
     pipe_step:
         type: FullyTrainPipeStep
+```
+
+### 7.1 Report
+
+一个Pipeline中包含了多个步骤，这些步骤之间的数据传递，可以通过Report来完成。Report实时收集各个Step的训练过程数据和评估结果，供本步骤和随后的步骤查询，同时Report的数据也会实时的保存到文件中。
+
+Report提供的主要接口如下，在模型训练时，需要调用`broadcast()`接口保存训练结果。搜索算法可调用`pareto_front()`接口来获取评估结果，这两个接口是最常用的接口。
+Trainer已集成了Report的调动，在完成训练和评估后，Trainer会将结果数据自动的调用Report接口收集数据，供搜索算法使用。
+
+```python
+@singleton
+class Report(object):
+
+    @property
+    def all_records(self):
+
+    def pareto_front(self, step_name=None, nums=None, records=None):
+
+    def dump_report(self, step_name=None, record=None):
+
+    @classmethod
+    def receive(cls, step_name, worker_id):
+
+    @classmethod
+    def broadcast(cls, record):
+
+    @classmethod
+    def close(cls, step_name, worker_id):
 ```
 
 ### 7.2 扩展`pipestep`

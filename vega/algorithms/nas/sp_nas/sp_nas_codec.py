@@ -12,10 +12,10 @@
 
 import copy
 import logging
-from vega.search_space.codec import Codec
-from vega.core.common.config import Config
+from vega.core.search_algs.codec import Codec
+from zeus.common.config import Config
 from vega.algorithms.nas.sp_nas.utils import update_config
-from vega.core.common.class_factory import ClassType, ClassFactory
+from zeus.common import ClassType, ClassFactory
 
 
 @ClassFactory.register(ClassType.CODEC)

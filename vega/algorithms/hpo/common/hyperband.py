@@ -37,14 +37,14 @@ import math
 import random
 from .sha_base import ShaBase
 from .sha import SHA
-from vega.core.hyperparameter_space import HyperparameterSpace
+from vega.core.search_space import SearchSpace
 
 
 class HyperBand(ShaBase):
     """Current HyperBand need to rely on SHA algorithm to process inner loop.
 
-    :param hyperparameter_space: a pre-defined search space.
-    :type hyperparameter_space: object, instance os `HyperparameterSpace`.
+    :param search_space: a pre-defined search space.
+    :type search_space: object, instance os `SearchSpace`.
     :param int config_count: Total config or hyperparameter count.
     :param int max_epochs: `max_epochs` is the max epoch that hpo provide.
     :param min_epochs: `min_epochs` is the init min epoch.
@@ -117,7 +117,7 @@ class HyperBand(ShaBase):
         for i in range(len(iter_list)):
             config_dict[i] = config_list[count:count + iter_list[i]]
             #
-            tmp_hps = HyperparameterSpace()
+            tmp_hps = SearchSpace()
             tmp_sha = SHA(tmp_hps, iter_list[i], self.max_epochs,
                           min_epoch_list[i], self.eta, empty=True)
             # init the sha config list

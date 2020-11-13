@@ -10,15 +10,18 @@
 
 """vega run.py."""
 import sys
+import yaml
+import os
 import logging
-from .common.utils import init_log, lazy
-from .common import Config, UserConfig
+import json
+from zeus.common.utils import init_log, lazy
+from zeus.common import Config, UserConfig
+from zeus.common.task_ops import TaskOps, FileOps
 from .pipeline.pipeline import Pipeline
-from .common.consts import ClusterMode
 from .backend_register import set_backend
-from .common.general import General
-from vega.core.common.loader import load_conf_from_desc
+from zeus.common.general import General
 from vega.core.pipeline.conf import PipelineConfig
+from vega.core.quota import QuotaStrategy
 
 
 logger = logging.getLogger(__name__)
@@ -32,6 +35,8 @@ def run(cfg_path):
     if sys.version_info < (3, 6):
         sys.exit('Sorry, Python < 3.6 is not supported.')
     _init_env(cfg_path)
+    _backup_cfg(cfg_path)
+    _adjust_config()
     _run_pipeline()
 
 
@@ -43,20 +48,12 @@ def _init_env(cfg_path):
     logging.getLogger().setLevel(logging.DEBUG)
     UserConfig().load(cfg_path)
     # load general
-    if "general" in UserConfig().data:
-        load_conf_from_desc(General, UserConfig().data.get("general"))
-    init_log(General.logger.level)
+    General.from_json(UserConfig().data.get("general"), skip_check=False)
+    init_log(level=General.logger.level,
+             log_path=TaskOps().local_log_path)
     cluster_args = env_args()
-    if cluster_args is None:
-        if General.cluster.master_ip is None:
-            General.cluster_mode = ClusterMode.Single
-            cluster_args = init_local_cluster_args(General.cluster.master_ip,
-                                                   General.cluster.listen_port)
-        else:
-            General.cluster_mode = ClusterMode.LocalCluster
-            cluster_args = init_local_cluster_args(General.cluster.master_ip,
-                                                   General.cluster.listen_port,
-                                                   General.cluster.slaves)
+    if not cluster_args:
+        cluster_args = init_local_cluster_args()
     setattr(PipelineConfig, "steps", UserConfig().data.pipeline)
     General.env = cluster_args
     set_backend(General.backend, General.device_category)
@@ -67,9 +64,17 @@ def _run_pipeline():
     logging.info("-" * 48)
     logging.info("  task id: {}".format(General.task.task_id))
     logging.info("-" * 48)
-    logger.info("configure: %s", str(UserConfig().data))
+    logger.info("configure: %s", json.dumps(UserConfig().data, indent=4))
     logging.info("-" * 48)
     Pipeline().run()
+
+
+def _adjust_config():
+    if General.quota.runtime is None:
+        return
+    adjust_strategy = QuotaStrategy()
+    config_new = adjust_strategy.adjust_pipeline_config(UserConfig().data)
+    UserConfig().data = config_new
 
 
 @lazy
@@ -82,23 +87,37 @@ def env_args(args=None):
     return args
 
 
-def init_local_cluster_args(master_ip, listen_port, slaves=None):
+def init_local_cluster_args():
     """Initialize local_cluster."""
-    try:
-        if master_ip is None:
-            master_ip = '127.0.0.1'
-            General.cluster.master_ip = master_ip
-            env = Config({"init_method": "tcp://{}:{}".format(master_ip, listen_port),
-                          "world_size": 1,
-                          "rank": 0
-                          })
-        else:
-            world_size = len(slaves) if slaves else 1
-            env = Config({"init_method": "tcp://{}:{}".format(master_ip, listen_port),
-                          "world_size": world_size,
-                          "rank": 0,
-                          "slaves": slaves,
-                          })
-        return env
-    except Exception:
-        raise ValueError("Init local cluster failed")
+    if not General.cluster.master_ip:
+        master_ip = '127.0.0.1'
+        General.cluster.master_ip = master_ip
+        env = Config({
+            "init_method": "tcp://{}:{}".format(master_ip, General.cluster.listen_port),
+            "world_size": 1,
+            "rank": 0
+        })
+    else:
+        world_size = len(General.cluster.slaves) if General.cluster.slaves else 1
+        env = Config({
+            "init_method": "tcp://{}:{}".format(
+                General.cluster.master_ip, General.cluster.listen_port),
+            "world_size": world_size,
+            "rank": 0,
+            "slaves": General.cluster.slaves,
+        })
+    return env
+
+
+def _backup_cfg(cfg_path):
+    """Backup yml file.
+
+    :param cfg_path: path of yml file.
+    """
+    if isinstance(cfg_path, str):
+        output_path = FileOps.join_path(TaskOps().local_output_path, os.path.basename(cfg_path))
+        FileOps.copy_file(cfg_path, output_path)
+    else:
+        output_path = FileOps.join_path(TaskOps().local_output_path, 'config.yml')
+        with open(output_path, 'w') as f:
+            f.write(yaml.dump(cfg_path))

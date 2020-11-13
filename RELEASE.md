@@ -1,35 +1,22 @@
-**Vega ver1.0.0 released:**
-
-- New algorithms: auto-lane, AutoFIS, AutoGroup, MFKD.
-- Feature enhancement:
-  - Trainer Callbacks: The trainer supports the callback mechanism and provides nine default callbacks.
-  - Report mechanism: provides a unified data collection and processing mechanism for the AutoML algorithm.
-  - Multi-Backend: TensorFlow is supported.
-  - Evaluator Server: Provides independent evaluation services and model evaluation of Atlas 200DK and Bolt(coming soon).
-- Community Contributors: qixiuai, hasanirtiza, sptj, cndylan, IlyaTrofimov.
+**Vega ver1.2.0 released:**
 
 **Introduction**
 
 Vega is an AutoML algorithm tool chain developed by Noah's Ark Laboratory, the main features are as follows:
 
 1. Full pipeline capailities: The AutoML capabilities cover key functions such as Hyperparameter Optimization, Data Augmentation, Network Architecture Search (NAS), Model Compression, and Fully Train. These functions are highly decoupled and can be configured as required, construct a complete pipeline.
-2. Industry-leading AutoML algorithms: provides Noah's Ark Laboratory's self-developed **industry-leading algorithm** and  **Model Zoo** to download the State-of-the-art (SOTA) model.
-3. High-concurrency neural network training capability: Provides high-performance trainers to accelerate model training and evaluation.
-4. Multi-Backend: PyTorch, TensorFlow(trial), MindSpore(coming soon)
+2. Industry-leading AutoML algorithms: provides Noah's Ark Laboratory's self-developed **industry-leading algorithm (Benchmark)** and  **Model Zoo** to download the State-of-the-art (SOTA) model.
+3. Fine-grained network search space: The network search space can be freely defined, and rich network architecture parameters are provided for use in the search space. The network architecture parameters and model training hyperparameters can be searched at the same time, and the search space can be applied to Pytorch, TensorFlow and MindSpore.
+4. High-concurrency neural network training capability: Provides high-performance trainers to accelerate model training and evaluation.
+5. Multi-Backend: PyTorch, TensorFlow(trial), MindSpore(coming soon).
 
 **Installation**
 
-Before installation, you need to install some mandatory software packages. Please download the script <https://github.com/huawei-noah/vega/blob/master/deploy/install_dependencies.sh> and install them.
+Install Vega and the open source softwares that Vega depends on:
 
-```bash
-bash ./install_dependencies.sh
-```
+`pip3 install noah-vega`
 
-Install vega:
-
-```bash
-pip3 install noah-vega
-```
+`python3 -m vega.tools.install_pkgs`
 
 **Cooperation and contribution**
 

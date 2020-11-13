@@ -8,14 +8,13 @@ fully_train:
         type: Cifar10
         common:
             data_path: /cache/datasets/cifar10/
-        test:
             batch_size: 256
 
     model:
         model_desc:
             modules: ["custom"]
             custom:
-                name: FmdNetwork
+                type: FmdNetwork
                 depth: 56
                 num_classes: 10
                 args: 

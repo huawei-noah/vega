@@ -28,7 +28,6 @@ from vega.algorithms.nas.sp_nas.utils import Timer, coco_eval
 # register SpNet
 from vega.algorithms.nas.sp_nas.spnet import *  # noqa: F401, F403
 from vega.algorithms.nas.sp_nas.utils.config_utils import json_to_dict
-from vega.algorithms.nas.sp_nas.ecp.ecp_utils import ecp_eval, results2frame
 
 
 def single_gpu_test(model, data_loader, dump_file=None):
@@ -224,15 +223,10 @@ def main():  # noqa: C901
         mmcv.dump(outputs, args.out)
         eval_types = args.eval
         if eval_types:
-            if eval_types == ['lamr']:
-                print('Starting evaluate {}'.format(' and '.join(eval_types)))
-                results2frame(dataset, outputs, args.tmpdir)
-                ecp_eval(args.tmpdir, args.tmpdir, cfg.data_root + '/day/labels/val', 'SP-NAS')
-            else:
-                print('Starting evaluate {}'.format(' and '.join(eval_types)))
-                assert not isinstance(outputs[0], dict)
-                result_files = results2json(dataset, outputs, args.out)
-                coco_eval(result_files, eval_types, dataset.coco, dump_file=mAP_file)
+            print('Starting evaluate {}'.format(' and '.join(eval_types)))
+            assert not isinstance(outputs[0], dict)
+            result_files = results2json(dataset, outputs, args.out)
+            coco_eval(result_files, eval_types, dataset.coco, dump_file=mAP_file)
 
 
 if __name__ == '__main__':

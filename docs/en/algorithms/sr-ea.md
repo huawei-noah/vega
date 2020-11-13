@@ -39,9 +39,9 @@ The search space of CCRN-NAS is a combination of three types of blocks:
 The configuration of search space and search algorithm is as follows:
 
 ```yaml
-pipeline: [random1, mutate1]
+pipeline: [random, mutate]
 
-random1:
+random:
     pipe_step:
         type: NasPipeStep
 
@@ -64,9 +64,9 @@ random1:
         policy:
             mum_sample: 1000
 
-mutate1:
+mutate:
     search_space:
-        ref: random1.search_space
+        ref: random.search_space
 
     search_algorithm:
         type: SRMutate
@@ -83,3 +83,7 @@ The outputs are as follows:
 • The model on the found Pareto front after fully training.
 • Logs of all models in random search and evolutionary search process (result.csv)
 • Logs of Pareto front results (pareto_front.csv).
+
+## Benchmark
+
+Benchmark configuration: [sr_ea.yml](https://github.com/huawei-noah/vega/tree/master/benchmark/algs/nas/sr_ea.yml)

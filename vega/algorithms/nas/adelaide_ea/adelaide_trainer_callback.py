@@ -10,16 +10,18 @@
 
 """The trainer program for Adelaide_EA."""
 import logging
-
+import numpy as np
 import vega
-from vega.core.common.class_factory import ClassFactory, ClassType
-from vega.core.metrics import calc_model_flops_params
-from vega.core.trainer.callbacks import Callback
+from zeus.common import ClassFactory, ClassType
+from zeus.metrics import calc_model_flops_params
+from zeus.trainer.callbacks import Callback
 
 if vega.is_torch_backend():
     import torch
 elif vega.is_tf_backend():
     import tensorflow as tf
+elif vega.is_ms_backend():
+    import mindspore
 
 logger = logging.getLogger(__name__)
 
@@ -34,26 +36,16 @@ class AdelaideEATrainerCallback(Callback):
         if vega.is_torch_backend():
             count_input = torch.FloatTensor(1, 3, 192, 192).cuda()
         elif vega.is_tf_backend():
-            tf.reset_default_graph()
-            count_input = tf.random_uniform([1, 192, 192, 3], dtype=tf.float32)
+            tf.compat.v1.reset_default_graph()
+            count_input = tf.random.uniform([1, 192, 192, 3], dtype=tf.float32)
+        elif vega.is_ms_backend():
+            count_input = mindspore.Tensor(np.random.randn(1, 3, 192, 192).astype(np.float32))
         flops_count, params_count = calc_model_flops_params(self.trainer.model, count_input)
         self.flops_count, self.params_count = flops_count * 1e-9, params_count * 1e-3
         logger.info("Flops: {:.2f} G, Params: {:.1f} K".format(self.flops_count, self.params_count))
-        if self.flops_count > self.config.flops_limit:
-            logger.info("Flop too large!")
-            self.trainer.skip_train = True
 
     def after_epoch(self, epoch, logs=None):
-        """Update gflops and kparams."""
+        """Update flops and params."""
         summary_perfs = logs.get('summary_perfs', {})
-        summary_perfs.update({'gflops': self.flops_count, 'kparams': self.params_count})
+        summary_perfs.update({'flops': self.flops_count, 'params': self.params_count})
         logs.update({'summary_perfs': summary_perfs})
-
-    def make_batch(self, batch):
-        """Make batch for each training step."""
-        input = batch["data"]
-        target = batch["mask"]
-        if self.config.cuda:
-            input = input.cuda()
-            target = target.cuda()
-        return input, target

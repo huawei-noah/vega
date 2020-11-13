@@ -9,18 +9,19 @@
 # MIT License for more details.
 
 """Defined Configs."""
+from zeus.common import ConfigSerializable
 
 
-class BoPolicyConfig(object):
+class BoPolicyConfig(ConfigSerializable):
     """Bo Policy Config."""
 
     total_epochs = 10
-    epochs_per_iter = 1
+    max_epochs = 1
     warmup_count = 5
     alg_name = 'SMAC'
 
 
-class BoConfig(object):
+class BoConfig(ConfigSerializable):
     """Bo Config."""
 
     policy = BoPolicyConfig

@@ -17,14 +17,13 @@ import os
 import sys
 import logging
 import time
-import traceback
+import threading
+from threading import Lock
 from queue import Queue
-from ..trainer import utils
+from zeus.trainer import utils
 from .distribution import ClusterDaskDistributor, LocalDistributor
-from vega.core.common import TaskOps
-from vega.core.common.consts import ClusterMode
-from vega.core.common.general import General
-from .local_master import LocalMaster
+from zeus.common import TaskOps
+from zeus.common.general import General
 from .worker_env import WorkerEnv
 from .dask_env import DaskEnv
 
@@ -40,23 +39,14 @@ class Master(object):
 
     __master_path__ = None
 
-    def __new__(cls):
-        """Return a LocalMaster instance when run on local, else return a master instance."""
-        mode = General.cluster_mode
-        devices = str(General.worker.devices_per_job)
-        if mode == ClusterMode.Single and devices == "-1":
-            return LocalMaster()
-        else:
-            return object.__new__(cls)
-
-    def __init__(self):
+    def __init__(self, update_func=None):
         """Init master attrs, setup and start dask distributed cluster and local multiprocess pool."""
         self.cfg = General()
         self.task_count = 0
         self.eval_count = General.worker.eval_count
         self.dask_env = DaskEnv(General.env,
                                 self.__master_path__,
-                                General.worker.devices_per_job,
+                                General.devices_per_trainer,
                                 TaskOps().temp_path)
         status = self.dask_env.start()
         if not status or not self.dask_env.is_master:
@@ -64,8 +54,12 @@ class Master(object):
         self._start_cluster()
         self._start_evaluator_multiprocess()
         self.t_queue = Queue()
-        # now save GPU and Dloop Evaluator result.
         self.e_queue = utils.PairDictQueue()
+        self.update_func = update_func
+        self.evaluator_list = {}
+        self._thread_runing = True
+        self._lock = Lock()
+        self._thread = self._run_monitor_thread()
         return
 
     def _start_cluster(self):
@@ -103,7 +97,7 @@ class Master(object):
         else:
             return True
 
-    def run(self, worker):
+    def run(self, worker, evaluator=None):
         """Run a distributed_worker on different cluster.
 
         :param worker: A serializable object (callable and has `__call__`
@@ -113,6 +107,11 @@ class Master(object):
         """
         if worker is None:
             return
+
+        if evaluator:
+            with self._lock:
+                self.evaluator_list[str(worker.worker_id)] = evaluator
+
         if worker.worker_type == utils.WorkerTypes.EVALUATOR:
             for sub_worker in worker.sub_worker_list:
                 self.run(sub_worker)
@@ -125,6 +124,7 @@ class Master(object):
                 p_id = "{0}::{1}::{2}".format(worker.worker_type.name,
                                               worker.step_name,
                                               worker.worker_id)
+            worker._save_env()
             self.dmd.distribute(pid=p_id, func=worker, kwargs={})
             return p_id
         else:
@@ -136,6 +136,7 @@ class Master(object):
                         p_id = "{0}::{1}::{2}".format(worker.worker_type.name,
                                                       worker.step_name,
                                                       worker.worker_id)
+                    worker._save_env()
                     self.md.distribute(client=self.client, pid=p_id,
                                        func=worker, kwargs={})
                     self.task_count = self.task_count + 1
@@ -143,6 +144,43 @@ class Master(object):
                 else:
                     time.sleep(0.1)
         return
+
+    @staticmethod
+    def _monitor_thread(master):
+        while master and master._thread_runing:
+            worker_info_list = master._pop_all_finished_train_worker()
+            if worker_info_list:
+                for worker_info in worker_info_list:
+                    worker_id = worker_info["worker_id"]
+                    if str(worker_id) in master.evaluator_list.keys():
+                        with master._lock:
+                            evalutor = master.evaluator_list.pop(str(worker_id))
+                        master.run(evalutor)
+                    else:
+                        master._update(worker_info["step_name"], worker_id)
+            worker_info_list = master._pop_all_finished_evaluate_worker()
+            if worker_info_list and master.update_func:
+                for worker_info in worker_info_list:
+                    master._update(worker_info["step_name"], worker_info["worker_id"])
+            time.sleep(0.1)
+
+    def _update(self, step_name, worker_id):
+        if not self.update_func:
+            return
+        if self.update_func.__code__.co_varnames.index("step_name") == 1:
+            self.update_func(step_name, worker_id)
+        else:
+            self.update_func({"step_name": step_name, "worker_id": worker_id})
+
+    def _run_monitor_thread(self):
+        try:
+            logging.info("Start monitor thread.")
+            monitor_thread = threading.Thread(target=Master._monitor_thread, args=(self,))
+            monitor_thread.start()
+            return monitor_thread
+        except Exception as e:
+            logging.info("Failed to run monitor thread.")
+            raise e
 
     def join(self):
         """Wait all workers to finished."""
@@ -185,7 +223,7 @@ class Master(object):
         else:
             return None, None
 
-    def pop_finished_worker(self, train_worker=True):
+    def _pop_finished_worker(self, train_worker=True):
         """Pop a finished dask worker's info, if there are finished dask worker in queue.
 
         :return: the finished worker info, include step_name and worker_id.
@@ -209,7 +247,7 @@ class Master(object):
                 return {"step_name": pid_splited[0],
                         "worker_id": pid_splited[1]}
 
-    def pop_finished_train_worker(self):
+    def _pop_finished_train_worker(self):
         """Pop a finished evaluator worker's info, if there are finished evaluate workers in pool.
 
         :return: the finished worker info, include step_name and worker_id.
@@ -217,9 +255,9 @@ class Master(object):
         :rtype: dict or None
 
         """
-        return self.pop_finished_worker(train_worker=True)
+        return self._pop_finished_worker(train_worker=True)
 
-    def pop_finished_evaluate_worker(self):
+    def _pop_finished_evaluate_worker(self):
         """Pop a finished evaluator worker's info, if there are finished evaluate workers in pool.
 
         :return: the finished worker info, include step_name and worker_id.
@@ -227,9 +265,9 @@ class Master(object):
         :rtype: dict or None
 
         """
-        return self.pop_finished_worker(train_worker=False)
+        return self._pop_finished_worker(train_worker=False)
 
-    def pop_all_finished_train_worker(self):
+    def _pop_all_finished_train_worker(self):
         """Pop all finished train worker's info.
 
         :return: a finished worker info list.
@@ -237,13 +275,13 @@ class Master(object):
 
         """
         worker_info_list = []
-        finished_train_worker_info = self.pop_finished_train_worker()
+        finished_train_worker_info = self._pop_finished_train_worker()
         while finished_train_worker_info is not None:
             worker_info_list.append(finished_train_worker_info)
-            finished_train_worker_info = self.pop_finished_train_worker()
+            finished_train_worker_info = self._pop_finished_train_worker()
         return worker_info_list
 
-    def pop_all_finished_evaluate_worker(self):
+    def _pop_all_finished_evaluate_worker(self):
         """Pop all finished evaluator worker's info.
 
         :return: a finished worker info list.
@@ -251,39 +289,25 @@ class Master(object):
 
         """
         worker_info_list = []
-        finished_evaluate_worker_info = self.pop_finished_evaluate_worker()
+        finished_evaluate_worker_info = self._pop_finished_evaluate_worker()
         while finished_evaluate_worker_info is not None:
             worker_info_list.append(finished_evaluate_worker_info)
-            finished_evaluate_worker_info = self.pop_finished_evaluate_worker()
+            finished_evaluate_worker_info = self._pop_finished_evaluate_worker()
         return worker_info_list
 
     def close_client(self):
         """Close cluster client."""
+        self._thread_runing = False
         if hasattr(self, "client") and self.client is not None:
             self.client.close()
             del self.client
 
-    @staticmethod
-    def shutdown():
-        """Shutdown all distributed cluster."""
-        mode = General.cluster_mode
-        devices = str(General.worker.devices_per_job)
-        if mode == ClusterMode.Single and devices == "-1":
-            return
-        try:
-            logging.info("Try to shutdown cluster.")
-            from vega.core.trainer.utils import get_write_ip_master_local
-            from distributed import Client
-            ip, port = get_write_ip_master_local()
-            if ip is None or port is None:
-                logging.info("Stand-alone mode, no need to shut down the cluster.")
-                return
-            shutdown_client = Client("{}:{}".format(ip, port))
-            logging.info("Cluster will be shut down.")
-            shutdown_client.shutdown()
-            shutdown_client.close()
-            del shutdown_client
-            logging.info("Cluster is shut down.")
-        except Exception as e:
-            logging.error("Pipeline's cluster shutdown error: {}".format(str(e)))
-            logging.error(traceback.format_exc())
+    def shutdown(self):
+        """Close cluster client."""
+        self._thread_runing = False
+        if self._thread:
+            self._thread.join()
+        if hasattr(self, "client") and self.client is not None:
+            self.client.shutdown()
+            self.client.close()
+            del self.client

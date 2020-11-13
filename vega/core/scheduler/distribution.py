@@ -17,6 +17,7 @@ Class. Distributor Classes are used in Master to init and maintain the cluster.
 """
 import time
 import multiprocessing
+from threading import Lock
 
 
 class DistributorBaseClass:
@@ -65,6 +66,7 @@ class ClusterDaskDistributor(DistributorBaseClass):
         """
         self.address = address
         self.future_set = set()
+        self._queue_lock = Lock()
 
     def get_client(self):
         """Initialize a Client by pointing it to the address of a dask-scheduler.
@@ -97,16 +99,17 @@ class ClusterDaskDistributor(DistributorBaseClass):
 
     def update_queues(self):
         """Update current client status, include all queue and set."""
-        finished_set = set()
-        for f in self.future_set:
-            pid = f[0]
-            future = f[1]
-            if future.done():
-                self.result_queue.put((pid, future.result()))
-                self.process_queue.get()
-                finished_set.add(f)
-        for f in finished_set:
-            self.future_set.remove(f)
+        with self._queue_lock:
+            finished_set = set()
+            for f in self.future_set:
+                pid = f[0]
+                future = f[1]
+                if future.done():
+                    self.result_queue.put((pid, future.result()))
+                    self.process_queue.get()
+                    finished_set.add(f)
+            for f in finished_set:
+                self.future_set.remove(f)
 
     def result_queue_empty(self):
         """Update current client status, and return if the result queue is empty.

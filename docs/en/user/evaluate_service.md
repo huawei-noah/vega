@@ -105,7 +105,7 @@ This tutorial describes how to deploy the server. You do not need to deploy the 
 
 ### 3.1.2 (Optional) Installing and Configuring the Atlas 300 Environment
 
-For details, see the Huawei official tutorial at https://support.huawei.com/enterprise/zh/ai-computing-platform/a300-3000-pid-250702915.
+For details, see the Huawei official tutorial at <https://support.huawei.com/enterprise/zh/ai-computing-platform/a300-3000-pid-250702915>.
 
 ### 3.1.3 (Optional) Installing and Configuring the Mobile Phone Environment
 

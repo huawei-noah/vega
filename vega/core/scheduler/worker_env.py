@@ -50,6 +50,7 @@ class WorkerEnv(WorkerPlugin):
     def _set_device_env(self):
         """Use a local file to save a label to mark gpu id used for different workers on a same slave node."""
         if not os.path.isfile(self.__worker_number_file__):
+            os.makedirs(os.path.dirname(self.__worker_number_file__), exist_ok=True)
             fp = open(self.__worker_number_file__, 'w')
             fcntl.flock(fp, fcntl.LOCK_EX)
             fp.write('{}'.format(0))
@@ -87,36 +88,33 @@ class WorkerEnv(WorkerPlugin):
             os.environ['CUDA_VISIBLE_DEVICES'] = cuda_device_list_str
             logging.info("CUDA_VISIBLE_DEVICES:" + cuda_device_list_str)
         elif self.device_category == 'NPU':
-            local_pod_name = self.local_host_name.split('.')[0]
             origin_rank_file = os.environ.get('ORIGIN_RANK_TABLE_FILE')
             with open(origin_rank_file, 'r') as f:
                 rank_table_json = json.loads(f.read())
-            group_info = rank_table_json['group_list'][0]
-            group_info['device_count'] = str(len(self.device_list))
-            group_info['instance_count'] = '1'
+            rank_table_json['server_count'] = 1
+            group_info = rank_table_json['server_list']
             devices_info = []
-            keep_idx = 0
-            for idx, instance in enumerate(group_info['instance_list']):
-                if instance['pod_name'] == local_pod_name:
-                    for device_id in self.device_list:
-                        device_id = int(device_id)
-                        devices_info.append(instance['devices'][device_id])
-                    keep_idx = idx
-                    break
+            keep_idx = int(os.environ.get('BATCH_TASK_INDEX'))
+            instance_info = group_info[keep_idx]
+            for device_id in self.device_list:
+                device_id = int(device_id)
+                devices_info.append(instance_info['device'][device_id])
             if len(devices_info) == 0:
                 raise Exception('No matching devices info.')
-            group_info['instance_list'] = [group_info['instance_list'][keep_idx]]
-            group_info['instance_list'][0]['devices'] = devices_info
+            rank_table_json['server_list'] = [instance_info]
+            rank_table_json['server_list'][0]['device'] = devices_info
+
             new_rank_table_file = os.path.join(self.__worker_device_folder__,
                                                'rank_table_{}.json'.format(self.device_list[0]))
             if not os.path.exists(self.__worker_device_folder__):
                 os.makedirs(self.__worker_device_folder__, exist_ok=True)
             with open(new_rank_table_file, 'w') as f:
                 f.write(json.dumps(rank_table_json))
-            logging.info('worker rank table json: {}'.format(rank_table_json))
+            print('worker {} rank table json: {}'.format(self.device_list[0], rank_table_json))
             os.environ['RANK_TABLE_FILE'] = new_rank_table_file
-            os.environ['RANK_SIZE'] = group_info['device_count']
+            os.environ['RANK_SIZE'] = str(len(self.device_list))
             os.environ['DEVICE_ID'] = self.device_list[0]
+            os.environ['RANK_ID'] = rank_table_json['server_list'][0]['device'][0]['rank_id']
             logging.info("RANK_TABLE_FILE:" + new_rank_table_file)
         else:
             raise Exception('device category must be GPU or NPU.')

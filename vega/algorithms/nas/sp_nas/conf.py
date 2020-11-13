@@ -9,9 +9,10 @@
 # MIT License for more details.
 
 """Defined Configs."""
+from zeus.common import ConfigSerializable
 
 
-class SpNasConfig(object):
+class SpNasConfig(ConfigSerializable):
     """Sp NasConfig."""
 
     codec = 'SpNasCodec'

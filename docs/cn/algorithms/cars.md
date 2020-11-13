@@ -231,3 +231,7 @@ fully train 的 models_folder 和 model_desc_n.json 参数说明：
 
 1. nas 目录：输出相对最优的多个模型描述文件。
 2. fully_train 目录：输出训练后的模型权重文件。
+
+## 4. Benchmark
+
+Benchmark配置信息请参考: [cars.yml](https://github.com/huawei-noah/vega/tree/master/benchmark/algs/nas/cars.yml)

@@ -41,9 +41,9 @@ CCRN-NAS的搜索空间为三种block的组合：
 搜索空间和搜索算法的配置项如下：
 
 ```yaml
-pipeline: [random1, mutate1]
+pipeline: [random, mutate]
 
-random1:
+random:
     pipe_step:
         type: NasPipeStep
 
@@ -66,9 +66,9 @@ random1:
         policy:
             mum_sample: 1000
 
-mutate1:
+mutate:
     search_space:
-        ref: random1.search_space
+        ref: random.search_space
 
     search_algorithm:
         type: SRMutate
@@ -84,3 +84,7 @@ mutate1:
 
 - 搜索到的帕雷托前沿的模型经充分训练后得到的模型及结果。
 - 随机搜索及进化搜索过程中所有模型的结果result.csv，以及帕雷托前沿的结果pareto_front.csv。
+
+## Benchmark
+
+Benchmark配置信息请参考: [sr_ea.yml](https://github.com/huawei-noah/vega/tree/master/benchmark/algs/nas/sr_ea.yml)

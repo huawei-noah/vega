@@ -14,11 +14,9 @@ import pickle
 import argparse
 import logging
 import horovod.torch as hvd
-from vega.core.common.class_factory import ClassFactory
-from vega.core.common.user_config import UserConfig
-from vega.core.common.general import General
-from vega.core.common.file_ops import FileOps
-from vega.core.common.loader import load_conf_from_desc
+from zeus.common import ClassFactory
+from zeus.common.general import General
+from zeus.common import FileOps
 from vega.core.pipeline.conf import PipeStepConfig
 
 parser = argparse.ArgumentParser(description='Horovod Fully Train')
@@ -31,20 +29,16 @@ logging.info('start horovod setting')
 hvd.init()
 try:
     import moxing as mox
-
     mox.file.set_auth(obs_client_log=False)
-except:
+except Exception:
     pass
 FileOps.copy_file(args.cf_file, './cf_file.pickle')
 hvd.join()
 with open('./cf_file.pickle', 'rb') as f:
     cf_content = pickle.load(f)
-ClassFactory.__configs__ = cf_content.get('configs')
 ClassFactory.__registry__ = cf_content.get('registry')
-UserConfig().__data__ = cf_content.get('data')
-# TODO: need user train config when dataset and model remove from trainer
-load_conf_from_desc(PipeStepConfig, cf_content.get('configs'))
-load_conf_from_desc(General, cf_content.get('general'))
-cls_trainer = ClassFactory.get_cls('trainer')
+General.from_json(cf_content.get('general_config'))
+PipeStepConfig.from_json(cf_content.get('pipe_step_config'))
+cls_trainer = ClassFactory.get_cls('trainer', "Trainer")
 trainer = cls_trainer(None, 0)
 trainer.train_process()

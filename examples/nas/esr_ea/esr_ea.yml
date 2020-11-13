@@ -1,6 +1,7 @@
 general:
-    worker:
-        devices_per_job: -1
+    parallel_search: True
+    parallel_fully_train: True
+    backend: pytorch
 
 pipeline: [nas]
 # pipeline: [nas, fully_train]
@@ -21,16 +22,19 @@ nas:
             rot90: true 
             shuffle: true
             batch_size: 16
+            fixed_size: true
         test:
-            root_HR: /cache/datasets/DIV2K/Set5/hr
-            root_LR: /cache/datasets/DIV2K/Set5/lr
+            root_HR: /cache/datasets/DIV2K/div2k_valid/hr
+            root_LR: /cache/datasets/DIV2K/div2k_valid/lr
             upscale: 2
+            fixed_size: true
+            crop: 64
 
     search_space:
         type: SearchSpace
         modules: ['esrbody']
         esrbody:
-            name: ESRN
+            type: ESRN
             block_type: [S,G,C]
             conv_num: [4,6,8]
             growth_rate: [16,24,32,48,64]
@@ -58,14 +62,14 @@ nas:
         type: Trainer
         callbacks: ESRTrainerCallback
         epochs: 1 #10
-        optim:
+        optimizer:
             type: Adam
             params:
-                lr: 0.0001
+                lr: 0.0001   # 0.001 for mindspore
         lr_scheduler:
             type: MultiStepLR
             params:
-                milestones: [800,900]
+                milestones: [100,200]
                 gamma: 0.5
         loss:
             type: L1Loss
@@ -78,16 +82,15 @@ nas:
         cuda: True
         seed: 10
 
-    evaluator:
-        type: Evaluator
-        gpu_evaluator:
-            type: GpuEvaluator
-            metric:
-                type: SRMetric
+    #evaluator:
+    #    type: Evaluator
+    #    gpu_evaluator:
+    #        type: GpuEvaluator
+    #        metric:
+    #            type: SRMetric
     #    davinci_mobile_evaluator:
     #        type: DavinciMobileEvaluator
-    #        framework: "Pytorch"
-    #        backend: "Bolt"
+    #        hardware: "Bolt"
     #        remote_host: "http://192.168.0.2:8888"
     #         metric:
     #             type: SRMetric
@@ -95,39 +98,24 @@ nas:
 fully_train:
     pipe_step:
         type: FullyTrainPipeStep
-        esr_models_file: "{local_base_path}/output/nas/selected_arch.npy"
+        models_folder: "{local_base_path}/output/nas/"
+
     dataset:
         ref: nas.dataset
 
-    model:
-        model_desc:
-            type: SearchSpace
-            modules: ['esrbody']
-            esrbody:
-                name: ESRN
-                block_type: [S,G,C]
-                conv_num: [4,6,8]
-                growth_rate: [16,24,32,48,64]
-                type_prob: [1,1,1]
-                conv_prob: [1,1,1]
-                growth_prob: [1,1,1,1,1]
-                G0: 64
-                scale: 2
     trainer:
         type: Trainer
         callbacks: ESRTrainerCallback
         node_num: 20
         epochs: 10
-        stat_epoch: 2
-        # model_desc_file: "./output/0417.142237.891/output/selected_arch.npy"
-        optim:
+        optimizer:
             type: Adam
             params:
                 lr: 0.0001
         lr_scheduler:
             type: MultiStepLR
             params:
-                milestones: [12000,20000]
+                milestones: [8000,12000,13500,14500]
                 gamma: 0.5
         loss:
             type: L1Loss
@@ -140,3 +128,85 @@ fully_train:
         seed: 10
         range:
             node_num: 20
+
+benchmark:
+    pipeline: [nas, fully_train, benchmark_DIV2K, benchmark_Set5, benchmark_Set14, benchmark_BSDS100]
+    nas:
+        dataset:
+            train:
+                crop: 64
+        search_space:
+            esrbody:
+                growth_rate: [8,16,24,32]
+                growth_prob: [1,1,1,1]
+                G0: 32
+        search_algorithm:
+            policy:
+                num_generation: 20
+                num_individual: 8
+                num_elitism: 4 
+            range:
+                max_params: 325000
+                min_params: 315000
+        trainer:
+            epochs: 500
+    fully_train:
+        trainer:
+            epochs: 15000
+    benchmark_DIV2K:
+        pipe_step:
+            type: BenchmarkPipeStep
+            models_folder: "{local_base_path}/output/fully_train/"
+        dataset:
+            type: DIV2K
+            test:
+                root_HR: /cache/datasets/DIV2K/div2k_valid/hr
+                root_LR: /cache/datasets/DIV2K/div2k_train/lr
+                upscale: 2
+        evaluator:
+            type: Evaluator
+            gpu_evaluator:
+                type: GpuEvaluator
+                metric:
+                    type: SRMetric
+                    params:
+                        scale: 2 
+                        max_rgb: 255
+    benchmark_Set5:
+        pipe_step:
+            type: BenchmarkPipeStep
+            models_folder: "{local_base_path}/output/fully_train/"
+        dataset:
+            ref: benchmark_DIV2K.dataset
+            type: Set5
+            test:
+                root_HR: /cache/datasets/DIV2K/Set5/hr
+                root_LR: /cache/datasets/DIV2K/Set5/lr
+        evaluator:
+            ref: benchmark_DIV2K.evaluator
+
+    benchmark_Set14:
+        pipe_step:
+            type: BenchmarkPipeStep
+            models_folder: "{local_base_path}/output/fully_train/"
+        dataset:
+            ref: benchmark_DIV2K.dataset
+            type: Set14
+            test:
+                root_HR: /cache/datasets/DIV2K/Set14/hr
+                root_LR: /cache/datasets/DIV2K/Set14/lr
+        evaluator:
+            ref: benchmark_DIV2K.evaluator
+
+    benchmark_BSDS100:
+        pipe_step:
+            type: BenchmarkPipeStep
+            models_folder: "{local_base_path}/output/fully_train/"
+        dataset:
+            ref: benchmark_DIV2K.dataset
+            type: BSDS100
+            test:
+                root_HR: /cache/datasets/DIV2K/BSDS100/hr
+                root_LR: /cache/datasets/DIV2K/BSDS100/lr
+        evaluator:
+            ref: benchmark_DIV2K.evaluator

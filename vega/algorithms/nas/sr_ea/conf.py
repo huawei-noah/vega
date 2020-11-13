@@ -9,18 +9,19 @@
 # MIT License for more details.
 
 """Defined Configs."""
+from zeus.common import ConfigSerializable
 
 
-class SRPolicyConfig(object):
+class SRPolicyConfig(ConfigSerializable):
     """SR Policy Config."""
 
     num_sample = 10
     num_mutate = 10
 
 
-class SRConfig(object):
+class SRConfig(ConfigSerializable):
     """SR Config."""
 
     codec = 'SRCodec'
     policy = SRPolicyConfig
-    objective_keys = ['SRMetric', 'gflops']
+    objective_keys = ['SRMetric', 'flops']

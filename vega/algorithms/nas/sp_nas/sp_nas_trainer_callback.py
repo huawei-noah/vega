@@ -17,10 +17,10 @@ import torch
 import time
 import datetime
 import shutil
-from vega.core.trainer.callbacks import Callback
+from zeus.trainer.callbacks import Callback
 from vega.algorithms.nas.sp_nas.utils import dict_to_json, extract_backbone_from_pth, update_config, ListDict
-from vega.core.common.class_factory import ClassFactory, ClassType
-from vega.core.common import Config, FileOps, TaskOps
+from zeus.common import ClassFactory, ClassType
+from zeus.common import Config, FileOps, TaskOps
 # register SpNet to mmdet
 from vega.algorithms.nas.sp_nas.spnet import *  # noqa F401, F403
 
@@ -29,8 +29,7 @@ from vega.algorithms.nas.sp_nas.spnet import *  # noqa F401, F403
 class SpNasTrainerCallback(Callback):
     """A special callback for Trainer."""
 
-    disable_callbacks = ["ModelStatistics", "MetricsEvaluator", "ModelCheckpoint", "PerformanceSaver",
-                         "LearningRateScheduler", "ProgressLogger", "ReportCallback"]
+    enable_callbacks = ["SpNasTrainerCallback"]
 
     def __init__(self):
         """Initializ SpNasTrainerCallback."""
@@ -59,7 +58,7 @@ class SpNasTrainerCallback(Callback):
 
     def _sample_to_config(self):
         """Save model config to local config file."""
-        if self.sample_result is not None:
+        if hasattr(self, "sample_result") and self.sample_result:
             config = self.sample_result[0]
             logging.info("Sampling architecture: {}".format(self.sample_result[1]))
             pre_worker_id = self.sample_result[1]['pre_worker_id']
@@ -86,7 +85,7 @@ class SpNasTrainerCallback(Callback):
         """
         config = Config(self.cfg.config_template)
         config['total_epochs'] = self.cfg.epoch
-        if 'model_desc_file' in self.cfg:
+        if hasattr(self.cfg, 'model_desc_file') and self.cfg.model_desc_file:
             _model_desc_file = self.cfg.model_desc_file.replace(
                 "{local_base_path}", TaskOps().local_base_path)
             _total_list = ListDict.load_csv(_model_desc_file)
@@ -100,11 +99,13 @@ class SpNasTrainerCallback(Callback):
             if self.cfg.regnition:
                 # re-write config from previous result
                 config['model']['backbone']['reignition'] = True
-                config['model']['pretrained'] = os.path.join(self.output_path,
-                                                             pretrained + '_imagenet.pth')
+                config['model']['pretrained'] = os.path.join(
+                    self.output_path, pretrained + '_imagenet.pth')
             else:
-                config['model']['pretrained'] = extract_backbone_from_pth(self.output_path,
-                                                                          pre_worker_id, pretrained)
+                config['model']['pretrained'] = extract_backbone_from_pth(
+                    self.output_path, pre_worker_id, pretrained)
+            self.sample_results = dict(
+                arch=pre_arch, worker_id=self._worker_id, pre_arch=pre_arch, pre_worker_id=pre_worker_id)
         elif 'model_desc' in self.cfg:
             model_desc = self.cfg.model_desc
         else:

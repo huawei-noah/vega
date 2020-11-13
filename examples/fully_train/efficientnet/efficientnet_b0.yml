@@ -8,24 +8,28 @@ fully_train:
         type: Trainer
         lazy_built: True
         callbacks: TimmTrainerCallback
-        optim:
-            opt: rmsproptf
-            lr: 0.256
-            opt_eps: 0.001
-            momentum: 0.9
-            weight_decay: 1.0e-5
+        optimizer:
+            params:
+                opt: rmsproptf
+                lr: 0.256
+                opt_eps: 0.001
+                momentum: 0.9
+                weight_decay: 1.0e-5
         lr_scheduler:
-            sched: step
-            decay_epochs: 3.0
-            decay_rate: 0.963
-            warmup_lr: 0.0001
-            warmup_epochs: 5
+            params:
+                sched: step
+                decay_epochs: 3.0
+                decay_rate: 0.963
+                warmup_lr: 0.0001
+                warmup_epochs: 5
         loss:
             type: LabelSmoothingCrossEntropy
-            smoothing: 0.1
+            params:
+                smoothing: 0.1
         metric:
             type: accuracy
-            topk: [1, 5]
+            # params:
+            #     topk: [1, 5]
         model_desc:
             model_name: 'efficientnet_b0'
             pretrained: False

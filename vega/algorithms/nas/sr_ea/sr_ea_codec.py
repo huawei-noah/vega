@@ -9,8 +9,8 @@
 # MIT License for more details.
 
 """Encode and decode the model config."""
-from vega.search_space.codec import Codec
-from vega.core.common.class_factory import ClassType, ClassFactory
+from vega.core.search_algs.codec import Codec
+from zeus.common import ClassType, ClassFactory
 
 
 @ClassFactory.register(ClassType.CODEC)

@@ -14,10 +14,10 @@ import random
 from copy import deepcopy
 
 from .conf import AdelaideConfig
-from vega.core.common.class_factory import ClassFactory, ClassType
-from vega.core.common.file_ops import FileOps
-from vega.core.report import Report
-from vega.search_space.search_algs.search_algorithm import SearchAlgorithm
+from zeus.common import ClassFactory, ClassType
+from zeus.common import FileOps
+from zeus.report import Report
+from vega.core.search_algs import SearchAlgorithm
 
 
 @ClassFactory.register(ClassType.SEARCH_ALGORITHM)
@@ -91,3 +91,8 @@ class AdelaideMutate(SearchAlgorithm):
         self.sample_count += 1
         desc['custom'] = search_desc
         return self.sample_count, desc
+
+    @property
+    def max_samples(self):
+        """Get max samples number."""
+        return self.max_sample

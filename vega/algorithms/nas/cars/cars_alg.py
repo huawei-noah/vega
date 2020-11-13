@@ -16,20 +16,19 @@ from collections import namedtuple
 import numpy as np
 import vega
 from .conf import CARSConfig
-from vega.core.common import Config
+from zeus.common import Config
 from vega.algorithms.nas.darts_cnn import DartsNetworkTemplateConfig
-from vega.core.common.class_factory import ClassFactory, ClassType
-from vega.search_space.search_algs import SearchAlgorithm
-from vega.core.report.nsga_iii import SortAndSelectPopulation
+from zeus.common import ClassFactory, ClassType
+from vega.core.search_algs import SearchAlgorithm
+from zeus.report import SortAndSelectPopulation
 from .nsga3 import CARS_NSGA
 from .utils import eval_model_parameters
 
 if vega.is_torch_backend():
     import torch
-    from vega.core.metrics.pytorch import Metrics
+    from zeus.metrics.pytorch import Metrics
 elif vega.is_tf_backend():
-    import tensorflow as tf
-    from vega.core.metrics.tensorflow import Metrics
+    from zeus.metrics.tensorflow import Metrics
 
 logger = logging.getLogger(__name__)
 Genotype = namedtuple('Genotype', 'normal normal_concat reduce reduce_concat')
@@ -48,6 +47,7 @@ class CARSAlgorithm(SearchAlgorithm):
     def __init__(self, search_space=None, **kwargs):
         """Init CARSAlgorithm."""
         super(CARSAlgorithm, self).__init__(search_space, **kwargs)
+        self.search_space = search_space
         self.network_momentum = self.config.policy.momentum
         self.network_weight_decay = self.config.policy.weight_decay
         self.parallel = self.config.policy.parallel
@@ -154,7 +154,7 @@ class CARSAlgorithm(SearchAlgorithm):
                 for i in range(int(alg_policy.num_individual * (1 + alg_policy.expand))):
                     pfm = self.search_infer_step(alphas[i])
                     fitness[i] = pfm.get(self.config.objective_keys)
-                    model_sizes[i] = pfm.get('kparams')
+                    model_sizes[i] = pfm.get('params')
                     genotypes.append(self.genotype_namedtuple(alphas[i]))
                     logging.info('Valid_acc for invidual {} %f, size %f'.format(i), fitness[i], model_sizes[i])
                 # update population using pNSGA-III (CARS_NSGA)
@@ -218,7 +218,7 @@ class CARSAlgorithm(SearchAlgorithm):
                 for step, (input, target) in enumerate(self.trainer.valid_loader):
                     input = input.cuda()
                     target = target.cuda(non_blocking=True)
-                    logits = self.trainer.model(input, alpha_tensor)
+                    logits = self.trainer.model(input, alpha=alpha_tensor)
                     metrics(logits, target)
         elif vega.is_tf_backend():
             # self.trainer.valid_alpha = tf.convert_to_tensor(alpha)
@@ -233,7 +233,7 @@ class CARSAlgorithm(SearchAlgorithm):
         for key, mode in objectives.items():
             if mode == 'MIN':
                 performance[key] = -1 * performance[key]
-        performance.update({'kparams': self.eval_model_sizes(alpha)})
+        performance.update({'params': self.eval_model_sizes(alpha)})
         return performance
 
     def select_first_pareto_front(self, fitness, obj, genotypes):
@@ -454,18 +454,15 @@ class CARSAlgorithm(SearchAlgorithm):
         :return: The number of parameters
         :rtype: Float
         """
-        if vega.is_torch_backend():
-            from vega.search_space.networks.pytorch import CARSDartsNetwork
-        elif vega.is_tf_backend():
-            from vega.search_space.networks.tensorflow import CARSDartsNetwork
         normal = alpha[:self.len_alpha]
         reduce = alpha[self.len_alpha:]
         child_desc = self.codec.calc_genotype([normal, reduce])
         child_cfg = copy.deepcopy(self.codec.darts_cfg.super_network)
         child_cfg.search = False
-        child_cfg.normal.genotype = child_desc[0]
-        child_cfg.reduce.genotype = child_desc[1]
-        net = CARSDartsNetwork(child_cfg)
+        child_cfg.cells.normal.genotype = child_desc[0]
+        child_cfg.cells.reduce.genotype = child_desc[1]
+        name = child_cfg.pop('type')
+        net = ClassFactory.get_cls(ClassType.NETWORK, name)(**child_cfg)
         model_size = eval_model_parameters(net)
         return model_size
 
@@ -543,10 +540,16 @@ class CARSAlgorithm(SearchAlgorithm):
             template = DartsNetworkTemplateConfig.cifar10
         elif self.trainer.config.darts_template_file == "{default_darts_imagenet_template}":
             template = DartsNetworkTemplateConfig.imagenet
-
+        else:
+            template = self.trainer.config.darts_template_file
         for idx in range(len(genotypes)):
             template_cfg = Config(template)
-            template_cfg.super_network.normal.genotype = genotypes[idx].normal
-            template_cfg.super_network.reduce.genotype = genotypes[idx].reduce
+            template_cfg.super_network.cells.normal.genotype = genotypes[idx].normal
+            template_cfg.super_network.cells.reduce.genotype = genotypes[idx].reduce
             desc_list.append(template_cfg)
         return desc_list
+
+    @property
+    def max_samples(self):
+        """Get max samples number."""
+        return self.sample_num

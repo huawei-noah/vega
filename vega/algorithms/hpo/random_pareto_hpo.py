@@ -10,7 +10,7 @@
 
 """Defined RandomParetoHpo class."""
 from vega.algorithms.hpo.common import RandomPareto
-from vega.core.common.class_factory import ClassFactory, ClassType
+from zeus.common import ClassFactory, ClassType
 from vega.algorithms.hpo.hpo_base import HPOBase
 from .random_pareto_conf import RandomParetoConfig
 
@@ -24,10 +24,10 @@ class RandomParetoHpo(HPOBase):
     def __init__(self, search_space=None, **kwargs):
         """Init RandomParetoHpo."""
         super(RandomParetoHpo, self).__init__(search_space, **kwargs)
-        config_count = self.config.policy.total_epochs // self.config.policy.epochs_per_iter
-        self.hpo = RandomPareto(self.hps,
+        config_count = self.config.policy.total_epochs // self.config.policy.max_epochs
+        self.hpo = RandomPareto(self.search_space,
                                 config_count,
-                                self.config.policy.epochs_per_iter,
+                                self.config.policy.max_epochs,
                                 object_count=int(self.config.policy.pareto.object_count),
                                 max_object_ids=self.config.policy.pareto.max_object_ids
                                 )

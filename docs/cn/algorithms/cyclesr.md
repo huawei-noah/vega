@@ -115,3 +115,7 @@ examples/data_augmentation/cyclesr/cyclesr.yml
  2. 网络模型文件
 
 最终在NTIRE17 track2上使用unpair的setting达到PSNR (RGB:25.34)
+
+## 6. Benchmark
+
+Benchmark配置信息请参考: [cyclesr.yml](https://github.com/huawei-noah/vega/tree/master/benchmark/algs/data_augmentation/cyclesr.yml)

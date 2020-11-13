@@ -9,9 +9,10 @@
 # MIT License for more details.
 
 """Defined Configs."""
+from zeus.common import ConfigSerializable
 
 
-class PBAPolicyConfig(object):
+class PBAPolicyConfig(ConfigSerializable):
     """PBA Policy Config."""
 
     total_epochs = 81
@@ -20,7 +21,7 @@ class PBAPolicyConfig(object):
     total_rungs = 200
 
 
-class PBAConfig(object):
+class PBAConfig(ConfigSerializable):
     """PBA Config."""
 
     policy = PBAPolicyConfig

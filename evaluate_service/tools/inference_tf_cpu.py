@@ -21,7 +21,7 @@ def inference_tf_cpu(pb_file, input_data_path, input_shape, input_dtype, input_n
     :param output_node_name: the output_node name in the graph
     :type output_node_name: str
     """
-    sess = tf.Session()
+    sess = tf.compat.v1.Session()
     with gfile.FastGFile(pb_file, 'rb') as f:
         graph_def = tf.GraphDef()
         graph_def.ParseFromString(f.read())
