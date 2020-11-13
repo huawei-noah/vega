@@ -10,7 +10,7 @@ Vega provides various AutoML tasks. You can select an appropriate algorithm base
 
 <table>
   <tr><th>Task</th><th>categorize</th><th>Algorithms</th></tr>
-  <tr><td rowspan="3">Image Classification</td><td>Network Architecture Search</td><td><a href="../algorithms/cars.md">CARS</a>, <td><a href="../algorithms/nago.md">NAGO</a>, BackboneNas, DartsCNN, GDAS, EfficientNet</td></tr>
+  <tr><td rowspan="3">Image Classification</td><td>Network Architecture Search</td><td><a href="../algorithms/cars.md">CARS</a>, <a href="../algorithms/nago.md">NAGO</a>, BackboneNas, DartsCNN, GDAS, EfficientNet</td></tr>
   <tr><td> Hyperparameter Optimization</td><td><a href="../algorithms/hpo.md">ASHA, BOHB, BOSS, BO, TPE, Random, Random-Pareto</a></td></tr>
   <tr><td>Data Augmentation</td><td><a href="../algorithms/pba.md">PBA</a></td></tr>
   <tr><td rowspan="2">Model Compression</td><td>Model Pruning</td><td><a href="../algorithms/prune_ea.md">Prune-EA</a></td></tr>
