@@ -47,10 +47,10 @@ AutoFIS使用的数据是通用的CTR预测数据集格式，采用稀疏矩阵�
 
 ```yaml
 dataset:
-    type: AvazuDataset                         # 数据集
-    batch_size: 2000                           # batch size大小
+    type: AvazuDataset                          # 数据集
+    batch_size: 2000                            # batch size大小
     common:
-        data_path: s3://bucket-sc-yujinkai/Avazu/ # 数据集的数据路径
+        data_path:  /cache/datasets/avazu/      # 数据集的数据路径
 
 ```
 
@@ -109,7 +109,7 @@ trainer:
 
 AutoFIS的特征交互选择是通过GRDA优化器来进行稀疏选择，此外，还可以通过取top K个最优的特征交互来直接选择，对应的样例可以参考：automl/examples/nas/fis/autogate.yml
 
-与GRDA版本的AutoFIS不同，top K版本的AutoFIS只需要Adam一个优化器，因此训练较为便捷，模型的参数fis_ratio用于选择top比例的特征交互。 
+与GRDA版本的AutoFIS不同，top K版本的AutoFIS只需要Adam一个优化器，因此训练较为便捷，模型的参数fis_ratio用于选择top比例的特征交互。
 
 ### 3.6 算法输出
 

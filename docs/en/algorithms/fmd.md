@@ -41,31 +41,13 @@ nr_steps: number of steps required from the initial value to the final value.
 
 ## 3. Example
 
-The code related to the FMD operator is stored in the following directory:
-
-```text
-vega/search_space_networks/ops/fmdunit.py
-```
-
 The code example for using the FMD operator to construct a neural network is as follows:
 
 ```text
-example/fully_train/fmd/networks/resnet_cifar.py
+examples/fully_train/fmd/networks/resnet_cifar.py
 ```
 
-The sample code shows how to add the fmd operator to the resnet network and use the improved network to categorize the cifar10 dataset.
-
-The entry program is
-
-```text
-examples/fully_train/fmd/main.py
-```
-
-Set parameters in the configuration file in
-
-```text
-examples/fully_train/fmd/fmd.yml
-```
+Configure the configuration file correctly and call the main function to run the pipeline. For details, see [Example Reference](../user/examples.md).
 
 This method uses the default parameters in the .yml file in the pipeline to achieve a precision of 94.50% in the cifar10 data set. The accuracy values shown in the original paper are as follows:
 

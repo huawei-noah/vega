@@ -43,16 +43,6 @@ EA Pruning适合网络的通道剪枝，分为两个阶段：搜索剪枝网络�
 
 ### 2.2 运行说明
 
-#### 2.2.1.启动文件
-
-我们推荐在华为云的训练环境中运行PruningEA。其入口程序为
-
-```bash
-vega/examples/prune_ea/main.py
-```
-
-#### 2.2.2 配置文件
-
 在配置文件中进行参数配置，包括搜索剪枝模型、训练剪枝模型2个过程，配置文件为：
 
 - `vega/examples/prune_ea/prune.yml`

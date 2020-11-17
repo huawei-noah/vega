@@ -87,4 +87,4 @@ mutate:
 
 ## Benchmark
 
-Benchmark配置信息请参考: [sr_ea.yml](https://github.com/huawei-noah/vega/tree/master/benchmark/algs/nas/sr_ea.yml)
+Benchmark配置信息请参考: [sr_ea.yml](https://github.com/huawei-noah/vega/tree/master/examples/nas/sr_ea.yml)

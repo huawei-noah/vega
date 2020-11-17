@@ -82,7 +82,7 @@ search_algorithm:
 
 ### 4.3 Run NAGO in VEGA
 
-- Install and set-up vega following the [instruction](https://github.com/huawei-noah/vega/blob/master/docs/en/user/install.md)
+- Install and set-up vega following the [instruction](../user/install.md)
 - Define the NAGO configuration file `nago.yaml` as suggested above and put dataset at the `data_path` specified in `nago.yaml`
 - Run the command `python run_pipeline.py ./nago/nago.yaml pytorch`
 

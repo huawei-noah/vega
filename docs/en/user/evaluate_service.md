@@ -188,6 +188,20 @@ Download the code [evaluate_service](../../../evaluate_service) to any directory
   - If the environment type is `ATLAS200DK`, you need to configure the following fields. If the environment type is not `ATLAS200DK`, ignore the following configuration. `ddk_user_name` is the user name for logging in to the evaluation server, and `atlas_host_ip` is the actual IP address of the `ATLAS200DK` hardware.
 - Run the `install.sh` script to start the evaluation service that depends on the environment installation.
 
+
+## 4. Use evaluate service
+To use evaluate service, you only need to configure a few lines in the configuration file, as shown in the following example.
+```yaml
+evaluator:
+    type: Evaluator
+    davinci_mobile_evaluator:
+        type: DavinciMobileEvaluator
+        hardware: "Davinci"
+        remote_host: "http://192.168.0.2:8888"
+```
+The configuration of `evaluator` is at the same level as your configuration of `trainer`. Two parameters need to be configured. `hardware` indicates the 
+hardware device to be evaluated. Currently, `Davinci` and `Bolt` are supported. `remote_host` indicates the IP address and port number of the evaluation server to be deployed.
+
 ## 4.  Precautions
 
 1. If you use the `Pytorch` framework, the `Pytorch` model needs to be converted on the client of the assessment service. If third-party open-source software is used, obtain and store the `Pytorch` model. /third_party`.  Open-source software download address: <https://github.com/xxradon/PytorchToCaffe>

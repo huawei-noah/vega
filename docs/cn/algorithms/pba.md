@@ -120,7 +120,3 @@ workers:
         ...
         16:
 ```
-
-## 6. Benchmark
-
-Benchmark配置信息请参考: [pba.yml](https://github.com/huawei-noah/vega/tree/master/benchmark/algs/data_augmentation/pba.yml)

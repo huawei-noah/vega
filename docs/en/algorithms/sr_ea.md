@@ -86,4 +86,4 @@ The outputs are as follows:
 
 ## Benchmark
 
-Benchmark configuration: [sr_ea.yml](https://github.com/huawei-noah/vega/tree/master/benchmark/algs/nas/sr_ea.yml)
+Benchmark configuration: [sr_ea.yml](https://github.com/huawei-noah/vega/tree/master/examples/nas/sr_ea.yml)

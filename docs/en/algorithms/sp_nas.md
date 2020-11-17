@@ -115,4 +115,4 @@ trainer:
 
 ## Benchmark
 
-Benchmark configuration: [sp_name.yml](https://github.com/huawei-noah/vega/tree/master/benchmark/algs/nas/sp_nas.yml)
+Benchmark configuration: [sp_nas.yml](https://github.com/huawei-noah/vega/tree/master/examples/nas/sp_nas.yml)

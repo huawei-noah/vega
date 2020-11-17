@@ -82,7 +82,7 @@ search_algorithm:
 
 ### 4.3 在VEGA中运行NAGO
 
-- 按照[说明](https://github.com/huawei-noah/vega/blob/master/docs/en/user/install.md) 安装 vega
+- 按照[说明](../user/install.md) 安装 vega
 - 按照以上描述通过 `nago.yaml` 定义NAGO的运行设置，并把任务数据集放到 `nago.yaml` 中 `data_path` 指定的位置
 - 运行命令 `python run_pipeline.py ./nago/nago.yaml pytorch`
 

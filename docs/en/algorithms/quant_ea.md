@@ -36,7 +36,6 @@ Repeat the search, evaluation, and optimization to complete the entire evolution
 2. The evolution algorithm searches for the quantization bit width of each layer. Compared. The searched model takes advantages over the fix bit width quantization, like 8bit (baseline-w8a8) or 4bit (baseline-w4a4) quantization. It has less computing workload, and higher classification accuracy.
 3. The NSGA - III algorithm can search out the Pareto front and generate multiple optimal models with different constraints at a time.
 
-
 ## 4. User Guide
 
 ### 4.1 Search Space Configuration
