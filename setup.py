@@ -47,7 +47,7 @@ setuptools.setup(
         "scipy==1.3.3",
         "matplotlib==3.3.0",
         "py-dag==3.0.1",
-        "psutil==5.6.3",
+        "psutil==5.6.6",
         "distributed==2.18.0",
     ],
 )
