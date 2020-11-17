@@ -16,12 +16,6 @@
 
 ## 2. 算子介绍
 
-FMD相关代码均位于:
-
-```text
-vega/search_space_networks/ops/fmdunit.py
-```
-
 FMD算子相关的参数如下
 
 | 参数 | 说明 |
@@ -46,24 +40,12 @@ nr_steps: 从初始值达到最终值的所需步数。
 利用FMD算子构建神经网络的相关代码实例位于：
 
 ```text
-example/fully_train/fmd/networks/resnet_cifar.py
+examples/fully_train/fmd/networks/resnet_cifar.py
 ```
 
 该示例代码展示了在resnet网络中增加fmd算子，并使用改进后的网络在cifar10数据集上进行分类。
 
-其入口程序为：
-
-```text
-examples/fully_train/fmd/main.py
-```
-
-参数配置文件为：
-
-```text
-examples/fully_train/fmd/fmd.yml
-```
-
-请将配置文件配置正确后，调用主函数运行示例。
+请将配置文件配置正确后，调用主函数运行pipeline，请参考[示例参考](../user/examples.md)。
 
 该示例的默认参数在cifar10数据集中达到94.50%的精度。原论文中所展示的精度值如下：
 

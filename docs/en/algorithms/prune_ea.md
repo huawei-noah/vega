@@ -40,16 +40,6 @@ EA Pruning is used to perform channel pruning for a CNN structure. It consists o
 
 ### 2.2 Operation Description
 
-#### 2.2.1.Startup File
-
-You are advised to run PruningEA in the HUAWEI cloud environment. The entry program is
-
-```bash
-vega/examples/prune_ea/main.py
-```
-
-#### 2.2.2 Configuration Files
-
 Configure parameters including searching for the pruned model and training the pruned model are as follows:
 
 - `vega/examples/prune_ea/prune.yml`

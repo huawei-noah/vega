@@ -59,7 +59,7 @@ dataset:
     type: AvazuDataset                         # dataset
     batch_size: 2000                           # batch size
     common:
-        data_path: s3://bucket-sc-yujinkai/Avazu/ # data path of dataset
+        data_path: /cache/datasets/avazu/      # data path of dataset
 
 ```
 
@@ -73,7 +73,7 @@ model:
         modules: ["custom"]
             custom:
                 input_dim: 645195              # the number of features of the whole training set, that is, the dimension of the `x` vector
-                input_dim4lookup: 24           # the number of non-zero features in a sampler, that is, the dimension of `feature_id` vector 
+                input_dim4lookup: 24           # the number of non-zero features in a sampler, that is, the dimension of `feature_id` vector
                 embed_dim: 40
                 hidden_dims: [700, 700, 700, 700, 700]
                 dropout_prob: 0.0

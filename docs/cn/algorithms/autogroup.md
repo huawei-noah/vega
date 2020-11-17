@@ -25,7 +25,7 @@ fully_train:
     dataset:
         type: AvazuDataset
         common:
-            data_path: /cache/datasets/Avazu/
+            data_path: /cache/datasets/avazu/
 
     model:
         model_desc:
@@ -82,7 +82,7 @@ AutoGroup使用的数据是通用的CTR预测数据集格式，采用稀疏矩�
 dataset:
     type: AvazuDataset # data type
     common:
-        data_path: /cache/datasets/Avazu/ # data path
+        data_path: /cache/datasets/avazu/ # data path
 ```
 
 type为数据集名称， data_path为数据集路径

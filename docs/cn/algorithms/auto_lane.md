@@ -55,10 +55,10 @@ auto_lane分为backbone module，feature fusion module和 head三大组件。bac
 
    在运行本算法之前，请务必细读[安装指导](../user/install.md)、[部署指导](../user/deployment.md)、[配置指导](../user/config_reference.md)、[示例参考](../user/examples.md)这几个文档，并且确认。
 
-   在这里我们已经提供了能够跑出benchmark的配置文件`benchmark/algs/nas/auto_lane.yml`，进入 examples 目录后，可以执行如下命令运行示例：
+   在这里我们已经提供了能够跑出benchmark的配置文件`./nas/auto_lane.yml`，进入 examples 目录后，可以执行如下命令运行示例：
 
     ```bash
-    python3 ./run_pipeline.py benchmark/algs/nas/auto_lane.yml
+    python3 ./run_pipeline.py ./nas/auto_lane.yml -s b
     ```
 
 2. 搜索算法参数配置
@@ -68,7 +68,7 @@ auto_lane分为backbone module，feature fusion module和 head三大组件。bac
    ```yaml
        search_algorithm:
            type: AutoLaneNas        # 设置使用的搜索算法
-           codec: AutoLaneNasCodec	 # 设置使用的编解码器
+           codec: AutoLaneNasCodec  # 设置使用的编解码器
            random_ratio: 0.5        # 设置随机采样占总样本数的采样比率
            num_mutate: 10           # 设置遗传算法的遗传代数
            max_sample: 100          # 设置最大采样样本数
@@ -89,7 +89,7 @@ auto_lane分为backbone module，feature fusion module和 head三大组件。bac
      ```yaml
      search_space:
          type: SearchSpace
-         modules: ['backbone','neck']		   # 需要搜索的模块（请不要修改此项）
+         modules: ['backbone','neck']            # 需要搜索的模块（请不要修改此项）
          backbone:
              ResNetVariantDet:                   # 设置ResNetVariantDet主干系列，若不搜索可删除此子树
                  base_depth: [18, 34, 50, 101]   # 表示使用18、34、50、101的基础block

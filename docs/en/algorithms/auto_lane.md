@@ -55,10 +55,10 @@ This Algorithm is mainly designed for the application of automatic driving indus
 
    Before running this algorithm, be sure to read the [Installation Guide] (.. /user/install.md), [Deployment Guide] (.. /user/deployment.md), [Configuration Guide] (.. /user/config_reference.md), [Example reference](.. /user/examples.md) and confirm it.
 
-   The `benchmark/algs/nas/auto_lane.yml` configuration file that can be used to run the benchmark is provided here. Go to the `examples` directory and execute the following command to run the example:
+   The `/nas/auto_lane.yml` configuration file that can be used to run the benchmark is provided here. Go to the `examples` directory and execute the following command to run the example:
 
     ```bash
-    python3 ./run_pipeline.py benchmark/algs/nas/auto_lane.yml
+    python3 ./run_pipeline.py ./nas/auto_lane.yml -s b
     ```
 
 2. How to set search algorithm parameter
@@ -69,10 +69,10 @@ This Algorithm is mainly designed for the application of automatic driving indus
        search_algorithm:
            type: AutoLaneNas        # Set the search algorithm
            codec: AutoLaneNasCodec  # Set the codec to be used
-           random_ratio: 0.5        # Set the sampling ratio of random sampling to the total number of samples. 
-           num_mutate: 10           # Set Genetic Algebra for Genetic Algorithm 
-           max_sample: 100          # Set the maximum number of samples 
-           min_sample: 10           # Set the minimum number of samples 
+           random_ratio: 0.5        # Set the sampling ratio of random sampling to the total number of samples.
+           num_mutate: 10           # Set Genetic Algebra for Genetic Algorithm
+           max_sample: 100          # Set the maximum number of samples
+           min_sample: 10           # Set the minimum number of samples
    ```
 
 3. How to set search space
@@ -89,14 +89,14 @@ This Algorithm is mainly designed for the application of automatic driving indus
      ```yaml
      search_space:
          type: SearchSpace
-         modules: ['backbone','neck']           # Module to be searched for (Do not modify this item.) 
+         modules: ['backbone','neck']           # Module to be searched for (Do not modify this item.)
          backbone:
-             ResNetVariantDet:                   # Set the ResNetVariantDet trunk series. This subtree can be deleted if not needed. 
+             ResNetVariantDet:                   # Set the ResNetVariantDet trunk series. This subtree can be deleted if not needed.
                  base_depth: [18, 34, 50, 101]   # The value 18, 34 indicates that the basic block is used.The value 50, 101 indicates that the bottleneck block is used
-                 base_channel: [32, 48, 56, 64]  # Set the basic channel to a multiple of 2. 
+                 base_channel: [32, 48, 56, 64]  # Set the basic channel to a multiple of 2.
              ResNextVariantDet:                  # Set the ResNextVariantDet trunk series. This subtree can be deleted if not needed. 
                  base_depth: [18, 34, 50, 101]   # The value 18, 34 indicates that the basic block is used.The value 50, 101 indicates that the bottleneck block is used
-                 base_channel: [32, 48, 56, 64]  # Set the basic channel to a multiple of 2. 
+                 base_channel: [32, 48, 56, 64]  # Set the basic channel to a multiple of 2.
          neck:
              FeatureFusionModule:
                  fusion_arch: ['012-022', '012-122', '122-022','-']
@@ -104,7 +104,7 @@ This Algorithm is mainly designed for the application of automatic driving indus
 
 4. How to config trainer
 
-     The configuration items of the trainer are as follows: 
+     The configuration items of the trainer are as follows:
 
      ```yaml
      trainer:
@@ -116,38 +116,38 @@ This Algorithm is mainly designed for the application of automatic driving indus
          lr_adjustment_position: 'after_train_step' # On which position to adjust the learning rate
          report_freq: 50                 # The interval of report(measured by step)
          valid_interval: 3               # The interval of valid(measure by epoch)
-         epochs: 40                      # Number of epochs to be trained 
+         epochs: 40                      # Number of epochs to be trained
          verbose: True                   # Whether to output debugging information
-         cache_dir: /cache               # Setting the cache directory 
+         cache_dir: /cache               # Setting the cache directory
          optim:
              type: SGD                   # Set the optimizer to SGD
-             lr: 0.02                    # Set the initial learning rate 
+             lr: 0.02                    # Set the initial learning rate
              momentum: 0.9               # Set the momentum
              weight_decay: 0.0001        # Set the weight_decay
          lr_scheduler:
              type: WarmupScheduler       # Set WarmupScheduler
-             by_epoch: False             # Set WarmupScheduler changes with the step instead of the epoch. 
+             by_epoch: False             # Set WarmupScheduler changes with the step instead of the epoch.
              warmup_type: linear         # Set warmup_type
-             warmup_iters: 5000          # Set the number of steps of the warmup. 
-             warmup_ratio: 0.1           # Set the initial learning rate. 
+             warmup_iters: 5000          # Set the number of steps of the warmup.
+             warmup_ratio: 0.1           # Set the initial learning rate.
              after_scheduler_by_epoch: False
              after_scheduler_config:
-                 type: CosineAnnealingLR # Set the scheduler of the LR. 
+                 type: CosineAnnealingLR # Set the scheduler of the LR.
                  T_max: 120000 # int(10_0000/batch_size)*epoch-warmup_iters
          metric:
-             type: LaneMetric            # Set the evaluation mode (The evaluation mode of the lane line is special. Do not modify the subtree) 
+             type: LaneMetric            # Set the evaluation mode (The evaluation mode of the lane line is special. Do not modify the subtree)
              method: f1_measure          # Set the evaluation indicator to f1_measure
              eval_width: 1640            # Set the image width for the evaluation
-             eval_height: 590            # Set the image height for the evaluated 
+             eval_height: 590            # Set the image height for the evaluated
              iou_thresh: 0.5             # Set IoU threshhold
-             lane_width: 30              # Set the line width for calculating the bit-wise IoU. 
+             lane_width: 30              # Set the line width for calculating the bit-wise IoU.
              thresh_list:  [0.50, 0.60, 0.70, 0.80, 0.90] # Perform grid search for the prediction threshhold during evaluation.
      ```
 
 5. How to configure dataset
    The interface of the CULane dataset and the CurveLanes dataset are provided here. After downloaded the correspond dataset to the target place, You can configure and use the dataset.
 
-   Dataset configuration parameters: 
+   Dataset configuration parameters:
 
    ```yaml
    dataset:

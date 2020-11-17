@@ -188,7 +188,23 @@
   - 如果环境类型是`ATLAS200DK`, 还需要配置如下字段， 如果环境类型不是`ATLAS200DK`， 可忽略如下配置。`ddk_user_name`为登录评估服务器的用户名， `atlas_host_ip`为`ATLAS200DK`硬件的实际IP地址。
 - 运行`install.sh`脚本即可完成依赖环境的安装的评估服务的启动。
 
-## 4. 注意事项
+## 4. 使用评估服务
+
+使用评估服务时， 只需要在配置文件中进行简单的几行配置即可， 如下面示例所示：
+
+```yaml
+evaluator:
+    type: Evaluator
+    davinci_mobile_evaluator:
+        type: DavinciMobileEvaluator
+        hardware: "Davinci"
+        remote_host: "http://192.168.0.2:8888"
+```
+
+`evaluator`的配置与您的`trainer`配置处于同一层级。其中需要配置的参数有2个， `hardware`为您指定的需要评估的硬件设备，当前支持`Davinci`和`Bolt`两种，
+`remote_host`为您部署的评估服务器的ip和端口号。
+
+## 5. 注意事项
 
 1. 如果您使用的是`Pytorch`框架， 在评估服务的客户端需要进行`Pytorch`模型的转换， 使用了第三方开源软件， 请自行获取并放在`./third_party`目录下。 开源软件下载地址： <https://github.com/xxradon/PytorchToCaffe>
 2. 如果您使用的`Pytorch`版本在1.2及以下， 在`Pytorch`模型转换为`onnx`模型时可能会遇到算子不支持的情况。 如`upsample_bilinear2d`算子不支持， 您可以选择升级`Pytorch`版本到1.3及以上， 或者您可以从`Pytorch`官方代码库中获取`pytorch/torch/onnx/symbolic_opset10.py`, 拷贝到对应的`Pytorch`安装目录下。

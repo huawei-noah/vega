@@ -117,15 +117,9 @@ fully_train:
 
 ```
 
-Generally, a better performance can be obtained by using a set of candidates structure for training instead of a single structure.   After the above parameters are adjusted, running the pipeline is as follows:
+Generally, a better performance can be obtained by using a set of candidates structure for training instead of a single structure.
 
-```python
-import vega
-
-
-if __name__ == '__main__':
-    vega.run('./esr_ea.yml')
-```
+After the parameters are adjusted, run the pipeline by referring to the [example reference](../user/examples.md).
 
 ## 5. Algorithm output
 

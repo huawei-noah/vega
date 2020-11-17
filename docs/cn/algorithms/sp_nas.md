@@ -115,4 +115,4 @@ SP-NAS是面向物体检测及语义分割的高效主干网络架构搜索算�
 
 ## Benchmark
 
-Benchmark配置信息请参考: [sp_name.yml](https://github.com/huawei-noah/vega/tree/master/benchmark/algs/nas/sp_nas.yml)
+Benchmark配置信息请参考: [sp_nas.yml](https://github.com/huawei-noah/vega/tree/master/examples/nas/sp_nas.yml)
