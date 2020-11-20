@@ -19,7 +19,7 @@ Vega提供了常用的数据集类，包括`Avazu`、`Cifar10`、`Cifar100`、`I
             data_path: "/cache/datasets/cifar10/"
      ```
 
-1. 在程序中，使用`ClassFactory`来创建`Dataset`，`mode`来初始化训练集或测试集，通过`Adapter`适配不同框架， 最后通过``来加载数据，如下：
+1. 在程序中，使用`ClassFactory`来创建`Dataset`，`mode`来初始化训练集或测试集，通过`Adapter`适配不同框架， 最后通过`loader`来加载数据，如下：
 
     ```python
     dataset = ClassFactory.get_cls(Classtype.DATASET)
