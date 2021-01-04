@@ -115,7 +115,7 @@ For common problems and exception handling, please refer to [FAQ](./docs/en/user
 ## Video
 
 [video](https://box.saas.huaweicloud.com/p/fe9dfbd8b61a37280b371f73a90132c2)
-[Youtube]()
+[Youtube](https://www.youtube.com/watch?v=Le5SGaW29TQ)
 
 ## Cooperation and contribution
 
