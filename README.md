@@ -112,6 +112,11 @@ For common problems and exception handling, please refer to [FAQ](./docs/en/user
 }
 ```
 
+## Video
+
+[video](https://box.saas.huaweicloud.com/p/fe9dfbd8b61a37280b371f73a90132c2)
+[Youtube]()
+
 ## Cooperation and contribution
 
 Welcome to use Vega. If you have any questions, ask for help, fix bugs, contribute algorithms, or improve documents, submit the issue in the community. We will reply to and communicate with you in a timely manner.
