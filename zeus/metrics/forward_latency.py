@@ -27,7 +27,7 @@ def calc_forward_latency(model, input, sess_config=None, num=100):
     :return: forward latency
     :rtype: float
     """
-    step_cfg = UserConfig().data.get("nas")
+#     step_cfg = UserConfig().data.get("nas")
 #     if hasattr(step_cfg, "evaluator"):
 #         evaluate_cfg = step_cfg.get("evaluator")
 #         if hasattr(evaluate_cfg, "davinci_mobile_evaluator"):
