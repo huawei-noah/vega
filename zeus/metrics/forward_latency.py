@@ -28,13 +28,13 @@ def calc_forward_latency(model, input, sess_config=None, num=100):
     :rtype: float
     """
     step_cfg = UserConfig().data.get("nas")
-    if hasattr(step_cfg, "evaluator"):
-        evaluate_cfg = step_cfg.get("evaluator")
-        if hasattr(evaluate_cfg, "davinci_mobile_evaluator"):
-            evaluate_config = evaluate_cfg.get("davinci_mobile_evaluator")
-            latency = _calc_forward_latency_davinci(model, input, sess_config, evaluate_config)
-    else:
-        latency = _calc_forward_latency_gpu(model, input, sess_config, num)
+#     if hasattr(step_cfg, "evaluator"):
+#         evaluate_cfg = step_cfg.get("evaluator")
+#         if hasattr(evaluate_cfg, "davinci_mobile_evaluator"):
+#             evaluate_config = evaluate_cfg.get("davinci_mobile_evaluator")
+#             latency = _calc_forward_latency_davinci(model, input, sess_config, evaluate_config)
+#     else:
+    latency = _calc_forward_latency_gpu(model, input, sess_config, num)
     return latency
 
 
