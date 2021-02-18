@@ -10,10 +10,11 @@
 
 """Contains Default and User configuration."""
 import os
-from vega.core.common import Config
+from zeus.common import Config
+from zeus.common import ConfigSerializable
 
 
-class DartsNetworkTemplateConfig(object):
+class DartsNetworkTemplateConfig(ConfigSerializable):
     """Darts network template config."""
 
     cifar10 = Config(os.path.join(os.path.dirname(__file__), "darts_cifar10.json"))

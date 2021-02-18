@@ -112,3 +112,7 @@ examples/data_augmentation/cyclesr/cyclesr.yml
 
 1. Log files generated during the training process, including console output and events stored in Writer
 2. Trained models
+
+## 5. Benchmark
+
+Benchmark configuration: [cyclesr.yml](https://github.com/huawei-noah/vega/tree/master/benchmark/algs/data_augmentation/cyclesr.yml)

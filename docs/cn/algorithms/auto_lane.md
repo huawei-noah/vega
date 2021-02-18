@@ -19,37 +19,35 @@ auto_lane分为backbone module，feature fusion module和 head三大组件。bac
 
 2. 搜索空间设计
 
-  - backbone搜索空间
+   - backbone搜索空间
 
-    backbone的搜索空间主包含两种系列  `ResNetVariantDet`和 `ResNeXtVariantDet`，不同系列之间的差别主要在于模型的Block的不同，两种系列的编码结构保持一致，编码结构的具体说明如下： 
+    backbone的搜索空间主包含两种系列  `ResNetVariantDet`和 `ResNeXtVariantDet`，不同系列之间的差别主要在于模型的Block的不同，两种系列的编码结构保持一致，编码结构的具体说明如下：
 
     ![auto_lane_backbone](./images/auto_lane_backbone.png)
 
     如上图为`basicblock 28 121-211-1111-12111`的模型示意图，在这里`basicblock`表示模型使用的Block是`basicblock`，`-`表示以分辨率为界将模型分为不同的阶段，`1`表示没有提升通道数的常规Block，`2`表示将通道数提升为2倍通道数的Block。  
 
-- feature fusion搜索空间
+   - feature fusion搜索空间
 
-  根据对模型的了解以及feature fusion的有效性，我们现在只提供` ['012-022','012-122','122-022','-']`这四种模型结构，其中'-'表示不使用feature fusion module，直接将模型的第4阶段的输出作为head的输入，` ['012-022','012-122','122-022']`代表实际的feature fusion module模型结构，具体的模型结构如下：
+    根据对模型的了解以及feature fusion的有效性，我们现在只提供` ['012-022','012-122','122-022','-']`这四种模型结构，其中'-'表示不使用feature fusion module，直接将模型的第4阶段的输出作为head的输入，` ['012-022','012-122','122-022']`代表实际的feature fusion module模型结构，具体的模型结构如下：
 
-  ![auto_lane_neck](./images/auto_lane_neck.png)
+    ![auto_lane_neck](./images/auto_lane_neck.png)
 
-  如上图是`012-022`的模型结构示意图，其具体的每一个代码的意义已在右图中说明。
+    如上图是`012-022`的模型结构示意图，其具体的每一个代码的意义已在右图中说明。
 
 3. 评价函数
 
    车道线的评价函数较为特殊我们使用在数据集上评价结果的F1作为评价函数，其具体的评价方式如下。使用bit-wise IoU（如下图所示）作为度量衡，使用Kuhn-Munkres Algorithm最为匹配方法将预测结果和标注结果做关联，在关联之后若 IoU>0.5认为关联成功，否则认为关联失败。统计整个测试集中关联成功的实例数目记为TP，统计整个测试集中未被正确预测的正例数目记为FN，统计整个测试集中被错误预测为正例的数目为FP。
 
-   ![auto_lane_metric](./images/auto_lane_metric.png)
+    ![auto_lane_metric](./images/auto_lane_metric.png)
 
    那么
 
-![image-20200809212334473](./images/auto_lane_eq1.png)
-
+    ![image-20200809212334473](./images/auto_lane_eq1.png)
 
 4. 搜索策略
 
    在搜索策略上，我们采用了多目标的搜索策略，同时考虑模型效率 (可以用inference time/FLOPs等指标衡量)  与模型性能（用F1衡量）。使用non-dominate sorting构建Pareto front，来获得一系列在多目标上同时达到最优的网络结构。对于搜索算法，我们采用了经典的随机搜索与演化搜索算法。
-
 
 ## 4. 使用指导
 
@@ -57,10 +55,10 @@ auto_lane分为backbone module，feature fusion module和 head三大组件。bac
 
    在运行本算法之前，请务必细读[安装指导](../user/install.md)、[部署指导](../user/deployment.md)、[配置指导](../user/config_reference.md)、[示例参考](../user/examples.md)这几个文档，并且确认。
 
-   在这里我们已经提供了能够跑出benchmark的配置文件`benchmark/algs/nas/auto_lane.yml`，进入 examples 目录后，可以执行如下命令运行示例：
+   在这里我们已经提供了能够跑出benchmark的配置文件`./nas/auto_lane.yml`，进入 examples 目录后，可以执行如下命令运行示例：
 
     ```bash
-    python3 ./run_example.py benchmark/algs/nas/auto_lane.yml
+    python3 ./run_pipeline.py ./nas/auto_lane.yml -s b
     ```
 
 2. 搜索算法参数配置
@@ -70,28 +68,28 @@ auto_lane分为backbone module，feature fusion module和 head三大组件。bac
    ```yaml
        search_algorithm:
            type: AutoLaneNas        # 设置使用的搜索算法
-           codec: AutoLaneNasCodec	 # 设置使用的编解码器
+           codec: AutoLaneNasCodec  # 设置使用的编解码器
            random_ratio: 0.5        # 设置随机采样占总样本数的采样比率
            num_mutate: 10           # 设置遗传算法的遗传代数
            max_sample: 100          # 设置最大采样样本数
            min_sample: 10           # 设置最小采样样本数
    ```
-   
+
 3. 搜索空间配置
 
      目前算法所提供的搜索空间包含`backbone`和`neck`，其具体的可配置内容如此下：
-     
+
      | component |                  module                  |
      | :-------: | :--------------------------------------: |
      | backbone  | `ResNetVariantDet`,  `ResNeXtVariantDet` |
      |   neck    |          `FeatureFusionModule`           |
-     
+
      具体的在配置文件中由`search_space`配置子树确定：
-     
+
      ```yaml
      search_space:
          type: SearchSpace
-         modules: ['backbone','neck']		   # 需要搜索的模块（请不要修改此项）
+         modules: ['backbone','neck']            # 需要搜索的模块（请不要修改此项）
          backbone:
              ResNetVariantDet:                   # 设置ResNetVariantDet主干系列，若不搜索可删除此子树
                  base_depth: [18, 34, 50, 101]   # 表示使用18、34、50、101的基础block
@@ -103,11 +101,11 @@ auto_lane分为backbone module，feature fusion module和 head三大组件。bac
              FeatureFusionModule:                       # 设置FeatureFusionModule系列
                  fusion_arch: ['012-022', '012-122', '122-022','-']
      ```
-     
+
 4. trainer配置
-   
+
      trainer的配置项详情如下：
-     
+
      ```yaml
      trainer:
          type: Trainer
@@ -147,26 +145,7 @@ auto_lane分为backbone module，feature fusion module和 head三大组件。bac
      ```
 
 5. 数据集配置
-   auto_lane的数据可以采用CULane数据集和CurveLanes数据集，目前已提供了这两种数据集的接口，用户可以直接配置使用。在配置之前首先需要实现dataset.py，dataset.py里边需要实现下边三个函数，函数的返回值为一个列表，列表的每一项为一个字典，每一个字典包含两个键`image_path`和`annot_path`，`image_path`表示数据集某一图片的绝对路径，`annot_path`表示与该图片对应的标注文件的位置。trainer将根据create_train_subset被调用之后生成的列表对搜索到的模型进行训练，根据create_valid_subset被调用后的生成的列表对训练好的模型进行评估。
-
-   ```python
-   # dataset.py
-   def create_train_subset(num=None):
-       return [{'image_path':'/the/path/to/train/image1.jpg',
-                'annot_path':'/the/path/to/train/image1.lines.json'},
-              {'image_path':'/the/path/to/train/image2.jpg',
-                'annot_path':'/the/path/to/train/image2.lines.json'},...]
-   def create_test_subset(num=None):
-       return [{'image_path':'/the/path/to/test/image1.jpg',
-                'annot_path':'/the/path/to/test/image1.lines.json'},
-              {'image_path':'/the/path/to/test/image2.jpg',
-                'annot_path':'/the/path/to/test/image2.lines.json'},...]
-   def create_valid_subset(num=None):
-       return [{'image_path':'/the/path/to/val/image1.jpg',
-                'annot_path':'/the/path/to/val/image1.lines.json'},
-              {'image_path':'/the/path/to/val/image2.jpg',
-                'annot_path':'/the/path/to/val/image2.lines.json'},...]
-   ```
+   auto_lane的数据可以采用CULane数据集和CurveLanes数据集，目前已提供了这两种数据集的接口，用户可以直接配置使用。
 
    数据集的配置参数，如下。
 
@@ -176,7 +155,7 @@ auto_lane分为backbone module，feature fusion module和 head三大组件。bac
        common:
            batch_size: 32
            num_workers: 12
-           dataset_file: "/path/to/dataset.py"
+           dataset_path: "/cache/datasets/CULane/"
            dataset_format: CULane
        train:
            with_aug: False                       # 请在fullytrain的时候将此项置为True
@@ -188,3 +167,6 @@ auto_lane分为backbone module，feature fusion module和 head三大组件。bac
            shuffle: False
    ```
 
+## 5. Benchmark
+
+Benchmark配置信息请参考: [auto_lane.yml](https://github.com/huawei-noah/vega/tree/master/benchmark/algs/nas/auto_lane.yml)

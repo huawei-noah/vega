@@ -13,8 +13,9 @@
 from .utils.str2dict import str2dict
 from .utils.resnet_variant_det_codec import ResNetVariantDetCodec
 from .utils.resnext_variant_det_codec import ResNeXtVariantDetCodec
-from vega.core.common.class_factory import ClassType, ClassFactory
-from vega.search_space.codec import Codec
+from zeus.common import ClassType, ClassFactory
+from vega.core.search_algs.codec import Codec
+from zeus.common import Config
 
 
 @ClassFactory.register(ClassType.CODEC)
@@ -41,14 +42,16 @@ class AutoLaneNasCodec(Codec):
         :return: an encoded sample.
         :rtype: dict
         """
-        backbone_name, backbone_params = list(sample_desc['backbone'].items()).pop()
+        backbone_name = sample_desc['backbone'].pop('type')
+        backbone_params = sample_desc['backbone']
         backbone_optional_list = {'ResNetVariantDet', 'ResNeXtVariantDet'}
         if backbone_name not in backbone_optional_list:
             raise NotImplementedError(f'Only {backbone_optional_list} is support in auto_lane algorithm')
         CodecSpec = globals()[f'{backbone_name}Codec']
         backbone_code = CodecSpec(**CodecSpec.random_sample(base_channel=backbone_params['base_channel'],
                                                             base_depth=backbone_params['base_depth'])).arch_code
-        ffm_name, ffm_params = list(sample_desc['neck'].items()).pop()
+        ffm_name = sample_desc['neck'].pop('type')
+        ffm_params = sample_desc['neck']
         ffm_optional_list = ['FeatureFusionModule']
         if ffm_name not in ffm_optional_list:
             raise NotImplementedError(f'Only {ffm_optional_list} is support in auto_lane algorithm')
@@ -75,7 +78,7 @@ class AutoLaneNasCodec(Codec):
         backbone_desc = str2dict(generator.config)
         neck_desc = dict(
             arch_code=ffm_code,
-            name='FeatureFusionModule',
+            type='FeatureFusionModule',
             in_channels=backbone_desc['out_channels'],
         )
         head_desc = dict(
@@ -84,10 +87,9 @@ class AutoLaneNasCodec(Codec):
             num_classes=2,
             up_points=73,
             down_points=72,
-            name='AutoLaneHead'
+            type='AutoLaneHead'
         )
         detector = dict(
-            name='AutoLaneDetector',
             modules=['backbone', 'neck', 'head'],
             num_class=2,
             method=sample['method'],
@@ -96,4 +98,4 @@ class AutoLaneNasCodec(Codec):
             neck=neck_desc,
             head=head_desc
         )
-        return dict(modules=['detector'], detector=detector)
+        return Config({'desc': {'modules': ['detector'], 'detector': {'type': 'AutoLaneDetector', 'desc': detector}}})

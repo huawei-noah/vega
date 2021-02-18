@@ -1,4 +1,8 @@
-pipeline: [ nas, fully_train ]
+general:
+    parallel_search: True
+    parallel_fully_train: True
+
+pipeline: [nas, fully_train]
 
 nas:
     pipe_step:
@@ -13,19 +17,30 @@ nas:
         min_sample: 50
         flops_ceiling_set_by_GFlops: 1
     search_space:
-        type: SearchSpace
-        modules: ['backbone','neck']
-        backbone:
-            ResNetVariantDet:
-                base_depth: [18, ]#34, 50, 101]
-                base_channel: [32, ]#48, 56, 64]
-            ResNeXtVariantDet:
-                base_depth: [18,  ]#34, 50, 101]
-                base_channel: [32,  ]#48, 56, 64]
+        hyperparameters:
+            -   key: network.backbone.base_depth
+                type: CATEGORY
+                range: [18, ]
+            -   key: network.backbone.type
+                type: CATEGORY
+                range: [ResNetVariantDet, ResNeXtVariantDet]
+            -   key: network.backbone.base_channel
+                type: CATEGORY
+                range:  [32, ]
+            -   key: network.neck.arch_code
+                type: CATEGORY
+                range: ['012-022', '012-122', '122-022','-']
+            -   key: network.neck.type
+                type: CATEGORY
+                range: [FeatureFusionModule]
 
-        neck:
-            FeatureFusionModule:
-                arch_code: ['012-022', '012-122', '122-022','-']
+    model:
+        model_desc:
+            modules: ['backbone','neck']
+            backbone:
+                type: [ResNetVariantDet, ResNeXtVariantDet]
+            neck:
+                type: FeatureFusionModule
 
     trainer:
         type: Trainer
@@ -35,11 +50,9 @@ nas:
         callbacks: ['AutoLaneTrainerCallback','DetectionMetricsEvaluator','DetectionProgressLogger']
         lr_adjustment_position: 'after_train_step'
         report_freq: 50
-        valid_interval: 3
+        valid_interval: 10
         epochs: 20  # truth is 40
-        verbose: True
-        cache_dir: /cache
-        optim:
+        optimizer:
             type: SGD
             params:
                 lr: 0.02
@@ -75,7 +88,7 @@ nas:
             gt_num: 576
             batch_size: 32
             num_workers: 12
-            dataset_file: "/data/2019_mdc_lane/c00523047/mass_storage/culane/CULane/dataset.py"
+            data_path: /cache/datasets/CULane/
             dataset_format: CULane
         train:
             with_aug: False
@@ -92,15 +105,13 @@ fully_train:
         models_folder: "{local_base_path}/output/nas/"
     trainer:
         type: Trainer
-        with_valid: True
         is_detection_trainer: True
-        callbacks: 'AutoLaneTrainerCallback'
+        valid_interval: 100
+        callbacks: ['AutoLaneTrainerCallback','DetectionMetricsEvaluator','DetectionProgressLogger']
         report_freq: 50
         epochs: 3  # truth is 40
-        verbose: True
-        cache_dir: /cache
-        codec: AutoLaneNasCodec
-        optim:
+        lr_adjustment_position: 'after_train_step'
+        optimizer:
             type: SGD
             params:
                 lr: 0.02
@@ -113,7 +124,7 @@ fully_train:
                 warmup_type: linear
                 warmup_iters: 5000
                 warmup_ratio: 0.1
-                after_scheduler_by_epoch: True
+                after_scheduler_by_epoch: False
                 after_scheduler_config:
                     type: CosineAnnealingLR
                     T_max: 120000 # int(10_0000/batch_size)*epoch-warmup_iters
@@ -137,12 +148,49 @@ fully_train:
             batch_size: 32
             num_workers: 12
             dataset_format: CULane
-            dataset_root: "/data/2019_mdc_lane/c00523047/mass_storage/culane/CULane/dataset.py"
+            data_path: /cache/datasets/CULane/
         train:
-            with_aug: False
+            with_aug: True
             shuffle: True
             random_sample: True
         valid:
             shuffle: False
         test:
             shuffle: False
+
+benchmark:
+    nas:
+        search_space:
+            hyperparameters:
+                -   key: network.backbone.base_depth
+                    type: CATEGORY
+                    range: [18, 34, 50, 101]
+                -   key: network.backbone.type
+                    type: CATEGORY
+                    range: [ResNetVariantDet, ResNeXtVariantDet]
+                -   key: network.backbone.base_channel
+                    type: CATEGORY
+                    range:  [32, 48, 56, 64]
+                -   key: network.neck.arch_code
+                    type: CATEGORY
+                    range: ['012-022', '012-122', '122-022','-']
+                -   key: network.neck.type
+                    type: CATEGORY
+                    range: [FeatureFusionModule]
+
+        model:
+            model_desc:
+                modules: ['backbone','neck']
+                backbone:
+                    type: [ResNetVariantDet, ResNeXtVariantDet]
+                neck:
+                    type: FeatureFusionModule
+        trainer:
+            epoch: 40
+            metric:
+                thresh_list:  [0.50, 0.60, 0.70, 0.80, 0.90]
+    fully_train:
+        trainer:
+            epochs: 40
+            metric:
+                thresh_list:  [0.50, 0.60, 0.70, 0.80, 0.90]

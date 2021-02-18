@@ -15,9 +15,9 @@ import random
 import numpy as np
 import logging
 import copy
-from vega.search_space.search_algs.search_algorithm import SearchAlgorithm
-from vega.core.common.class_factory import ClassFactory, ClassType
-from vega.core.common import FileOps, TaskOps
+from vega.core.search_algs import SearchAlgorithm
+from zeus.common import ClassFactory, ClassType
+from zeus.common import FileOps, TaskOps
 from vega.algorithms.nas.sp_nas.utils import ListDict
 from .conf import SpNasConfig
 
@@ -272,3 +272,8 @@ class SpNas(SearchAlgorithm):
             flag = 'Success' if success else 'Failed'
             logging.info('Parallel-level Sample{}: {}.'.format(k + 1, flag))
         return new_arch
+
+    @property
+    def max_samples(self):
+        """Get max samples number."""
+        return self.max_sample

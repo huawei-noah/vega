@@ -9,20 +9,26 @@
 # MIT License for more details.
 
 """The LocalMaster's method is same as Master, and the class is used on single node."""
-from ..trainer.utils import WorkerTypes
-from vega.core.common.general import General
+import os
+
+from zeus.trainer.utils import WorkerTypes
+from zeus.common.general import General
 
 
 class LocalMaster(object):
     """The Master's method is same as Master."""
 
-    def __init__(self):
+    def __init__(self, update_func=None):
         """Init master."""
         self.cfg = General
         self.step_name = None
         self.worker_id = None
+        self.update_func = update_func
+        if os.environ['DEVICE_CATEGORY'] == 'NPU':
+            os.environ['RANK_SIZE'] = '1'
+            os.environ.pop('RANK_TABLE_FILE', None)
 
-    def run(self, worker):
+    def run(self, worker, evaluator=None):
         """Run a worker, call the worker's train_prcess() method.
 
         :param worker: a worker.
@@ -40,78 +46,30 @@ class LocalMaster(object):
             pass
         else:
             worker.train_process()
+        if evaluator:
+            if evaluator.worker_type == WorkerTypes.EVALUATOR:
+                for sub_worker in evaluator.sub_worker_list:
+                    sub_worker.train_process()
+            elif evaluator.worker_type == WorkerTypes.HAVA_D_EVALUATOR:
+                pass
+        self._update(self.step_name, self.worker_id)
+
+    def _update(self, step_name, worker_id):
+        if not self.update_func:
+            return
+        if self.update_func.__code__.co_varnames.index("step_name") == 1:
+            self.update_func(step_name, worker_id)
+        else:
+            self.update_func({"step_name": step_name, "worker_id": worker_id})
 
     def join(self):
         """Return immediately."""
         return
 
-    def pop_finished_worker(self, train_worker=True):
-        """Pop saved worker id and step name.
-
-        :return: the finished worker info, include step_name and worker_id.
-            eg. {"step_name":"round1", "worker_id":1}
-        :rtype: dict or None
-
-        """
-        if self.worker_id is None:
-            return None
-        worker_id = self.worker_id
-        step_name = self.step_name
-        self.worker_id = None
-        self.step_name = None
-        return {"step_name": step_name, "worker_id": worker_id}
-
-    def pop_finished_train_worker(self):
-        """Pop saved worker id and step name.
-
-        :return: the finished worker info, include step_name and worker_id.
-            eg. {"step_name":"round1", "worker_id":1}
-        :rtype: dict or None
-
-        """
-        return self.pop_finished_worker(train_worker=True)
-
-    def pop_finished_evaluate_worker(self):
-        """Pop saved worker id and step_name.
-
-        :return: the finished worker info, include step_name and worker_id.
-            eg. {"step_name":"round1", "worker_id":1}
-        :rtype: dict or None
-
-        """
-        return self.pop_finished_worker(train_worker=False)
-
-    def pop_all_finished_train_worker(self):
-        """Pop saved worker id and step name.
-
-        :return: a finished worker info list.
-        :rtype: list of dict
-
-        """
-        worker_info_list = []
-        finished_train_worker_info = self.pop_finished_train_worker()
-        if finished_train_worker_info is not None:
-            worker_info_list.append(finished_train_worker_info)
-        return worker_info_list
-
-    def pop_all_finished_evaluate_worker(self):
-        """Pop saved worker id and step name.
-
-        :return: a finished worker info list.
-        :rtype: list of dict
-
-        """
-        return self.pop_all_finished_train_worker()
-
-    def close_cluster(self):
-        """Close all distributed cluster, implement the interface without actually closing."""
-        pass
-
     def close_client(self):
         """Close cluster client, implement the interface without actually closing."""
         pass
 
-    @staticmethod
-    def shutdown():
+    def shutdown(self):
         """Shut down the cluster, implement the interface without actually shutting down."""
         pass

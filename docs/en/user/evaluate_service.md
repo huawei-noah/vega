@@ -5,7 +5,7 @@
 The model evaluation service is used to evaluate the performance of a model on a specific hardware device, such as the accuracy, model size, and latency of a pruned and quantized model on the Atlas 200 DK.
 Currently, the evaluation service supports Davincit inference chips (Atlas 200 DK, ATLAS300, and development board environment Evb) and mobile phones. More devices will be supported in the future.
 
-The evaluation service uses the CS architecture. The evaluation service is deployed on the server. The client sends an evaluation request to the server through the `rset` interface and obtains the result. Vega can use the evaluation service to detect model performance in real time during network architecture search. After a candidate network is generated in the search phase, the network model can be sent to the evaluation service. After the model evaluation is complete, the evaluation service returns the evaluation result to Vega. Vega performs subsequent search based on the evaluation result. This real-time evaluation on the actual device helps to search for a network structure that is more friendly to the actual hardware.
+The evaluation service uses the CS architecture. The evaluation service is deployed on the server. The client sends an evaluation request to the server through the `REST` interface and obtains the result. Vega can use the evaluation service to detect model performance in real time during network architecture search. After a candidate network is generated in the search phase, the network model can be sent to the evaluation service. After the model evaluation is complete, the evaluation service returns the evaluation result to Vega. Vega performs subsequent search based on the evaluation result. This real-time evaluation on the actual device helps to search for a network structure that is more friendly to the actual hardware.
 
 ## 2. spec
 
@@ -13,9 +13,9 @@ Supported Models and Hardware Devices:
 
 | Algorithm | Model | Atalas 200 DK | Bolt |
 | :--: | :--: | :--: | :--: |
-| Prune-EA | PruneResNet | supported | supported |
+| Prune-EA | PruneResNet | supported | coming soon |
 | Quant-EA | ResNet-Quant | | |
-| ESR-EA | ESRN | | supported|
+| ESR-EA | ESRN | | coming soon|
 | CycleSR | CycleSRModel | | | |
 | CARS | CARSDartsNetwork | | |
 | Adlaide-EA | AdelaideFastNAS | | |
@@ -25,7 +25,7 @@ Supported Models and Hardware Devices:
 | SM-NAS | ResNet_Variant |
 | SM-NAS | ResNet_Variant |
 | SP-NAS | spnet_fpn |
-| SR-EA | MtMSR | | supported|
+| SR-EA | MtMSR | | coming soon|
 
 ## 3. Evaluation Service Deployment
 
@@ -105,7 +105,7 @@ This tutorial describes how to deploy the server. You do not need to deploy the 
 
 ### 3.1.2 (Optional) Installing and Configuring the Atlas 300 Environment
 
-For details, see the Huawei official tutorial at https://support.huawei.com/enterprise/zh/ai-computing-platform/a300-3000-pid-250702915.
+For details, see the Huawei official tutorial at <https://support.huawei.com/enterprise/zh/ai-computing-platform/a300-3000-pid-250702915>.
 
 ### 3.1.3 (Optional) Installing and Configuring the Mobile Phone Environment
 
@@ -187,6 +187,20 @@ Download the code [evaluate_service](../../../evaluate_service) to any directory
   - `ddk_host_ip` indicates the IP address of the evaluation server. Set it based on the site requirements. `listen_port` indicates the listening port number, which can be set to any value. Ensure that it does not conflict with an existing port number.
   - If the environment type is `ATLAS200DK`, you need to configure the following fields. If the environment type is not `ATLAS200DK`, ignore the following configuration. `ddk_user_name` is the user name for logging in to the evaluation server, and `atlas_host_ip` is the actual IP address of the `ATLAS200DK` hardware.
 - Run the `install.sh` script to start the evaluation service that depends on the environment installation.
+
+
+## 4. Use evaluate service
+To use evaluate service, you only need to configure a few lines in the configuration file, as shown in the following example.
+```yaml
+evaluator:
+    type: Evaluator
+    davinci_mobile_evaluator:
+        type: DavinciMobileEvaluator
+        hardware: "Davinci"
+        remote_host: "http://192.168.0.2:8888"
+```
+The configuration of `evaluator` is at the same level as your configuration of `trainer`. Two parameters need to be configured. `hardware` indicates the 
+hardware device to be evaluated. Currently, `Davinci` and `Bolt` are supported. `remote_host` indicates the IP address and port number of the evaluation server to be deployed.
 
 ## 4.  Precautions
 

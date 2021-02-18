@@ -1,0 +1,118 @@
+general:
+    parallel_search: False
+    parallel_fully_train: False
+    backend: pytorch
+    quota:
+        restrict:
+            flops: 10.0
+
+pipeline: [nas, fully_train]
+
+nas:
+    pipe_step:
+        type: NasPipeStep
+
+    dataset:
+        type: Cifar10
+        common:
+            data_path: /cache/datasets/cifar10/
+            train_portion: 0.9
+            batch_size: 256
+        test:
+            batch_size: 256
+
+    search_algorithm:
+        type: PruneEA
+        codec: PruneMobilenetCodec
+        policy:
+            length: 3126 # 6209
+            num_generation: 20
+            num_individual: 6
+            random_models: 10
+
+    search_space:
+        type: SearchSpace
+        modules: ['backbone']
+        backbone:
+            type: MobileNetV3Small # MobileNetV3Large
+
+    trainer:
+        type: Trainer
+        callbacks: PruneMobilenetTrainerCallback
+        epochs: 1
+        init_model_file: "/cache/models/mobilenetv3"
+        optimizer:
+            type: Adam
+            params:
+                lr: 0.001
+                weight_decay: !!float 1e-4
+        lr_scheduler:
+            type: StepLR
+            params:
+                step_size: 20
+                gamma: 0.5
+        loss:
+            type: CrossEntropyLoss
+            params:
+                sparse: True
+        seed: 666
+
+fully_train:
+    pipe_step:
+        type: FullyTrainPipeStep
+        models_folder: "{local_base_path}/output/nas/"
+
+    model:
+        model_desc:
+            modules: ['backbone']
+            backbone:
+                type: MobileNetV3Small
+
+    dataset:
+        ref: nas.dataset
+
+    trainer:
+        epochs: 500
+        optimizer:
+            type: Adam
+            params:
+                lr: 0.0025
+                weight_decay: 0.00004
+        loss:
+            type: CrossEntropyLoss
+            params:
+                sparse: True
+        seed: 2020
+    evaluator:
+        type: Evaluator
+        gpu_evaluator:
+            type: GpuEvaluator
+            metric:
+                type: accuracy
+
+benchmark:
+    pipeline: [nas, fully_train, benchmark_cifar10]
+    nas:
+        dataset:
+            test:
+                batch_size: 1024
+        search_algorithm:
+            policy:
+                num_generation: 31
+                num_individual: 32
+                random_models: 64
+    fully_train:
+        trainer:
+            epochs: 400
+    benchmark_cifar10:
+        pipe_step:
+            type: BenchmarkPipeStep
+            models_folder: "{local_base_path}/output/fully_train/"
+        dataset:
+            ref: nas.dataset
+        evaluator:
+            type: Evaluator
+            gpu_evaluator:
+                type: GpuEvaluator
+                metric:
+                    type: accuracy

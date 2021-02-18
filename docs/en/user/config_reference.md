@@ -1,12 +1,17 @@
 # Configuration Reference
 
-The Vega is highly modularized. The search space, search algorithm, and pipeline can be built through configuration. To run the Vega application is to load the configuration file and complete the AutoML process according to the configuration, as shown in the following figure.
+Vega decomposes the entire AutoML process from data to models into multiple steps, including network architecture search, hyperparameter optimization, data augmentation, and model training. Vega can combine these steps into a complete pipeline through configuration files and execute these steps in sequence, complete the entire process from data to model.
+
+In addition, Vega designs a network and hyperparameter search space independent of the search algorithm for algorithms such as network architecture search, hyperparameter optimization, and data augmentation. You can adjust the configuration file to implement personalized search.
+
+You only need to configure a proper configuration file as required, and then run Vega to load the configuration file to complete the AutoML process, as shown in the following figure.
 
 ```python
 import vega
 
 
 if __name__ == "__main__":
+    vega.set_backend("pytorch", "GPU")
     vega.run("./main.yml")
 ```
 
@@ -16,7 +21,7 @@ The following describes the configuration items in the main.yml file in detail.
 
 The configuration of the vega can be divided into two parts:
 
-1. The general configuration item is used to set common and common configuration items, such as the output path and log level.
+1. General configuration. The configuration item name is `general`. It is used to set common and common configuration items, such as Backend, output path, and log level.
 2. Pipeline configuration, including the following two parts:
    1. Pipeline definition. The configuration item name is pipeline, which is a list that contains all steps in the pipeline.
    2. Defines each step in Pipeline. The configuration item name is the name of each step defined in Pipeline.
@@ -48,503 +53,574 @@ The following describes each configuration item in detail.
 
 The following public configuration items can be configured:
 
-| Configuration Item | Description |
-| :--: | :-- |
-| local_base_path | Working path. Each time when the system is running, a subfolder with time information (task id) is generated in the path. In this way, the output of multiple running is not overwritten. The task id subfolder contains two subfolders: output and worker. The output folder stores the output data of each step in the pipeline, and the worker folder stores temporary information.  <br> **In the clustered scenario, this path needs to be set to an EFS path that can be accessed by each computing node, and is used by different nodes to share data.**||
-| backup_base_path | Backup path. This parameter is used in the cloud channel environment or cluster environment. The output and task files in the local path are backed up to this path. |
-| timeout | Worker timeout interval, in hours. If the task is not completed within the interval, the worker is forcibly terminated. The unit is hour. The default value is 10. |
-| devices_per_job | Number of GPUs used by each worker in the search phase, -1 means that one worker uses all GPUs of the node, 1 means one worker uses one GPU, 2 means one worker uses two GPUs, and so on. |
-| logger.level | Log level, which can be set to debug \| info \| warn \| error \| critical. default level is info. |
-| cluster.master_ip | In the cluster scenario, this parameter needs to be set to the IP address of the master node. |
-| cluster.listen_port | In the cluster scenario, you need to pay attention to this parameter. If port 8000 is occupied, you need to adjust the monitoring port. |
-| cluster.slaves | In the cluster scenario, this parameter needs to be set to the IP address of other nodes except the master node. |
+| Configuration item | Optional | Default value | Description |
+| :--: | :-- | :-- | :-- |
+| backend | pytorch \| tensorflow \| mindspore | pytorch | Backend.  |
+| local_base_path | - | ./tasks/ | Working path. Each time when the system is running, a subfolder with time information (task id) is generated in the path. In this way, the output of multiple running is not overwritten. The task id subfolder contains two subfolders: output and worker. The output folder stores the output data of each step in the pipeline, and the worker folder stores temporary information.  <br> **In the clustered scenario, this path needs to be set to an EFS path that can be accessed by each computing node, and is used by different nodes to share data.** |
+| timeout | - | 10 | Worker timeout interval, in hours. If the task is not completed within the interval, the worker is forcibly terminated. |
+| parallel_search | True \| False | False | Whether to search multiple models in parallel. |
+| parallel_fully_train | True \| False | False | Whether to train multiple models in parallel. |
+| devices_per_trainer | 1..N (Tthe maximum number of GPUs or NPUs on a single node) | 1 | In parallel search and training, the number of devices (GPU \| NPU) allocated by each trainer, when parallel_search or parallel_fully_train is true. The default is 1, and each trainer is assigned one (gpu \| npu). |
+| logger / level | debug \| info \| warn \| error \| critical | info | Log level |
+| cluster / master_ip | - | ~ | In the cluster scenario, this parameter needs to be set to the IP address of the master node. |
+| cluster / listen_port | - | 8000 | In the cluster scenario, you need to pay attention to this parameter. If port 8000 is occupied, you need to adjust the monitoring port. |
+| cluster / slaves | - | [] | In the cluster scenario, this parameter needs to be set to the IP address of other nodes except the master node. |
+| quota / restrict / flops | - | ~ | Maximum value or range of the floating-point calculation amount of the sampling model, in MB. |
+| quota / restrict / params | - | ~ | Maximum value or range of the parameter of the sampling model, in KB. |
+| quota / restrict / latency | - | ~ | Maximum value or range of the latency of the sampling model, in ms. |
+| quota / target / type | accuracy \| IoUMetric \| SRMetric | ~ | Model training metric target type. |
+| quota / target / value | - | ~ | Target training metric of a model. |
 
 ```yaml
 general:
+    backend: pytorch
+    parallel_search: False
+    parallel_fully_train: False
+    devices_per_trainer: 1
     task:
         local_base_path: "./tasks"
-        backup_base_path: ~
-    worker:
-        devices_per_job: -1
     logger:
         level: info
     cluster:
         master_ip: ~
         listen_port: 8000
         slaves: []
+    quota:
+        restrict:
+            flops: 10
+            params: [100, 1000]
+            latency: 100
+        target:
+            type: accuracy
+            value: 0.98
 ```
 
-## 3. NAS configuration items
+## 3. NAS and HPO configuration items
 
-NAS configuration items include:
+HPO and NAS configuration items include:
 
 | Configuration Item | Description |
 | :--: | :-- |
-| pipe_step | Step type. The value is fixed to NasPipeStep. |
-| search_algorithm | Search algorithm configuration item. For details, see the configuration of each NAS algorithm. |
-| search_space | For details about the definition of the search space, see each NAS algorithm. |
-| trainer | Trainer configuration information. For details, see the [Trainer Configuration](#trainer). |
-| dataset | Dataset configuration. For details, see the [Dataset Configuration](#dataset). |
+| pipe_step / type | Set this parameter to `NasPipeStep`, indicating that this step is a search step. |
+| search_algorithm | Search algorithm configuration. For details, see the search algorithm section in this document. |
+| search_space | Search space configuration. For details, see section "Search Space Configuration." |
+| model | Model configuration. For details, see the search space section in this document. |
+| dataset | Dataset configuration. For details, see the dataset section in this document. |
+| trainer | Model training parameter configuration. For details, see the trainer section in this document. |
+| evaluator | evaluator parameter configuration. For details, see the evaluator section in this document. |
 
-The NAS algorithm mentioned above includes: [Prune-EA](../algorithms/prune_ea.md), [Quant-EA](../algorithms/quant_ea.md),SM-NAS (Coming soon), [CARS](../algorithms/cars.md), [Segmentation-Adelaide-EA](../algorithms/Segmentation-Adelaide-EA-NAS.md), [SR-EA](../algorithms/sr-ea.md), [ESR-EA](../algorithms/sr-ea.md)
-
-The following is the configuration of the BackboneNas algorithm:
+The configuration:
 
 ```yaml
 my_nas:
     pipe_step:
         type: NasPipeStep
-    search_algorithm:       # search algorithm configuration item. This item must be configured in steps such as NAS.
-        type: BackboneNas   # Search algorithm type.
-        codec: BackboneNasCodec # The supported search algorithm codec is BackboneNas
-        policy:                 # For details about the supported search algorithms, see the related algorithm documents.
-            num_mutate: 10
-            random_ratio: 0.2
-        range:
-            max_sample: 100
-            min_sample: 10
-    search_space:                       # search space in the related algorithm document, this item must be configured in steps such as Nas.
-        type: SearchSpace
-        modules: ['backbone', 'head']   # Modules are used to describe how to combine a network.
-        backbone:                       # Each module has a configuration item
-            ResNetVariant:              # For details, see the description of each algorithm. 
-                base_depth: [18, 34, 50, 101]
-                base_channel: [32, 48, 56, 64]
-                doublechannel: [3, 4]
-                downsample: [3, 4]
-        head:
-            LinearClassificationHead:
-                num_classes: [10]
-    trainer:
-        type: Trainer
-    dataset:
-        type: Cifar10
-```
-
-The optional models of the search_space configuration item are as follows:
-
-| module | Optional | Description | Algorithm Reference |
-| :--: | :-- | :-- | :--: |
-| backbone | PruneResNet | ResNet variant network, which is used to support the prune operation. | [ref](../algorithms/prune_ea.md) |
-| backbone | QuantResNet | ResNet variant network, which is used to support quantization operations. | [ref](../algorithms/quant_ea.md) |
-| backbone | ResNetVariant | The ResNet variant network is used to support architecture adjustment operations such as down-sampling point adjustment. | [ref](../algorithms/sm-nas.md) |
-| head | LinearClassificationHead | Network classification layer used to classify tasks, which can be concatenated with ResNetVariant. |  |
-| head | CurveLaneHead | The CurveLaneHead detection head is used to detect the lane. |  |
-| neck | FeatureFusionModule | Indicates the feature dashamid network in the roadway detection task. |  |
-| detector | AutoLaneDetector | AutoLaneDetector detection network in the roadway detection task. |  |
-| super_network | DartsNetwork | Super network structure in the Darts algorithm. | [ref](../algorithms/cars.md) |
-| super_network | CARSDartsNetwork | Super network structure in the CARS algorithm. | [ref](../algorithms/cars.md) |
-| custom | AdelaideFastNAS | Indicates the user-defined network structure in the AdelaideFastNAS algorithm. | [ref](../algorithms/Segmentation-Adelaide-EA-NAS.md) |
-| custom | MtMSR | Indicates the user-defined network structure in the MtMSR algorithm. | [ref](../algorithms/sr-ea.md) |
-
-## 4. HPO configuration items
-
-HPO refers to the optimization of model training running parameters. It does not involve network architecture parameters. The searchable items are as follows:
-
-1. Batch size of the dataset.
-2. Optimization method and related parameters.
-3. Learning rate.
-4. Momentum.
-
-The HPO configuration items are as follows:
-
-| Configuration Item | Description |
-| :--: | :-- |
-| pipe_step | The value is fixed at NasPipeStep. |
-| hpo | Configure the type and domain_space parameters. The former defines the HPO algorithm to be used. For details, see the [HPO](../algorithms/hpo.md). The latter defines the hyperparameter information to be searched for. |
-| trainer | Trainer configuration information. For details, see the [Trainer Configuration](#trainer). |
-| dataset | Dataset configuration. For details, see the [Dataset Configuration](#dataset). |
-| evaluator | evaluator information. Please refer to each HPO algorithm example or Benchmark configuration. |
-The HPO configuration of the ASHA algorithm is as follows for reference:
-
-```yaml
-my_hpo:
-    pipe_step:
-        type: NasPipeStep
-    hpo:
-        type: AshaHpo
-        policy:
-            total_epochs: 81
-            config_count: 40
-        hyperparameter_space:
-            hyperparameters:
-                -   key: dataset.batch_size
-                    type: INT_CAT
-                    range: [8, 16, 32, 64, 128, 256]
-                -   key: trainer.optim.lr
-                    type: FLOAT_EXP
-                    range: [0.00001, 0.1]
-                -   key: trainer.optim.type
-                    type: STRING
-                    range: ['Adam', 'SGD']
-                -   key: trainer.optim.momentum
-                    type: FLOAT
-                    range: [0.0, 0.99]
-            condition:
-                -   key: condition_for_sgd_momentum
-                    child: trainer.optim.momentum
-                    parent: trainer.optim.type
-                    type: EQUAL
-                    range: ["SGD"]
+    search_algorithm:
+        <search algorithm parameters>
+    search_space:
+        <search space parameters>
     model:
-        model_desc:
-            modules: ["backbone", "head"]
-            backbone:
-                base_channel: 64
-                downsample: [0, 0, 1, 0, 1, 0, 1, 0]
-                base_depth: 18
-                doublechannel: [0, 0, 1, 0, 1, 0, 1, 0]
-                name: ResNetVariant
-            head:
-                num_classes: 10
-                name: LinearClassificationHead
-                base_channel: 512
+        <model parameters>
     dataset:
-        type: Cifar10
+        <dataset parameters>
     trainer:
-        type: Trainer
+        <trainer parameters>
     evaluator:
-        type: Evaluator
-        gpu_evaluator:
-            type: GpuEvaluator
-            metric:
-                type: accuracy
+        <evaluator parameters>
 ```
 
-## 5. Data-Agumentation configuration item
+The following describes the search_algorithm and search_space configuration items.
 
-The configuration of data augmentation includes:
+### 3.1 Search Algorithm
 
-| Configuration Item | Description |
-| :--: | :-- |
-| pipe_step | The value is fixed at NasPipeStep. |
-| hpo | Currently, only the  HYPERLINK "../algorithms/pba.md" PBA algorithm is supported. The value is fixed to PBAHpo. For details, see the [PBA](../algorithms/pba.md). |
-| trainer | Trainer configuration information. For details, see the [Trainer Configuration](#trainer). |
-| dataset | Dataset configuration. For details, see the [Dataset Configuration](#dataset). |
+Common search algorithms include the following configuration items:
 
-The following shows the configuration of the PBA algorithm for reference:
+| Configuration item | Description | Example |
+| :--: | :-- | :-- |
+| type | Search algorithm name | `type: BackboneNas` |
+| codec | Search algorithm encoder. Generally, an encoder is used with a search algorithm. | `codec: BackboneNasCodec` |
+| policy | Search policy, which is a search algorithm parameter. | For example, if the BackboneNas uses the evolution algorithm, the policy is set to <br> `num_mutate: 10` <br> `random_ratio: 0.2` |
+| range | Search range | For example, the search range of BackboneNas can be <br> `min_sample: 10` <br> `max_sample: 300` |
+
+The search algorithm examples in the preceding table are as follows in the configuration file:
 
 ```yaml
-my_data_augmentation:
-    pipe_step:
-        type: NasPipeStep
-    dataset:
-        type: Cifar10
-    hpo:
-        type: PBAHpo
-        each_epochs: 3
-        config_count: 16
-        total_rungs: 200
-        transformers:
-            Cutout: True
-            Rotate: True
-            Translate_X: True
-            Translate_Y: True
-            Brightness: True
-            Color: True
-            Invert: True
-            Sharpness: True
-            Posterize: True
-            Shear_X: True
-            Solarize: True
-            Shear_Y: True
-            Equalize: True
-            AutoContrast: True
-            Contrast: True
-    trainer:
-        type: Trainer
-    evaluator:
-        type: Evaluator
-        gpu_evaluator:
-            type: GpuEvaluator
-            metric:
-                type: accuracy
+search_algorithm:
+    type: BackboneNas
+    codec: BackboneNasCodec
+    policy:
+        num_mutate: 10
+        random_ratio: 0.2
+    range:
+        max_sample: 300
+        min_sample: 10
 ```
 
-## 6. Fully Train Configuration
+The search algorithm BackboneNas is used as an example. Configuration items vary according to search algorithms. For details, see the related chapters in the document of each search algorithm.
 
-Full training is used to train network models. The configuration items are as follows:
+<table>
+  <tr><th>Task</th><th>categorize</th><th>Algorithms</th></tr>
+  <tr><td rowspan="3">Image Classification</td><td>Network Architecture Search</td><td><a href="../algorithms/cars.md">CARS</a>, <a href="../algorithms/nago.md">NAGO</a>, BackboneNas, DartsCNN, GDAS, EfficientNet</td></tr>
+  <tr><td> Hyperparameter Optimization</td><td><a href="../algorithms/hpo.md">ASHA, BOHB, BOSS, BO, TPE, Random, Random-Pareto</a></td></tr>
+  <tr><td>Data Augmentation</td><td><a href="../algorithms/pba.md">PBA</a></td></tr>
+  <tr><td rowspan="2">Model Compression</td><td>Model Pruning</td><td><a href="../algorithms/prune_ea.md">Prune-EA</a></td></tr>
+  <tr><td>Model Quantization</td><td><a href="../algorithms/quant_ea.md">Quant-EA</a></td></tr>
+  <tr><td rowspan="2">Image Super-Resolution</td><td>Network Architecture Search</td><td><a href="../algorithms/sr_ea.md">SR-EA</a>, <a href="../algorithms/esr_ea.md">ESR-EA</a></td></tr>
+  <tr><td>Data Augmentation</td><td><a href="../algorithms/cyclesr.md">CycleSR</a></td></tr>
+  <tr><td>Image Segmentation</td><td>Network Architecture Search</td><td><a href="../algorithms/adelaide_ea.md">Adelaide-EA</a></td></tr>
+  <tr><td>Object Detection</td><td>Network Architecture Search</td><td><a href="../algorithms/sp_nas.md">SP-NAS</a></td></tr>
+  <tr><td>Lane Detection</td><td>Network Architecture Search</td><td><a href="../algorithms/auto_lane.md">Auto-Lane</a></td></tr>
+  <tr><td rowspan="2">Recommender System</td><td>Feature Selection</td><td><a href="../algorithms/autofis.md">AutoFIS</a></td></tr>
+  <tr><td>Feature Interactions Selection</td><td><a href="../algorithms/autogroup.md">AutoGroup</a></td></tr>
+</table>
 
-| Configuration Item | Description |
+### 3.2 Search Space
+
+### 3.2.1 Hyperparameter Types and Constraints
+
+The types of hyperparameters that make up the search space are as follows:
+
+| Hyperparameter type | Example | Description |
+| :--: | :-- | :-- |
+| CATEGORY | `[18, 34, 50, 101]` <br> `[0.3, 0.7, 0.9]` <br> `["red", "yellow"]` <br> `[[1, 0, 1], [0, 0, 1]]` | group type. Its elements can be any data type. |
+| BOOL | `[True, False]` | Boolean type |
+| INT | `[10, 100]` | Integer type. Set the minimum and maximum values for even sampling. |
+| INT_EXP | `[1, 100000]` | Integer type, minimum and maximum values, exponential sampling |
+| FLOAT | `[0.1, 0.9]` | floating-point number type. Set the minimum and maximum values to sample evenly. |
+| FLOAT_EXP | `[0.1, 100000.0]` | floating point number type. Sets the minimum and maximum values, and performs exponential sampling. |
+
+Constraints between hyperparameters are classified into condition and forbidden, as shown in the following figure.
+
+| Category | Constraint Type | Example | Description |
+| :--: | :-- | :-- | :-- |
+| condition | EQUAL | `parent: trainer.optimizer.type` <br> `child: trainer.optimizer.params.momentum` <br> `type: EQUAL` <br> `range: ["SGD"]` | indicates the relationship between two hyperparameters. The child parameter takes effect only when the parent parameter is equal to a certain value. In the example, when the value of `trainer.optimizer.type` is `["SGD"]`, the `trainer.optimizer.params.momentum` parameter takes effect. |
+| condition | NOT_EQUAL | - | Indicates the relationship between two nodes. The child node takes effect only when the value of parent is different from a value. |
+| condition | IN | - | Indicates the relationship between two nodes. The child node takes effect only when the parent value is within a certain range. |
+| forbidden | - | - | indicates the exclusive relationship between two hyperparameter values. The two hyperparameter values cannot be used at the same time. |
+
+The following is an example:
+
+```yaml
+hyperparameters:
+    -   key: dataset.batch_size
+        type: CATEGORY
+        range: [8, 16, 32, 64, 128, 256]
+    -   key: trainer.optimizer.params.lr
+        type: FLOAT_EXP
+        range: [0.00001, 0.1]
+    -   key: trainer.optimizer.type
+        type: CATEGORY
+        range: ['Adam', 'SGD']
+    -   key: trainer.optimizer.params.momentum
+        type: FLOAT
+        range: [0.0, 0.99]
+condition:
+    -   key: condition_for_sgd_momentum
+        child: trainer.optimizer.params.momentum
+        parent: trainer.optimizer.type
+        type: EQUAL
+        range: ["SGD"]
+forbidden:
+    -   trainer.optimizer.params.lr: 0.025
+        trainer.optimizer.params.momentum: 0.35
+```
+
+In the preceding example, the forbidden configuration item is used to display the format of the forbidden configuration item.
+
+### 3.2.2 NAS Search Space Hyperparameters
+
+The search items in the network search space are as follows:
+
+| Network | module | Hyperparameter | Description |
+| :--: | :-- | :-- | :-- |
+| ResNet | backbone | `network.backbone.depth` | Network Depth |
+| ResNet | backbone | `network.backbone.base_channel` | Input Channels |
+| ResNet | backbone | `network.backbone.doublechannel` | Upgrade Channel Position |
+| ResNet | backbone | `network.backbone.downsample` | Downsampling Position |
+
+The following figure shows the network configuration information, corresponding to the `model` section in the example.
+
+| module | network | Description | Reference |
+| :--: | :-- | :-- | :-- |
+| backbone | ResNet | ResNet network, which consists of RestNetGeneral and LinearClassificationHead. |
+| backbone | ResNetGeneral | ResNet Backbone. |
+| head | LinearClassificationHead | | Network classification layer used for classification tasks. |
+
+The following is an example in the configuration file:
+
+```yaml
+search_space:
+    hyperparameters:
+        -   key: network.backbone.depth
+            type: CATEGORY
+            range: [18, 34, 50, 101]
+        -   key: network.backbone.base_channel
+            type: CATEGORY
+            range:  [32, 48, 56, 64]
+        -   key: network.backbone.doublechannel
+            type: CATEGORY
+            range: [3, 4]
+        -   key: network.backbone.downsample
+            type: CATEGORY
+            range: [3, 4]
+model:
+    model_desc:
+        modules: ['backbone']
+        backbone:
+            type: ResNet
+```
+
+Other network search space configurations are determined by each algorithm. For details, see the following algorithm documents:
+
+<table>
+  <tr><th>Task</th><th>categorize</th><th>Algorithms</th></tr>
+  <tr><td rowspan="3">Image Classification</td><td>Network Architecture Search</td><td><a href="../algorithms/cars.md">CARS</a>, <a href="../algorithms/nago.md">NAGO</a>, BackboneNas, DartsCNN, GDAS, EfficientNet</td></tr>
+  <tr><td> Hyperparameter Optimization</td><td><a href="../algorithms/hpo.md">ASHA, BOHB, BOSS, BO, TPE, Random, Random-Pareto</a></td></tr>
+  <tr><td>Data Augmentation</td><td><a href="../algorithms/pba.md">PBA</a></td></tr>
+  <tr><td rowspan="2">Model Compression</td><td>Model Pruning</td><td><a href="../algorithms/prune_ea.md">Prune-EA</a></td></tr>
+  <tr><td>Model Quantization</td><td><a href="../algorithms/quant_ea.md">Quant-EA</a></td></tr>
+  <tr><td rowspan="2">Image Super-Resolution</td><td>Network Architecture Search</td><td><a href="../algorithms/sr_ea.md">SR-EA</a>, <a href="../algorithms/esr_ea.md">ESR-EA</a></td></tr>
+  <tr><td>Data Augmentation</td><td><a href="../algorithms/cyclesr.md">CycleSR</a></td></tr>
+  <tr><td>Image Segmentation</td><td>Network Architecture Search</td><td><a href="../algorithms/adelaide_ea.md">Adelaide-EA</a></td></tr>
+  <tr><td>Object Detection</td><td>Network Architecture Search</td><td><a href="../algorithms/sp_nas.md">SP-NAS</a></td></tr>
+  <tr><td>Lane Detection</td><td>Network Architecture Search</td><td><a href="../algorithms/auto_lane.md">Auto-Lane</a></td></tr>
+  <tr><td rowspan="2">Recommender System</td><td>Feature Selection</td><td><a href="../algorithms/autofis.md">AutoFIS</a></td></tr>
+  <tr><td>Feature Interactions Selection</td><td><a href="../algorithms/autogroup.md">AutoGroup</a></td></tr>
+</table>
+
+### 3.2.3 HPO Search Space Hyperparameters
+
+Network training hyperparameters include the following:
+
+1. Dataset parameters.
+2. Model trainer parameters, including:
+   1. Optimizationer and parameters.
+   2. Learning rate scheduler and its parameters.
+   3. Loss function and its parameters.
+
+Configuration item description:
+
+| Hyperparameter | Example | Description |
+| :--: | :-- | :-- |
+| dataset.\<dataset param\> | `dataset.batch_size` | Dataset parameter |
+| trainer.optimizer.type | `trainer.optimizer.type` | Optimizer type |
+| trainer.optimizer.params.\<optimizer param\> | `trainer.optimizer.params.lr` <br> `trainer.optimizer.params.momentum` | Optimizer parameter |
+| trainer.lr_scheduler.type | `trainer.lr_scheduler.type` | LR-Schecduler type |
+| trainer.lr_scheduler.params.\<lr_scheduler param\> | `trainer.lr_scheduler.params.gamma` | LR-Scheduler parameter |
+| trainer.loss.type | `trainer.loss.type` | Loss function type |
+| trainer.loss.params.\<loss function param\> | `trainer.loss.params.aux_weight` | Loss function parameter |
+
+The configuration in the preceding table is in the following format in the configuration file:
+
+```yaml
+hyperparameters:
+    -   key: dataset.batch_size
+        type: CATEGORY
+        range: [8, 16, 32, 64, 128, 256]
+    -   key: trainer.optimizer.type
+        type: CATEGORY
+        range: ["Adam", "SGD"]
+    -   key: trainer.optimizer.params.lr
+        type: FLOAT_EXP
+        range: [0.00001, 0.1]
+    -   key: trainer.optimizer.params.momentum
+        type: FLOAT
+        range: [0.0, 0.99]
+    -   key: trainer.lr_scheduler.type
+        type: CATEGORY
+        range: ["MultiStepLR", "StepLR"]
+    -   key: trainer.lr_scheduler.params.gamma
+        type: FLOAT
+        range: [0.1, 0.5]
+    -   key: trainer.loss.type
+        type: CATEGORY
+        range: ["CrossEntropyLoss", "MixAuxiliaryLoss"]
+    -   key: trainer.loss.params.aux_weight
+        type: FLOAT
+        range: [0, 1]
+condition:
+    -   key: condition_for_sgd_momentum
+        child: trainer.optimizer.params.momentum
+        parent: trainer.optimizer.type
+        type: EQUAL
+        range: ["SGD"]
+    -   key: condition_for_MixAuxiliaryLoss_aux_weight
+        child: trainer.loss.params.aux_weight
+        parent: trainer.loss.type
+        type: EQUAL
+        range: ["MixAuxiliaryLoss"]
+```
+
+### 3.3 Hybrid Search of NAS and HPO
+
+NAS and HPO configuration items can be configured at the same time. The network structure and training parameters can be searched at the same time. In the following example, the model training hyperparameters are batch_size, optimizer, and ResNet network parameters depth, base_channel, doublechannel, and downsample.
+
+```yaml
+search_algorithm:
+    type: BohbHpo
+    policy:
+        total_epochs: 100
+        repeat_times: 2
+
+search_space:
+    hyperparameters:
+        -   key: dataset.batch_size
+            type: CATEGORY
+            range: [8, 16, 32, 64, 128, 256]
+        -   key: trainer.optimizer.type
+            type: CATEGORY
+            range: ["Adam", "SGD"]
+        -   key: trainer.optimizer.params.lr
+            type: FLOAT_EXP
+            range: [0.00001, 0.1]
+        -   key: trainer.optimizer.params.momentum
+            type: FLOAT
+            range: [0.0, 0.99]
+        -   key: network.backbone.depth
+            type: CATEGORY
+            range: [18, 34, 50, 101]
+        -   key: network.backbone.base_channel
+            type: CATEGORY
+            range:  [32, 48, 56, 64]
+        -   key: network.backbone.doublechannel
+            type: CATEGORY
+            range: [3, 4]
+        -   key: network.backbone.downsample
+            type: CATEGORY
+            range: [3, 4]
+
+    condition:
+        -   key: condition_for_sgd_momentum
+            child: trainer.optimizer.params.momentum
+            parent: trainer.optimizer.type
+            type: EQUAL
+            range: ["SGD"]
+
+model:
+    model_desc:
+        modules: ['backbone']
+        backbone:
+            type: ResNet
+```
+
+## 4. Data-Agumentation configuration item
+
+Similar to HPO, data augmentation configuration items include pipe_step, search_algorithm, search_space, dataset, trainer, and evaluator. Vega provides two data augmentation algorithms: PBA and CycleSR, for details, see [PBA](../algorithms/pba.md) and [CycleSR](../algorithms/cyclesr.md) .
+
+## 5. Fully Train Configuration
+
+The network model and training hyperparameter obtained after the NAS and HPO are used as the input of the Fully Train step. The fully trained model is obtained after the Fully Train step. The configuration items are as follows:
+
+The HPO/NAS configuration items are as follows:
+
+| Configuration item | Description |
 | :--: | :-- |
-| pipe_step | The value is fixed at FullyTrainPipeStep.  |
-| models_folder | The directory where the model description file to be trained is located. The file name format in this directory is: model_desc_\<ID>.json, where the ID is a number, and these models will be trained in parallel. This option is mutually exclusive  with the parameter "model" and has priority to "model". |
-| trainer | Trainer configuration information. For details, see the [Trainer Configuration](#trainer). |
-| dataset | Dataset configuration. For details, see the [Dataset Configuration](#dataset). |
-| model | Model information. For details, see the [Trainer Configuration](#trainer). |
-| model_desc_file | The model description file |
+| pipe_step / type | Set this parameter to `FullyTrainPipeStep`, indicating that this step is a search step. |
+| pipe_step / models_folder | Specify the location of the model description file. Read the model description files named `desc_<ID>.json` (ID indicates a number) in the folder and train these models in sequence. This option takes precedence over the model option. |
+| model / model_desc_file | Location of the model description file. The priority of this configuration item is lower than that of `pipe_step/models_folder` and higher than that of `model/model_desc`. |
+| model / model_desc | Model description. For details, see the model-related section in the search space. This configuration has a lower priority than `pipe_step/models_folder` and `model/model_desc`. |
+| dataset | Dataset configuration. For details, see the dataset section in this document. |
+| trainer | Model training parameter configuration. For details, see the trainer section in this document. |
+| evaluator | evaluator parameter configuration. For details, see the evaluator section in this document. |
 
 ```yaml
 my_fully_train:
     pipe_step:
         type: FullyTrainPipeStep
-        # models_folder: ~
+        models_folder: "{local_base_path}/output/nas/"
     trainer:
-        type: Trainer
+        <trainer params>
     model:
-        model_desc_file: "/models/model_desc.json"
+            <model desc params>
+        model_desc_file: "./desc_0.json"
     dataset:
-        type: Cifar10
+        <dataset params>
+    trainer:
+        <trainer params>
+    evaluator:
+        <evaluator params>
 ```
 
-<span id="trainer"></span>
+## 6. Trainer configuration item
 
-## 7. Trainer configuration item
+The configuration items of the Trainer are as follows:
 
-In each of the preceding pipeline steps, the configuration item trainer is provided. You can configure the basic trainer and extended trainer. The basic configuration information of the trainer is as follows:
+| Configuration item | Default value | Description |
+| :--: | :-- | :-- |
+| type | "Trainer" | Type |
+| epochs | 1 | Number of epochs |
+| distributed | False | Whether to enable horovod. To enable Horovod, set shuffle of the dataset to False. |
+| syncbn | False | Whether to enable SyncBN |
+| amp | False | Whether to enable the AMP |
+| optimizer/type | "Adam" | Optimizer name |
+| optimizer/params | {"lr": 0.1} | Optimizer Parameter |
+| lr_scheduler/type | "MultiStepLR" | lr scheduler and Parameters |
+| lr_scheduler/params | {"milestones": [75, 150], "gamma": 0.5} | lr scheduler and Parameters |
+| loss/type | "CrossEntropyLoss" | loss and Parameters |
+| loss/params | {} | loss and parameters |
+| metric/type | "accuracy" | metric and parameter |
+| metric/params | {"topk": [1, 5]} | metric and Parameters |
+| report_freq | 10 | Frequency for printing epoch information |
 
-| Configuration Item | Description |
-| :--: | :-- |
-| type | Trainer, or algorithm extension trainer. For details, see the related algorithm document. |
-| epochs | Total epochs |
-| optim | Optimizers and Parameters |
-| lr_scheduler | lr scheduler and parameters |
-| loss | Loss and Parameters |
-| metric | Metrics and Parameters |
-| distributed | Whether to enable Horovod for fully train. After enabling Horovod, the trainer will use all computing resources in the Horovod cluster to train the specified network model. To start horovod, you must set the `model` option. |
-| model_desc | Model description, which is mutually exclusive with model_desc_file. model_desc_file takes precedence over model_desc_file. And the parameter shuffle of the dataset must be set to False. |
-| model_desc_file | File where the model description information is located. This parameter is mutually exclusive with model_desc, and model_desc_file takes priority over model_desc_file. |
-| hps_file | Hyper-parameter file |
-| pretrained_model_file | Pre-trained model file |
-
-The following is an example of loading the Torchvision model for training:
+Complete configuration example:
 
 ```yaml
+my_fullytrain:
+    pipe_step:
+        type: FullyTrainPipeStep
+        # models_folder: "{local_base_path}/output/nas/"
     trainer:
-        type: Trainer
+        ref: nas.trainer
         epochs: 160
-        optim:
-            type: Adam
+        optimizer:
+            type: SGD
             params:
                 lr: 0.1
+                momentum: 0.9
+                weight_decay: 0.0001
         lr_scheduler:
             type: MultiStepLR
             params:
-                milestones: [75, 150]
+                milestones: [60, 120]
                 gamma: 0.5
-        metric:
-            type: accuracy
-        loss:
-            type: CrossEntropyLoss
-        distributed: False
-    dataset:
-        type: Imagenet
     model:
         model_desc:
-            modules: ['backbone', 'head']
+            modules: ['backbone']
             backbone:
-                ResNetVariant:
-                    base_depth: [18, 34, 50, 101]
-                    base_channel: [32, 48, 56, 64]
-                    doublechannel: [3, 4]
-                    downsample: [3, 4]
-            head:
-                LinearClassificationHead:
-                    num_classes: [10]
-        # model_desc_file: ~
-        # hps_file: ~
-        # pretrained_model_file: ~
-```
-
-As shown in the preceding example, in addition to the models defined by Vega, you can also load the TorchVision Model. The following models are supported. For details, see the [official desc](https://pytorch.org/docs/stable/torchvision/models.html).
-
-| module | Optional |
-| :--: | :-- |
-| torch_vision_model | vgg11, vgg13, vgg16, vgg19, vgg11_bn, vgg13_bn, vgg16_bn, vgg19_bn, squeezenet1_0, squeezenet1_1, shufflenetv2_x0.5, shufflenetv2_x1.0, resnet18, resnet34, resnet50, resnet101, resnet152, resnext50_32x4d, resnext101_32x8d, wide_resnet50_2, wide_resnet101_2, mobilenet_v2, mnasnet0_5, mnasnet1_0, inception_v3_google, googlenet, densenet121, densenet169, densenet201, densenet161, alexnet, fasterrcnn_resnet50_fpn, fasterrcnn_resnet50_fpn_coco, keypointrcnn_resnet50_fpn_coco, maskrcnn_resnet50_fpn_coco, fcn_resnet101_coco, deeplabv3_resnet101_coco, r3d_18, mc3_18, r2plus1d_18 |
-
-<span id="dataset"></span>
-
-## 8. Dataset Reference
-
-Each pipeline involves dataset configuration. Vega classifies datasets into three types: train, val, and test. The three types of datasets can be configured independently. In addition, transform can be configured in Dataset. The following is a configuration example of the Cifar10 dataset:
-
-```yaml
+                type: ResNet
+        # model_desc_file: "./desc_0.json"
     dataset:
         type: Cifar10
         common:
-            data_path: ~            # configuration data set is located.
-            batch_size: 256
-            num_workers: 4
-            imgs_per_gpu: 1
-            train_portion: 0.5
-            shuffle: false
-            distributed: false
-        train:
-            transforms:
-                - type: RandomCrop
-                size: 32
-                padding: 4
-                - type: RandomHorizontalFlip
-                - type: ToTensor
-                - type: Normalize
-                mean:
-                    - 0.49139968
-                    - 0.48215827
-                    - 0.44653124
-                std:
-                    - 0.24703233
-                    - 0.24348505
-                    - 0.26158768
-        val:
-            transforms:
-                - type: ToTensor
-                - type: Normalize
-                mean:
-                    - 0.49139968
-                    - 0.48215827
-                    - 0.44653124
-                std:
-                    - 0.24703233
-                    - 0.24348505
-                    - 0.26158768
-        test:
-            transforms:
-                - type: ToTensor
-                - type: Normalize
-                mean:
-                    - 0.49139968
-                    - 0.48215827
-                    - 0.44653124
-                std:
-                    - 0.24703233
-                    - 0.24348505
-                    - 0.26158768
+            data_path: /cache/datasets/cifar10/
 ```
 
-### 8.1 内置数据集
+## 8. Dataset Reference
 
-Vega provides the following common data sets:
+Vega provides multiple dataset classes for reading common research datasets and provides common dataset operation methods. The dataset classes provided by Vega can be configured separately for train, val, and test. You can also configure the configuration items on the common node to take effect on the three types of data. The following is a configuration example of the Cifar10 dataset:
 
-| Name | Description | Data Source |
-| :--: | --- | :--: |
-| Cifar10 | The CIFAR-10 dataset consists of 60000 32x32 colour images in 10 classes, with 6000 images per class. There are 50000 training images and 10000 test images | [download](https://www.cs.toronto.edu/~kriz/cifar.html) |
-| Cifar100 | The CIFAR-100 is just like the CIFAR-10, except it has 100 classes containing 600 images each. There are 500 training images and 100 testing images per class | [download](https://www.cs.toronto.edu/~kriz/cifar.html) |
-| Minist | The MNIST database of handwritten digits has a training set of 60,000 examples, and a test set of 10,000 examples | [download](http://yann.lecun.com/db/mnist/) |
-| COCO | The COCO is a large-scale object detection, segmentation, and captioning dataset, about 123K images and 886K instances | [download](http://cocodataset.org/#download) |
-| Div2K | Div2K is a super-resolution architecture search database, containing 800 training images and 100 validiation images | [download](https://data.vision.ee.ethz.ch/cvl/DIV2K/) |
-| Imagenet | The ImageNet is an image database organized according to the WordNet hierarchy, in which each node of the hierarchy is depicted by hundreds and thousands of images | [download](http://image-net.org/download-images) |
-| Fmnist | Fashion-MNIST is a dataset of Zalando's article images—consisting of a training set of 60,000 examples and a test set of 10,000 examples. Each example is a 28x28 grayscale image, associated with a label from 10 classes.| [download](http://fashion-mnist.s3-website.eu-central-1.amazonaws.com/) |
-| Cityscapes | The Cityscape is a large-scale dataset that contains a diverse set of stereo video sequences recorded in street scenes from 50 different cities, with high quality pixel-level annotations of 5 000 frames in addition to a larger set of 20 000 weakly annotated frames. | [download](https://www.cityscapes-dataset.com/) |
-| Cifar10TF | The CIFAR-10-bin dataset consists of 60000 32x32 colour images in 10 classes, with 6000 images per class. There are 50000 training images and 10000 test images | [download](https://www.cs.toronto.edu/~kriz/cifar-10-binary.tar.gz) |
-| Div2kUnpair | DIV2K dataset: DIVerse 2K resolution high quality images as used for the challenges @ NTIRE (CVPR 2017 and CVPR 2018) and @ PIRM (ECCV 2018)|[download](https://data.vision.ee.ethz.ch/cvl/DIV2K/) |
-| ECP    | The ECP dataset. Focus on Persons in Urban Traffic Scenes.With over 238200 person instances manually labeled in over 47300 images, EuroCity Persons is nearly one order of magnitude larger than person datasets used previously for benchmarking.|[download](https://eurocity-dataset.tudelft.nl/eval/downloads/detection) |
+```yaml
+dataset:
+    type: Cifar10
+    common:
+        data_path: /cache/datasets/cifar10
+        batch_size: 256
+    train:
+        shuffle: True
+    val:
+        shuffle: False
+    test:
+        shuffle: False
+```
 
-1. Cifar10 Default Configuration
+The following describes the configuration of common data classes:
 
-    ```yaml
-    data_path: ~            # the path of the dataset, default is None, MUST be set to a correct dataset PATH, such as /datasets/cifar10
-    batch_size: 256         # batch size
-    num_workers: 4          # the worker number to load the data
-    shuffle: false          # if True, will shuffle, defaults to False
-    distributed: false      # whether to use distributed train
-    train_portion: 0.5      # the ratio of the train data split from the initial train data
-    ```
+### 8.1 Cifar10 and Cifar100
 
-2. Cifar100 Default Configuration
+The configuration items are as follows:
 
-    ```yaml
-    data_path: ~            # the path of the dataset, default is None, MUST be set to a correct dataset PATH, such as /datasets/cifar100
-    batch_size: 1           # batch size
-    num_workers: 4          # the worker number to load the data
-    shuffle: true           # if True, will shuffle, defaults to False
-    distributed: false      # whether to use distributed train
-    ```
+| Configuration item | Default value | Description |
+| :-- | :-- | :-- |
+| data_path | ~ | Directory generated after the dataset is downloaded and decompressed. |
+| batch_size | 256 | batch size |
+| shuffle | False | shuffle |
+| num_workers | 8 | Number of read threads |
+| pin_memory | True | Pin memeory |
+| drop_laster | True | Drop last |
+| distributed | False | Data distribution |
+| train_portion | 1 | Division ratio of the training set in the dataset |
+| transforms | train: [RandomCrop, RandomHorizontalFlip, ToTensor, Normalize] <br> val: [ToTensor, Normalize] <br> test: [ToTensor, Normalize] | 缺省transforms |
 
-3. Cityscapes Default Configuration
+### 8.2 ImageNet
 
-    ```yaml
-    root_path: ~            # the path of the dataset, default is None, MUST be set to a correct dataset PATH, such as /datasets/Cityscapes
-    list_path: 'img_gt_train.txt'   # the name of the txt file
-    batch_size: 1           # batch size
-    mean: 128               # the parameter mean for transform
-    ignore_label: 255       # the label to ignore
-    scale: True             # if scale is true, the asptio will be keep when transform
-    mirrow: True            # whether to use mirrow for transform  
-    rotation: 90            # the rotation value
-    crop: 321               # the crop size
-    num_workers: 4          # the worker number to load the data
-    shuffle: False          # if True, will shuffle, defaults to False
-    distributed: True       # whether to use distributed train
-    id_to_trainid: False    # change the random id to continious id,if true, a dict should be obtain
-    ```
+The configuration items are as follows:
 
-4. DIV2K Default Configuration
+| Configuration item | Default value | Description |
+| :-- | :-- | :-- |
+| data_path | ~ | Directory generated after the dataset is downloaded and decompressed. |
+| batch_size | 64 | batch size |
+| shuffle | train: True <br> val: False <br> test: False | shuffle |
+| n_class | 1000 | Category |
+| num_workers | 8 | Number of read threads |
+| pin_memory | True | Pin memeory |
+| drop_laster | True | Drop last |
+| distributed | False | Data distribution |
+| train_portion | 1 | Division ratio of the training set in the dataset |
+| transforms | train: [RandomResizedCrop, RandomHorizontalFlip, ColorJitter, ToTensor, Normalize] <br> val: [Resize, CenterCrop, ToTensor, Normalize] <br> test: [Resize, CenterCrop, ToTensor, Normalize] | 缺省transforms |
 
-    ```yaml
-    root_HR: ~              # the path of the dataset, default is None, MUST be set to a correct dataset PATH, such as /datasets/DIV2K/div2k_train/hr
-    root_LR: ~              # the path of the dataset, default is None, MUST be set to a correct dataset PATH, such as /datasets/DIV2k/div2k_train/lr
-    batch_size: 1           # batch size
-    num_workers: 4          # the worker number to load the data
-    upscale: 2              # the upscale for super resolution
-    subfile: !!null         # whether to use subfile,Set it to None by default
-    crop: !!null            # the crop size,Set it to None by default
-    shuffle: false          # if True, will shuffle, defaults to False
-    hflip: false            # whether to use horrizion flip
-    vflip: false            # whether to use vertical flip
-    rot90: false            # whether to use rotation
-    distributed: True       # whether to use distributed train
-    ```
+### 8.3 Cityscapes
 
-5. FashionMnist Default Configuration
+The configuration items are as follows:
 
-    ```yaml
-    data_path: ~            # the path of the dataset, default is None, MUST be set to a correct dataset PATH, such as /datasets/fmnist
-    batch_size: 1           # batch size
-    num_workers: 4          # the worker number to load the data
-    shuffle: true           # if True, will shuffle, defaults to False
-    distributed: false      # whether to use distributed train
-    ```
+| Configuration item | Default value | Description |
+| :-- | :-- | :-- |
+| root_path | ~ | Directory generated after the dataset is downloaded and decompressed. |
+| list_file | train: train.txt <br> val: val.txt <br> test: test.txt | Index File |
+| batch_size | 1 | batch size |
+| num_workers | 8 | Number of read threads |
+| shuffle | False | shuffle |
 
-6. Imagenet Default Configuration
+### 8.4 DIV2K
 
-    ```yaml
-    data_path: ~            #  the path of the dataset, default is None, MUST be set to a correct dataset PATH, such as /datasets/ImageNet
-    batch_size: 1           #  batch size
-    num_workers: 4          #  the worker number to load the data
-    shuffle: true           #  if True, will shuffle, defaults to False
-    distributed: false      #  whether to use distributed train
-    ```
+The configuration items are as follows:
 
-7. Mnist Default Configuration
+| Configuration item | Default value | Description |
+| :-- | :-- | :-- |
+| root_HR | ~ | Directory where the HR image is located. |
+| root_LR | ~ | Directory where LR images are stored. |
+| batch_size | 1 | batch size |
+| shuffle | False | shuffle |
+| num_workers | 4 | Number of read threads |
+| pin_memory | True | Pin memeory |
+| value_div | 1.0 | Value div |
+| upscale | 2 | Up scale |
+| crop | ~ | crop size of lr image |
+| hflip | False | flip image horizontally |
+| vflip | False | flip image vertically |
+| rot90 | False | flip image diagonally |
 
-    ```yaml
-    data_path: ~            # the path of the dataset, default is None, MUST be set to a correct dataset PATH, such as /datasets/mnist
-    batch_size: 1           # batch size
-    num_workers: 4          # the worker number to load the data
-    shuffle: true           # if True, will shuffle, defaults to False
-    distributed: false      # whether to use distributed train
-    ```
+### 8.5 AutoLane
 
-### 8.1 Built-in Transform
+The configuration items are as follows:
 
-Currently, the following transforms are supported:
+| Configuration item | Default value | Description |
+| :-- | :-- | :-- |
+| data_path | ~ | Directory generated after the dataset is downloaded and decompressed. |
+| batch_size | 24 | batch size |
+| shuffle | False | shuffle |
+| num_workers | 8 | Number of read threads |
+| network_input_width | 512 | Network inpurt width |
+| network_input_height | 288 | Network input height |
+| gt_len | 145 | - |
+| gt_num | 576 | - |
+| random_sample | True | Random sample |
+| transforms | [ToTensor, Normalize] | transforms |
 
-| Transform | Input | Output |
-| --- | --- | --- |
-| AutoContrast | level img | img |
-| BboxTransform | bboxes imge_shape scale_factor | bboxes |
-| Brightness | level img | img |
-| Color | level img | img |
-| Contrast | level img | img |
-| Cutout | length img | img |
-| Equalize | level img | img |
-| ImageTransform | scale img | img img_shape pad_shape scale_factor |
-| Invert | level img | img |
-| MaskTransform | masks pad_shape scale_factor | padded_masks |
-| Numpy2Tensor | numpy | tensor |
-| Posterize | level img | img |
-| RandomCrop_pair | crop upscale img label | img label |
-| RandomHorizontalFlip_pair | img label | img label |
-| RandomMirrow_pair | img label | img label |
-| RandomRotate90_pair | img label | img label |
-| RandomVerticallFlip_pair | img label | img label |
-| Rotate | level img | img |
-| SegMapTransform | scale img | img |
-| Sharpness | level img | img |
-| Shear_X | level img | img |
-| Shear_Y | level img | img |
-| Solarize | level img | img |
-| ToPILImage_pair | img1 img2 | img1 img2 |
-| ToTensor_pair | img1 img2 | tensor1 tensor2 |
-| Translate_X | level img | img |
-| Translate_Y | level img | img |
+### 8.6 Avazu
+
+The configuration items are as follows:
+
+| Configuration item | Default value | Description |
+| :-- | :-- | :-- |
+| data_path | ~ | Directory generated after the dataset is downloaded and decompressed. |
+| batch_size | 2000 | batch size |
+
+### 8.7 ClassificationDataset
+
+This dataset is used to read user classification data. The user dataset directory contains three subfolders: train, val, and test. The three subfolders contain the image classification tag folder, which stores images belonging to the category.
+
+The configuration items are as follows:
+
+| Configuration item | Default value | Description |
+| :-- | :-- | :-- |
+| data_path | ~ | Directory generated after the dataset is downloaded and decompressed. |
+| batch_size | 1 | batch size |
+| shuffle | train: True <br> val: True <br> test: False | shuffle |
+| num_workers | 8 | Number of read threads |
+| pin_memory | True | Pin memeory |
+| drop_laster | True | Drop last |
+| distributed | False | Data distribution |
+| train_portion | 1 | Division ratio of the training set in the dataset |
+| n_class | - | number of clases |
+| cached | True | Whether to cache all data to the memory. |
+| transforms | [] | transforms |

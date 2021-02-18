@@ -351,7 +351,7 @@ class ResNetVariantDetCodec(Backbone):
         :rtype: str
         """
         config = OrderedDict(
-            name='ResNetVariantDet',
+            type='ResNetVariantDet',
             arch=self.arch,
             base_depth=self.base_depth,
             base_channel=self.base_channel,

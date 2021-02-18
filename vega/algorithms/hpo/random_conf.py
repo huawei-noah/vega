@@ -9,16 +9,16 @@
 # MIT License for more details.
 
 """Defined Configs."""
+from zeus.common import ConfigSerializable
 
 
-class RandomPolicyConfig(object):
+class RandomPolicyConfig(ConfigSerializable):
     """Random Policy Config."""
 
-    total_epochs = 10
-    epochs_per_iter = 1
+    num_sample = 10
 
 
-class RandomConfig(object):
+class RandomConfig(ConfigSerializable):
     """Random Config."""
 
     policy = RandomPolicyConfig

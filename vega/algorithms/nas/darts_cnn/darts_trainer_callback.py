@@ -13,18 +13,18 @@ import logging
 import os
 from copy import deepcopy
 import vega
-from vega.core.common import Config, FileOps
+from zeus.common import Config, FileOps
 from vega.algorithms.nas.darts_cnn import DartsNetworkTemplateConfig
-from vega.core.common.class_factory import ClassFactory, ClassType
-from vega.core.trainer.callbacks import Callback
-from vega.search_space import SearchSpace
-from vega.search_space.search_algs import SearchAlgorithm
-from vega.core.trainer.modules.optimizer import Optimizer
-from vega.core.trainer.modules.lr_schedulers import LrScheduler
-from vega.core.trainer.modules.losses import Loss
+from zeus.common import ClassFactory, ClassType
+from zeus.trainer.callbacks import Callback
+from vega.core.search_space import SearchSpace
+from vega.core.search_algs import SearchAlgorithm
+from zeus.trainer.modules.optimizer import Optimizer
+from zeus.trainer.modules.lr_schedulers import LrScheduler
+from zeus.trainer.modules.losses import Loss
 
 if vega.is_torch_backend():
-    import torch
+    pass
 elif vega.is_tf_backend():
     import tensorflow as tf
 
@@ -32,6 +32,8 @@ elif vega.is_tf_backend():
 @ClassFactory.register(ClassType.CALLBACK)
 class DartsTrainerCallback(Callback):
     """A special callback for DartsTrainer."""
+
+    disable_callbacks = ["ModelCheckpoint"]
 
     def before_train(self, logs=None):
         """Be called before the training process."""
@@ -42,7 +44,7 @@ class DartsTrainerCallback(Callback):
         self.optimizer = self.trainer.optimizer
         self.lr_scheduler = self.trainer.lr_scheduler
         self.loss = self.trainer.loss
-        self.search_alg = SearchAlgorithm(SearchSpace().search_space)
+        self.search_alg = SearchAlgorithm(SearchSpace())
         self._set_algorithm_model(self.model)
         self.trainer.train_loader = self.trainer._init_dataloader(mode='train')
         self.trainer.valid_loader = self.trainer._init_dataloader(mode='val')
@@ -95,30 +97,29 @@ class DartsTrainerCallback(Callback):
         dataset = tf.data.Dataset.zip((self.trainer.train_loader.input_fn(),
                                        self.trainer.valid_loader.input_fn()))
         dataset = dataset.map(lambda td, vd: map_to_dict(td, vd))
-        dataset = dataset.prefetch(buffer_size=tf.contrib.data.AUTOTUNE)
+        # dataset = dataset.prefetch(buffer_size=tf.contrib.data.AUTOTUNE)
         return dataset
 
     def model_fn(self, features, labels, mode):
         """Darts model_fn used by TensorFlow Estimator."""
         logging.info('Darts model function action')
-        global_step = tf.train.get_global_step()
+        global_step = tf.compat.v1.train.get_global_step()
         train_op = None
         if mode == tf.estimator.ModeKeys.TRAIN:
             features, valid_features = features['train'], features['valid']
             labels, valid_labels = labels['train'], labels['valid']
             # update arch
             epoch = tf.cast(global_step, tf.float32) / tf.cast(len(self.trainer.train_loader), tf.float32)
-            self.trainer.lr_scheduler = LrScheduler()()
-            self.trainer.optimizer = Optimizer()(lr_scheduler=self.trainer.lr_scheduler,
-                                                 epoch=epoch,
-                                                 distributed=self.trainer.distributed)
-            update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
+            self.trainer.optimizer = Optimizer()(distributed=self.trainer.distributed)
+            self.trainer.lr_scheduler = LrScheduler()(self.trainer.optimizer)
+            self.trainer.lr_scheduler.step(epoch)
+            update_ops = tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.UPDATE_OPS)
             arch_minimize_op = self.search_alg.step(valid_x=valid_features,
                                                     valid_y=valid_labels,
                                                     lr=self.trainer.lr_scheduler.get_lr()[0])
             train_op = tf.group(arch_minimize_op, update_ops)
-
-        logits = self.model(features, mode == tf.estimator.ModeKeys.TRAIN)
+        self.model.training = mode == tf.estimator.ModeKeys.TRAIN
+        logits = self.model(features)
         logits = tf.cast(logits, tf.float32)
         self.trainer.loss = Loss()()
         loss = self.trainer.loss(logits=logits, labels=labels)
@@ -126,7 +127,8 @@ class DartsTrainerCallback(Callback):
         if mode == tf.estimator.ModeKeys.TRAIN:
             with tf.control_dependencies([train_op]):
                 weight_ops = self.model.get_weight_ops()
-                train_op = self.trainer._init_minimize_op(loss, global_step, weight_ops)
+                loss_scale = self.trainer.config.loss_scale if self.trainer.use_amp else 1
+                train_op = self.trainer.optimizer.step(loss, loss_scale, global_step, weight_ops)
 
         eval_metric_ops = None
         if mode == tf.estimator.ModeKeys.EVAL:
@@ -140,11 +142,13 @@ class DartsTrainerCallback(Callback):
             arch_weights = self.model.arch_weights
         elif vega.is_tf_backend():
             sess_config = self.trainer._init_session_config()
-            with tf.Session(config=sess_config) as sess:
+            with tf.compat.v1.Session(config=sess_config) as sess:
                 # tf.reset_default_graph()
                 checkpoint_file = tf.train.latest_checkpoint(self.trainer.get_local_worker_path())
                 saver = tf.train.import_meta_graph("{}.meta".format(checkpoint_file))
                 saver.restore(sess, checkpoint_file)
+                # initializer is necessary here
+                sess.run(tf.global_variables_initializer())
                 arch_weights = self.model.arch_weights
                 arch_weights = [weight.eval() for weight in arch_weights]
         return arch_weights
@@ -166,6 +170,6 @@ class DartsTrainerCallback(Callback):
 
     def _gen_model_desc(self, genotypes, template):
         model_desc = deepcopy(template)
-        model_desc.super_network.normal.genotype = genotypes[0]
-        model_desc.super_network.reduce.genotype = genotypes[1]
+        model_desc.super_network.cells.normal.genotype = genotypes[0]
+        model_desc.super_network.cells.reduce.genotype = genotypes[1]
         return model_desc

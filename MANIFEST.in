@@ -1,3 +1,13 @@
 #dispatch files to site-packages
+recursive-include deploy *
+recursive-include docs *
+recursive-include evaluate_service *
+recursive-include examples *
+include LICENSE
+include MANIFEST.in
+include README.cn.md
+include README.md
+include RELEASE.md
+include setup.py
 recursive-include vega *
-recursive-include roma *
+recursive-include zeus *

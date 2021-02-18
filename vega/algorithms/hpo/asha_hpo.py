@@ -12,7 +12,7 @@
 
 from math import log
 from vega.algorithms.hpo.common import ASHA
-from vega.core.common.class_factory import ClassFactory, ClassType
+from zeus.common import ClassFactory, ClassType
 from vega.algorithms.hpo.hpo_base import HPOBase
 from .asha_conf import AshaConfig
 
@@ -27,10 +27,10 @@ class AshaHpo(HPOBase):
         """Init AshaHpo."""
         super(AshaHpo, self).__init__(search_space, **kwargs)
         num_samples = self.config.policy.num_samples
-        epochs_per_iter = self.config.policy.epochs_per_iter
+        max_epochs = self.config.policy.max_epochs
         if self.config.policy.total_epochs != -1:
-            num_samples, epochs_per_iter = self.design_parameter(self.config.policy.total_epochs)
-        self.hpo = ASHA(self.hps, num_samples, epochs_per_iter)
+            num_samples, max_epochs = self.design_parameter(self.config.policy.total_epochs)
+        self.hpo = ASHA(self.search_space, num_samples, max_epochs)
 
     def design_parameter(self, total_epochs):
         """Design parameters based on total_epochs.
@@ -39,11 +39,11 @@ class AshaHpo(HPOBase):
         :type total_epochs: int, set by user.
         """
         num_samples = 1
-        epochs_per_iter = 1
+        max_epochs = 1
         while(num_samples * (1 + log(num_samples, 3)) <= total_epochs):
             num_samples *= 3
-            epochs_per_iter *= 3
-        epochs_per_iter /= 3
+            max_epochs *= 3
+        max_epochs /= 3
         for i in range(int(num_samples / 3), num_samples + 1):
             current_budget = 0
             current_epochs = 1
@@ -58,4 +58,4 @@ class AshaHpo(HPOBase):
             elif current_budget > total_epochs:
                 num_samples = i - 1
                 break
-        return num_samples, epochs_per_iter
+        return num_samples, max_epochs

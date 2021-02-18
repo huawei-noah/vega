@@ -117,15 +117,9 @@ fully_train:
 
 ```
 
-Generally, a better performance can be obtained by using a set of candidates structure for training instead of a single structure.   After the above parameters are adjusted, running the pipeline is as follows:
+Generally, a better performance can be obtained by using a set of candidates structure for training instead of a single structure.
 
-```python
-import vega
-
-
-if __name__ == '__main__':
-    vega.run('./esr_ea.yml')
-```
+After the parameters are adjusted, run the pipeline by referring to the [example reference](../user/examples.md).
 
 ## 5. Algorithm output
 
@@ -136,3 +130,7 @@ The following results can be obtained based on the benchmark configuration:
 ```text
 [1] Chu, X.; Zhang, B.; Ma, H.; Xu, R.; Li, J.; and Li, Q. 2019. Fast, accurate and lightweight super-resolution with neural architecture search. arXiv preprint arXiv:1901.07261.
 ```
+
+## 6. Benchmark
+
+Benchmark configuration: [esr_ea.yml](https://github.com/huawei-noah/vega/tree/master/benchmark/algs/nas/esr_ea.yml)

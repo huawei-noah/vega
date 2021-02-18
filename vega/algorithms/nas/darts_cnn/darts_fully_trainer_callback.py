@@ -9,8 +9,8 @@
 # MIT License for more details.
 
 """DARTS FUll trainer."""
-from vega.core.common.class_factory import ClassFactory, ClassType
-from vega.core.trainer.callbacks import Callback
+from zeus.common import ClassFactory, ClassType
+from zeus.trainer.callbacks import Callback
 
 
 @ClassFactory.register(ClassType.CALLBACK)

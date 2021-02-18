@@ -230,3 +230,7 @@ The output:
 
 1. nas directory: outputs multiple optimal model description files.
 2. fully_train: outputs the trained model weight file.
+
+## 4. Benchmark
+
+Benchmark configuration: [cars.yml](https://github.com/huawei-noah/vega/tree/master/benchmark/algs/nas/cars.yml)

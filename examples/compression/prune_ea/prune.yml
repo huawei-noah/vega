@@ -1,9 +1,13 @@
 general:
-    worker:
-        devices_per_job: 1
+    parallel_search: True
+    parallel_fully_train: True
+    backend: pytorch
+    quota:
+        restrict:
+            flops: 10.0
 
 pipeline: [nas]
-# pipeline: [nas, fully_train]
+#pipeline: [nas, fully_train]
 
 nas:
     pipe_step:
@@ -13,6 +17,7 @@ nas:
         type: Cifar10
         common:
             data_path: /cache/datasets/cifar10/
+            train_portion: 0.9
         test:
             batch_size: 256
 
@@ -21,25 +26,29 @@ nas:
         codec: PruneCodec
         policy:
             length: 464
-            num_generation: 31
+            num_generation: 5
             num_individual: 4
-            random_models: 32
+            random_models: 5
 
     search_space:
         type: SearchSpace
-        modules: ['backbone']
+        modules: ['backbone', 'head']
         backbone:
-            name: 'PruneResNet'
-            base_chn: [16,16,16,32,32,32,64,64,64]
-            base_chn_node: [16,16,32,64]
+            type: ResNetGeneral
+            stage: 3
+            base_depth: 20
+            base_channel: 16
+        head:
+            type: LinearClassificationHead
+            base_channel: 64
             num_classes: 10
 
     trainer:
         type: Trainer
         callbacks: PruneTrainerCallback
-        epochs: 2
-        init_model_file: "/cache/models/resnet20.pth"
-        optim:
+        epochs: 1
+        init_model_file: "/cache/models/resnet20"
+        optimizer:
             type: SGD
             params:
                 lr: 0.1
@@ -50,21 +59,21 @@ nas:
             params:
                 step_size: 20
                 gamma: 0.5
+        loss:
+            type: CrossEntropyLoss
+            params:
+                sparse: True
         seed: 10
-        #        encoding: None
-        limits:
-            flop_range: [!!float 0, !!float 1e10]
-    evaluator:
-        type: Evaluator
-        gpu_evaluator:
-            type: GpuEvaluator
-            metric:
-                type: accuracy
+    # evaluator:
+    #     type: Evaluator
+    #     gpu_evaluator:
+    #         type: GpuEvaluator
+    #         metric:
+    #             type: accuracy
 
 #        davinci_mobile_evaluator:
 #            type: DavinciMobileEvaluator
-#            framework: "Pytorch"
-#            backend: "Davinci"
+#            hardware: "Davinci"
 #            remote_host: "http://192.168.0.2:8888"
 
 fully_train:
@@ -72,20 +81,10 @@ fully_train:
         type: FullyTrainPipeStep
         models_folder: "{local_base_path}/output/nas/"
 
-    # model:
-    #     model_desc_file: "./model_desc.json"
-
-    search_space:
-        type: SearchSpace
-        modules: ['backbone']
-        backbone:
-            name: 'PruneResNet'
-            base_chn: [16,16,16,32,32,32,64,64,64]
-            base_chn_node: [16,16,32,64]
-            num_classes: 10
-
     dataset:
         ref: nas.dataset
+        common:
+            train_portion: 1.0
 
     trainer:
         ref: nas.trainer
@@ -94,3 +93,32 @@ fully_train:
             params:
                 milestones: [200,300,375]
                 gamma: 0.1
+
+benchmark:
+    pipeline: [nas, fully_train, benchmark_cifar10]
+    nas:
+        dataset:
+            test:
+                batch_size: 1024
+        search_algorithm:
+            policy:
+                num_generation: 31
+                num_individual: 32
+                random_models: 64
+    fully_train:
+        trainer:
+            epochs: 400
+    benchmark_cifar10:
+        pipe_step:
+            type: BenchmarkPipeStep
+            models_folder: "{local_base_path}/output/fully_train/"
+        dataset:
+            ref: nas.dataset
+            common:
+                train_portion: 1.0
+        evaluator:
+            type: Evaluator
+            gpu_evaluator:
+                type: GpuEvaluator
+                metric:
+                    type: accuracy

@@ -9,9 +9,10 @@
 # MIT License for more details.
 
 """Defined Configs."""
+from zeus.common import ConfigSerializable
 
 
-class ESRPolicyConfig(object):
+class ESRPolicyConfig(ConfigSerializable):
     """ESR Policy Config."""
 
     num_generation = 2
@@ -20,7 +21,7 @@ class ESRPolicyConfig(object):
     mutation_rate = 0.05
 
 
-class ESRRangeConfig(object):
+class ESRRangeConfig(ConfigSerializable):
     """ESR Range Config."""
 
     node_num = 20
@@ -29,7 +30,7 @@ class ESRRangeConfig(object):
     min_params = 1010000
 
 
-class ESRConfig(object):
+class ESRConfig(ConfigSerializable):
     """ESR Config."""
 
     codec = 'ESRCodec'

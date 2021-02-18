@@ -1,7 +1,3 @@
-general:
-    worker:
-        devices_per_job: -1
-
 pipeline: [fully_train]
 
 fully_train:
@@ -11,19 +7,19 @@ fully_train:
     dataset:
         type: AvazuDataset
         common:
-            data_path: /cache/datasets/avazu/
+            data_path: /cache/datasets/Avazu/
 
     model:
         model_desc:
             modules: ["custom"]
             custom:
+                type: AutoGroupModel
                 input_dim: 645195
                 input_dim4lookup: 24
                 hidden_dims: [1024, 512, 256, 1]
                 dropout_prob: 0.0
                 batch_norm: False
                 layer_norm: False
-                name: AutoGroupModel
                 max_order: 3
                 embed_dims: [40, 60, 100]
                 bucket_nums: [15, 130, 180]
@@ -33,7 +29,7 @@ fully_train:
         type: Trainer
         callbacks: AutoGroupTrainerCallback
         epochs: 1
-        optim:
+        optimizer:
             type: Adam
             params:
                 lr: 0.001
@@ -55,4 +51,5 @@ fully_train:
         type: Evaluator
         gpu_evaluator:
             type: GpuEvaluator
-            ref: trainer
+            metric:
+                type: auc

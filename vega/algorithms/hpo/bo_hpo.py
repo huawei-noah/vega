@@ -10,7 +10,7 @@
 
 """Defined BoHpo class."""
 from vega.algorithms.hpo.common import BO
-from vega.core.common.class_factory import ClassFactory, ClassType
+from zeus.common import ClassFactory, ClassType
 from vega.algorithms.hpo.hpo_base import HPOBase
 from .bo_conf import BoConfig
 
@@ -24,8 +24,8 @@ class BoHpo(HPOBase):
     def __init__(self, search_space=None, **kwargs):
         """Init BoHpo."""
         super(BoHpo, self).__init__(search_space, **kwargs)
-        config_count = self.config.policy.total_epochs // self.config.policy.epochs_per_iter
-        self.hpo = BO(self.hps, config_count,
-                      self.config.policy.epochs_per_iter,
+        config_count = self.config.policy.total_epochs // self.config.policy.max_epochs
+        self.hpo = BO(self.search_space, config_count,
+                      self.config.policy.max_epochs,
                       self.config.policy.warmup_count,
                       self.config.policy.alg_name)

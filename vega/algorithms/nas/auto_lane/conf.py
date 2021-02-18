@@ -9,9 +9,10 @@
 # MIT License for more details.
 
 """Defined Configs."""
+from zeus.common import ConfigSerializable
 
 
-class AutoLaneConfig(object):
+class AutoLaneConfig(ConfigSerializable):
     """AutoLaneConfig Config."""
 
     codec = 'AutoLaneNasCodec'

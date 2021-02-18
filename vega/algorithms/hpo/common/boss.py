@@ -32,16 +32,16 @@ from .sha_base import ShaBase
 import random
 from .ssa import SSA
 from .tuner import TunerBuilder
-from vega.core.hyperparameter_space import HyperparameterSpace
+from vega.core.search_space.search_space import SearchSpace
 
 
 class BOSS(ShaBase):
     """BOSS: Bayesian Optimization and SubSampling, combines Bayesian optimization and SubSampling.
 
     :param hyperparameter_space: a pre-defined search space.
-    :type hyperparameter_space: object, instance os `HyperparameterSpace`.
+    :type hyperparameter_space: object, instance os `SearchSpace`.
     :param int num_samples: Total config or hyperparameter count.
-    :param int epochs_per_iter: `epochs_per_iter` is the max epoch that hpo provide.
+    :param int max_epochs: `max_epochs` is the max epoch that hpo provide.
     :param int repeat_times: repeat times of total iters.
     :param min_epochs: `min_epochs` is the init min epoch.
     :type min_epochs: int, default is 1.
@@ -49,30 +49,30 @@ class BOSS(ShaBase):
     :type eta: int, default is 3.
     """
 
-    def __init__(self, hyperparameter_space, num_samples, epochs_per_iter, repeat_times, min_epochs=1,
+    def __init__(self, search_space, num_samples, max_epochs, repeat_times, min_epochs=1,
                  eta=3):
         """Init BOSS."""
-        super().__init__(hyperparameter_space, num_samples, epochs_per_iter, min_epochs,
+        super().__init__(search_space, num_samples, max_epochs, min_epochs,
                          eta)
         # init all the configs
         self.repeat_times = repeat_times
-        self.hp = TunerBuilder(hyperparameter_space, tuner='GPEI')
+        self.hp = TunerBuilder(search_space, tuner='GPEI')
         self.iter_list, self.min_epoch_list = self._get_total_iters(
-            num_samples, epochs_per_iter, self.repeat_times, min_epochs, eta)
+            num_samples, max_epochs, self.repeat_times, min_epochs, eta)
         self.config_dict = {}
 
         # init the empty ssa config list, all ssa object need to be set_config_list
-        self.ssa_list = self._get_ssa_list(self.iter_list, self.min_epoch_list, self.repeat_times, epochs_per_iter)
+        self.ssa_list = self._get_ssa_list(self.iter_list, self.min_epoch_list, self.repeat_times, max_epochs)
         # init the first ssa with first config list
-        self.config_dict[0] = self.get_hyperparameter_space(self.iter_list[0])
+        self.config_dict[0] = self.get_hyperparameters(self.iter_list[0])
         self.ssa_list[0].set_config_list(self.config_dict[0], start_id=0)
         return
 
-    def _get_total_iters(self, num_samples, epochs_per_iter, repeat_times, min_epochs=1, eta=3):
+    def _get_total_iters(self, num_samples, max_epochs, repeat_times, min_epochs=1, eta=3):
         """Calculate each rung for all iters of SubSampling algorithm.
 
         :param num_samples: int, Total config count to optimize.
-        :param epochs_per_iter: int, max epochs of evaluate function.
+        :param max_epochs: int, max epochs of evaluate function.
         :param repeat_times: int, repeat times of total iters.
         :param min_epochs: int, the epoch start with min epochs, default 1.
         :param eta: int, default 3.
@@ -108,8 +108,8 @@ class BOSS(ShaBase):
             iter_list.sort(reverse=True)
             for i in range(len(iter_list)):
                 temp_ep = int(min_epochs * math.pow(eta, i))
-                if temp_ep > epochs_per_iter:
-                    temp_ep = epochs_per_iter
+                if temp_ep > max_epochs:
+                    temp_ep = max_epochs
                 min_ep_list.append(temp_ep)
             iter_list_hl.append(iter_list)
             min_ep_list_hl.append(min_ep_list)
@@ -121,7 +121,7 @@ class BOSS(ShaBase):
                 ep_list.append(min_ep_list_hl[i][j])
         return it_list, ep_list
 
-    def _get_ssa_list(self, iter_list, min_epoch_list, repeat_times, epochs_per_iter):
+    def _get_ssa_list(self, iter_list, min_epoch_list, repeat_times, max_epochs):
         """Init a list contain different SSA object for different iter.
 
         each have a part of configs from total config_list.
@@ -133,8 +133,8 @@ class BOSS(ShaBase):
         """
         ssa_list = []
         for i in range(len(iter_list)):
-            tmp_ds = HyperparameterSpace()
-            tmp_ssa = SSA(tmp_ds, iter_list[i], epochs_per_iter,
+            tmp_ds = SearchSpace()
+            tmp_ssa = SSA(tmp_ds, iter_list[i], max_epochs,
                           min_epoch_list[i], self.eta, empty=True)
             ssa_list.append(tmp_ssa)
         return ssa_list

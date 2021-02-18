@@ -55,34 +55,38 @@ Currently, the PBA algorithm supports the following 15 data augmentation operati
 In the configuration file, you can adjust the data augmentation operation involved.
 
 ```yaml
-pipeline: [hpo1]
+pipeline: [hpo]
 
-hpo1:
+hpo:
     pipe_step:
-        type: HpoPipeStep
+        type: NasPipeStep
     dataset:
         type: Cifar10
-    hpo:
-        type: PBAHpo        # optimization method
-        each_epochs: 3      # Number of epochs to be trained for each trainer round
-        config_count: 16    # Number of model groups for parallel training of the search algorithm
-        total_rungs: 200    # Number of iterations of the search algorithm 
+    search_space:
+        type: SearchSpace
         transformers:
-            Cutout: True
-            Rotate: True
-            Translate_X: True
-            Translate_Y: True
-            Brightness: True
-            Color: True
-            Invert: True
-            Sharpness: True
-            Posterize: True
-            Shear_X: True
-            Solarize: True
-            Shear_Y: True
-            Equalize: True
-            AutoContrast: True
-            Contrast: True
+            - Cutout: True
+            - Rotate: True
+            - Translate_X: True
+            - Translate_Y: True
+            - Brightness: True
+            - Color: True
+            - Invert: True
+            - Sharpness: True
+            - Posterize: True
+            - Shear_X: True
+            - Solarize: True
+            - Shear_Y: True
+            - Equalize: True
+            - AutoContrast: True
+            - Contrast: True
+
+    search_algorithm:
+        type: PBAHpo
+        policy:
+            each_epochs: 3      # Number of epochs to be trained for each trainer round
+            config_count: 16    # Number of model groups for parallel training of the search algorithm
+            total_rungs: 200    # Number of iterations of the search algorithm 
     trainer:
         type: Trainer
     evaluator:
@@ -110,7 +114,7 @@ output:
     hps.csv:          ID and score of 16 groups of augmentation policy schedules obtained by the PBA algorithm in the search phase
     score_board.csv:  score and status of each round of iteration of the 16 groups of data augmentation operations obtained in the algorithm search phase.
 workers:
-    hpo1:             The 16 folders are the final results of the 16 groups of models, including the score and model.
+    hpo:             The 16 folders are the final results of the 16 groups of models, including the score and model.
         0:
         1:
         ...

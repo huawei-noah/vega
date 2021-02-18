@@ -19,13 +19,13 @@ At the same time, the above three may need to deploy models for specific hardwar
 
 In this scenario, the Adelaide-EA algorithm can be considered. This algorithm uses an evolutionary algorithm to search a set of semantic segmentation models in a relatively short time. After a fully train, evaluate the performance of each model and select the most The right model.
 
-For specific algorithm introduction, please refer to [Adelaide-EA Algorithm](../algorithms/Segmentation-Adelaide-EA-NAS.md)
+For specific algorithm introduction, please refer to [Adelaide-EA Algorithm](../algorithms/adelaide_ea.md)
 
 ### 2.2 Scenario C: Search semantic segmentation network backbone
 
 Vega provides the SP-NAS algorithm, which is used to search for an efficient backbone network architecture for object detection and semantic segmentation. The use of such algorithms requires a certain amount of deep network architecture knowledge.
 
-For details, please refer to [SP-NAS Algorithm](../algorithms/sp-nas.md)
+For details, please refer to [SP-NAS Algorithm](../algorithms/sp_nas.md)
 
 ## 3. pipeline
 

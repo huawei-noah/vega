@@ -1,7 +1,3 @@
-general:
-    worker:
-        devices_per_job: -1
-
 pipeline: [search, retrain]
 
 search:
@@ -12,12 +8,13 @@ search:
         type: AvazuDataset
         batch_size: 2000
         common:
-            data_path: /cache/datasets/avazu/
+            data_path: /cache/datasets/Avazu/
 
     model:
         model_desc:
             modules: ["custom"]
             custom:
+                type: AutoGateModel
                 input_dim: 645195
                 input_dim4lookup: 24
                 embed_dim: 40
@@ -28,12 +25,11 @@ search:
                 alpha_init_mean: 0.0
                 alpha_activation: 'tanh'
                 selected_pairs: []
-                name: AutoGateModel
     trainer:
         type: Trainer
         callbacks: AutoGateGrdaS1TrainerCallback
         epochs: 1
-        optim:
+        optimizer:
             type: Adam
             params:
                 lr: 0.001
@@ -42,7 +38,7 @@ search:
         net_optim:
             net_lr: 1e-3
         c: 0.0004
-        mu: 0.7
+        mu: 0.75
         lr_scheduler:
             type: StepLR
             params:
@@ -57,7 +53,8 @@ search:
         type: Evaluator
         gpu_evaluator:
             type: GpuEvaluator
-            ref: trainer
+            metric:
+                type: auc
 
 
 retrain:
@@ -65,10 +62,10 @@ retrain:
         type: FullyTrainPipeStep
 
     dataset:
-        type: AvazuDatasetNew
+        type: AvazuDataset
         batch_size: 2000
         common:
-            data_path: /home/lubiao/dataset/avazu/
+            data_path: /cache/datasets/Avazu/
 
     model:
         model_desc:
@@ -85,12 +82,12 @@ retrain:
                 alpha_init_radius: 1e-4
                 alpha_activation: 'tanh'
                 selected_pairs: []
-                name: AutoGateModel
+                type: AutoGateModel
     trainer:
         type: Trainer
         callbacks: AutoGateGrdaS2TrainerCallback
         epochs: 1
-        optim:
+        optimizer:
             type: Adam
             params:
                 lr: 0.001
@@ -98,8 +95,8 @@ retrain:
             struct_lr: 1
         net_optim:
             net_lr: 1e-3
-        c: 0.0005
-        mu: 0.8
+        c: 0.0004
+        mu: 0.75
         lr_scheduler:
             type: StepLR
             params:
@@ -114,4 +111,5 @@ retrain:
         type: Evaluator
         gpu_evaluator:
             type: GpuEvaluator
-            ref: trainer
+            metric:
+                type: auc

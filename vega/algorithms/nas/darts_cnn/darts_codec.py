@@ -11,9 +11,9 @@
 """Codec of DARTS."""
 import copy
 import numpy as np
-from vega.core.common import Config
-from vega.search_space.codec import Codec
-from vega.core.common.class_factory import ClassType, ClassFactory
+from zeus.common import Config
+from vega.core.search_algs.codec import Codec
+from zeus.common import ClassType, ClassFactory
 
 
 @ClassFactory.register(ClassType.CODEC)
@@ -30,10 +30,10 @@ class DartsCodec(Codec):
         """Init DartsCodec."""
         super(DartsCodec, self).__init__(search_space, **kwargs)
         self.darts_cfg = copy.deepcopy(search_space)
-        self.super_net = {'normal': self.darts_cfg.super_network.normal.genotype,
-                          'reduce': self.darts_cfg.super_network.reduce.genotype}
+        self.super_net = {'cells.normal': self.darts_cfg.super_network.cells.normal.genotype,
+                          'cells.reduce': self.darts_cfg.super_network.cells.reduce.genotype}
         self.super_net = Config(self.super_net)
-        self.steps = self.darts_cfg.super_network.normal.steps
+        self.steps = self.darts_cfg.super_network.cells.normal.steps
 
     def decode(self, code):
         """Decode the code to Network Desc.
@@ -48,14 +48,6 @@ class DartsCodec(Codec):
         cfg_result.super_network.normal.genotype = genotype[0]
         cfg_result.super_network.reduce.genotype = genotype[1]
         cfg_result.super_network.search = False
-        cfg_result.super_network.auxiliary = True
-        # TODO: need to remove
-        cfg_result.super_network["aux_size"] = 8
-        cfg_result.super_network["auxiliary_layer"] = 13
-        cfg_result.super_network.network = ["PreOneStem", "normal", "normal", "normal", "normal",
-                                            "normal", "normal", "reduce", "normal", "normal", "normal", "normal",
-                                            "normal", "normal",
-                                            "reduce", "normal", "normal", "normal", "normal", "normal", "normal"]
         return cfg_result
 
     def calc_genotype(self, arch_param):
@@ -88,8 +80,8 @@ class DartsCodec(Codec):
                 n += 1
             return gene
 
-        normal_param = np.array(self.darts_cfg.super_network.normal.genotype)
-        reduce_param = np.array(self.darts_cfg.super_network.reduce.genotype)
+        normal_param = np.array(self.darts_cfg.super_network.cells.normal.genotype)
+        reduce_param = np.array(self.darts_cfg.super_network.cells.reduce.genotype)
         geno_normal = _parse(arch_param[0], normal_param[:, 0])
         geno_reduce = _parse(arch_param[1], reduce_param[:, 0])
         return [geno_normal, geno_reduce]

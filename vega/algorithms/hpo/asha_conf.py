@@ -9,18 +9,19 @@
 # MIT License for more details.
 
 """Defined Configs."""
+from zeus.common import ConfigSerializable
 
 
-class AshaPolicyConfig(object):
+class AshaPolicyConfig(ConfigSerializable):
     """Asha Policy Config."""
 
     total_epochs = 50
-    epochs_per_iter = 81
+    max_epochs = 81
     config_count = 1
     num_samples = 9
 
 
-class AshaConfig(object):
+class AshaConfig(ConfigSerializable):
     """Asha Config."""
 
     policy = AshaPolicyConfig

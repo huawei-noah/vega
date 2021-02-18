@@ -10,7 +10,8 @@
 
 """Defined Configs."""
 
-from vega.search_space.search_algs import EAConfig
+from vega.core.search_algs import EAConfig
+from zeus.common import ConfigSerializable
 
 
 class QuantPolicyConfig(EAConfig):
@@ -22,9 +23,9 @@ class QuantPolicyConfig(EAConfig):
     random_models = 32
 
 
-class QuantConfig(object):
+class QuantConfig(ConfigSerializable):
     """Quant Config."""
 
     codec = 'QuantCodec'
     policy = QuantPolicyConfig
-    objective_keys = ['accuracy', 'gflops']
+    objective_keys = ['accuracy', 'flops']

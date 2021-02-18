@@ -12,11 +12,10 @@
 import copy
 import random
 
-from vega.core.common import Config
-from vega.core.common.class_factory import ClassFactory, ClassType
-from vega.core.common.utils import update_dict
-from vega.search_space.codec import Codec
-from vega.search_space.networks import NetworkDesc
+from zeus.common import Config
+from zeus.common import ClassFactory, ClassType
+from zeus.common import update_dict
+from vega.core.search_algs.codec import Codec
 
 
 @ClassFactory.register(ClassType.CODEC)
@@ -32,6 +31,17 @@ class PruneCodec(Codec):
     def __init__(self, search_space, **kwargs):
         """Init PruneCodec."""
         super(PruneCodec, self).__init__(search_space, **kwargs)
+        net_type = self.search_space.backbone.type
+        base_depth = self.search_space.backbone.base_depth
+        stage = self.search_space.backbone.stage
+        net_cls = ClassFactory.get_cls(ClassType.NETWORK, net_type)
+        stage_blocks = net_cls._default_blocks[base_depth][:stage]
+        self.base_chn, self.base_chn_node = [], []
+        channel = self.search_space.backbone.base_channel
+        for stage in stage_blocks:
+            self.base_chn += [channel] * stage
+            self.base_chn_node.append(channel)
+            channel *= 2
 
     def decode(self, code):
         """Decode the code to Network Desc.
@@ -43,7 +53,8 @@ class PruneCodec(Codec):
         """
         chn_info = self._code_to_chninfo(code)
         desc = {
-            "backbone": chn_info
+            "backbone": chn_info,
+            "head": {"base_channel": chn_info['chn_node'][-1]}
         }
         desc = update_dict(desc, copy.deepcopy(self.search_space))
         return desc
@@ -56,14 +67,17 @@ class PruneCodec(Codec):
         :return: channel info
         :rtype: Config
         """
-        chn = self.search_space.backbone.base_chn
-        chn_node = self.search_space.backbone.base_chn_node
+        chn = copy.deepcopy(self.base_chn)
+        chn_node = copy.deepcopy(self.base_chn_node)
         chninfo = Config()
+        chninfo['base_chn'] = self.base_chn
+        chninfo['base_chn_node'] = self.base_chn_node
         if code is None:
             chninfo['chn'] = chn
             chninfo['chn_node'] = chn_node
             chninfo['encoding'] = code
             return chninfo
+        chn_node = [self.search_space.backbone.base_channel] + chn_node
         chn_mask = []
         chn_node_mask = []
         start_id = 0
@@ -99,7 +113,8 @@ class PruneCodec(Codec):
         for single_chn_mask in chn_node_mask:
             chn_node.append(sum(single_chn_mask))
         chninfo['chn'] = chn
-        chninfo['chn_node'] = chn_node
+        chninfo['chn_node'] = chn_node[1:]
+        chninfo['base_channel'] = chn_node[0]
         chninfo['chn_mask'] = chn_mask
         chninfo['chn_node_mask'] = chn_node_mask
         chninfo['encoding'] = code

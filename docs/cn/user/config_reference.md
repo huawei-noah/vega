@@ -1,22 +1,27 @@
 # 配置参考
 
-`Vega`高度模块化，通过配置可完成搜索空间、搜索算法、`pipeline`的构建，运行`Vega`应用就是加载配置文件，并根据配置来完成`AutoML`流程，如下：
+`Vega`将从数据到模型的整个AutoML过程，分解为多个步骤，这些步骤包括网络架构搜索、超参优化、数据增广、模型训练等，Vega可以通过配置文件组合这些步骤成为一个完整的流水线，依次执行这些步骤，完成从数据到模型的全流程。
+
+同时针对网络架构搜索、超参优化、数据增广等算法，Vega设计了独立于搜索算法的网络和超参搜索空间，可根据实际需要，通过调整配置文件，实现个性化的搜索。
+
+可以看出只需要根据需要，配置合适的配置文件，然后运行Vega加载该配置文件，即可完成AutoML流程，如下：
 
 ```python
 import vega
 
 
 if __name__ == "__main__":
+    vega.set_backend("pytorch", "GPU")
     vega.run("./main.yml")
 ```
 
-以下是代码中`main.yml`配置文件中各个配置项的具体含义详细解释。
+The following describes the configuration items in the `main.yml` configuration file.
 
 ## 1. 整体结构
 
 vega的配置可分为两部分：
 
-1. 通用配置，配置项名称是`general`，用于设置公共和通用的一些配置项，如输出路径和日志级别等。
+1. 通用配置，配置项名称是`general`，用于设置公共和通用的一些配置项，如Backend、输出路径和日志级别等。
 2. pipeline配置，包含两部分：
    1. pipeline定义，配置项名称是`pipeline`，是一个列表，包含了pipeline中的各个步骤。
    2. pipeline中各个步骤的定义，配置项名称是pipeline中定义的各个步骤名称。
@@ -49,506 +54,574 @@ my_fully_train:
 
 公共配置项中可以配置的配置项有：
 
-| 配置项 | 说明 |
-| :--: | :-- |
-| local_base_path | 工作路径。每次系统运行，会在该路径下生成一个带有时间信息（我们称之为task id）的子文件夹，这样多次运行的输出不会被覆盖。在task id子文件夹下面一般包含output和worker两个子文件夹，output文件夹存储pipeline的每个步骤的输出数据，worker文件夹保存临时信息。 <br> **在集群的场景下，该路径需要设置为每个计算节点都可访问的EFS路径，用于不同节点共享数据。**|
-| backup_base_path | 备份路径，这个设置主要用于云道环境，或者集群环境中，本地路径路径中的output和task会备份到该路径下。|
-| timeout | worker超时时间，单位为小时，若在该时间范围内未完成，worker会被强制结束。单位为小时，缺省值为 10 个小时。|
-| devices_per_job | 搜索阶段每个worker使用的GPU数目，-1 代表一个worker使用该节点所有GPU，1 代表一个worker使用1个GPU，2 代表一个worker使用两个GPU，以此类推。|
-| logger.level | 日志级别，可设置为：debug \| info \| warn \| error \| critical，缺省为 info。|
-| cluster.master_ip | 在集群场景下需要设置该参数，设置为master节点的IP地址。 |
-| cluster.listen_port | 在集群场景下需要关注该参数，若出现8000端口被占用，需要调整该监控端口。|
-| cluster.slaves | 在集群场景下需要设置该参数，设置为除了master节点外的其他节点的IP地址。|
+| 配置项 | 可选项 | 缺省值 | 说明 |
+| :--: | :-- | :-- | :-- |
+| backend | pytorch \| tensorflow \| mindspore | pytorch | 设置Backend。  |
+| local_base_path | - | ./tasks/ | 工作路径。每次系统运行，会在该路径下生成一个带有时间信息（我们称之为task id）的子文件夹，这样多次运行的输出不会被覆盖。在task id子文件夹下面一般包含output和worker两个子文件夹，output文件夹存储pipeline的每个步骤的输出数据，worker文件夹保存临时信息。 <br> **在集群的场景下，该路径需要设置为每个计算节点都可访问的EFS路径，用于不同节点共享数据。** |
+| timeout | - | 10 | worker超时时间，单位为小时，若在该时间范围内未完成，worker会被强制结束。 |
+| parallel_search | True \| False | False | 是否并行搜索多个模型。 |
+| parallel_fully_train | True \| False | False | 是否并行训练多个模型。 |
+| devices_per_trainer | 1..N (N为单节点最大GPU/NPU数) | 1 | 并行搜索和训练时，每个trainer分配的设备（GPU \| NPU)数目。当parallel_search或parallel_fully_train为True时生效。缺省为1，每个trainer分配1个（GPU \| NPU）。 |
+| logger / level | debug \| info \| warn \| error \| critical | info | 日志级别。 |
+| cluster / master_ip | - | ~ | 在集群场景下需要设置该参数，设置为master节点的IP地址。 |
+| cluster / listen_port | - | 8000 | 在集群场景下需要关注该参数，若出现8000端口被占用，需要调整该监控端口。 |
+| cluster / slaves | - | [] | 在集群场景下需要设置该参数，设置为除了master节点外的其他节点的IP地址。 |
+| quota / restrict / flops | - | ~ | 采样模型的浮点计算量最大值或范围，单位为M。 |
+| quota / restrict / params | - | ~ | 采样模型的参数量最大值或范围，单位为K。 |
+| quota / restrict / latency | - | ~ | 采样模型的时延最大值或范围，单位为ms。 |
+| quota / target / type | accuracy \| IoUMetric \| SRMetric | ~ | 模型的训练metric目标类型。 |
+| quota / target / value | - | ~ | 模型的训练metric目标值。 |
 
 ```yaml
 general:
+    backend: pytorch
+    parallel_search: False
+    parallel_fully_train: False
+    devices_per_trainer: 1
     task:
         local_base_path: "./tasks"
-        backup_base_path: ~
-    worker:
-        devices_per_job: -1
     logger:
         level: info
     cluster:
         master_ip: ~
         listen_port: 8000
         slaves: []
+    quota:
+        restrict:
+            flops: 10
+            params: [100, 1000]
+            latency: 100
+        target:
+            type: accuracy
+            value: 0.98
 ```
 
-## 3. NAS配置项
+## 3. NAS和HPO配置项
 
-NAS配置项一般包括如下内容：
+HPO / NAS的配置项有如下几个主要部分：
 
 | 配置项 | 说明 |
 | :--: | :-- |
-| pipe_step | 步骤类型，数值为 NasPipeStep。|
-| search_algorithm | 搜索算法设置项，具体配置详细需要参考各个NAS算法。|
-| search_space | 搜索空间定义，具体配置详见各个NAS算法。|
-| trainer | trainer配置信息，请参考[Trainer 配置项](#trainer)。|
-| dataset | 数据集配置，请参考[Dataet 配置项](#dataset)。|
+| pipe_step / type | 配置为`NasPipeStep`标识本步骤为搜索步骤 |
+| search_algorithm | 搜索算法配置，详见本文搜索算法章节 |
+| search_space | 搜索空间配置，详见本文搜索空间章节 |
+| model | 模型配置，详见本文搜索空间章节 |
+| dataset | 数据集配置，详见本文数据集章节 |  
+| trainer | 模型训练参数配置，详见本文训练器章节 |
+| evaluator | 评估器参数配置，详见本文评估器章节 |
 
-如上提到的NAS算法包括：[Prune-EA](../algorithms/prune_ea.md), [Quant-EA](../algorithms/quant_ea.md), SM-NAS (开发中), [CARS](../algorithms/cars.md), [Segmentation-Adelaide-EA](../algorithms/Segmentation-Adelaide-EA-NAS.md), [SR-EA](../algorithms/sr-ea.md), [ESR-EA](../algorithms/sr-ea.md)
-
-以下是BackboneNas算法的配置，供参考：
+在配置文件中，配置项如下：
 
 ```yaml
 my_nas:
     pipe_step:
         type: NasPipeStep
-    search_algorithm:                   # 搜索算法设置项，Nas等步骤必须配置该项
-        type: BackboneNas               # 搜索算法类型。可参见各个算法文档，了解所支持的搜索算法
-        codec: BackboneNasCodec         # 编码器，一般和搜索算法对应
-        policy:                         # 余下为搜索算法的配置项，请参考各个算法文档
-            num_mutate: 10
-            random_ratio: 0.2
-        range:
-            max_sample: 100
-            min_sample: 10
-    search_space:                       # 搜索空间定义，Nas等步骤必须配置该项
-        type: SearchSpace
-        modules: ['backbone', 'head']   # modules 是为了描述如何组合一个网络，请参考随后的描述
-        backbone:                       # 每个module都对应了一个设置项，用于设置该项的参数
-            ResNetVariant:              # 具体的网络配置项，可参考各个算法描述。
-                base_depth: [18, 34, 50, 101]
-                base_channel: [32, 48, 56, 64]
-                doublechannel: [3, 4]
-                downsample: [3, 4]
-        head:
-            LinearClassificationHead:
-                num_classes: [10]
-    trainer:                            # 配置训练器，必须配置项
-        type: Trainer
-    dataset:                            # dataset, 可参考dataset文档。
-        type: Cifar10
-```
-
-其中配置项`search_space`的可选模型如下：
-
-| module | 可选项 | 说明 | 算法参考 |
-| :--: | :-- | :-- | :--: |
-| backbone | PruneResNet | ResNet变种网络，用于支持剪枝操作。 | [参考](../algorithms/prune_ea.md) |
-| backbone | QuantResNet | ResNet变种网络，用于支持量化操作。 | [参考](../algorithms/quant_ea.md) |
-| backbone | ResNetVariant | ResNet变种网络，用于支持降采样点位调整等架构调整操作。 | [参考](../algorithms/sm-nas.md) |
-| head | LinearClassificationHead | 用于分类任务的网络分类层，可串接ResNetVariant。 |  |
-| head | CurveLaneHead | 用于行道线检测的CurveLaneHead检测头。 |  |
-| neck | FeatureFusionModule | 行道线检测任务中的Feature Pyramid Network。 |  |
-| detector | AutoLaneDetector | 行道线检测任务中的AutoLaneDetector检测网络。 |  |
-| super_network | DartsNetwork | Darts算法中的super network结构。 | [参考](../algorithms/cars.md) |
-| super_network | CARSDartsNetwork | CARS算法中的super network结构。 | [参考](../algorithms/cars.md) |
-| custom | AdelaideFastNAS | AdelaideFastNAS算法中自定义的网络结构。 | [参考](../algorithms/Segmentation-Adelaide-EA-NAS.md) |
-| custom | MtMSR | MtMSR算法中自定义的网络结构。 | [参考](../algorithms/sr-ea.md) |
-
-## 4. HPO配置项
-
-HPO是指对模型训练运行参数的优化，不涉及到网络架构参数，可搜索项包括：
-
-1. 数据集的batch size。
-2. 优化方法，及其参数。
-3. 学习率。
-4. momentum。
-
-HPO的配置项大概有如下部分：
-
-| 配置项 | 说明 |
-| :--: | :-- |
-| pipe_step | 固定为NasPipeStep |
-| hpo | 配置超参信息，最主要的配置项是 type 和 hyperparameter_space。前者定义了使用哪种hpo算法，可参考[HPO算法文档](../algorithms/hpo.md)，后者定义了待搜索的超参信息。|
-| trainer | trainer配置信息，请参考[Trainer 配置项](#trainer)。|
-| dataset | 数据集配置，请参考[Dataet 配置项](#dataset)。|
-| evaluator | evaluator信息, 请参考各个HPO算法的示例或Benchmark配置。 |
-
-如上提到的HPO算法包括：[Prune-EA](../algorithms/prune_ea.md), [Quant-EA](../algorithms/quant_ea.md), SM-NAS (开发中), [CARS](../algorithms/cars.md), [Segmentation-Adelaide-EA](../algorithms/Segmentation-Adelaide-EA-NAS.md), [SR-EA](../algorithms/sr-ea.md), [ESR-EA](../algorithms/sr-ea.md)
-
-如下是ASHA算法的HPO配置内容，供参考:
-
-```yaml
-my_hpo:
-    pipe_step:
-        type: NasPipeStep
-    hpo:
-        type: AshaHpo
-        policy:
-            total_epochs: 81
-            config_count: 40
-        hyperparameter_space:
-            hyperparameters:
-                -   key: dataset.batch_size
-                    type: INT_CAT
-                    range: [8, 16, 32, 64, 128, 256]
-                -   key: trainer.optim.lr
-                    type: FLOAT_EXP
-                    range: [0.00001, 0.1]
-                -   key: trainer.optim.type
-                    type: STRING
-                    range: ['Adam', 'SGD']
-                -   key: trainer.optim.momentum
-                    type: FLOAT
-                    range: [0.0, 0.99]
-            condition:
-                -   key: condition_for_sgd_momentum
-                    child: trainer.optim.momentum
-                    parent: trainer.optim.type
-                    type: EQUAL
-                    range: ["SGD"]
+    search_algorithm:
+        <search algorithm parameters>
+    search_space:
+        <search space parameters>
     model:
-        model_desc:
-            modules: ["backbone", "head"]
-            backbone:
-                base_channel: 64
-                downsample: [0, 0, 1, 0, 1, 0, 1, 0]
-                base_depth: 18
-                doublechannel: [0, 0, 1, 0, 1, 0, 1, 0]
-                name: ResNetVariant
-            head:
-                num_classes: 10
-                name: LinearClassificationHead
-                base_channel: 512
+        <model parameters>
     dataset:
-        type: Cifar10
+        <dataset parameters>
     trainer:
-        type: Trainer
+        <trainer parameters>
     evaluator:
-        type: Evaluator
-        gpu_evaluator:
-            type: GpuEvaluator
-            metric:
-                type: accuracy
+        <evaluator parameters>
 ```
 
-## 5. Data-Agumentation配置项
+以下详细介绍search_algorithm和search_space配置项。
 
-数据增广的配置主要有：
+### 3.1 搜索算法
 
-| 配置项 | 说明 |
-| :--: | :-- |
-| pipe_step | 固定为NasPipeStep |
-| hpo | 当前只支持PBA算法，固定为PBAHpo，可参考[PBA算法文档](../algorithms/pba.md)。|
-| trainer | trainer配置信息，请参考[Trainer 配置项](#trainer)。|
-| dataset | 数据集配置，请参考[Dataet 配置项](#dataset)。|
-| evaluator | evaluator信息，请参考各个数据增广算法的介绍。 |
+一般搜索算法包括如下配置项：
 
-以下是PBA算法的配置信息，供参考：
+| 配置项 | 说明 | 示例 |
+| :--: | :-- | :-- |
+| type | 搜索算法名称 | `type: BackboneNas` |
+| codec | 搜索算法编码器，一般NAS类算法存在编码器，一般编码器和搜索算法配合使用。 | `codec: BackboneNasCodec` |
+| policy | 搜索策略，搜素算法自身参数 | 比如BackboneNas使用进化算法，其策略配置为： <br> `num_mutate: 10` <br> `random_ratio: 0.2` |
+| range | 搜索范围 | 比如BackboneNas的搜索范围可以确定为：<br> `min_sample: 10` <br> `max_sample: 300` |
+
+上表中搜索算法的示例在配置文件中为：
 
 ```yaml
-my_data_augmentation:
-    pipe_step:
-        type: NasPipeStep
-    dataset:
-        type: Cifar10
-    hpo:
-        type: PBAHpo
-        each_epochs: 3
-        config_count: 16
-        total_rungs: 200
-        transformers:
-            Cutout: True
-            Rotate: True
-            Translate_X: True
-            Translate_Y: True
-            Brightness: True
-            Color: True
-            Invert: True
-            Sharpness: True
-            Posterize: True
-            Shear_X: True
-            Solarize: True
-            Shear_Y: True
-            Equalize: True
-            AutoContrast: True
-            Contrast: True
-    trainer:
-        type: Trainer
-    evaluator:
-        type: Evaluator
-        gpu_evaluator:
-            type: GpuEvaluator
-            metric:
-                type: accuracy
+search_algorithm:
+    type: BackboneNas
+    codec: BackboneNasCodec
+    policy:
+        num_mutate: 10
+        random_ratio: 0.2
+    range:
+        max_sample: 300
+        min_sample: 10
 ```
 
-## 6. Fully Train配置项
+以上是以搜索算法BackboneNas为例，不同搜索算法有不同的配置项，请参考各个搜索算法文档的相关章节。
 
-Fully Train用于训练网络模型，配置项如下：
+<table>
+  <tr><th>任务</th><th>分类</th><th>参考算法</th></tr>
+  <tr><td rowspan="3">图像分类</td><td>网络架构搜索</td><td><a href="../algorithms/cars.md">CARS</a>、DartsCNN、GDAS、BackboneNas、EfficientNet</td></tr>
+  <tr><td>超参优化</td><td><a href="../algorithms/hpo.md">ASHA、BOHB、BOSS、BO、TPE、Random、Random-Pareto</a></td></tr>
+  <tr><td>数据增广</td><td><a href="../algorithms/pba.md">PBA</a></td></tr>
+  <tr><td rowspan="2">模型压缩</td><td>模型剪枝</td><td><a href="../algorithms/prune_ea.md">Prune-EA</a></td></tr>
+  <tr><td>模型量化</td><td><a href="../algorithms/quant_ea.md">Quant-EA</a></td></tr>
+  <tr><td rowspan="2">图像超分辨率</td><td>网络架构搜索</td><td><a href="../algorithms/sr_ea.md">SR-EA</a>、<a href="../algorithms/esr_ea.md">ESR-EA</a></td></tr>
+  <tr><td>数据增广</td><td><a href="../algorithms/cyclesr.md">CycleSR</a></td></tr>
+  <tr><td>图像语义分割</td><td>网络架构搜索</td><td><a href="../algorithms/adelaide_ea.md">Adelaide-EA</a></td></tr>
+  <tr><td>物体检测</td><td>网络架构搜索</td><td><a href="../algorithms/sp_nas.md">SP-NAS</a></td></tr>
+  <tr><td>车道线检测</td><td>网络架构搜索</td><td><a href="../algorithms/auto_lane.md">Auto-Lane</a></td></tr>
+  <tr><td rowspan="2">推荐搜索</td><td>特征选择</td><td><a href="../algorithms/autofis.md">AutoFIS</a></td></tr>
+  <tr><td>特征交互建模</td><td><a href="../algorithms/autogroup.md">AutoGroup</a></td></tr>
+</table>
+
+### 3.2 搜索空间
+
+### 3.2.1 超参类型和约束
+
+组成搜索空间的超参的类型如下：
+
+| 超参类型 | 示例 | 说明 |
+| :--: | :-- | :-- |
+| CATEGORY | `[18, 34, 50, 101]` <br> `[0.3, 0.7, 0.9]` <br> `["red", "yellow"]` <br> `[[1, 0, 1], [0, 0, 1]]` | 分组类型，其元素可以为任意的数据类型 |
+| BOOL | `[True, False]` | 布尔类型 |
+| INT | `[10, 100]`  | 整数类型，设置最小值和最大值，均匀采样 |
+| INT_EXP | `[1, 100000]` | 整数类型，设置最小值和最大值，指数采样 |
+| FLOAT | `[0.1, 0.9]`  | 浮点数类型，设置最小值和最大值，均匀采样 |
+| FLOAT_EXP | `[0.1, 100000.0]` | 浮点数类型，设置最小值和最大值，指数采样 |
+
+超参间的约束分为condition和forbidden，如下：
+
+| 类别 | 约束类型 | 示例 | 说明 |
+| :--: | :-- | :-- | :-- |
+| condition | EQUAL | `parent: trainer.optimizer.type` <br> `child: trainer.optimizer.params.momentum` <br> `type: EQUAL` <br> `range: ["SGD"]` | 用于表示2个超参之间的关系，当parent参数等于某一个值时，child参数才会生效。如示例中，当`trainer.optimizer.type` 的取值为 `["SGD"]` 时，参数 `trainer.optimizer.params.momentum` 生效。 |
+| condition | NOT_EQUAL | - | 用于表示2个节点之间的关系，当parent不等于某一个值时，child节点才会生效。 |
+| condition | IN | - | 用于表示2个节点之间的关系，当parent在一定范围内时，child节点才会生效。 |
+| forbidden | - | - | 用于表示2个超参值的互斥关系，配置中的两个超参值不能同时出现。 |
+
+示例如下：
+
+```yaml
+hyperparameters:
+    -   key: dataset.batch_size
+        type: CATEGORY
+        range: [8, 16, 32, 64, 128, 256]
+    -   key: trainer.optimizer.params.lr
+        type: FLOAT_EXP
+        range: [0.00001, 0.1]
+    -   key: trainer.optimizer.type
+        type: CATEGORY
+        range: ['Adam', 'SGD']
+    -   key: trainer.optimizer.params.momentum
+        type: FLOAT
+        range: [0.0, 0.99]
+condition:
+    -   key: condition_for_sgd_momentum
+        child: trainer.optimizer.params.momentum
+        parent: trainer.optimizer.type
+        type: EQUAL
+        range: ["SGD"]
+forbidden:
+    -   trainer.optimizer.params.lr: 0.025
+        trainer.optimizer.params.momentum: 0.35
+```
+
+上例中forbidden的配置用于展示forbidden配置项的格式。
+
+### 3.2.2 NAS搜索空间超参
+
+网络搜索空间的可搜索项有：
+
+| 网络 | module | 超参 | 说明 |
+| :--: | :-- | :-- | :-- |
+| ResNet | backbone | `network.backbone.depth` | 网络深度 |
+| ResNet | backbone | `network.backbone.base_channel` | 输入channel数 |
+| ResNet | backbone | `network.backbone.doublechannel` | 升通道位置 |
+| ResNet | backbone | `network.backbone.downsample` | 下采样位置 |
+
+构建网络配置信息如下，对应示例中的`model`节：
+
+| module | network | 说明 | 参考 |
+| :--: | :-- | :-- | :-- |
+| backbone | ResNet | ResNet网络，由RestNetGeneral和LinearClassificationHead组成。 |
+| backbone | ResNetGeneral | ResNet网络Backbone。 |
+| head | LinearClassificationHead | | 用于分类任务的网络分类层。 |
+
+上表中的示例，在配置文件中如下：
+
+```yaml
+search_space:
+    hyperparameters:
+        -   key: network.backbone.depth
+            type: CATEGORY
+            range: [18, 34, 50, 101]
+        -   key: network.backbone.base_channel
+            type: CATEGORY
+            range:  [32, 48, 56, 64]
+        -   key: network.backbone.doublechannel
+            type: CATEGORY
+            range: [3, 4]
+        -   key: network.backbone.downsample
+            type: CATEGORY
+            range: [3, 4]
+model:
+    model_desc:
+        modules: ['backbone']
+        backbone:
+            type: ResNet
+```
+
+其他的网络搜索空间配置，由各个算法确定，请参考各个算法文档：
+
+<table>
+  <tr><th>任务</th><th>分类</th><th>参考算法</th></tr>
+  <tr><td rowspan="3">图像分类</td><td>网络架构搜索</td><td><a href="../algorithms/cars.md">CARS</a>、DartsCNN、GDAS、BackboneNas、EfficientNet</td></tr>
+  <tr><td>超参优化</td><td><a href="../algorithms/hpo.md">ASHA、BOHB、BOSS、BO、TPE、Random、Random-Pareto</a></td></tr>
+  <tr><td>数据增广</td><td><a href="../algorithms/pba.md">PBA</a></td></tr>
+  <tr><td rowspan="2">模型压缩</td><td>模型剪枝</td><td><a href="../algorithms/prune_ea.md">Prune-EA</a></td></tr>
+  <tr><td>模型量化</td><td><a href="../algorithms/quant_ea.md">Quant-EA</a></td></tr>
+  <tr><td rowspan="2">图像超分辨率</td><td>网络架构搜索</td><td><a href="../algorithms/sr_ea.md">SR-EA</a>、<a href="../algorithms/esr_ea.md">ESR-EA</a></td></tr>
+  <tr><td>数据增广</td><td><a href="../algorithms/cyclesr.md">CycleSR</a></td></tr>
+  <tr><td>图像语义分割</td><td>网络架构搜索</td><td><a href="../algorithms/adelaide_ea.md">Adelaide-EA</a></td></tr>
+  <tr><td>物体检测</td><td>网络架构搜索</td><td><a href="../algorithms/sp_nas.md">SP-NAS</a></td></tr>
+  <tr><td>车道线检测</td><td>网络架构搜索</td><td><a href="../algorithms/auto_lane.md">Auto-Lane</a></td></tr>
+  <tr><td rowspan="2">推荐搜索</td><td>特征选择</td><td><a href="../algorithms/autofis.md">AutoFIS</a></td></tr>
+  <tr><td>特征交互建模</td><td><a href="../algorithms/autogroup.md">AutoGroup</a></td></tr>
+</table>
+
+### 3.2.3 HPO 搜索空间超参
+
+网络训练超参包括如下超参：
+
+1. 数据集参数。
+2. 模型训练器参数，包括：
+   1. 优化方法，及其参数。
+   2. 学习率策略，及其参数。
+   3. 损失函数，及其参数。
+
+配置项说明：
+
+| 超参 | 示例 | 说明 |
+| :--: | :-- | :-- |
+| dataset.\<dataset param\> | `dataset.batch_size` | 数据集参数 |
+| trainer.optimizer.type | `trainer.optimizer.type` | 优化器类型 |
+| trainer.optimizer.params.\<optimizer param\> | `trainer.optimizer.params.lr` <br> `trainer.optimizer.params.momentum` | 优化器参数 |
+| trainer.lr_scheduler.type | `trainer.lr_scheduler.type` | 学习率策略类型 |
+| trainer.lr_scheduler.params.\<lr_scheduler param\> | `trainer.lr_scheduler.params.gamma` | 学习率策略参数 |
+| trainer.loss.type | `trainer.loss.type` | 损失函数类型 |
+| trainer.loss.params.\<loss function param\> | `trainer.loss.params.aux_weight` | 损失函数参数 |
+
+如上表格示例中的配置在配置文件中格式如下：
+
+```yaml
+hyperparameters:
+    -   key: dataset.batch_size
+        type: CATEGORY
+        range: [8, 16, 32, 64, 128, 256]
+    -   key: trainer.optimizer.type
+        type: CATEGORY
+        range: ["Adam", "SGD"]
+    -   key: trainer.optimizer.params.lr
+        type: FLOAT_EXP
+        range: [0.00001, 0.1]
+    -   key: trainer.optimizer.params.momentum
+        type: FLOAT
+        range: [0.0, 0.99]
+    -   key: trainer.lr_scheduler.type
+        type: CATEGORY
+        range: ["MultiStepLR", "StepLR"]
+    -   key: trainer.lr_scheduler.params.gamma
+        type: FLOAT
+        range: [0.1, 0.5]
+    -   key: trainer.loss.type
+        type: CATEGORY
+        range: ["CrossEntropyLoss", "MixAuxiliaryLoss"]
+    -   key: trainer.loss.params.aux_weight
+        type: FLOAT
+        range: [0, 1]
+condition:
+    -   key: condition_for_sgd_momentum
+        child: trainer.optimizer.params.momentum
+        parent: trainer.optimizer.type
+        type: EQUAL
+        range: ["SGD"]
+    -   key: condition_for_MixAuxiliaryLoss_aux_weight
+        child: trainer.loss.params.aux_weight
+        parent: trainer.loss.type
+        type: EQUAL
+        range: ["MixAuxiliaryLoss"]
+```
+
+### 3.3 NAS 和 HPO 混合搜索
+
+NAS 和 HPO 的配置项可以同时配置，同时搜索网络结构和训练参数，如下例，同时搜索的模型训练超参数为batch_size, optimizer，及ResNet的网络参数depth，base_channel，doublechannel，downsample：
+
+```yaml
+search_algorithm:
+    type: BohbHpo
+    policy:
+        total_epochs: 100
+        repeat_times: 2
+
+search_space:
+    hyperparameters:
+        -   key: dataset.batch_size
+            type: CATEGORY
+            range: [8, 16, 32, 64, 128, 256]
+        -   key: trainer.optimizer.type
+            type: CATEGORY
+            range: ["Adam", "SGD"]
+        -   key: trainer.optimizer.params.lr
+            type: FLOAT_EXP
+            range: [0.00001, 0.1]
+        -   key: trainer.optimizer.params.momentum
+            type: FLOAT
+            range: [0.0, 0.99]
+        -   key: network.backbone.depth
+            type: CATEGORY
+            range: [18, 34, 50, 101]
+        -   key: network.backbone.base_channel
+            type: CATEGORY
+            range:  [32, 48, 56, 64]
+        -   key: network.backbone.doublechannel
+            type: CATEGORY
+            range: [3, 4]
+        -   key: network.backbone.downsample
+            type: CATEGORY
+            range: [3, 4]
+
+    condition:
+        -   key: condition_for_sgd_momentum
+            child: trainer.optimizer.params.momentum
+            parent: trainer.optimizer.type
+            type: EQUAL
+            range: ["SGD"]
+
+model:
+    model_desc:
+        modules: ['backbone']
+        backbone:
+            type: ResNet
+```
+
+## 4. Data-Agumentation 配置项
+
+数据增广的配置项类似于HPO，有pipe_step、search_algorithm、search_space、dataset、trainer、evaluator配置项，Vega提供了两个数据增广的算法：PBA和CycleSR，请参考这两个算法文档：[PBA](../algorithms/pba.md)，[CycleSR](../algorithms/cyclesr.md)。
+
+## 5. Fully Train配置项
+
+经过NAS、HPO后，得到的网络模型和训练超参，可以作为Fully Train这个步骤的输入，经过Fully Train，得到完全训练后的模型，其配置项如下：
+
+HPO/NAS的配置项有如下几个主要部分：
 
 | 配置项 | 说明 |
 | :--: | :-- |
-| pipe_step | 固定为FullyTrainPipeStep |
-| models_folder | 待训练模型描述文件所在的目录，这个目录下的文件名格式为：model_desc_<ID>.json，其中ID为数字，这些模型会并行训练。这个选项和model选项互斥，且优先于model选项。 |
-| trainer | trainer配置信息，请参考[Trainer 配置项](#trainer)。|
-| dataset | 数据集配置，请参考[Dataet 配置项](#dataset)。|
-| model | model信息，请参考[Trainer 配置项](#trainer)。|
+| pipe_step / type | 配置为`FullyTrainPipeStep`标识本步骤为搜索步骤 |
+| pipe_step / models_folder | 指定模型描述文件所在的位置，依次读取该文件夹下文件名为`desc_<ID>.json`(其中ID为数字)的模型描述文件，依次训练这些模型。这个选项优先于model选项。 |
+| model / model_desc_file | 模型描述文件位置。该配置项优先级低于 `pipe_step/models_folder` ，高于 `model/model_desc`。 |
+| model / model_desc | 模型描述，详见本文搜索空间中model相关章节。该配置优先级低于 `pipe_step/models_folder` 和 `model/model_desc` |
+| dataset | 数据集配置，详见本文数据集章节 |  
+| trainer | 模型训练参数配置，详见本文训练器章节 |
+| evaluator | 评估器参数配置，详见本文评估器章节 |
 
 ```yaml
 my_fully_train:
     pipe_step:
         type: FullyTrainPipeStep
-        # models_folder: ~
+        models_folder: "{local_base_path}/output/nas/"
     trainer:
-        type: Trainer
+        <trainer params>
     model:
-        model_desc_file: "/models/model_desc.json"
+            <model desc params>
+        model_desc_file: "./desc_0.json"
     dataset:
-        type: Cifar10
+        <dataset params>
+    trainer:
+        <trainer params>
+    evaluator:
+        <evaluator params>
 ```
 
-<span id="trainer"></span>
+## 6. Trainer 配置项
 
-## 7. Trainer 配置项
+Trainer的配置项如下：
 
-以上的每个pipeline的步骤中，都会有配置项trainer，可配置基本Trainer和扩展Trainer，trainer的基本配置信息有：
+| 配置项 | 缺省值 | 说明 |
+| :--: | :-- | :-- |
+| type | "Trainer" | 类型 |
+| epochs | 1 | epochs数 |
+| distributed | False | 是否启用horovod。启用Horovod需要将数据集的shuffle参数设置为False。 |
+| syncbn | False | 是否启用SyncBN |
+| amp | False | 是否启用AMP |
+| optimizer/type | "Adam" | 优化器名称 |
+| optimizer/params | {"lr": 0.1} | 优化器参数 |
+| lr_scheduler/type | "MultiStepLR" | lr scheduler 及参数 |
+| lr_scheduler/params | {"milestones": [75, 150], "gamma": 0.5} | lr scheduler 及参数 |
+| loss/type | "CrossEntropyLoss" | loss 及参数 |
+| loss/params | {} | loss 及参数 |
+| metric/type | "accuracy" | metric 及参数 |
+| metric/params | {"topk": [1, 5]} | metric 及参数 |
+| report_freq | 10 | 打印epoch信息的频率 |
 
-| 配置项 | 说明 |
-| :--: | :-- |
-| type | Trainer, 或算法扩展Trainer，可参考各个算法文档 |
-| epochs | 总epochs数 |
-| optim | 优化器及参数 |
-| lr_scheduler | lr scheduler 及参数 |
-| loss | loss 及参数 |
-| metric | metric 及参数 |
-| distributed | 是否启用horovod进行fully train, 启用horovod后，trainer会在horovod集群中使用所有计算资源训练指定的网络模型。若要启动horovod，必须要设置model选项。同时要注意数据集的shuffle参数设置为False。 |
-| model_desc | 模型描述信息，和 model_desc_file 互斥，且model_desc_file优先。 |
-| model_desc_file | 模型描述信息所在的文件，和 model_desc 互斥，且model_desc_file优先 |
-| hps_file | 超参文件 |
-| pretrained_model_file | 预训练模型文件 |
-
-以下是加载torchvision的模型进行训练，示例如下：
+完整配置示例：
 
 ```yaml
+my_fullytrain:
+    pipe_step:
+        type: FullyTrainPipeStep
+        # models_folder: "{local_base_path}/output/nas/"
     trainer:
-        type: Trainer
+        ref: nas.trainer
         epochs: 160
-        optim:
-            type: Adam
+        optimizer:
+            type: SGD
             params:
                 lr: 0.1
+                momentum: 0.9
+                weight_decay: 0.0001
         lr_scheduler:
             type: MultiStepLR
             params:
-                milestones: [75, 150]
+                milestones: [60, 120]
                 gamma: 0.5
-        metric:
-            type: accuracy
-        loss:
-            type: CrossEntropyLoss
-        distributed: False
-    dataset:
-        type: Imagenet
     model:
         model_desc:
-            modules: ['backbone', 'head']
+            modules: ['backbone']
             backbone:
-                ResNetVariant:
-                    base_depth: [18, 34, 50, 101]
-                    base_channel: [32, 48, 56, 64]
-                    doublechannel: [3, 4]
-                    downsample: [3, 4]
-            head:
-                LinearClassificationHead:
-                    num_classes: [10]
-        # model_desc_file: ~
-        # hps_file: ~
-        # pretrained_model_file: ~
-```
-
-如上例所示，除了可加载Vega定义的模型外，还可以加载 TorchVision Model，支持的模型如下，具体可参考[官方](https://pytorch.org/docs/stable/torchvision/models.html)描述。
-
-| module | 可选项 |
-| :--: | :-- |
-| torch_vision_model | vgg11, vgg13, vgg16, vgg19, vgg11_bn, vgg13_bn, vgg16_bn, vgg19_bn, squeezenet1_0, squeezenet1_1, shufflenetv2_x0.5, shufflenetv2_x1.0, resnet18, resnet34, resnet50, resnet101, resnet152, resnext50_32x4d, resnext101_32x8d, wide_resnet50_2, wide_resnet101_2, mobilenet_v2, mnasnet0_5, mnasnet1_0, inception_v3_google, googlenet, densenet121, densenet169, densenet201, densenet161, alexnet, fasterrcnn_resnet50_fpn, fasterrcnn_resnet50_fpn_coco, keypointrcnn_resnet50_fpn_coco, maskrcnn_resnet50_fpn_coco, fcn_resnet101_coco, deeplabv3_resnet101_coco, r3d_18, mc3_18, r2plus1d_18 |
-
-<span id="dataset"></span>
-
-## 8. 数据集参考
-
-每个pipeline都会涉及到数据集的配置，Vega将数据集分为三类: train, val, test，这三类可以独立配置，同时可以在Dataset中配置transform，以下为Cifar10数据集的配置示例：
-
-```yaml
+                type: ResNet
+        # model_desc_file: "./desc_0.json"
     dataset:
         type: Cifar10
         common:
-            data_path: ~            # 配置数据集所在的目录。
-            batch_size: 256
-            num_workers: 4
-            imgs_per_gpu: 1
-            train_portion: 0.5
-            shuffle: false
-            distributed: false
-        train:
-            transforms:
-                - type: RandomCrop
-                size: 32
-                padding: 4
-                - type: RandomHorizontalFlip
-                - type: ToTensor
-                - type: Normalize
-                mean:
-                    - 0.49139968
-                    - 0.48215827
-                    - 0.44653124
-                std:
-                    - 0.24703233
-                    - 0.24348505
-                    - 0.26158768
-        val:
-            transforms:
-                - type: ToTensor
-                - type: Normalize
-                mean:
-                    - 0.49139968
-                    - 0.48215827
-                    - 0.44653124
-                std:
-                    - 0.24703233
-                    - 0.24348505
-                    - 0.26158768
-        test:
-            transforms:
-                - type: ToTensor
-                - type: Normalize
-                mean:
-                    - 0.49139968
-                    - 0.48215827
-                    - 0.44653124
-                std:
-                    - 0.24703233
-                    - 0.24348505
-                    - 0.26158768
+            data_path: /cache/datasets/cifar10/
 ```
 
-### 8.1 内置数据集
+## 8. 数据集参考
 
-Vega提供了常见数据集，如下：
+Vega提供了多种数据集类用于读取常用的研究用数据集，并提供了常用的数据集操作方法。Vega提供的数据集类可将train、val、test分开配置，也可以将配置项配置在common节点，同时作用到这三类数据。以下为Cifar10数据集的配置示例：
 
-| Name | Description | Data Source |
-| :--: | --- | :--: |
-| Cifar10 | The CIFAR-10 dataset consists of 60000 32x32 colour images in 10 classes, with 6000 images per class. There are 50000 training images and 10000 test images | [下载](https://www.cs.toronto.edu/~kriz/cifar.html) |
-| Cifar100 | The CIFAR-100 is just like the CIFAR-10, except it has 100 classes containing 600 images each. There are 500 training images and 100 testing images per class | [下载](https://www.cs.toronto.edu/~kriz/cifar.html) |
-| Minist | The MNIST database of handwritten digits has a training set of 60,000 examples, and a test set of 10,000 examples | [下载](http://yann.lecun.com/db/mnist/) |
-| COCO | The COCO is a large-scale object detection, segmentation, and captioning dataset, about 123K images and 886K instances | [下载](http://cocodataset.org/#download) |
-| Div2K | Div2K is a super-resolution architecture search database, containing 800 training images and 100 validiation images | [下载](https://data.vision.ee.ethz.ch/cvl/DIV2K/) |
-| Imagenet | The ImageNet is an image database organized according to the WordNet hierarchy, in which each node of the hierarchy is depicted by hundreds and thousands of images | [下载](http://image-net.org/download-images) |
-| Fmnist | Fashion-MNIST is a dataset of Zalando's article images—consisting of a training set of 60,000 examples and a test set of 10,000 examples. Each example is a 28x28 grayscale image, associated with a label from 10 classes.| [下载](http://fashion-mnist.s3-website.eu-central-1.amazonaws.com/) |
-| Cityscapes | The Cityscape is a large-scale dataset that contains a diverse set of stereo video sequences recorded in street scenes from 50 different cities, with high quality pixel-level annotations of 5 000 frames in addition to a larger set of 20 000 weakly annotated frames. | [下载](https://www.cityscapes-dataset.com/) |
-| Cifar10TF | The CIFAR-10-bin dataset consists of 60000 32x32 colour images in 10 classes, with 6000 images per class. There are 50000 training images and 10000 test images | [下载](https://www.cs.toronto.edu/~kriz/cifar-10-binary.tar.gz) |
-| Div2kUnpair | DIV2K dataset: DIVerse 2K resolution high quality images as used for the challenges @ NTIRE (CVPR 2017 and CVPR 2018) and @ PIRM (ECCV 2018)|[下载](https://data.vision.ee.ethz.ch/cvl/DIV2K/) |
-| ECP    | The ECP dataset. Focus on Persons in Urban Traffic Scenes.With over 238200 person instances manually labeled in over 47300 images, EuroCity Persons is nearly one order of magnitude larger than person datasets used previously for benchmarking.|[下载](https://eurocity-dataset.tudelft.nl/eval/downloads/detection) |
+```yaml
+dataset:
+    type: Cifar10
+    common:
+        data_path: /cache/datasets/cifar10
+        batch_size: 256
+    train:
+        shuffle: True
+    val:
+        shuffle: False
+    test:
+        shuffle: False
+```
 
-1. Cifar10 Default Configuration
+以下介绍常用的数据类的配置：
 
-    ```yaml
-    data_path: ~            # the path of the dataset, default is None, MUST be set to a correct dataset PATH, such as /datasets/cifar10
-    batch_size: 256         # batch size
-    num_workers: 4          # the worker number to load the data
-    shuffle: false          # if True, will shuffle, defaults to False
-    distributed: false      # whether to use distributed train
-    train_portion: 0.5      # the ratio of the train data split from the initial train data
-    ```
+### 8.1 Cifar10 和 Cifar100
 
-2. Cifar100 Default Configuration
+配置项如下：
 
-    ```yaml
-    data_path: ~            # the path of the dataset, default is None, MUST be set to a correct dataset PATH, such as /datasets/cifar100
-    batch_size: 1           # batch size
-    num_workers: 4          # the worker number to load the data
-    shuffle: true           # if True, will shuffle, defaults to False
-    distributed: false      # whether to use distributed train
-    ```
+| 配置项 | 缺省值 | 说明 |
+| :-- | :-- | :-- |
+| data_path | ~ | 下载数据集后，解压缩后的目录。 |
+| batch_size | 256 | batch size |
+| shuffle | False | shuffle |
+| num_workers | 8 | 读取线程数 |
+| pin_memory | True | Pin memeory |
+| drop_laster | True | Drop last |
+| distributed | False | 数据分布 |
+| train_portion | 1 | 数据集中训练集的划分比例 |
+| transforms | train: [RandomCrop, RandomHorizontalFlip, ToTensor, Normalize] <br> val: [ToTensor, Normalize] <br> test: [ToTensor, Normalize] | 缺省transforms |
 
-3. Cityscapes Default Configuration
+### 8.2 ImageNet
 
-    ```yaml
-    root_path: ~            # the path of the dataset, default is None, MUST be set to a correct dataset PATH, such as /datasets/Cityscapes
-    list_path: 'img_gt_train.txt'   # the name of the txt file
-    batch_size: 1           # batch size
-    mean: 128               # the parameter mean for transform
-    ignore_label: 255       # the label to ignore
-    scale: True             # if scale is true, the asptio will be keep when transform
-    mirrow: True            # whether to use mirrow for transform  
-    rotation: 90            # the rotation value
-    crop: 321               # the crop size
-    num_workers: 4          # the worker number to load the data
-    shuffle: False          # if True, will shuffle, defaults to False
-    distributed: True       # whether to use distributed train
-    id_to_trainid: False    # change the random id to continious id,if true, a dict should be obtain
-    ```
+配置项如下：
 
-4. DIV2K Default Configuration
+| 配置项 | 缺省值 | 说明 |
+| :-- | :-- | :-- |
+| data_path | ~ | 下载数据集后，解压缩后的目录。 |
+| batch_size | 64 | batch size |
+| shuffle | train: True <br> val: False <br> test: False | shuffle |
+| n_class | 1000 | 分类 |
+| num_workers | 8 | 读取线程数 |
+| pin_memory | True | Pin memeory |
+| drop_laster | True | Drop last |
+| distributed | False | 数据分布 |
+| train_portion | 1 | 数据集中训练集的划分比例 |
+| transforms | train: [RandomResizedCrop, RandomHorizontalFlip, ColorJitter, ToTensor, Normalize] <br> val: [Resize, CenterCrop, ToTensor, Normalize] <br> test: [Resize, CenterCrop, ToTensor, Normalize] | 缺省transforms |
 
-    ```yaml
-    root_HR: ~              # the path of the dataset, default is None, MUST be set to a correct dataset PATH, such as /datasets/DIV2K/div2k_train/hr
-    root_LR: ~              # the path of the dataset, default is None, MUST be set to a correct dataset PATH, such as /datasets/DIV2k/div2k_train/lr
-    batch_size: 1           # batch size
-    num_workers: 4          # the worker number to load the data
-    upscale: 2              # the upscale for super resolution
-    subfile: !!null         # whether to use subfile,Set it to None by default
-    crop: !!null            # the crop size,Set it to None by default
-    shuffle: false          # if True, will shuffle, defaults to False
-    hflip: false            # whether to use horrizion flip
-    vflip: false            # whether to use vertical flip
-    rot90: false            # whether to use rotation
-    distributed: True       # whether to use distributed train
-    ```
+### 8.3 Cityscapes
 
-5. FashionMnist Default Configuration
+配置项如下：
 
-    ```yaml
-    data_path: ~            # the path of the dataset, default is None, MUST be set to a correct dataset PATH, such as /datasets/fmnist
-    batch_size: 1           # batch size
-    num_workers: 4          # the worker number to load the data
-    shuffle: true           # if True, will shuffle, defaults to False
-    distributed: false      # whether to use distributed train
-    ```
+| 配置项 | 缺省值 | 说明 |
+| :-- | :-- | :-- |
+| root_path | ~ | 下载数据集后，解压缩后的目录。 |
+| list_file | train: train.txt <br> val: val.txt <br> test: test.txt | 索引文件 |
+| batch_size | 1 | batch size |
+| num_workers | 8 | 读取线程数 |
+| shuffle | False | shuffle |
 
-6. Imagenet Default Configuration
+### 8.4 DIV2K
 
-    ```yaml
-    data_path: ~            #  the path of the dataset, default is None, MUST be set to a correct dataset PATH, such as /datasets/ImageNet
-    batch_size: 1           #  batch size
-    num_workers: 4          #  the worker number to load the data
-    shuffle: true           #  if True, will shuffle, defaults to False
-    distributed: false      #  whether to use distributed train
-    ```
+配置项如下：
 
-7. Mnist Default Configuration
+| 配置项 | 缺省值 | 说明 |
+| :-- | :-- | :-- |
+| root_HR | ~ | HR图片所在的目录。 |
+| root_LR | ~ | LR图片所在的目录。 |
+| batch_size | 1 | batch size |
+| shuffle | False | shuffle |
+| num_workers | 4 | 读取线程数 |
+| pin_memory | True | Pin memeory |
+| value_div | 1.0 | Value div |
+| upscale | 2 | Up scale |
+| crop | ~ | crop size of lr image |
+| hflip | False | flip image horizontally |
+| vflip | False | flip image vertically |
+| rot90 | False | flip image diagonally |
 
-    ```yaml
-    data_path: ~            # the path of the dataset, default is None, MUST be set to a correct dataset PATH, such as /datasets/mnist
-    batch_size: 1           # batch size
-    num_workers: 4          # the worker number to load the data
-    shuffle: true           # if True, will shuffle, defaults to False
-    distributed: false      # whether to use distributed train
-    ```
+### 8.5 AutoLane
 
-### 8.1 内置Transform
+配置项如下：
 
-当前已支持如下Transform:
+| 配置项 | 缺省值 | 说明 |
+| :-- | :-- | :-- |
+| data_path | ~ | 下载数据集后，解压缩后的目录。 |
+| batch_size | 24 | batch size |
+| shuffle | False | shuffle |
+| num_workers | 8 | 读取线程数 |
+| network_input_width | 512 | Network inpurt width |
+| network_input_height | 288 | Network input height |
+| gt_len | 145 | - |
+| gt_num | 576 | - |
+| random_sample | True | Random sample |
+| transforms | [ToTensor, Normalize] | transforms |
 
-| Transform | Input | Output |
-| --- | --- | --- |
-| AutoContrast | level img | img |
-| BboxTransform | bboxes imge_shape scale_factor | bboxes |
-| Brightness | level img | img |
-| Color | level img | img |
-| Contrast | level img | img |
-| Cutout | length img | img |
-| Equalize | level img | img |
-| ImageTransform | scale img | img img_shape pad_shape scale_factor |
-| Invert | level img | img |
-| MaskTransform | masks pad_shape scale_factor | padded_masks |
-| Numpy2Tensor | numpy | tensor |
-| Posterize | level img | img |
-| RandomCrop_pair | crop upscale img label | img label |
-| RandomHorizontalFlip_pair | img label | img label |
-| RandomMirrow_pair | img label | img label |
-| RandomRotate90_pair | img label | img label |
-| RandomVerticallFlip_pair | img label | img label |
-| Rotate | level img | img |
-| SegMapTransform | scale img | img |
-| Sharpness | level img | img |
-| Shear_X | level img | img |
-| Shear_Y | level img | img |
-| Solarize | level img | img |
-| ToPILImage_pair | img1 img2 | img1 img2 |
-| ToTensor_pair | img1 img2 | tensor1 tensor2 |
-| Translate_X | level img | img |
-| Translate_Y | level img | img |
+### 8.6 Avazu
+
+配置项如下：
+
+| 配置项 | 缺省值 | 说明 |
+| :-- | :-- | :-- |
+| data_path | ~ | 下载数据集后，解压缩后的目录。 |
+| batch_size | 2000 | batch size |
+
+### 8.7 ClassificationDataset
+
+该数据集用于用户分类数据的读取，用户数据集目录下面应该包含三个子文件夹：train、val、test，这三个文件夹下面是图片分类标签文件夹，标签文件夹里面放置属于该分类的图片。
+
+配置项如下：
+
+| 配置项 | 缺省值 | 说明 |
+| :-- | :-- | :-- |
+| data_path | ~ | 下载数据集后，解压缩后的目录。 |
+| batch_size | 1 | batch size |
+| shuffle | train: True <br> val: True <br> test: False | shuffle |
+| num_workers | 8 | 读取线程数 |
+| pin_memory | True | Pin memeory |
+| drop_laster | True | Drop last |
+| distributed | False | 数据分布 |
+| train_portion | 1 | 数据集中训练集的划分比例 |
+| n_class | ~ | number of clases |
+| cached | True | 是否将全部数据缓存到内存。 |
+| transforms | [] | transforms |

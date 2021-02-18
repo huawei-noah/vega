@@ -9,8 +9,8 @@
 # MIT License for more details.
 
 """The trainer program for ESR_EA."""
-from vega.core.common.class_factory import ClassFactory, ClassType
-from vega.core.trainer.callbacks import Callback
+from zeus.common import ClassFactory, ClassType
+from zeus.trainer.callbacks import Callback
 
 
 @ClassFactory.register(ClassType.CALLBACK)
@@ -23,13 +23,3 @@ class ESRTrainerCallback(Callback):
         # Use own save checkpoint and save performance function
         self.trainer.auto_save_ckpt = False
         self.trainer.auto_save_perf = False
-        # This part is tricky and
-
-    def make_batch(self, batch):
-        """Make batch for each training step."""
-        input = batch["LR"]
-        target = batch["HR"]
-        if self.config.cuda:
-            input = input.cuda()
-            target = target.cuda()
-        return input, target

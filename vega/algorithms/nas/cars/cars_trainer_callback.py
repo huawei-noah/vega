@@ -13,14 +13,13 @@ import numpy as np
 from collections import namedtuple
 import logging
 import vega
-from vega.core.common.class_factory import ClassFactory, ClassType
-from vega.search_space import SearchSpace
-from vega.search_space.search_algs import SearchAlgorithm
-from vega.core.trainer.callbacks import Callback
-from vega.core.trainer.modules.optimizer import Optimizer
-from vega.core.trainer.modules.lr_schedulers import LrScheduler
-from vega.core.trainer.modules.losses import Loss
-
+from zeus.common import ClassFactory, ClassType
+from vega.core.search_space import SearchSpace
+from vega.core.search_algs import SearchAlgorithm
+from zeus.trainer.callbacks import Callback
+from zeus.trainer.modules.optimizer import Optimizer
+from zeus.trainer.modules.lr_schedulers import LrScheduler
+from zeus.trainer.modules.losses import Loss
 
 if vega.is_torch_backend():
     import torch
@@ -50,7 +49,7 @@ class CARSTrainerCallback(Callback):
         if vega.is_torch_backend():
             cudnn.benchmark = True
             cudnn.enabled = True
-        self.search_alg = SearchAlgorithm(SearchSpace().search_space)
+        self.search_alg = SearchAlgorithm(SearchSpace())
         self.alg_policy = self.search_alg.config.policy
         self.set_algorithm_model(self.trainer.model)
         # setup alphas
@@ -77,7 +76,7 @@ class CARSTrainerCallback(Callback):
                 # logits = self.trainer.model.forward_random(input)
             else:
                 alpha = alphas[i]
-            logits = self.trainer.model(input, alpha)
+            logits = self.trainer.model(input, alpha=alpha)
             loss = self.trainer.loss(logits, target)
             loss.backward(retain_graph=True)
             if self.epoch < self.alg_policy.warmup:
@@ -86,7 +85,8 @@ class CARSTrainerCallback(Callback):
             self.trainer.model.parameters(), self.trainer.config.grad_clip)
         self.trainer.optimizer.step()
         return {'loss': loss.item(),
-                'train_batch_output': logits}
+                'train_batch_output': logits,
+                'lr': self.trainer.lr_scheduler.get_lr()}
 
     def model_fn(self, features, labels, mode):
         """Define cars model_fn used by TensorFlow Estimator."""
@@ -95,12 +95,12 @@ class CARSTrainerCallback(Callback):
 
         train_op = None
         if mode == tf.estimator.ModeKeys.TRAIN:
-            global_step = tf.train.get_global_step()
+            global_step = tf.compat.v1.train.get_global_step()
             epoch = tf.cast(global_step, tf.float32) / tf.cast(len(self.trainer.train_loader), tf.float32)
-            self.trainer.lr_scheduler = LrScheduler()()
-            self.trainer.optimizer = Optimizer()(lr_scheduler=self.trainer.lr_scheduler,
-                                                 epoch=epoch,
-                                                 distributed=self.trainer.distributed)
+            self.trainer.optimizer = Optimizer()(distributed=self.trainer.distributed)
+            self.trainer.lr_scheduler = LrScheduler()(self.trainer.optimizer)
+            self.trainer.lr_scheduler.step(epoch)
+            self.trainer.model.training = True
             alphas = tf.convert_to_tensor(self.alphas)
             for j in range(self.alg_policy.num_individual_per_iter):
                 i = np.random.randint(0, self.alg_policy.num_individual, 1)[0]
@@ -108,9 +108,10 @@ class CARSTrainerCallback(Callback):
                     alpha = tf.convert_to_tensor(self.search_alg.random_sample_path())
                 else:
                     alpha = alphas[i]
-                logits = self.trainer.model(features, alpha, True)
+                logits = self.trainer.model(features, alpha=alpha)
                 logits = tf.cast(logits, tf.float32)
                 loss = self.trainer.loss(logits=logits, labels=labels)
+                loss = self.trainer.optimizer.regularize_loss(loss)
                 grads, vars = zip(*self.trainer.optimizer.compute_gradients(loss))
                 if j == 0:
                     accum_grads = [tf.Variable(tf.zeros_like(grad), trainable=False) for grad in grads]
@@ -119,13 +120,14 @@ class CARSTrainerCallback(Callback):
                     break
             clipped_grads, _ = tf.clip_by_global_norm(accum_grads, self.trainer.config.grad_clip)
             minimize_op = self.trainer.optimizer.apply_gradients(list(zip(clipped_grads, vars)), global_step)
-            update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
+            update_ops = tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.UPDATE_OPS)
             train_op = tf.group(minimize_op, update_ops)
 
         eval_metric_ops = None
         if mode == tf.estimator.ModeKeys.EVAL:
             alpha = tf.convert_to_tensor(self.trainer.valid_alpha)
-            logits = self.trainer.model(features, alpha, False)
+            self.trainer.model.training = False
+            logits = self.trainer.model(features, alpha=alpha)
             logits = tf.cast(logits, tf.float32)
             loss = self.trainer.loss(logits=logits, labels=labels)
             eval_metric_ops = self.trainer.valid_metrics(logits, labels)

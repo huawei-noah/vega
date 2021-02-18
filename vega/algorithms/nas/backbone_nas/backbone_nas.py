@@ -12,10 +12,9 @@
 import random
 import numpy as np
 import logging
-from vega.search_space.search_algs.search_algorithm import SearchAlgorithm
-from vega.search_space.search_algs.random_search import RandomSearchAlgorithm
-from vega.search_space.search_algs.pareto_front import ParetoFront
-from vega.core.common.class_factory import ClassFactory, ClassType
+from vega.core.search_algs import SearchAlgorithm
+from vega.core.search_algs import ParetoFront
+from zeus.common import ClassFactory, ClassType
 from .conf import BackboneNasConfig
 
 
@@ -41,7 +40,6 @@ class BackboneNas(SearchAlgorithm):
         logging.info("inited BackboneNas")
         self.pareto_front = ParetoFront(
             self.config.pareto.object_count, self.config.pareto.max_object_ids)
-        self.random_search = RandomSearchAlgorithm(self.search_space)
         self._best_desc_file = 'nas_model_desc.json'
 
     @property
@@ -57,7 +55,7 @@ class BackboneNas(SearchAlgorithm):
             pareto_list = list(pareto_dict.values())
             if self.pareto_front.size < self.min_sample or random.random() < self.random_ratio or len(
                     pareto_list) == 0:
-                sample_desc = self.random_search.search()
+                sample_desc = self.search_space.sample()
                 sample = self.codec.encode(sample_desc)
             else:
                 sample = pareto_list[0]
@@ -71,11 +69,12 @@ class BackboneNas(SearchAlgorithm):
         self.sample_count += 1
         logging.info(sample)
         sample_desc = self.codec.decode(sample)
+        print(sample_desc)
         return dict(worker_id=self.sample_count, desc=sample_desc)
 
     def random_sample(self):
         """Random sample from search_space."""
-        sample_desc = self.random_search.search()
+        sample_desc = self.search_space.sample()
         sample = self.codec.encode(sample_desc, is_random=True)
         return sample
 
@@ -156,3 +155,8 @@ class BackboneNas(SearchAlgorithm):
             except Exception:
                 continue
         return arch
+
+    @property
+    def max_samples(self):
+        """Get max samples number."""
+        return self.max_sample

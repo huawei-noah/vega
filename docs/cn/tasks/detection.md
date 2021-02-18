@@ -34,7 +34,7 @@ Vega将在下一个版本提供车道线检测算法，针对这个特定的应�
 
 Vega提供了SP-NAS算法，该算法用以搜索面向物体检测及语义分割的高效主干网络架构，使用这类算法需要一定深度网络架构知识。
 
-具体请参考[SP-NAS算法](../algorithms/sp-nas.md)
+具体请参考[SP-NAS算法](../algorithms/sp_nas.md)
 
 ### 3. pipeline
 

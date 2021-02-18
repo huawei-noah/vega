@@ -10,12 +10,18 @@
 
 """Generator for NasPipeStep."""
 import logging
-from vega.search_space.search_algs import SearchAlgorithm
-from vega.search_space.search_space import SearchSpace
-from vega.core.common.general import General
-from vega.core.report import Report, ReportRecord
-from vega.core.common.config import Config
-from vega.core.common.utils import update_dict
+import os
+import pickle
+from copy import deepcopy
+from vega.core.search_algs import SearchAlgorithm
+from vega.core.search_space.search_space import SearchSpace
+from vega.core.pipeline.conf import PipeStepConfig
+from zeus.common.general import General
+from zeus.common.task_ops import TaskOps
+from zeus.report import Report, ReportRecord
+from zeus.common.config import Config
+from zeus.common import update_dict
+from zeus.quota.quota_compare import QuotaCompare
 
 
 class Generator(object):
@@ -24,17 +30,18 @@ class Generator(object):
     def __init__(self):
         self.step_name = General.step_name
         self.search_space = SearchSpace()
-        self.search_alg = SearchAlgorithm(self.search_space.search_space)
+        self.search_alg = SearchAlgorithm(self.search_space)
         self.report = Report()
         self.record = ReportRecord()
         self.record.step_name = self.step_name
         if hasattr(self.search_alg.config, 'objective_keys'):
             self.record.objective_keys = self.search_alg.config.objective_keys
+        self.quota = QuotaCompare('restrict')
 
     @property
     def is_completed(self):
         """Define a property to determine search algorithm is completed."""
-        return self.search_alg.is_completed
+        return self.search_alg.is_completed or self.quota.is_halted()
 
     def sample(self):
         """Sample a work id and model from search algorithm."""
@@ -43,15 +50,24 @@ class Generator(object):
             return None
         if not isinstance(res, list):
             res = [res]
+        if len(res) == 0:
+            return None
         out = []
         for sample in res:
-            if isinstance(sample, tuple):
-                sample = dict(worker_id=sample[0], desc=sample[1])
-            record = self.record.load_dict(sample)
-            logging.debug("Broadcast Record=%s", str(record))
+            desc = sample.get("desc") if isinstance(sample, dict) else sample[1]
+            desc = self._decode_hps(desc)
+            model_desc = deepcopy(desc)
+            if "modules" in desc:
+                PipeStepConfig.model.model_desc = deepcopy(desc)
+            elif "network" in desc:
+                origin_desc = PipeStepConfig.model.model_desc
+                desc = update_dict(desc["network"], origin_desc)
+                PipeStepConfig.model.model_desc = deepcopy(desc)
+            if self.quota.is_filtered(desc):
+                continue
+            record = self.record.from_sample(sample, desc)
             Report().broadcast(record)
-            desc = self._decode_hps(record.desc)
-            out.append((record.worker_id, desc))
+            out.append((record.worker_id, model_desc))
         return out
 
     def update(self, step_name, worker_id):
@@ -66,14 +82,15 @@ class Generator(object):
         logging.debug("Get Record=%s", str(record))
         self.search_alg.update(record.serialize())
         report.dump_report(record.step_name, record)
+        self.dump()
         logging.info("Update Success. step_name=%s, worker_id=%s", step_name, worker_id)
-        logging.info("Best values: %s", Report().pareto_front(step_name=General.step_name))
+        logging.info("Best values: %s", Report().print_best(step_name=General.step_name))
 
     @staticmethod
     def _decode_hps(hps):
         """Decode hps: `trainer.optim.lr : 0.1` to dict format.
 
-        And convert to `vega.core.common.config import Config` object
+        And convert to `zeus.common.config import Config` object
         This Config will be override in Trainer or Datasets class
         The override priority is: input hps > user configuration >  default configuration
         :param hps: hyper params
@@ -94,3 +111,21 @@ class Generator(object):
             # update cfg with hps
             hps_dict = update_dict(hps_dict, hp_dict, [])
         return Config(hps_dict)
+
+    def dump(self):
+        """Dump generator to file."""
+        step_path = TaskOps().step_path
+        _file = os.path.join(step_path, ".generator")
+        with open(_file, "wb") as f:
+            pickle.dump(self, f, protocol=pickle.HIGHEST_PROTOCOL)
+
+    @classmethod
+    def restore(cls):
+        """Restore generator from file."""
+        step_path = TaskOps().step_path
+        _file = os.path.join(step_path, ".generator")
+        if os.path.exists(_file):
+            with open(_file, "rb") as f:
+                return pickle.load(f)
+        else:
+            return None

@@ -58,9 +58,9 @@ Parameters are set in the configuration file (examples/nas/adelaide_ea/adelaide_
 
 ```yaml
 
-pipeline: [random1, mutate1]
+pipeline: [random, mutate]
 
-random1:
+random:
     search_space:
         type: SearchSpace
         modules: ['custom']
@@ -78,15 +78,15 @@ random1:
         codec: AdelaideCodec
         max_sample: 100
 
-mutate1:
+mutate:
     search_space:
         ref: random.search_space
     search_algorithm:
         type: AdelaideMutate
         codec: AdelaideCodec
         max_sample: 100
-        pareto_front_file: "{local_base_path}/output/random1/pareto_front.csv"
-        random_file: "{local_base_path}/output/random1/random.csv"
+        pareto_front_file: "{local_base_path}/output/random/pareto_front.csv"
+        random_file: "{local_base_path}/output/random/random.csv"
 ```
 
 ## 3. Dataset
@@ -103,3 +103,7 @@ The output includes a series of .pth files (models trained to the num_iter itera
 2. flops: Records the macc value of the model. For example, 1371603728 indicates 1.277 GB.
 3. parameters: Records the values of parameters in the model. For example, 3162900 indicates 3.016 MB.
 4. mIOU: Records the segmentation performance.
+
+## 5. Benchmark
+
+Benchmark configuration: [adelaide_ea.yml](https://github.com/huawei-noah/vega/tree/master/benchmark/algs/nas/adelaide_ea.yml)

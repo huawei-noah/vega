@@ -1,10 +1,6 @@
-general:
-    worker:
-        devices_per_job: -1
+pipeline: [nas, hpo, fullytrain]
 
-pipeline: [nas1, hpo1, fullytrain1]
-
-nas1:
+nas:
     pipe_step:
         type: NasPipeStep
 
@@ -22,17 +18,24 @@ nas1:
             max_object_ids: [0]
 
     search_space:
-        type: SearchSpace
-        modules: ['backbone', 'head']
-        backbone:
-            ResNetVariant:
-                base_depth: [18, 34, 50, 101]
-                base_channel: [32, 48, 56, 64]
-                doublechannel: [3]
-                downsample: [3]
-        head:
-            LinearClassificationHead:
-                num_classes: [10]
+        hyperparameters:
+            -   key: network.backbone.depth
+                type: CATEGORY
+                range: [18, 34, 50, 101]
+            -   key: network.backbone.base_channel
+                type: CATEGORY
+                range:  [32, 48, 56, 64]
+            -   key: network.backbone.doublechannel
+                type: CATEGORY
+                range: [3, 4]
+            -   key: network.backbone.downsample
+                type: CATEGORY
+                range: [3, 4]
+    model:
+        model_desc:
+            modules: ['backbone']
+            backbone:
+                type: ResNet
 
     trainer:
         type: Trainer
@@ -44,12 +47,12 @@ nas1:
         common:
             data_path: /cache/datasets/cifar10/
 
-hpo1:
+hpo:
     pipe_step:
         type: NasPipeStep
 
     dataset:
-        ref: nas1.dataset
+        ref: nas.dataset
 
     search_algorithm:
         type: AshaHpo
@@ -59,19 +62,19 @@ hpo1:
     search_space:
         type: SearchSpace
         hyperparameters:
-            -   key: trainer.optim.params.lr
+            -   key: trainer.optimizer.params.lr
                 type: FLOAT_EXP
                 range: [0.00001, 0.1]
-            -   key: trainer.optim.type
-                type: STRING
+            -   key: trainer.optimizer.type
+                type: CATEGORY
                 range: ['Adam', 'SGD']
-            -   key: trainer.optim.params.momentum
+            -   key: trainer.optimizer.params.momentum
                 type: FLOAT
                 range: [0.0, 0.99]
         condition:
             -   key: condition_for_sgd_momentum
-                child: trainer.optim.params.momentum
-                parent: trainer.optim.type
+                child: trainer.optimizer.params.momentum
+                parent: trainer.optimizer.type
                 type: EQUAL
                 range: ["SGD"]
 
@@ -80,7 +83,7 @@ hpo1:
         epochs: 10
 
     model:
-        models_folder: "{local_base_path}/output/nas1/"
+        models_folder: "{local_base_path}/output/nas/"
 
     evaluator:
         type: Evaluator
@@ -89,15 +92,15 @@ hpo1:
             metric:
                 type: accuracy
 
-fullytrain1:
+fullytrain:
     pipe_step:
         type: FullyTrainPipeStep
-        models_folder: "{local_base_path}/output/nas1/"
+        models_folder: "{local_base_path}/output/nas/"
 
     trainer:
         type: Trainer
         epochs: 160
-        optim:
+        optimizer:
             type: SGD
             params:
                 lr: 0.1
@@ -108,7 +111,7 @@ fullytrain1:
             params:
                 milestones: [60, 120]
                 gamma: 0.5
-        hps_folder: "{local_base_path}/output/hpo1/"
+        hps_folder: "{local_base_path}/output/hpo/"
 
     dataset:
-        ref: nas1.dataset
+        ref: nas.dataset

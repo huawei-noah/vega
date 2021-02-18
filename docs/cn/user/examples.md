@@ -11,7 +11,7 @@ Vega提供了算法和任务的使用指导，也针对开发者，提供了算�
 | compression | 压缩算法使用示例，包括 [Quant-EA](../algorithms/quant_ea.md)、 [Prune-EA](../algorithms/prune_ea.md) 两个算法 |
 | data augmentation | 数据增广算法使用示例，包括 [PBA](../algorithms/pba.md) 算法 |
 | hpo | 超参优化算法使用示例， 包括 [ASHA](../algorithms/hpo.md), [BO](../algorithms/hpo.md), [TPE](../algorithms/hpo.md), [BOHB](../algorithms/hpo.md), [BOSS](../algorithms/hpo.md) 等算法 |
-| nas | 网络架构搜索相关示例，包括 [SM-NAS](../algorithms/sm-nas.md), [CARS](../algorithms/cars.md), [SP-NAS](../algorithms/sp-nas.md), [Auto-Lane](../algorithms/auto_lane.md), [SR-EA](../algorithms/sr-ea.md), [ESR-EA](../algorithms/esr_ea.md), [Adelaide-EA](../algorithms/Segmentation-Adelaide-EA-NAS.md) |
+| nas | 网络架构搜索相关示例，包括 [CARS](../algorithms/cars.md), [SP-NAS](../algorithms/sp_nas.md), [Auto-Lane](../algorithms/auto_lane.md), [SR-EA](../algorithms/sr_ea.md), [ESR-EA](../algorithms/esr_ea.md), [Adelaide-EA](../algorithms/adelaide_ea.md), [NAGO](../algorithms/nago.md) |
 | searchspace | [细粒度搜索空间](../developer/fine_grained_search_space.md)相关示例 |
 | fully train | fully train 相关示例，包括训练 torch vision 的 restnet18 模型，训练 CARS 模型等示例 |
 | tasks/classification | 综合使用 NAS + HPO + FullyTrain 完成一个图像分类任务的示例 |
@@ -23,44 +23,28 @@ Vega提供了算法和任务的使用指导，也针对开发者，提供了算�
 进入 examples 目录后，可以执行如下命令运行示例：
 
 ```bash
-python3 ./run_example.py <algorithm config file>
+python3 ./run_pipeline.py <algorithm config file>
 ```
 
 比如要运行CARS算法示例，命令如下：
 
 ```bash
-python3 ./run_example.py ./nas/cars/cars.yml
+python3 ./run_pipeline.py ./nas/cars/cars.yml
 ```
 
 所有的信息都在配置文件中，配置项可分为公共配置项和算法相关配置项，公共配置项可参考[配置参考](./config_reference.md)，算法配置需要参考各个算法的参考文档。
 
-在运行示例前，需要下载数据集到缺省的数据配置目录中。在运行示例前，需要创建目录`/cache/datasets/`，然后将各个数据集下载到该目录，并解压。各个数据集的缺省目录配置如下：
-
-| Dataset | Default Path | Data Source | Note |
-| :--- | :--- | :--: | :-- |
-| Cifar10 | /cache/datasets/cifar10/ | [下载](https://www.cs.toronto.edu/~kriz/cifar.html) | |
-| Cifar10TF | /cache/datasets/cifar-10-batches-bin/ | [下载](https://www.cs.toronto.edu/~kriz/cifar-10-binary.tar.gz) | |
-| ImageNet | /cache/datasets/ILSVRC/ | [下载](http://image-net.org/download-images) | |
-| ImageNetTF | /cache/datasets/imagenet_tfrecord/ | [下载](http://image-net.org/download-images) | **请使用[代码](https://github.com/tensorflow/tpu/blob/master/tools/datasets/imagenet_to_gcs.py)转换数据** |
-| COCO | /cache/datasets/COCO2017 | [下载](http://cocodataset.org/#download) | |
-| Div2K | /cache/datasets/DIV2K/ | [下载](https://data.vision.ee.ethz.ch/cvl/DIV2K/) | |
-| Div2kUnpair | /cache/datasets/DIV2K_unknown |  [下载](https://data.vision.ee.ethz.ch/cvl/DIV2K/) | **若用于算法CycleSR，请参考[算法文档](../algorithms/cyclesr.md)对数据进行剪裁** |
-| Cityscapes | /cache/datasets/cityscapes/ | [下载](https://www.cityscapes-dataset.com/) | **请参考[算法文档](../algorithms/Segmentation-Adelaide-EA-NAS.md)生成索引** |
-| VOC2012 | /cache/datasets/VOC2012/ | [下载](http://host.robots.ox.ac.uk/pascal/VOC/voc2012/#data) | **请参考[算法文档](../algorithms/Segmentation-Adelaide-EA-NAS.md)生成索引** |
-| ECP       | /cache/datasets/ECP/    | [下载](https://eurocity-dataset.tudelft.nl/eval/downloads/detection)  | |
-| CULane | /cache/datasets/CULane/ | [下载](https://xingangpan.github.io/projects/CULane.html) | |
-| Avazu | /cache/dataset/Avazu/ | [下载](https://www.kaggle.com/datasets) | |
+在运行示例前，需要下载数据集到缺省的数据配置目录中。在运行示例前，需要创建目录`/cache/datasets/`，然后将各个数据集下载到该目录，并解压。Vega支持Cifar10、ImageNet、COCO、Div2K、Cityscapes、VOC2012、CULane、Avazu，请用户根据需要访问各个数据集下载网址下载数据集。
 
 另外，对于以下算法，需要加载预训练模型。在运行示例前，需要创建目录/cache/models/，然后从相应的位置下载对应的模型后，放置到该目录：
 
 | Algorithm | Pre-trained Model | Default Path | Model Source |
 | :--: | :-- | :-- | :--: |
-| Adelaide-EA | mobilenet_v2-b0353104.pth | /cache/models/mobilenet_v2-b0353104.pth | [下载](http://www.noahlab.com.hk/opensource/vega/models/pretrained/mobilenet_v2-b0353104.pth) |
-| Prune-EA | resnet20.pth | /cache/models/resnet20.pth | [下载](http://www.noahlab.com.hk/opensource/vega/models/pretrained/resnet20.pth) |
-| Prune-EA | resnet20.ckpt | /cache/models/resnet20.ckpt | [下载](http://vega.inhuawei.com/models/pretrained/prune/resnet20.ckpt.tar.gz) |
-| SP-NAS | resnet50-19c8e357.pth | /cache/models/resnet50-19c8e357.pth | [下载](http://www.noahlab.com.hk/opensource/vega/models/pretrained/resnet50-19c8e357.pth) |
-| SP-NAS | SPNet_ECP_ImageNetPretrained_0.7978.pth | /cache/models/SPNet_ECP_ImageNetPretrained_0.7978.pth | [下载](http://www.noahlab.com.hk/opensource/vega/models/pretrained/SPNet_ECP_ImageNetPretrained_0.7978.pth) |
-| SP-NAS | SPNetXB_COCO_ImageNetPretrained.pth | /cache/models/SPNetXB_COCO_ImageNetPretrained.pth | [下载](http://www.noahlab.com.hk/opensource/vega/models/pretrained/SPNetXB_COCO_ImageNetPretrained.pth) |
+| Adelaide-EA | mobilenet_v2-b0353104.pth | /cache/models/mobilenet_v2-b0353104.pth | [下载](https://box.saas.huaweicloud.com/p/e9e06f49505a1959da6cba9401b2bf38) |
+| Prune-EA | resnet20.pth | /cache/models/resnet20.pth | [下载](https://box.saas.huaweicloud.com/p/67cd96e5da41b1c5a88f2b323446c0f8) |
+| Prune-EA | resnet20.ckpt | /cache/models/resnet20.ckpt | [下载](https://box.saas.huaweicloud.com/p/7f1743a041a0ede7f68713d1360a57d5) |
+| SP-NAS | resnet50-19c8e357.pth | /cache/models/resnet50-19c8e357.pth | [下载](https://box.saas.huaweicloud.com/p/f2ab3a1869f55de2053fb1404fc1c6d3) |
+| SP-NAS | SPNetXB_COCO_ImageNetPretrained.pth | /cache/models/SPNetXB_COCO_ImageNetPretrained.pth | [下载](https://box.saas.huaweicloud.com/p/40b2259114ac0e3343e278258a60d1fb) |
 
 要说明的是，示例中的配置项都设置的很小，是为了更快的运行出结果，但过小的配置会造成运行结果是不理想的，所以大家可以参考各个算法的说明文档，根据需要来修改和调整配置，运行出所需的结果。
 
@@ -175,7 +159,7 @@ python3 ./run_example.py ./nas/cars/cars.yml
     | fully train | 输出 | 网络描述文件：tasks/\<task id\>/output/mutate/model_desc_\<id\>.json <br> 模型：tasks/\<task id\>/output/fully_train/model_0.pth |
     | fully train | 运行时间估算 | epochs * 1个epoch的训练时间 |
 
-8. AutoGate
+8. AutoFis
 
     | 阶段 | 选项 | 内容 |
     | :--: | :--: | :-- |
@@ -200,7 +184,7 @@ python3 ./run_example.py ./nas/cars/cars.yml
 
     | 阶段 | 选项 | 内容 |
     | :--: | :--: | :-- |
-    | fully train | 输入 | 配置文件：data_augmentation/cyclesr/cyclesr.yml <br> 数据集：/cache/datasets/DIV2K_unknown |
+    | fully train | 输入 | 配置文件：data_augmentation/cyclesr/cyclesr.yml <br> 数据集：/cache/datasets/DIV2K_unpair |
     | fully train | 输出 | 模型：tasks/\<task id\>/output/fully_train/model_0.pth |
     | fully train | 运行时间估算 |  n_epoch * 1个epoch的训练时间 |
 
@@ -210,8 +194,8 @@ python3 ./run_example.py ./nas/cars/cars.yml
 
     | 阶段 | 选项 | 内容 |
     | :--: | :--: | :-- |
-    | hpo1 | 输入 | 配置文件：hpo/asha\|bohb\|boss/hpo/asha\|bohb\|boss.yml <br> 数据集：/cache/datasets/cifar10 |
-    | hpo1 | 输出 | 超参描述文件：tasks/\<task id\>/output/hpo1/best_hps.json |
+    | hpo | 输入 | 配置文件：hpo/asha\|bohb\|boss/hpo/asha\|bohb\|boss.yml <br> 数据集：/cache/datasets/cifar10 |
+    | hpo | 输出 | 超参描述文件：tasks/\<task id\>/output/hpo/best_hps.json |
 
 ### 3.5 Fully Train
 

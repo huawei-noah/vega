@@ -12,15 +12,16 @@
 import os
 import random
 import logging
-from vega.search_space.search_algs.search_algorithm import SearchAlgorithm
-from vega.search_space.search_algs.random_search import RandomSearchAlgorithm
-from vega.core.common.file_ops import FileOps
+from vega.core.search_algs import SearchAlgorithm
+from zeus.common import FileOps
 from .utils.resnet_variant_det_codec import ResNetVariantDetCodec
 from .utils.resnext_variant_det_codec import ResNeXtVariantDetCodec
 import pandas as pd
 from .conf import AutoLaneConfig
-from vega.core.report import Report
-from vega.core.common.class_factory import ClassType, ClassFactory
+from zeus.report import Report
+from zeus.common import ClassType, ClassFactory
+from zeus.common.config import Config
+from zeus.common import update_dict
 
 
 @ClassFactory.register(ClassType.SEARCH_ALGORITHM)
@@ -43,7 +44,6 @@ class AutoLaneNas(SearchAlgorithm):
         self.max_sample = self.config.max_sample
         self.min_sample = self.config.min_sample
         self.sample_count = 0
-        self.random_search = RandomSearchAlgorithm(self.search_space)
 
     def get_pareto_front(self):
         """Get the pareto front of trained candidates."""
@@ -73,8 +73,9 @@ class AutoLaneNas(SearchAlgorithm):
         sample = {}
         while sample is None or 'code' not in sample:
             if random.random() < self.random_ratio or self.get_pareto_list_size() == 0:
-                sample_desc = self.random_search.search()
-                sample['code'] = self.codec.encode(sample_desc)
+                sample_desc = self.search_space.sample()
+                sample_desc = self.decode(sample_desc)
+                sample['code'] = self.codec.encode(sample_desc['network'])
                 sample['method'] = 'random'
             else:
                 code_to_mutate = self.get_pareto_front()
@@ -84,9 +85,8 @@ class AutoLaneNas(SearchAlgorithm):
 
         logging.info(sample)
         sample_desc = self.codec.decode(sample)
-        sample_desc['detector']['limits'] = {'GFlops': self.config.flops_ceiling_set_by_GFlops}
 
-        return self.sample_count, sample_desc
+        return sample_desc
 
     def ea_sample(self, code):
         """Run EA algorithm to generate new architecture."""
@@ -100,6 +100,36 @@ class AutoLaneNas(SearchAlgorithm):
 
     def random_sample(self):
         """Random sample from search_space."""
-        sample_desc = self.random_search.search()
+        sample_desc = self.search_space.sample()
         sample = self.codec.encode(sample_desc, is_random=True)
         return sample
+
+    @property
+    def max_samples(self):
+        """Get max samples number."""
+        return self.max_sample
+
+    def decode(self, desc):
+        """Decode hps: `trainer.optim.lr : 0.1` to dict format.
+
+        And convert to `zeus.common.config import Config` object
+        This Config will be override in Trainer or Datasets class
+        The override priority is: input hps > user configuration >  default configuration
+        :param hps: hyper params
+        :return: dict
+        """
+        hps_dict = {}
+        if desc is None:
+            return None
+        if isinstance(desc, tuple):
+            return desc
+        for hp_name, value in desc.items():
+            hp_dict = {}
+            for key in list(reversed(hp_name.split('.'))):
+                if hp_dict:
+                    hp_dict = {key: hp_dict}
+                else:
+                    hp_dict = {key: value}
+            # update cfg with hps
+            hps_dict = update_dict(hps_dict, hp_dict, [])
+        return Config(hps_dict)

@@ -10,10 +10,9 @@
 
 """Codec for searching quantization model."""
 import copy
-from vega.core.common.utils import update_dict
-from vega.core.common.class_factory import ClassType, ClassFactory
-from vega.search_space.codec import Codec
-from vega.search_space.networks import NetworkDesc
+from zeus.common import update_dict
+from zeus.common import ClassType, ClassFactory
+from vega.core.search_algs.codec import Codec
 
 
 @ClassFactory.register(ClassType.CODEC)

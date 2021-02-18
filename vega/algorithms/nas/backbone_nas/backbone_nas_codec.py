@@ -12,9 +12,8 @@
 import copy
 import logging
 import random
-
-from vega.core.common.class_factory import ClassType, ClassFactory
-from vega.search_space.codec import Codec
+from zeus.common import ClassType, ClassFactory
+from vega.core.search_algs.codec import Codec
 
 
 @ClassFactory.register(ClassType.CODEC)
@@ -49,11 +48,9 @@ class BackboneNasCodec(Codec):
                           101: (33, [0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0,
                                      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0])}
         default_count = 3
-        net_name = list(sample_desc['backbone'].keys())[0]
-        net = sample_desc['backbone'][net_name]
-        base_depth = net['base_depth']
-        double_channel = net['doublechannel']
-        down_sample = net['downsample']
+        base_depth = sample_desc['network.backbone.depth']
+        double_channel = sample_desc['network.backbone.doublechannel']
+        down_sample = sample_desc['network.backbone.downsample']
         if double_channel != down_sample:
             return None
         code = [[], []]
@@ -90,35 +87,12 @@ class BackboneNasCodec(Codec):
         if 'code' not in sample:
             raise ValueError('No code to decode in sample:{}'.format(sample))
         code = sample.pop('code')
-        desc = {"modules": []}
-
-        out_channel = 0
-        for net_name, net in sample.items():
-            desc['modules'].append(net_name)
-            tmp_dict = {}
-            for sub_net_name, sub_net in net.items():
-                tmp_dict = copy.deepcopy(sub_net)
-                tmp_dict['name'] = sub_net_name
-                break
-            tmp_doublechannel = [0]
-            if "doublechannel" in tmp_dict:
-                tmp_dict["doublechannel"] = code[0]
-                tmp_doublechannel = code[0]
-            if "base_channel" in tmp_dict:
-                if int(tmp_dict["base_depth"]) < 50:
-                    out_channel = int(
-                        tmp_dict["base_channel"]) * 2 ** (sum(tmp_doublechannel))
-                else:
-                    out_channel = int(
-                        tmp_dict["base_channel"]) * 4 * 2 ** (sum(tmp_doublechannel))
-            if "downsample" in tmp_dict:
-                tmp_dict["downsample"] = code[1]
-            if net_name == "head":
-                tmp_dict["base_channel"] = out_channel
-            else:
-                if len(tmp_dict["downsample"]) != len(tmp_dict["doublechannel"]):
-                    return None
-            desc[net_name] = tmp_dict
-
+        desc = copy.deepcopy(sample)
+        if "network.backbone.doublechannel" in desc:
+            desc["network.backbone.doublechannel"] = code[0]
+        if "network.backbone.downsample" in desc:
+            desc["network.backbone.downsample"] = code[1]
+        if len(desc["network.backbone.downsample"]) != len(desc["network.backbone.doublechannel"]):
+            return None
         logging.info("decode:{}".format(desc))
         return desc

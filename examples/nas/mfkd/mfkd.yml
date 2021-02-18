@@ -19,7 +19,7 @@ nas:
         type: SearchSpace
         modules: ['custom']
         custom:
-            name: SimpleCnn
+            type: SimpleCnn
             conv_layer_0:
                 kernel_size: [1, 3, 5]
                 bn: [False, True]

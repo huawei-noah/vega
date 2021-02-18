@@ -14,12 +14,10 @@ import traceback
 import logging
 import signal
 from .pipe_step import PipeStep
-from vega.core.common.user_config import UserConfig
-from vega.core.common.class_factory import ClassFactory
-from vega.core.common.loader import load_conf_from_desc
-from vega.core.scheduler.master import Master
+from zeus.common.user_config import UserConfig
+from vega.core.scheduler import shutdown_cluster
 from .conf import PipeStepConfig, PipelineConfig
-from ..common.general import General
+from zeus.common.general import General
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +34,7 @@ class Pipeline(object):
 
         def _shutdown_cluster(signum, frame):
             logging.info("Shutdown urgently.")
-            Master.shutdown()
+            shutdown_cluster()
             os._exit(0)
 
         try:
@@ -45,16 +43,30 @@ class Pipeline(object):
             for step_name in PipelineConfig.steps:
                 step_cfg = UserConfig().data.get(step_name)
                 General.step_name = step_name
-                ClassFactory().set_current_step(step_cfg)
-                # load Config obj form desc
-                load_conf_from_desc(PipeStepConfig, step_cfg)
+                PipeStepConfig.renew()
+                PipeStepConfig.from_json(step_cfg, skip_check=False)
+                self._set_evaluator_config(step_cfg)
                 logger.info("Start pipeline step: [{}]".format(step_name))
+                logger.debug("Pipe step config: {}".format(PipeStepConfig()))
+                if PipeStepConfig.type == "NasPipeStep":
+                    General._parallel = General.parallel_search
+                if PipeStepConfig.type == "FullyTrainPipeStep":
+                    General._parallel = General.parallel_fully_train
                 PipeStep().do()
         except Exception:
             logger.error("Failed to run pipeline.")
             logger.error(traceback.format_exc())
         try:
-            Master.shutdown()
+            shutdown_cluster()
         except Exception:
             logger.error("Failed to shutdown dask cluster.")
             logger.error(traceback.format_exc())
+
+    def _set_evaluator_config(self, step_cfg):
+        if "evaluator" in step_cfg:
+            if "gpu_evaluator" in step_cfg["evaluator"]:
+                PipeStepConfig.evaluator.gpu_evaluator_enable = True
+                PipeStepConfig.evaluator_enable = True
+            if "davinci_mobile_evaluator" in step_cfg["evaluator"]:
+                PipeStepConfig.evaluator.davinci_mobile_evaluator_enable = True
+                PipeStepConfig.evaluator_enable = True

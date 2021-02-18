@@ -10,7 +10,8 @@
 
 """Defined Configs."""
 
-from vega.search_space.search_algs import EAConfig
+from vega.core.search_algs import EAConfig
+from zeus.common import ConfigSerializable
 
 
 class CARSPolicyConfig(EAConfig):
@@ -29,7 +30,7 @@ class CARSPolicyConfig(EAConfig):
     criterion = dict(type='CrossEntropyLoss')
 
 
-class CARSConfig(object):
+class CARSConfig(ConfigSerializable):
     """CARS Config."""
 
     codec = 'DartsCodec'

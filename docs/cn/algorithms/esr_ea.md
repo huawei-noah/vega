@@ -119,15 +119,7 @@ fully_train:
 
 并在网络结构搜索完的文件中，可以选择最优的一个也可以选择最优的N个进行完整训练，使用多个网络训练一般可以获得更好是效果。
 
-在调整了以上参数后，运行pipeline的流程代码如下：
-
-```python
-import vega
-
-
-if __name__ == '__main__':
-    vega.run('./esr_ea.yml')
-```
+在调整了以上参数后，请参考[示例参考](../user/examples.md)，运行程序。
 
 ## 5. 算法输出
 
@@ -138,3 +130,7 @@ if __name__ == '__main__':
 ```text
 [1] Chu, X.; Zhang, B.; Ma, H.; Xu, R.; Li, J.; and Li, Q. 2019. Fast, accurate and lightweight super-resolution with neural architecture search. arXiv preprint arXiv:1901.07261.
 ```
+
+## 6. Benchmark
+
+Benchmark配置信息请参考: [esr_ea.yml](https://github.com/huawei-noah/vega/tree/master/benchmark/algs/nas/esr_ea.yml)
