@@ -16,9 +16,9 @@ from sklearn import preprocessing
 import numpy as np
 import logging
 
-import mfasc_utils
+import vega.algorithms.nas.mfasc.mfasc_utils as mfasc_utils
 
-
+logger = logging.getLogger(__name__)
 '''
 Note: search steps must be performed successively 
 (parallel calls of the search method will violate the algorithms assumptions).
@@ -33,19 +33,27 @@ class MFASC(SearchAlgorithm):
         self.search_space = copy.deepcopy(search_space.search_space)
         self.budget_spent = 0
         self.batch_size = 1000
+
+        #seed = self.cfg.get('seed', 99999)
+        #np.random.seed(seed)
+
         self.hf_epochs = self.cfg['hf_epochs'] 
         self.lf_epochs = self.cfg['lf_epochs']
         self.max_budget = self.cfg['max_budget'] # total amount of epochs to train
         self.predictor = mfasc_utils.make_mf_predictor()
-        self.r = 5 # fidelity ratio from the MFASC algorithm
-        self.min_hf_sample_size = 10
-        self.min_lf_sample_size = 30
+        self.r = self.cfg['fidelity_ratio']  # fidelity ratio from the MFASC algorithm
+        self.min_hf_sample_size = self.cfg['min_hf_sample_size'] 
+        self.min_lf_sample_size = self.cfg['min_lf_sample_size'] 
         self.hf_sample = [] # pairs of (id, score)
         self.lf_sample = [] # pairs of (id, score)
         self.rho = 1.0
         self.beta = 1.0
         self.cur_fidelity = None
         self.cur_i = None
+
+        self.best_model_idx = None
+
+        self._get_all_arcs()
 
     def search(self):
         remaining_hf_inds = np.array(list(set(range(len(self.X))) - set([x[0] for x in self.hf_sample])))
@@ -76,6 +84,7 @@ class MFASC(SearchAlgorithm):
                 acquisition_score = mu + self.beta * sigma
                 i = inds[np.argmax(acquisition_score)]
                 self.cur_fidelity = 'high'
+                train_epochs = self.hf_epochs
             else:
                 # search lf
                 inds = remaining_lf_inds[np.random.choice(len(remaining_lf_inds), self.batch_size, replace=False)]
@@ -86,21 +95,27 @@ class MFASC(SearchAlgorithm):
                 else:
                     acquisition_score = mu - self.beta * sigma
                 i = inds[np.argmin(acquisition_score)]
+                train_epochs = self.lf_epochs
                 self.cur_fidelity = 'low'
 
         desc = self._desc_from_choices(self.choices[i])
         self.budget_spent += train_epochs
         self.cur_i = i
-        return self.budget_spent, NetworkDesc(desc), train_epochs # todo: use NasPipeStepMF!
+        return self.budget_spent, NetworkDesc(desc), train_epochs 
 
     def update(self, worker_path):
+        logger.info(f'Updating, cur fidelity: {self.cur_fidelity}')
+
         with open(os.path.join(worker_path, 'performance.txt')) as infile:
-            results = infile.read()
+            perf = infile.read()
 
         acc = eval(perf)[0]
 
         if self.cur_fidelity == 'high':
             self.hf_sample.append((self.cur_i, acc))
+
+            self.best_model_idx = max(self.hf_sample, key = lambda x : x[1])[0]
+            self.best_model_desc = self._desc_from_choices(self.choices[self.best_model_idx])
         else:
             self.lf_sample.append((self.cur_i, acc))
 

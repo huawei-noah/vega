@@ -1,6 +1,6 @@
 import numpy as np
 from sklearn.ensemble import BaggingRegressor
-from xgboost import XGBRegressor
+from sklearn.ensemble import GradientBoostingRegressor
 import copy
 from scipy.stats import linregress
 
@@ -73,13 +73,14 @@ class MFBaggingRegressorStacked(MFModel):
         return np.mean(base_preds, axis=0), np.std(base_preds, axis=0)
 
 
-def make_mf_predictor(name='xgb_stacked'):
-    if name=='xgb_stacked':
-        return MFBaggingRegressorStacked(base_estimator=XGBRegressor(n_estimators=50, 
-                                                                     max_depth=5, 
-                                                                     n_jobs=1),
+def make_mf_predictor(name='gb_stacked'):
+    if name=='gb_stacked':
+        return MFBaggingRegressorStacked(base_estimator=GradientBoostingRegressor(
+                                                            n_estimators=50, 
+                                                            max_depth=5,
+                                                        ),
                                          n_estimators=20,
-                                         max_samples=0.5,
+                                         max_samples=0.51,
                                          n_jobs=1)
     else:
         raise ValueError("Unknown name, possible options: 'xgb_stacked'")

@@ -5,3 +5,6 @@ from .pipeline import Pipeline
 from .generator import Generator
 from .fully_train_pipe_step import FullyTrainPipeStep
 from .benchmark_pipe_step import BenchmarkPipeStep
+from .nas_pipe_step_mf import NasPipeStepMF
+from .fully_train_pipe_step_fixed_seed import FullyTrainPipeStepFixedSeed
+from .generator_mf import GeneratorMF
