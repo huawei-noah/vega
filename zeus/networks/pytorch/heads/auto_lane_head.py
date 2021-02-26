@@ -59,7 +59,7 @@ class AutoLaneHead(Module):
                 nn.init.constant_(m.weight, 1)
                 nn.init.constant_(m.bias, 0)
 
-    def forward_train(self, input, **kwargs):
+    def forward(self, input, **kwargs):
         """Forward method of this head."""
         predict_up = self.conv_up_conv(input).permute((0, 2, 3, 1))
         predict_down = self.conv_down_conv(input).permute((0, 2, 3, 1))
