@@ -45,7 +45,7 @@ class AutoLaneValConfig(AutoLaneCommonConfig):
 class AutoLaneTestConfig(AutoLaneCommonConfig):
     """Default Dataset config for Curve Lane."""
 
-    train_portion = 0.5
+    pass
 
 
 class AutoLaneConfig(ConfigSerializable):
