@@ -1,7 +1,3 @@
-general:
-    parallel_search: True
-    parallel_fully_train: True
-
 pipeline: [nas, fully_train]
 
 nas:
