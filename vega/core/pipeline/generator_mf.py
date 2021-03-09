@@ -10,9 +10,6 @@
 
 """Generator for NasPipeStep."""
 import logging
-from vega.search_space.search_algs import SearchAlgorithm
-from vega.search_space.search_space import SearchSpace
-from vega.search_space.networks.network_desc import NetworkDesc
 
 from .generator import Generator
 

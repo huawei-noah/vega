@@ -1,14 +1,23 @@
+# -*- coding:utf-8 -*-
+
+# Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the MIT License.
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# MIT License for more details.
+
 import os
 import copy
 import json
 import random
 import torch.nn as nn
 import vega
-from vega.core.common.utils import update_dict
-from vega.core.common.class_factory import ClassFactory, ClassType
-from vega.core.common import UserConfig, TaskOps, FileOps
-from vega.search_space.networks import NetTypes, NetworkFactory, NetworkDesc
-from vega.search_space.search_algs import SearchAlgorithm
+from zeus.common import update_dict
+from zeus.common import ClassFactory, ClassType, UserConfig
+from zeus.networks.network_desc import NetworkDesc
+from vega.core.search_algs import SearchAlgorithm
 from sklearn.gaussian_process import GaussianProcessRegressor as GPR
 from sklearn.gaussian_process.kernels import RBF
 import itertools
@@ -17,6 +26,7 @@ import numpy as np
 import logging
 
 import vega.algorithms.nas.mfasc.mfasc_utils as mfasc_utils
+from .conf import MFASCConfig
 
 logger = logging.getLogger(__name__)
 '''
@@ -28,34 +38,31 @@ Note: search steps must be performed successively
 @ClassFactory.register(ClassType.SEARCH_ALGORITHM)
 class MFASC(SearchAlgorithm):
 
+    config = MFASCConfig()
+
     def __init__(self, search_space):
         super(MFASC, self).__init__(search_space)
-        self.search_space = copy.deepcopy(search_space.search_space)
+        self.search_space = copy.deepcopy(search_space)
         self.budget_spent = 0
-        self.batch_size = 1000
-
-        #seed = self.cfg.get('seed', 99999)
-        #np.random.seed(seed)
-
-        self.hf_epochs = self.cfg['hf_epochs'] 
-        self.lf_epochs = self.cfg['lf_epochs']
-        self.max_budget = self.cfg['max_budget'] # total amount of epochs to train
-        self.predictor = mfasc_utils.make_mf_predictor()
-        self.r = self.cfg['fidelity_ratio']  # fidelity ratio from the MFASC algorithm
-        self.min_hf_sample_size = self.cfg['min_hf_sample_size'] 
-        self.min_lf_sample_size = self.cfg['min_lf_sample_size'] 
+        self.batch_size = self.config.batch_size
+        self.hf_epochs = self.config.hf_epochs
+        self.lf_epochs = self.config.lf_epochs
+        self.max_budget = self.config.max_budget # total amount of epochs to train
+        self.predictor = mfasc_utils.make_mf_predictor(self.config)
+        self.r = self.config.fidelity_ratio  # fidelity ratio from the MFASC algorithm
+        self.min_hf_sample_size = self.config.min_hf_sample_size
+        self.min_lf_sample_size = self.config.min_lf_sample_size
         self.hf_sample = [] # pairs of (id, score)
         self.lf_sample = [] # pairs of (id, score)
-        self.rho = 1.0
-        self.beta = 1.0
+        self.rho = self.config.prior_rho
+        self.beta = self.config.beta
         self.cur_fidelity = None
         self.cur_i = None
-
         self.best_model_idx = None
-
         self._get_all_arcs()
 
     def search(self):
+        print(len(self.hf_sample), len(self.lf_sample))
         remaining_hf_inds = np.array(list(set(range(len(self.X))) - set([x[0] for x in self.hf_sample])))
         remaining_lf_inds = np.array(list(set(range(len(self.X))) - set([x[0] for x in self.lf_sample])))
         if len(self.hf_sample) < self.min_hf_sample_size:
@@ -69,6 +76,7 @@ class MFASC(SearchAlgorithm):
             train_epochs = self.lf_epochs
             self.cur_fidelity = 'low'
         else:
+            print('UPDATE!!!')
             # update model
             X_low = np.array([self.X[s[0]] for s in self.lf_sample])
             y_low = np.array([s[1] for s in self.lf_sample])

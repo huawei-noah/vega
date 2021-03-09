@@ -1,8 +1,21 @@
+# -*- coding:utf-8 -*-
+
+# Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the MIT License.
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# MIT License for more details.
+
 import numpy as np
 from sklearn.ensemble import BaggingRegressor
 from sklearn.ensemble import GradientBoostingRegressor
 import copy
 from scipy.stats import linregress
+from sklearn.gaussian_process.kernels import RBF, ConstantKernel, WhiteKernel
+import vega.algorithms.nas.mfasc.mfgpr as mfgpr
+from .conf import MFASCConfig
 
 class MFModel:
     '''
@@ -72,9 +85,38 @@ class MFBaggingRegressorStacked(MFModel):
 
         return np.mean(base_preds, axis=0), np.std(base_preds, axis=0)
 
+class MFGPR(MFModel):
+    
+    def __init__(self, **args):
+        '''
+        Init model.
+        '''
+        self.model = mfgpr.GaussianProcessCoKriging(**copy.deepcopy(args))
+    
+    def fit(self, X_train_lf, y_train_lf, X_train_hf, y_train_hf):
+        '''
+        Fits a model to low- and high- fidelity samples using stacking scheme for BaggingRegressor.
+        '''
+        self.model.fit(X_train_lf, y_train_lf, X_train_hf, y_train_hf)
+       
+    def predict_hf(self, X):
+        '''
+        Predicts low-fidelity values.
+        '''
+        pred_mean, pred_std = self.model.predict(X, return_std=True)
 
-def make_mf_predictor(name='gb_stacked'):
-    if name=='gb_stacked':
+        return self.model.rho, pred_mean, pred_std
+
+    def predict_lf(self, X):
+        '''
+        Predicts low-fidelity values.
+        '''
+        pred_mean, pred_std = self.model.predict(X, return_std=True)
+
+        return pred_mean, pred_std
+
+def make_mf_predictor(config=MFASCConfig()):
+    if config.predictor_type == 'gb_stacked':
         return MFBaggingRegressorStacked(base_estimator=GradientBoostingRegressor(
                                                             n_estimators=50, 
                                                             max_depth=5,
@@ -82,5 +124,10 @@ def make_mf_predictor(name='gb_stacked'):
                                          n_estimators=20,
                                          max_samples=0.51,
                                          n_jobs=1)
+    elif config.predictor_type == 'mfgpr':
+        composite_kernel = RBF(length_scale=1, length_scale_bounds=(0.001, 100))
+        composite_kernel = ConstantKernel(1, constant_value_bounds=(0.001, 100)) * composite_kernel
+        composite_kernel = WhiteKernel(noise_level=1, noise_level_bounds=(0.001, 100)) + composite_kernel
+        return MFGPR(kernel=composite_kernel, n_restarts_optimizer=3)
     else:
-        raise ValueError("Unknown name, possible options: 'xgb_stacked'")
+        raise ValueError("Unknown name, possible options: 'xgb_stacked' and 'mfgpr'")

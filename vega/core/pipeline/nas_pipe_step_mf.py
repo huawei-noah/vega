@@ -9,19 +9,17 @@
 # MIT License for more details.
 
 """Nas Pipe Step (Multi-Fidelity) defined in Pipeline."""
+
+
 import logging
 import traceback
-from .pipe_step import PipeStep
 from .generator_mf import GeneratorMF
-from ..scheduler.master import Master
-from ..common.class_factory import ClassFactory, ClassType
+from zeus.common import ClassFactory, ClassType, UserConfig
 from .nas_pipe_step import NasPipeStep
-from vega.core.common import UserConfig, TaskOps, FileOps
 import os
 import json
 import torch
 import numpy as np
-from ..common import Config, UserConfig, DefaultConfig
 
 logger = logging.getLogger(__name__)
 
@@ -33,9 +31,6 @@ class NasPipeStepMF(NasPipeStep):
     def __init__(self):
         super(NasPipeStepMF, self).__init__()
         self.generator = GeneratorMF()
-        #seed = self.cfg.get('seed', 99999)
-        #np.random.seed(seed)
-        #torch.manual_seed(seed)
 
     def _save_model_desc_file(self, desc, desc_file):
         output = {}

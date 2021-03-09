@@ -1,4 +1,4 @@
-general:
+  general:
     worker:
         timeout: 1000.0
 
@@ -64,14 +64,14 @@ nas:
                 channels: [320, 640]
 
     trainer:
-      type: Trainer
-      epochs: 1
-      valid_freq: 1
-      optim:
-          type: SGD
-          lr: 0.001
-          momentum: 0.9
-          weight_decay: 5.0e-4
+        type: Trainer
+        epochs: 1
+        valid_freq: 1
+        optim:
+            type: SGD
+            lr: 0.001
+            momentum: 0.9
+            weight_decay: 5.0e-4
 
 
 fully_train:
