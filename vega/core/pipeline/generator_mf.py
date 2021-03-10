@@ -22,7 +22,6 @@ class GeneratorMF(Generator):
 
     def sample(self):
         """Sample a work id and model from search algorithm."""
-        id, params, epochs = self.search_alg.search()
-        model = params.to_model()
-        return id, model, epochs
+        iter_id, model_desc, epochs = self.search_alg.search()
+        return (iter_id, model_desc, epochs)
 

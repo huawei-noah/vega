@@ -16,7 +16,6 @@ import torch.nn as nn
 import vega
 from zeus.common import update_dict
 from zeus.common import ClassFactory, ClassType, UserConfig
-from zeus.networks.network_desc import NetworkDesc
 from vega.core.search_algs import SearchAlgorithm
 from sklearn.gaussian_process import GaussianProcessRegressor as GPR
 from sklearn.gaussian_process.kernels import RBF
@@ -62,7 +61,6 @@ class MFASC(SearchAlgorithm):
         self._get_all_arcs()
 
     def search(self):
-        print(len(self.hf_sample), len(self.lf_sample))
         remaining_hf_inds = np.array(list(set(range(len(self.X))) - set([x[0] for x in self.hf_sample])))
         remaining_lf_inds = np.array(list(set(range(len(self.X))) - set([x[0] for x in self.lf_sample])))
         if len(self.hf_sample) < self.min_hf_sample_size:
@@ -76,7 +74,6 @@ class MFASC(SearchAlgorithm):
             train_epochs = self.lf_epochs
             self.cur_fidelity = 'low'
         else:
-            print('UPDATE!!!')
             # update model
             X_low = np.array([self.X[s[0]] for s in self.lf_sample])
             y_low = np.array([s[1] for s in self.lf_sample])
@@ -109,23 +106,21 @@ class MFASC(SearchAlgorithm):
         desc = self._desc_from_choices(self.choices[i])
         self.budget_spent += train_epochs
         self.cur_i = i
-        return self.budget_spent, NetworkDesc(desc), train_epochs 
+        return self.budget_spent, desc, train_epochs 
 
-    def update(self, worker_path):
+    def update(self, report):
         logger.info(f'Updating, cur fidelity: {self.cur_fidelity}')
-
-        with open(os.path.join(worker_path, 'performance.txt')) as infile:
-            perf = infile.read()
-
-        acc = eval(perf)[0]
+        acc = report['performance'].get('accuracy', np.nan)
 
         if self.cur_fidelity == 'high':
             self.hf_sample.append((self.cur_i, acc))
 
             self.best_model_idx = max(self.hf_sample, key = lambda x : x[1])[0]
             self.best_model_desc = self._desc_from_choices(self.choices[self.best_model_idx])
-        else:
+        elif self.cur_fidelity == 'low':
             self.lf_sample.append((self.cur_i, acc))
+        else:
+            raise ValueError(f'cur fidelity is {self.cur_fidelity}; it shall be either "high" or "low"')
 
     @property
     def is_completed(self):
