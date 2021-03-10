@@ -16,6 +16,9 @@ For each fidelity choice, the algorithm first computes the parameters of a regre
 
 The algorithm is applicable to any search space that can be encoded into ℝ^n.
 
+We use a MobileNetV2 search space (see HYPERLINK "https://arxiv.org/abs/1906.09607") to demonstrate the work of MF-ASC.
+The search space includes various combinations of values of repetitions and channels for each layer of the MobileNetV2.
+
 ## 4. Usage Guide
 
 For details about how to search a model, see the following configuration file for parameter setting:
@@ -36,3 +39,7 @@ min_hf_sample_size - the minimum amount of high-fidelity evaluations (sampled ra
 min_lf_sample_size - the minimum amount of low-fidelity evaluations (sampled randomly prior to the active search process)
 predictor_type - either 'mfgpr' for applying Multi-fidelity Gaussian process regression or 'gb_stacked' for applying stacking of fidelities in gradient boosting regressor
 ```
+
+## 5. Output
+
+The output is default reports.csv file from the Vega library.
