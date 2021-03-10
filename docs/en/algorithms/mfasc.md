@@ -1,236 +1,38 @@
-# MF-ASC: Multi-fidelity NAS with co-kriging.
+# MF-ASC: Multi-Fidelity neural Architecture Search with Co-kriging.
+
+MF-ASC is an individual optimization method (no weight sharing), that works with arbitrary search spaces.
+The search algorithm is described in the paper HYPERLINK "https://dl.acm.org/doi/10.1145/3292500.3330893" (see algorithm 1).
 
 ## 1. Algorithm Introduction
 
-Many existing NAS methods can only get one network structure during the search iteration, and cannot take into account various hardware constraints, like power, performance, latency etc. In addition, although the evolutionary algorithm-based NAS method achieves good performance, each generation of samples needs to be retrained for evaluation, which greatly affects the search efficiency. Considering the insufficiency of the existing NAS methods, we propose a continuous evolution approach called Efficient Neural Architecture Search (CARS). CARS maintains an optimal model solution set, and updates the parameters of the supernet through the model in the solution set. In each iteration of evolutionary algorithm, current samples can directly inherit the parameters from the supernet and parent samples, which effectively improves the efficiency of evolution. CARS can obtain a series of models with different sizes and precisions in one search. Users can select the corresponding model based on the resource constraints in the actual application. For details about the CARS algorithm, see  HYPERLINK "https://arxiv.org/abs/1909.04977" https://arxiv.org/abs/1909.04977. 
+Multifidelity optimization is applied in the design of complex systems, where a computationally expensive high-fidelity objective function is approximated by a less expensive low-fidelity function and a few high-fidelity samples. In the context of neural architecture search, high- and low-fidelity evaluations are defined by the number of training steps before measuring networks' quality metrics on a validation dataset. MF-ASC algorithm addresses the exploration-exploitation dilemma using the acquisition criterion called upper confidence bound (UCB); we provide the means to integrate high- and low-fidelity sources by Bayesian multifidelity inference with co-kriging schema. 
 
 ## 2. Algorithm Principles
 
-The following figure shows the principle of the CARS algorithm. The CARS algorithm maintains a supernet, and each subnet is a sample of the supernet. In the process of evolutionary algorithm, the weight of all the subnets is shared with the supernet, so that the samples of the sub-generation can inherit the weight of the samples of the parent generation directly, thus realizing continuous evolution. CARS algorithm uses pNSGA - III algorithm to protect large models in the searching process and increase the coverage of the searching model. The CARS algorithm uses the subnets in the Pareto frontier to update the weight of supernet. The weight update of supernet and the evolutionary update of subnets are performed alternately.
+At each step the generator decides which fidelity to use and samples an item from the dataset that has not been evaluated with this fidelity level so far. A parameter r ≥ 0 determines the ratio of low-fidelity to high-fidelity calls; this parameter should be provided by the user.
+For each fidelity choice, the algorithm first computes the parameters of a regression model using the current state information; it returns the item that maximizes the UCB acquisition criterion by the regression model for either fidelity, excluding previously chosen items. The parameter beta defines exploration and exploitation trade-off: large values favor exploring items having high uncertainty in quality, while small values favor exploiting items having high expeted quality.
 
-![framework](./images/cars_framework.png)
+## 3. Search Space
 
-### 2.1 Search Space
+The algorithm is applicable to any search space that can be encoded into ℝ^n.
 
-#### DARTS search space
+## 4. Usage Guide
 
-The CARS in the pipeline integrates the search space of DARTS. The overall structure is as follows:
+For details about how to search a model, see the following configuration file for parameter setting:
 
-![darts_search_sapce](./images/cars_darts_search_sapce.png)
+- vega/examples/nas/mfasc/mfasc.yml
 
-For a detailed description of the DARTS search space, see the corresponding  HYPERLINK "https://arxiv.org/abs/1806.09055" ICLR '19 article.
+The configuration of the search algorithm includes the following parameters:
 
-### 2.2 Configuring the Search Space
-
-The search space configuration is as follows:
-
-```yaml
-    search_space:
-        type: SearchSpace
-        modules: ['super_network']
-        super_network:
-            name: CARSDartsNetwork
-            network: ['PreOneStem',
-                      'normal', 'normal', 'reduce',
-                      'normal', 'normal', 'reduce',
-                      'normal', 'normal',
-            ]
-
-            input_size: 32
-            init_channels: 16
-            num_classes: 10
-            auxiliary: False
-            search: True
-
-            normal:
-                type: 'block'
-                name: 'Cell'
-                steps: 4
-                reduction: False
-                genotype:
-                  [
-                  [ ['none', 'max_pool_3x3', 'avg_pool_3x3', 'skip_connect', 'sep_conv_3x3', 'sep_conv_5x5', 'dil_conv_3x3', 'dil_conv_5x5'], 2, 0 ],
-                  [ ['none', 'max_pool_3x3', 'avg_pool_3x3', 'skip_connect', 'sep_conv_3x3', 'sep_conv_5x5', 'dil_conv_3x3', 'dil_conv_5x5'], 2, 1 ],
-                  [ ['none', 'max_pool_3x3', 'avg_pool_3x3', 'skip_connect', 'sep_conv_3x3', 'sep_conv_5x5', 'dil_conv_3x3', 'dil_conv_5x5'], 3, 0 ],
-                  [ ['none', 'max_pool_3x3', 'avg_pool_3x3', 'skip_connect', 'sep_conv_3x3', 'sep_conv_5x5', 'dil_conv_3x3', 'dil_conv_5x5'], 3, 1 ],
-                  [ ['none', 'max_pool_3x3', 'avg_pool_3x3', 'skip_connect', 'sep_conv_3x3', 'sep_conv_5x5', 'dil_conv_3x3', 'dil_conv_5x5'], 3, 2 ],
-                  [ ['none', 'max_pool_3x3', 'avg_pool_3x3', 'skip_connect', 'sep_conv_3x3', 'sep_conv_5x5', 'dil_conv_3x3', 'dil_conv_5x5'], 4, 0 ],
-                  [ ['none', 'max_pool_3x3', 'avg_pool_3x3', 'skip_connect', 'sep_conv_3x3', 'sep_conv_5x5', 'dil_conv_3x3', 'dil_conv_5x5'], 4, 1 ],
-                  [ ['none', 'max_pool_3x3', 'avg_pool_3x3', 'skip_connect', 'sep_conv_3x3', 'sep_conv_5x5', 'dil_conv_3x3', 'dil_conv_5x5'], 4, 2 ],
-                  [ ['none', 'max_pool_3x3', 'avg_pool_3x3', 'skip_connect', 'sep_conv_3x3', 'sep_conv_5x5', 'dil_conv_3x3', 'dil_conv_5x5'], 4, 3 ],
-                  [ ['none', 'max_pool_3x3', 'avg_pool_3x3', 'skip_connect', 'sep_conv_3x3', 'sep_conv_5x5', 'dil_conv_3x3', 'dil_conv_5x5'], 5, 0 ],
-                  [ ['none', 'max_pool_3x3', 'avg_pool_3x3', 'skip_connect', 'sep_conv_3x3', 'sep_conv_5x5', 'dil_conv_3x3', 'dil_conv_5x5'], 5, 1 ],
-                  [ ['none', 'max_pool_3x3', 'avg_pool_3x3', 'skip_connect', 'sep_conv_3x3', 'sep_conv_5x5', 'dil_conv_3x3', 'dil_conv_5x5'], 5, 2 ],
-                  [ ['none', 'max_pool_3x3', 'avg_pool_3x3', 'skip_connect', 'sep_conv_3x3', 'sep_conv_5x5', 'dil_conv_3x3', 'dil_conv_5x5'], 5, 3 ],
-                  [ ['none', 'max_pool_3x3', 'avg_pool_3x3', 'skip_connect', 'sep_conv_3x3', 'sep_conv_5x5', 'dil_conv_3x3', 'dil_conv_5x5'], 5, 4 ],
-                  ]
-                concat: [2, 3, 4, 5]
-            reduce:
-                type: 'block'
-                name: 'Cell'
-                steps: 4
-                reduction: True
-                genotype:
-                  [
-                  [ ['none', 'max_pool_3x3', 'avg_pool_3x3', 'skip_connect', 'sep_conv_3x3', 'sep_conv_5x5', 'dil_conv_3x3', 'dil_conv_5x5'], 2, 0 ],
-                  [ ['none', 'max_pool_3x3', 'avg_pool_3x3', 'skip_connect', 'sep_conv_3x3', 'sep_conv_5x5', 'dil_conv_3x3', 'dil_conv_5x5'], 2, 1 ],
-                  [ ['none', 'max_pool_3x3', 'avg_pool_3x3', 'skip_connect', 'sep_conv_3x3', 'sep_conv_5x5', 'dil_conv_3x3', 'dil_conv_5x5'], 3, 0 ],
-                  [ ['none', 'max_pool_3x3', 'avg_pool_3x3', 'skip_connect', 'sep_conv_3x3', 'sep_conv_5x5', 'dil_conv_3x3', 'dil_conv_5x5'], 3, 1 ],
-                  [ ['none', 'max_pool_3x3', 'avg_pool_3x3', 'skip_connect', 'sep_conv_3x3', 'sep_conv_5x5', 'dil_conv_3x3', 'dil_conv_5x5'], 3, 2 ],
-                  [ ['none', 'max_pool_3x3', 'avg_pool_3x3', 'skip_connect', 'sep_conv_3x3', 'sep_conv_5x5', 'dil_conv_3x3', 'dil_conv_5x5'], 4, 0 ],
-                  [ ['none', 'max_pool_3x3', 'avg_pool_3x3', 'skip_connect', 'sep_conv_3x3', 'sep_conv_5x5', 'dil_conv_3x3', 'dil_conv_5x5'], 4, 1 ],
-                  [ ['none', 'max_pool_3x3', 'avg_pool_3x3', 'skip_connect', 'sep_conv_3x3', 'sep_conv_5x5', 'dil_conv_3x3', 'dil_conv_5x5'], 4, 2 ],
-                  [ ['none', 'max_pool_3x3', 'avg_pool_3x3', 'skip_connect', 'sep_conv_3x3', 'sep_conv_5x5', 'dil_conv_3x3', 'dil_conv_5x5'], 4, 3 ],
-                  [ ['none', 'max_pool_3x3', 'avg_pool_3x3', 'skip_connect', 'sep_conv_3x3', 'sep_conv_5x5', 'dil_conv_3x3', 'dil_conv_5x5'], 5, 0 ],
-                  [ ['none', 'max_pool_3x3', 'avg_pool_3x3', 'skip_connect', 'sep_conv_3x3', 'sep_conv_5x5', 'dil_conv_3x3', 'dil_conv_5x5'], 5, 1 ],
-                  [ ['none', 'max_pool_3x3', 'avg_pool_3x3', 'skip_connect', 'sep_conv_3x3', 'sep_conv_5x5', 'dil_conv_3x3', 'dil_conv_5x5'], 5, 2 ],
-                  [ ['none', 'max_pool_3x3', 'avg_pool_3x3', 'skip_connect', 'sep_conv_3x3', 'sep_conv_5x5', 'dil_conv_3x3', 'dil_conv_5x5'], 5, 3 ],
-                  [ ['none', 'max_pool_3x3', 'avg_pool_3x3', 'skip_connect', 'sep_conv_3x3', 'sep_conv_5x5', 'dil_conv_3x3', 'dil_conv_5x5'], 5, 4 ],
-                  ]
-                concat: [2, 3, 4, 5]
-            preprocess:
-                name: 'darts_stem1'
-
-            linear:
-                name: 'linear'
 ```
-
-## 3. Usage Guide
-
-### 3.1 Dataset Configuration
-
-By default, the CARS uses the CIFAR-10 data set. You can also use customized data sets. To use datasets in user-defined format, you need to implement dataset interface that meet Vega requirements. For details, see the development manual.
-
-The configuration information of the CIFAR-10 database is as follows:
-
-```yaml
-    dataset:
-        type: Cifar10
-        common:
-            data_path: /cache/datasets/cifar10/
-            num_workers: 8
-            train_portion: 0.5
-            drop_last: False
-        train:
-            shuffle: True
-            batch_size: 128
-        val:
-            batch_size: 3500
+batch_size - the number randomly sampled candidates to be assessed by the search method at each iteration of sampling; the best candidate according to UCB criterion is sampled
+prior_rho - prior correlation between low- and high- fidelity quality metrics
+beta - parameter beta for the algorithm
+max_budget - the maximum number of training epochs in total for low- and high-fidelity evaluations
+hf_epochs - the number of training epochs for high-fidelity evaluation
+lf_epochs - the number of training epochs for low-fidelity evaluation
+fidelity_ratio - parameter r for the algorithm
+min_hf_sample_size - the minimum amount of high-fidelity evaluations (sampled randomly prior to the active search process)
+min_lf_sample_size - the minimum amount of low-fidelity evaluations (sampled randomly prior to the active search process)
+predictor_type - either 'mfgpr' for applying Multi-fidelity Gaussian process regression or 'gb_stacked' for applying stacking of fidelities in gradient boosting regressor
 ```
-
-### 3.2 Running Environment Settings
-
-For details about how to search and train a model, see the following configuration file for parameter setting:
-
-- vega/examples/nas/cars/cars.yml
-
-The configuration file is directly transferred to the pipeline through main.py. The two processes are performed in sequence. During the search process, a series of models at the Pareto Front are found. During the training process, the selected models are fully trained to obtain the final performance.
-
-The configuration of the search process is as follows:
-
-```yaml
-nas:
-    pipe_step:
-        type: NasPipeStep
-
-    search_algorithm:
-        type: CARSAlgorithm
-        policy:
-            num_individual: 128
-            start_ga_epoch: 50
-            ga_interval: 10
-            select_method: uniform #pareto
-            warmup: 50
-
-    trainer:
-        type: Trainer
-        darts_template_file: "{default_darts_cifar10_template}"
-        callbacks: CARSTrainerCallback
-        model_statistics: False
-        epochs: 500
-        optim:
-            type: SGD
-            lr: 0.025
-            momentum: 0.9
-            weight_decay: !!float 3e-4
-        lr_scheduler:
-            type: CosineAnnealingLR
-            T_max: 500
-            eta_min: 0.001
-        loss:
-            type: CrossEntropyLoss
-        metric:
-            type: accuracy
-         grad_clip: 5.0
-        seed: 10
-        unrolled: True
-```
-
-Configuration of the fully train phase:
-
-```yaml
-    pipe_step:
-        type: FullyTrainPipeStep
-        models_folder: "{local_base_path}/output/nas/"
-
-    trainer:
-        ref: nas.trainer
-        callbacks: DartsFullTrainerCallback
-        epochs: 600
-        lr_scheduler:
-            type: CosineAnnealingLR
-            T_max: 600.0
-            eta_min: 0
-        loss:
-            type: MixAuxiliaryLoss
-            loss_base:
-                type: torch.nn.CrossEntropyLoss
-            aux_weight: 0.4
-        seed: 100
-        drop_path_prob: 0.2
-
-    dataset:
-        type: Cifar10
-        common:
-            data_path: /cache/datasets/cifar10/
-            num_workers: 8
-            drop_last: False
-            batch_size: 96
-        train:
-            shuffle: True
-            transforms:
-                - type: RandomCrop
-                  size: 32
-                  padding: 4
-                - type: RandomHorizontalFlip
-                - type: ToTensor
-                - type: Normalize
-                  mean:
-                      - 0.49139968
-                      - 0.48215827
-                      - 0.44653124
-                  std:
-                      - 0.24703233
-                      - 0.24348505
-                      - 0.26158768
-                - type: Cutout
-                  length: 8
-        test:
-            shuffle: False
-```
-
-The models_folder and model_desc_n.json parameters in the fully train are described as follows:
-
-1. models_folder: specifies a directory where one or more model_desc_n.json files are stored. n indicates the sequence number. This parameter is mutually exclusive with model_desc_file. If both of them are set, model_desc_file are preferred.
-2. model_desc_file: specifies a model description file as the input of the trainer.
-
-### 3.3 Algorithm Output
-
-The output:
-
-1. nas directory: outputs multiple optimal model description files.
-2. fully_train: outputs the trained model weight file.
-
-## 4. Benchmark
-
-Benchmark configuration: [cars.yml](https://github.com/huawei-noah/vega/tree/master/benchmark/algs/nas/cars.yml)
