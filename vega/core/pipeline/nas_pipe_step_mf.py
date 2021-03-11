@@ -33,6 +33,7 @@ class NasPipeStepMF(NasPipeStep):
     """PipeStep is the base components class that can be added in Pipeline."""
 
     def __init__(self):
+        """Initialize an instance of the NasPipeStepMF class."""
         super(NasPipeStep, self).__init__()
         self.generator = GeneratorMF.restore()
         if not self.generator:
@@ -41,6 +42,7 @@ class NasPipeStepMF(NasPipeStep):
         self.master = create_master(update_func=self.generator.update)
 
     def _dispatch_trainer(self, gs):
+        """Process a sampled instance."""
         id_ele, model_desc, epochs_ele = gs
         hps = deepcopy(model_desc)
         cls_trainer = ClassFactory.get_cls(ClassType.TRAINER)
@@ -51,4 +53,3 @@ class NasPipeStepMF(NasPipeStep):
         self.master.run(trainer, evaluator)
 
         self.master.join()
-

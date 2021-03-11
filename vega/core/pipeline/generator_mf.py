@@ -18,10 +18,10 @@ class GeneratorMF(Generator):
     """Convert search space and search algorithm, sample a new model."""
 
     def __init__(self):
+        """Initialize an instance of the GeneratorMF class."""
         super(GeneratorMF, self).__init__()
 
     def sample(self):
         """Sample a work id and model from search algorithm."""
         iter_id, model_desc, epochs = self.search_alg.search()
         return (iter_id, model_desc, epochs)
-
