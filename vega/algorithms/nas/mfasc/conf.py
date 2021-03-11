@@ -13,7 +13,7 @@ from zeus.common import ConfigSerializable
 
 
 class MFASCConfig(ConfigSerializable):
-    """Sp NasConfig."""
+    """MF-ASC Config."""
 
     batch_size = 1000
     prior_rho = 1.0

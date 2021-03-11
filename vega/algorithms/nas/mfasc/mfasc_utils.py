@@ -7,6 +7,7 @@
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 # MIT License for more details.
+"""Utilities (predictors) for multi-fidelity active search."""
 
 import numpy as np
 from sklearn.ensemble import BaggingRegressor
@@ -17,55 +18,43 @@ from sklearn.gaussian_process.kernels import RBF, ConstantKernel, WhiteKernel
 import vega.algorithms.nas.mfasc.mfgpr as mfgpr
 from .conf import MFASCConfig
 
+
 class MFModel:
-    '''
-    Base class for Multifidelity inference model.
-    '''
+    """Base class for Multifidelity inference model."""
+
     def __init__(self, **args):
-        '''
-        Init model.
-        '''
+        """Init model."""
         return
-    
+
     def fit(self, X_train_lf, y_train_lf, X_train_hf, y_train_hf):
-        '''
-        Fits a model to low- and high- fidelity samples.
-        '''
+        """Fits a model to low- and high- fidelity samples."""
         raise NotImplementedError
-        
+
     def predict_lf(self, X):
-        '''
-        Predicts low-fidelity values.
-        '''
+        """Predicts low-fidelity values."""
         raise NotImplementedError
 
     def predict_hf(self, X):
-        '''
-        Predicts low-fidelity values.
-        '''
+        """Predicts low-fidelity values."""
         raise NotImplementedError
 
+
 class MFBaggingRegressorStacked(MFModel):
-    
+    """Stacked Gradient Boosting Regression predictor."""
+
     def __init__(self, **args):
-        '''
-        Init model.
-        '''
+        """Init model."""
         self.model_lf = BaggingRegressor(**copy.deepcopy(args))
         self.model_hf = BaggingRegressor(**copy.deepcopy(args))
-    
+
     def fit(self, X_train_lf, y_train_lf, X_train_hf, y_train_hf):
-        '''
-        Fits a model to low- and high- fidelity samples using stacking scheme for BaggingRegressor.
-        '''
+        """Fits a model to low- and high- fidelity samples using stacking scheme for BaggingRegressor."""
         self.model_lf.fit(X_train_lf, y_train_lf)
         X_train_hf = np.hstack((X_train_hf, self.model_lf.predict(X_train_hf).reshape(-1, 1)))
         self.model_hf.fit(X_train_hf, y_train_hf)
-       
+
     def predict_hf(self, X):
-        '''
-        Predicts low-fidelity values.
-        '''
+        """Predict low-fidelity values."""
         y_pred_lf = self.model_lf.predict(X)
         X = np.hstack((X, y_pred_lf.reshape(-1, 1)))
 
@@ -73,57 +62,51 @@ class MFBaggingRegressorStacked(MFModel):
 
         y_pred_hf = np.mean(base_preds, axis=0)
 
-        rho = linregress(y_pred_lf, y_pred_hf)[0] # get slope
+        rho = linregress(y_pred_lf, y_pred_hf)[0]  # get slope
 
         return rho, y_pred_hf, np.std(base_preds, axis=0)
 
     def predict_lf(self, X):
-        '''
-        Predicts low-fidelity values.
-        '''
+        """Predict low-fidelity values."""
         base_preds = [e.predict(X) for e in self.model_lf.estimators_]
 
         return np.mean(base_preds, axis=0), np.std(base_preds, axis=0)
 
+
 class MFGPR(MFModel):
-    
+    """Multi-fidelity Gaussian Process Regression predictor."""
+
     def __init__(self, **args):
-        '''
-        Init model.
-        '''
+        """Init model."""
         self.model = mfgpr.GaussianProcessCoKriging(**copy.deepcopy(args))
-    
+
     def fit(self, X_train_lf, y_train_lf, X_train_hf, y_train_hf):
-        '''
-        Fits a model to low- and high- fidelity samples using stacking scheme for BaggingRegressor.
-        '''
+        """Fits a model to low- and high- fidelity samples using stacking scheme for BaggingRegressor."""
         self.model.fit(X_train_lf, y_train_lf, X_train_hf, y_train_hf)
-       
+
     def predict_hf(self, X):
-        '''
-        Predicts low-fidelity values.
-        '''
+        """Predicts low-fidelity values."""
         pred_mean, pred_std = self.model.predict(X, return_std=True)
 
         return self.model.rho, pred_mean, pred_std
 
     def predict_lf(self, X):
-        '''
-        Predicts low-fidelity values.
-        '''
+        """Predicts low-fidelity values."""
         pred_mean, pred_std = self.model.predict(X, return_std=True)
 
         return pred_mean, pred_std
 
+
 def make_mf_predictor(config=MFASCConfig()):
+    """Make a multi-fidelity model based on config."""
     if config.predictor_type == 'gb_stacked':
         return MFBaggingRegressorStacked(base_estimator=GradientBoostingRegressor(
-                                                            n_estimators=50, 
-                                                            max_depth=5,
-                                                        ),
-                                         n_estimators=20,
-                                         max_samples=0.51,
-                                         n_jobs=1)
+            n_estimators=50,
+            max_depth=5,
+        ),
+            n_estimators=20,
+            max_samples=0.51,
+            n_jobs=1)
     elif config.predictor_type == 'mfgpr':
         composite_kernel = RBF(length_scale=1, length_scale_bounds=(0.001, 100))
         composite_kernel = ConstantKernel(1, constant_value_bounds=(0.001, 100)) * composite_kernel

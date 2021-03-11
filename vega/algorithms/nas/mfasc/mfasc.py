@@ -7,6 +7,7 @@
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 # MIT License for more details.
+"""Multi-fidelity Active Search with Co-kriging."""
 
 import os
 import copy
@@ -29,30 +30,36 @@ from .conf import MFASCConfig
 
 logger = logging.getLogger(__name__)
 '''
-Note: search steps must be performed successively 
+Note: search steps must be performed successively
 (parallel calls of the search method will violate the algorithms assumptions).
 '''
 
-# todo: remove hard-coded constants
+
 @ClassFactory.register(ClassType.SEARCH_ALGORITHM)
 class MFASC(SearchAlgorithm):
+    """Multi-fidelity Active Search with Co-kriging algorithm."""
 
     config = MFASCConfig()
 
     def __init__(self, search_space):
+        """Construct the MFASC search class.
+
+        :param search_space: config of the search space
+        :type search_space: dictionary
+        """
         super(MFASC, self).__init__(search_space)
         self.search_space = copy.deepcopy(search_space)
         self.budget_spent = 0
         self.batch_size = self.config.batch_size
         self.hf_epochs = self.config.hf_epochs
         self.lf_epochs = self.config.lf_epochs
-        self.max_budget = self.config.max_budget # total amount of epochs to train
+        self.max_budget = self.config.max_budget  # total amount of epochs to train
         self.predictor = mfasc_utils.make_mf_predictor(self.config)
         self.r = self.config.fidelity_ratio  # fidelity ratio from the MFASC algorithm
         self.min_hf_sample_size = self.config.min_hf_sample_size
         self.min_lf_sample_size = self.config.min_lf_sample_size
-        self.hf_sample = [] # pairs of (id, score)
-        self.lf_sample = [] # pairs of (id, score)
+        self.hf_sample = []  # pairs of (id, score)
+        self.lf_sample = []  # pairs of (id, score)
         self.rho = self.config.prior_rho
         self.beta = self.config.beta
         self.cur_fidelity = None
@@ -61,6 +68,11 @@ class MFASC(SearchAlgorithm):
         self._get_all_arcs()
 
     def search(self):
+        """Search one random model.
+
+        :return: total spent budget (training epochs), the model, and current training epochs (fidelity)
+        :rtype: int, dict, int
+        """
         remaining_hf_inds = np.array(list(set(range(len(self.X))) - set([x[0] for x in self.hf_sample])))
         remaining_lf_inds = np.array(list(set(range(len(self.X))) - set([x[0] for x in self.lf_sample])))
         if len(self.hf_sample) < self.min_hf_sample_size:
@@ -106,16 +118,21 @@ class MFASC(SearchAlgorithm):
         desc = self._desc_from_choices(self.choices[i])
         self.budget_spent += train_epochs
         self.cur_i = i
-        return self.budget_spent, desc, train_epochs 
+        return self.budget_spent, desc, train_epochs
 
     def update(self, report):
+        """Update function.
+
+        :param report: the serialized report.
+        :type report: dict
+        """
         logger.info(f'Updating, cur fidelity: {self.cur_fidelity}')
         acc = report['performance'].get('accuracy', np.nan)
 
         if self.cur_fidelity == 'high':
             self.hf_sample.append((self.cur_i, acc))
 
-            self.best_model_idx = max(self.hf_sample, key = lambda x : x[1])[0]
+            self.best_model_idx = max(self.hf_sample, key=lambda x: x[1])[0]
             self.best_model_desc = self._desc_from_choices(self.choices[self.best_model_idx])
         elif self.cur_fidelity == 'low':
             self.lf_sample.append((self.cur_i, acc))
@@ -124,12 +141,15 @@ class MFASC(SearchAlgorithm):
 
     @property
     def is_completed(self):
+        """Tell whether the search process is completed.
+
+        :return: True is completed, or False otherwise
+        :rtype: bool
+        """
         return self.budget_spent > self.max_budget
 
-
     def _sub_config_choice(self, config, choices, pos):
-        """Apply choices to config"""
-
+        """Apply choices to config."""
         for key, value in sorted(config.items()):
             if isinstance(value, dict):
                 _, pos = self._sub_config_choice(value, choices, pos)
@@ -141,8 +161,7 @@ class MFASC(SearchAlgorithm):
         return config, pos
 
     def _desc_from_choices(self, choices):
-        """Create description object from choices"""
-
+        """Create description object from choices."""
         desc = {}
         pos = 0
 
@@ -156,8 +175,7 @@ class MFASC(SearchAlgorithm):
         return desc
 
     def _sub_config_all(self, config, vectors, choices):
-        """Get all possible choices and their values"""
-
+        """Get all possible choices and their values."""
         for key, value in sorted(config.items()):
             if isinstance(value, dict):
                 self._sub_config_all(value, vectors, choices)
@@ -166,8 +184,7 @@ class MFASC(SearchAlgorithm):
                 choices.append(list(range(len(value))))
 
     def _get_all_arcs(self):
-        """Get all the architectures from the search space"""
-
+        """Get all the architectures from the search space."""
         vectors = []
         choices = []
 
@@ -176,7 +193,7 @@ class MFASC(SearchAlgorithm):
             self._sub_config_all(config_space, vectors, choices)
 
         self.X = list(itertools.product(*vectors))
-        self.X = preprocessing.scale(self.X, axis = 0)
+        self.X = preprocessing.scale(self.X, axis=0)
         self.choices = list(itertools.product(*choices))
 
         logging.info('Number of architectures in the search space %d' % len(self.X))

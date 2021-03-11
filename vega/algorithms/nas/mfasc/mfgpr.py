@@ -8,14 +8,13 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 # MIT License for more details.
 
-
-"""Multi-fidelity Gaussian processes regression with co-Kriging. """
 # Author: Nikita Klyuchnikov <fmsnew@gmail.com>
 
 # This code extends an original scikit-learn GaussianProcessRegressor by
 # Author: Jan Hendrik Metzen <jhm@informatik.uni-bremen.de>
 #
 # License: BSD 3 clause
+"""Multi-fidelity Gaussian processes regression with co-Kriging."""
 
 import warnings
 from operator import itemgetter
@@ -37,15 +36,17 @@ class GaussianProcessCoKriging(BaseEstimator, RegressorMixin,
     """Multi-fidelity Gaussian process regression (MFGPR) with co-Kriging.
 
     The implementation is based on Algorithm 2.1 of Gaussian Processes
-    for Machine Learning (GPML) by Rasmussen and Williams and extends it to 
-    the multi-fidelity version with co-kriging schema (see e.g. A.I. Forrester, 
-    A. Sóbester, A.J. Keane "Multi-fidelity optimization via surrogate 
+    for Machine Learning (GPML) by Rasmussen and Williams and extends it to
+    the multi-fidelity version with co-kriging schema (see e.g. A.I. Forrester,
+    A. Sóbester, A.J. Keane "Multi-fidelity optimization via surrogate
     modelling", 2007).
     """
+
     def __init__(self, kernel=None, alpha=1e-10,
                  optimizer="fmin_l_bfgs_b", n_restarts_optimizer=0,
                  normalize_y=False, random_state=None, rho=0, rho_bounds=(-1, 1),
                  eval_gradient=False):
+        """Initialize an instance of the GaussianProcessCoKriging class."""
         self.kernel = kernel
         self.alpha = alpha
         self.optimizer = optimizer
@@ -101,15 +102,6 @@ class GaussianProcessCoKriging(BaseEstimator, RegressorMixin,
             self._y_l_train_mean = np.zeros(1)
             self._y_h_train_mean = np.zeros(1)
 
-        if np.iterable(self.alpha) \
-           and self.alpha.shape[0] != y.shape[0]:
-            if self.alpha.shape[0] == 1:
-                self.alpha = self.alpha[0]
-            else:
-                raise ValueError("alpha must be a scalar or an array"
-                                 " with same number of entries as y.(%d != %d)"
-                                 % (self.alpha.shape[0], y.shape[0]))
-
         self.X_train_ = np.vstack((X_l, X_h))
         self.y_train_ = np.hstack((y_l, y_h))
 
@@ -127,27 +119,29 @@ class GaussianProcessCoKriging(BaseEstimator, RegressorMixin,
                     return -self.log_marginal_likelihood(theta)
 
             theta_bounds = np.r_[np.array(self.rho_bounds)[np.newaxis],
-                            self.kernel_l_.bounds,
-                            self.kernel_d_.bounds]
+                                 self.kernel_l_.bounds,
+                                 self.kernel_d_.bounds]
             # First optimize starting from theta specified in kernel
             optima = [(self._constrained_optimization(obj_func,
                                                       theta_initial,
-                                                      theta_bounds, 
+                                                      theta_bounds,
                                                       self.eval_gradient))]
 
             # Additional runs are performed from log-uniform chosen initial
             # theta
             if self.n_restarts_optimizer > 0:
-                if not (np.isfinite(self.kernel_l_.bounds).all() and np.isfinite(self.kernel_d_.bounds).all() and np.isfinite(self.rho_bounds).all()):
+                if not (np.isfinite(self.kernel_l_.bounds).all() and np.isfinite(self.kernel_d_.bounds).all()
+                        and np.isfinite(self.rho_bounds).all()):
                     raise ValueError(
                         "Multiple optimizer restarts (n_restarts_optimizer>0) "
                         "requires that all bounds are finite.")
-                bounds = np.vstack((np.array(self.rho_bounds).reshape(1, -1), self.kernel_l_.bounds, self.kernel_d_.bounds))
+                bounds = np.vstack((np.array(self.rho_bounds).reshape(
+                    1, -1), self.kernel_l_.bounds, self.kernel_d_.bounds))
                 for iteration in range(self.n_restarts_optimizer):
                     theta_initial = np.hstack((
-                                        self.rng.uniform(bounds[0, 0], bounds[0, 1]),
-                                        np.exp(self.rng.uniform(bounds[1:, 0], bounds[1:, 1]))
-                                        
+                        self.rng.uniform(bounds[0, 0], bounds[0, 1]),
+                        np.exp(self.rng.uniform(bounds[1:, 0], bounds[1:, 1]))
+
                     ))
                     optima.append(
                         self._constrained_optimization(obj_func, theta_initial,
@@ -168,16 +162,17 @@ class GaussianProcessCoKriging(BaseEstimator, RegressorMixin,
         # of actual query points
         K_lf = self.kernel_l_(self.X_train_[:self.n_l_])
         K = np.vstack((
-                    np.hstack(( self.kernel_l_(self.X_train_[:self.n_l_]), 
-                                self.rho * self.kernel_l_(self.X_train_[:self.n_l_], self.X_train_[self.n_l_:]) )),
-                    np.hstack(( self.rho * self.kernel_l_(self.X_train_[self.n_l_:], self.X_train_[:self.n_l_]), 
-                                self.rho**2 *self.kernel_l_(self.X_train_[self.n_l_:]) + self.kernel_d_(self.X_train_[self.n_l_:]) ))
-                     ))
+            np.hstack((self.kernel_l_(self.X_train_[:self.n_l_]),
+                       self.rho * self.kernel_l_(self.X_train_[:self.n_l_], self.X_train_[self.n_l_:]))),
+            np.hstack((self.rho * self.kernel_l_(self.X_train_[self.n_l_:], self.X_train_[:self.n_l_]),
+                       self.rho**2 * self.kernel_l_(self.X_train_[self.n_l_:]) +
+                       self.kernel_d_(self.X_train_[self.n_l_:])))
+        ))
         K_lf[np.diag_indices_from(K_lf)] += self.alpha
         K[np.diag_indices_from(K)] += self.alpha
         try:
             self.L_lf_ = cholesky(K_lf, lower=True)  # Line 2 (lf)
-            self.L_ = cholesky(K, lower=True)  # Line 2 
+            self.L_ = cholesky(K, lower=True)  # Line 2
             # self.L_ changed, self._K_inv needs to be recomputed
             self._K_inv = None
             self._K_lf_inv = None
@@ -192,7 +187,7 @@ class GaussianProcessCoKriging(BaseEstimator, RegressorMixin,
         return self
 
     def predict_lf(self, X, return_std=False, return_cov=False):
-        """Predict using the Gaussian process regression model
+        """Predict using the Gaussian process regression model.
 
         We can also predict based on an unfitted model by using the GP prior.
         In addition to the mean of the predictive distribution, also its
@@ -232,7 +227,7 @@ class GaussianProcessCoKriging(BaseEstimator, RegressorMixin,
 
         X = check_array(X)
 
-        if not hasattr(self, "X_train_"):  
+        if not hasattr(self, "X_train_"):
             raise Warning("Unfitted GP error. Call fit method first.")
         else:  # Predict based on GP posterior
             K_trans = self.kernel_l_(X, self.X_train_[:self.n_l_])
@@ -268,7 +263,7 @@ class GaussianProcessCoKriging(BaseEstimator, RegressorMixin,
                 return y_mean
 
     def predict(self, X, return_std=False, return_cov=False):
-        """Predict using the Gaussian process regression model
+        """Predict using the Gaussian process regression model.
 
         We can also predict based on an unfitted model by using the GP prior.
         In addition to the mean of the predictive distribution, also its
@@ -308,13 +303,14 @@ class GaussianProcessCoKriging(BaseEstimator, RegressorMixin,
 
         X = check_array(X)
 
-        if not hasattr(self, "X_train_"):  
+        if not hasattr(self, "X_train_"):
             raise Warning("Unfitted GP error. Call fit method first.")
         else:  # Predict based on GP posterior
             K_trans = np.hstack((
-                                   self.rho * self.kernel_l_(X, self.X_train_[:self.n_l_]), 
-                                   self.rho**2 * self.kernel_l_(X, self.X_train_[self.n_l_:]) + self.kernel_d_(X, self.X_train_[self.n_l_:])
-                                  ))
+                self.rho * self.kernel_l_(X, self.X_train_[:self.n_l_]),
+                self.rho**2 * self.kernel_l_(X, self.X_train_[self.n_l_:]) +
+                self.kernel_d_(X, self.X_train_[self.n_l_:])
+            ))
             y_mean = K_trans.dot(self.alpha_)  # Line 4 (y_mean = f_star)
             y_mean = self._y_h_train_mean + y_mean  # undo normal.
             if return_cov:
@@ -347,7 +343,7 @@ class GaussianProcessCoKriging(BaseEstimator, RegressorMixin,
                 return y_mean
 
     def log_marginal_likelihood(self, theta=None, eval_gradient=False):
-        """Returns log-marginal likelihood of theta for training data.
+        """Return log-marginal likelihood of theta for training data.
 
         Parameters
         ----------
@@ -385,11 +381,11 @@ class GaussianProcessCoKriging(BaseEstimator, RegressorMixin,
             raise Warning("eval_gradient = True mode is not implemented yet!")
         else:
             K = np.vstack((
-                            np.hstack(( kernel_l(self.X_train_[:self.n_l_]), 
-                                        rho * kernel_l(self.X_train_[:self.n_l_], self.X_train_[self.n_l_:]) )),
-                            np.hstack(( rho * kernel_l(self.X_train_[self.n_l_:], self.X_train_[:self.n_l_]), 
-                                        rho**2 * kernel_l(self.X_train_[self.n_l_:]) + kernel_d(self.X_train_[self.n_l_:]) ))
-                     ))
+                np.hstack((kernel_l(self.X_train_[:self.n_l_]),
+                           rho * kernel_l(self.X_train_[:self.n_l_], self.X_train_[self.n_l_:]))),
+                np.hstack((rho * kernel_l(self.X_train_[self.n_l_:], self.X_train_[:self.n_l_]),
+                           rho**2 * kernel_l(self.X_train_[self.n_l_:]) + kernel_d(self.X_train_[self.n_l_:])))
+            ))
 
         K[np.diag_indices_from(K)] += self.alpha
         try:
@@ -407,7 +403,7 @@ class GaussianProcessCoKriging(BaseEstimator, RegressorMixin,
 
         # Compute log-likelihood (compare line 7)
         log_likelihood_dims = -0.5 * np.einsum("ik,ik->k", y_train, alpha)
-        log_likelihood_dims -= np.log(np.diag(L)).sum() # -0.5 log det (K) = log(L) (since K = LL^T)
+        log_likelihood_dims -= np.log(np.diag(L)).sum()  # -0.5 log det (K) = log(L) (since K = LL^T)
         log_likelihood_dims -= K.shape[0] / 2 * np.log(2 * np.pi)
         log_likelihood = log_likelihood_dims.sum(-1)  # sum over dimensions
 
@@ -419,10 +415,11 @@ class GaussianProcessCoKriging(BaseEstimator, RegressorMixin,
         else:
             return log_likelihood
 
-    def _constrained_optimization(self, obj_func, initial_theta, bounds, eval_grad = False):
+    def _constrained_optimization(self, obj_func, initial_theta, bounds, eval_grad=False):
+        """Perform an optimization of the objective functions within the given bounds."""
         if self.optimizer == "fmin_l_bfgs_b":
             theta_opt, func_min, convergence_dict = \
-                fmin_l_bfgs_b(obj_func, initial_theta, bounds=bounds, approx_grad = 1 - int(eval_grad))
+                fmin_l_bfgs_b(obj_func, initial_theta, bounds=bounds, approx_grad=1 - int(eval_grad))
             if convergence_dict["warnflag"] != 0:
                 warnings.warn("fmin_l_bfgs_b terminated abnormally with the "
                               " state: %s" % convergence_dict,
