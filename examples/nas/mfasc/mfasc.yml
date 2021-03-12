@@ -1,0 +1,70 @@
+general:
+    backend: pytorch 
+
+pipeline: [nas]
+
+nas:
+    pipe_step:
+        type: NasPipeStepMF
+        alias: 'mfasc'
+
+    dataset:
+        type: Cifar10
+        common:
+            num_workers: 0
+            data_path: '/home/fmsnew/misc/cache/datasets/cifar10/'
+            download: True
+            train_portion: 0.05
+        train:
+            batch_size: 64
+            cutout_length: 16
+        test:
+            batch_size: 2048
+
+    search_algorithm:
+        type: MFASC
+        max_budget: 1000
+        hf_epochs: 20
+        lf_epochs: 5
+        fidelity_ratio: 2
+        min_hf_sample_size: 3
+        min_lf_sample_size: 10
+
+    search_space:
+        type: SearchSpace
+        modules: ['custom']
+        custom:
+            type: MobileNetV2
+            num_classes: 10
+            desc:
+                layer_0:
+                    repetitions: [1, 2, 3, 4]
+                    channels: [16, 24]
+                layer_1:
+                    repetitions: [1, 2, 3, 4]
+                    channels: [24, 32]
+                layer_2:
+                    repetitions: [1, 2, 3, 4]
+                    channels: [32, 64]
+                layer_3:
+                    repetitions: [1, 2, 3, 4]
+                    channels: [64, 96]
+                layer_4:
+                    repetitions: [1, 2, 3, 4]
+                    channels: [96, 160]
+                layer_5:
+                    repetitions: [1, 2, 3, 4]
+                    channels: [160, 320]
+                layer_6:
+                    repetitions: [1, 2, 3, 4]
+                    channels: [320, 640]
+
+    trainer:
+        type: Trainer
+        epochs: 1
+        valid_freq: 1
+        optim:
+            type: SGD
+            lr: 0.01
+            momentum: 0.9
+            weight_decay: 5.0e-4
