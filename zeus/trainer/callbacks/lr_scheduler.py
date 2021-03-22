@@ -24,7 +24,6 @@ class LearningRateScheduler(Callback):
 
     def before_train(self, logs=None):
         """Be called before training."""
-        self.call_point = self.trainer.config.lr_adjustment_position
         self.lr_scheduler = self.trainer.lr_scheduler
 
     def before_epoch(self, epoch, logs=None):
@@ -33,15 +32,11 @@ class LearningRateScheduler(Callback):
 
     def after_epoch(self, epoch, logs=None):
         """Be called before each epoch."""
-        if self.call_point.upper() == "AFTER_EPOCH" and self.lr_scheduler is not None:
+        if self.lr_scheduler and self.lr_scheduler.by_epoch:
             self.lr_scheduler.step(epoch=epoch)
-
-    def before_train_step(self, batch_index, logs=None):
-        """Call before_train_step of the managed callbacks."""
-        if self.call_point.upper() == 'BEFORE_TRAIN_STEP':
-            self.lr_scheduler.step(epoch=self.epoch)
 
     def after_train_step(self, batch_index, logs=None):
         """Call after_train_step of the managed callbacks."""
-        if self.call_point.upper() == 'AFTER_TRAIN_STEP':
-            self.lr_scheduler.step(epoch=self.epoch)
+        if self.lr_scheduler and not self.lr_scheduler.by_epoch:
+            step = self.trainer.batch_num_train * self.epoch + self.epoch + batch_index
+            self.lr_scheduler.step(epoch=step)

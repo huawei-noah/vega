@@ -41,7 +41,7 @@ class DetectionProgressLogger(ProgressLogger):
                 pt = PrettyTable()
                 pt.field_names = out_buffer.keys()
                 pt.add_row(out_buffer.values())
-            except:
+            except Exception:
                 logging.warning("Cant't get the loss, maybe the loss doesn't update in the metric evaluator.")
             logging.info('\n' + pt.get_string())
 

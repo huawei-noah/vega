@@ -248,7 +248,7 @@ class PruneMobileNet(PruneResnet):
     def apply(self, chn_mask):
         """Apply mask to resnet."""
         end_mask = []
-        cur_idx = 1
+        # cur_idx = 1
         for idx, (name, m1) in enumerate(get_named_modules(self.layer)):
             name, m1 = parse_module_name(name, m1)
             if name.startswith('features'):

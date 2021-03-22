@@ -12,27 +12,37 @@
 from zeus.common import ClassFactory, ClassType
 from zeus.modules.module import Module
 from zeus.modules.connections import Sequential
-from torchvision.models import detection
 
 
 @ClassFactory.register(ClassType.NETWORK)
 class FasterRCNN(Module):
     """Create ResNet Network."""
 
-    def __init__(self, num_classes, backbone='ResNetDet', neck='FPN', **kwargs):
+    def __init__(self, num_classes, backbone='SerialBackbone', neck='TorchFPN', network_name='torchvision_FasterRCNN',
+                 weight_file=None, **kwargs):
         """Create layers.
 
         :param num_class: number of class
         :type num_class: int
         """
         super(FasterRCNN, self).__init__()
-        self.backbone = self.define_props('backbone', backbone, dtype=ClassType.NETWORK, params=dict(depth=18))
-        self.neck = self.define_props('neck', neck, dtype=ClassType.NETWORK)
-        backbone_neck = Sequential(self.backbone, self.neck)
-        self.model = detection.FasterRCNN(backbone_neck, num_classes, **kwargs)
+        self.weight_file = weight_file
+        backbone_cls = self.define_props('backbone', backbone, dtype=ClassType.NETWORK)
+        backbone_cls.freeze()
+        if getattr(backbone_cls, 'out_channels') and 'in_channels' not in neck:
+            neck_in_channel = backbone_cls.out_channels
+            params = {"in_channels": neck_in_channel}
+            neck_cls = self.define_props('neck', neck, dtype=ClassType.NETWORK, params=params)
+        else:
+            neck_cls = self.define_props('neck', neck, dtype=ClassType.NETWORK)
+        backbone_neck = Sequential(backbone_cls, neck_cls)
+        backbone_neck.freeze()
+        self.model = ClassFactory.get_cls(ClassType.NETWORK, network_name)(backbone_neck, num_classes, **kwargs)
 
     def call(self, inputs, targets=None):
         """Call inputs."""
-        inputs = list(image.cuda() for image in inputs)
-        targets = [{k: v.cuda() for k, v in t.items()} for t in targets]
         return self.model(inputs, targets)
+
+    def load_state_dict(self, state_dict=None, strict=None):
+        """Remove backbone."""
+        self.model.load_state_dict(state_dict, strict or False)

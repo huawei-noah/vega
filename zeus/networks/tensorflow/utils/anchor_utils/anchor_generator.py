@@ -9,8 +9,8 @@
 # MIT License for more details.
 
 """Defined faster rcnn detector."""
-from object_detection.anchor_generators import grid_anchor_generator
 
+from object_detection.anchor_generators import grid_anchor_generator
 from zeus.common import ClassType, ClassFactory
 
 

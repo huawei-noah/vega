@@ -9,42 +9,54 @@
 # MIT License for more details.
 
 """Custom functions of tensorflow."""
+import logging
 import math
+import numpy as np
+from collections import OrderedDict
 import tensorflow.compat.v1 as tf
+from tensorflow.python.ops import state_ops
 from zeus.common.config import Config
 from zeus.common.class_factory import ClassType, ClassFactory
 from zeus.modules.operators.functions.serializable import OperatorSerializable
 from zeus.common.general import General
 
-enable_scope_name = True
-
 
 class Module(object):
     """Base Module to adapter tf Module."""
 
-    data_format = 'channels_first'
-
     def __init__(self):
-        self.parent_scope_name = ''
-        self._scope_name = ''
-        self._modules = Config()
-        self._training = True
-        self.enable_scope_name = enable_scope_name
+        self.name = ''
         self.data_format = General.data_format
+        self._modules = Config()
+        self._parameters = OrderedDict()
+        self._weights_buffer = OrderedDict()
+        self._init_configs()
+
+    def _init_configs(self):
+        self._training = True
+        self._trainable = True
+        self.weight_file = None
+        self.from_weight_type = None
+        self._is_load_pretrained = False
+        self._is_adaptive_weight = False
+        self.exclude_weight_prefix = None
 
     def add_module(self, name, model):
         """Add models into self._models."""
         setattr(self, str(name), model)
 
+    def build(self):
+        """Build model or params."""
+        pass
+
     def named_modules(self):
         """Return names spaces."""
-        _names_modules = []
-        for model in self.children():
-            if isinstance(model, Module):
-                _names_modules.append(((model._scope_name, model)))
-                child_modules = model.named_modules()
-                _names_modules.extend(child_modules)
-        return _names_modules
+        self._apply_names()
+        _modules = []
+        for module in self.children():
+            _modules.append((module.name, module))
+            _modules.extend(module.named_modules())
+        return _modules
 
     def named_children(self):
         """Return names children."""
@@ -53,10 +65,38 @@ class Module(object):
     def children(self):
         """Get child models of current Module."""
         for model in self._modules.values():
-            if isinstance(model, Module):
-                model._scope_name = "{}.{}".format(
-                    self._scope_name, model.parent_scope_name) if self._scope_name else model.parent_scope_name
             yield model
+
+    def load_checkpoint(self, weight_file):
+        """Load weight state dict from last checkpoint file."""
+        if not weight_file:
+            return
+        logging.info("Load checkpoint form file ({}).".format(weight_file))
+        # model_file = tf.train.latest_checkpoint(weight_file)
+        reader = tf.train.NewCheckpointReader(weight_file)
+        variables = reader.get_variable_to_shape_map()
+        states = {v: reader.get_tensor(v) for v in variables}
+        self.load_checkpoint_from_numpy(states)
+
+    def load_checkpoint_from_numpy(self, states):
+        """Load checkpoint from numpy."""
+        states = self._exclude_checkpoint_by_prefix(states)
+        for name, module in self.named_modules():
+            child_state = [(k, v) for k, v in states.items() if k.startswith(module.name + '/')]
+            for k, v in child_state:
+                module.set_weights(k, v)
+
+    def _exclude_checkpoint_by_prefix(self, states):
+        if self.exclude_weight_prefix:
+            if not isinstance(self.exclude_weight_prefix, list):
+                self.exclude_weight_prefix = [self.exclude_weight_prefix]
+            for prefix in self.exclude_weight_prefix:
+                states = {k: v for k, v in states.items() if not k.startswith(prefix)}
+        return states
+
+    def set_weights(self, name, value):
+        """Set weights into weights buffer."""
+        self._weights_buffer[name] = value
 
     @property
     def training(self):
@@ -70,30 +110,50 @@ class Module(object):
         for module in self.children():
             module.training = value
 
+    @property
+    def is_adaptive_weight(self):
+        """Get _is_adaptive_weight flag."""
+        return self._is_adaptive_weight
+
+    @is_adaptive_weight.setter
+    def is_adaptive_weight(self, value):
+        """Set _is_adaptive_weight flag."""
+        self._is_adaptive_weight = value
+        for module in self.children():
+            module.is_adaptive_weight = value
+
+    def freeze(self):
+        """Set training flag."""
+        self._trainable = False
+        for module in self.children():
+            module.freeze()
+
     def __setattr__(self, key, value):
         """Set name to modules."""
-        self.__dict__[key] = value
+        super().__setattr__(key, value)
         if isinstance(value, Module):
-            if self.enable_scope_name:
-                value.parent_scope_name = key
             self._modules[key] = value
-
-    def __getattribute__(self, name):
-        """Get modules by name."""
-        value = object.__getattribute__(self, name)
-        if isinstance(value, Module) and self.enable_scope_name:
-            value._scope_name = "{}.{}".format(
-                self._scope_name, value.parent_scope_name) if self._scope_name else value.parent_scope_name
-        return value
 
     def set_parameters(self, name, value):
         """Set Parameters."""
-        with tf.variable_scope('', reuse=tf.AUTO_REUSE):
-            setattr(self, name, tf.get_variable(name, initializer=value))
+        self._parameters[name] = value
+        setattr(self, name, value)
+        return self.name
 
-    def get_weights(self, name):
+    def get_weights(self, name=None):
         """Get weights by name."""
+        if self._weights_buffer:
+            return self._weights_buffer
         return tf.get_default_graph().get_tensor_by_name('{}:0'.format(name))
+
+    def get_all_weights(self):
+        """Get all weights."""
+        all_weights = OrderedDict()
+        for child in self.children():
+            all_weights.update(child._weights_buffer)
+            if isinstance(child, Module):
+                all_weights.update(child.get_all_weights())
+        return all_weights
 
     def get_weight_ops(self, name):
         """Get weight ops."""
@@ -108,9 +168,44 @@ class Module(object):
             output = model(output)
         return output
 
+    def adaptive_weight(self, inputs):
+        """Adaptive weight."""
+        return {}
+
+    def _apply_names(self, parent_name=''):
+        """Apply names spaces."""
+        for scope_name, module in self._modules.items():
+            scope_name = '{}.{}'.format(parent_name, scope_name) if parent_name else scope_name
+            module.name = module.name or scope_name + '/' + module.__class__.__name__
+            module._apply_names(scope_name)
+
+    def _apply_parameters(self):
+        """Apply names spaces."""
+        for name, params in self._parameters.items():
+            setattr(self, name, tf.Variable(params, name='{}.{}'.format(self.name, name) if self.name else name))
+
     def __call__(self, inputs, *args, **kwargs):
         """Call call function."""
-        return self.call(inputs, *args, **kwargs)
+        self.build()
+        self._apply_parameters()
+        self._apply_names()
+        for module in self.children():
+            module._is_load_pretrained = True
+        out = self.call(inputs, *args, **kwargs)
+        self._apply_weights(inputs)
+        return out
+
+    def _apply_weights(self, inputs):
+        if not self._weights_buffer:
+            return
+        variables = tf.get_collection(tf.GraphKeys.VARIABLES)
+        if self.is_adaptive_weight:
+            self._weights_buffer.update(self.adaptive_weight(inputs))
+        values = [(var, self._weights_buffer.get(var.name.replace(':0', ''))) for var in variables if
+                  var.name.replace(':0', '') in self._weights_buffer]
+        for v, weight in values:
+            v._initializer_op = state_ops.assign(v, weight)
+        self._weights_buffer.clear()
 
     def modules(self):
         """Get the current modules."""
@@ -118,32 +213,6 @@ class Module(object):
             return self._modules.values()
         else:
             return [self]
-
-
-class He_initial(object):
-    """Initialize of Hekaiming."""
-
-    def __init__(self, scale=0.1):
-        self.scale = scale
-
-    def __call__(self, tensor, **kwargs):
-        """Call He_initial function."""
-        c, h, w = get_shape(tensor)[1:]
-        fan_in = c * h * w
-        std = math.sqrt(2) / math.sqrt(fan_in)
-        initializer = tf.random_normal_initializer(0, std * self.scale)
-        return initializer
-
-
-class Initial(object):
-    """Initialize of Hekaiming."""
-
-    def __init__(self, scale=0.1):
-        self.scale = scale
-
-    def __call__(self, tensor, **kwargs):
-        """Call initial function."""
-        return tf.variance_scaling_initializer()
 
 
 @ClassFactory.register(ClassType.NETWORK)
@@ -154,10 +223,37 @@ class QuantizeConv2d(OperatorSerializable):
         """Construct Identity class."""
         OperatorSerializable.__init__(self)
 
-    def __call__(self, inputs, **kwargs):
+    def call(self, inputs, **kwargs):
         """Call QuantizeConv2d function."""
         # todo
         return inputs
+
+
+@ClassFactory.register(ClassType.NETWORK)
+class Pad(Module, OperatorSerializable):
+    """Pad layer."""
+
+    def __init__(self, kernel_size):
+        super(Pad, self).__init__()
+        self.kernel_size = kernel_size
+
+    def call(self, inputs, *args, **kwargs):
+        """Call padding function."""
+        return inputs
+
+
+class HeInitial(object):
+    """Initialize of Hekaiming."""
+
+    def __init__(self, scale=0.1):
+        self.scale = scale
+
+    def __call__(self, tensor, **kwargs):
+        """Call He_initial function."""
+        c, h, w = get_shape(tensor)[1:]
+        fan_in = c * h * w
+        std = math.sqrt(2) / math.sqrt(fan_in)
+        return tf.random_normal_initializer(0, std * self.scale)
 
 
 @ClassFactory.register(ClassType.NETWORK)
@@ -175,45 +271,65 @@ class Conv2d(Module, OperatorSerializable):
         self.bias = bias
         self.groups = groups
         self.dilation = dilation
-        self.kernel_initial = Initial()
+        self.kernel_initial = tf.variance_scaling_initializer()
         self.bias_initial = tf.zeros_initializer()
-        self.name = None
+        self._initializer = None
         self.reuse = None
         self.separable = separable
         self.depthwise = depthwise
         self.padding_mode = padding_mode
 
-    def __call__(self, inputs, **kwargs):
+    def call(self, inputs, **kwargs):
         """Call separable_conv2d function."""
-        initializer = self.kernel_initial(inputs)
-        with tf.variable_scope(self._scope_name, reuse=tf.AUTO_REUSE):
-            if self.dilation > 1:
-                return tf.keras.layers.SeparableConv2D(filters=self.out_channels,
-                                                       kernel_size=self.kernel_size,
-                                                       strides=self.stride,
-                                                       data_format=self.data_format,
-                                                       dilation_rate=self.dilation,
-                                                       padding=self.padding_mode,
-                                                       use_bias=self.bias,
-                                                       name='Conv2d')(inputs=inputs)
-            else:
-                return tf.keras.layers.Conv2D(filters=self.out_channels,
-                                              kernel_size=self.kernel_size,
-                                              kernel_initializer=initializer,
-                                              bias_initializer=self.bias_initial,
-                                              strides=self.stride,
-                                              data_format=self.data_format,
-                                              dilation_rate=self.dilation,
-                                              padding=self.padding_mode,
-                                              use_bias=self.bias,
-                                              name='Conv2d')(inputs=inputs)
+        if self._initializer:
+            self.kernel_initial = self._initializer(inputs)
+        if self.dilation > 1:
+            conv2d = tf.keras.layers.SeparableConv2D(filters=self.out_channels,
+                                                     kernel_size=self.kernel_size,
+                                                     strides=self.stride,
+                                                     data_format=self.data_format,
+                                                     dilation_rate=self.dilation,
+                                                     padding=self.padding_mode,
+                                                     use_bias=self.bias,
+                                                     name=self.name, trainable=self._trainable)
+        else:
+            conv2d = tf.keras.layers.Conv2D(filters=self.out_channels,
+                                            kernel_size=self.kernel_size,
+                                            kernel_initializer=self.kernel_initial,
+                                            bias_initializer=self.bias_initial,
+                                            strides=self.stride,
+                                            data_format=self.data_format,
+                                            dilation_rate=self.dilation,
+                                            padding=self.padding_mode,
+                                            use_bias=self.bias,
+                                            name=self.name, trainable=self._trainable)
+        x = conv2d(inputs=inputs)
+        return x
 
     def initial(self, kernel_mode='he', bias_mode='zero', kernel_scale=1., bias_scale=1.):
         """Initialize weight and bias."""
         if kernel_mode == 'he':
-            self.kernel_initial = He_initial(kernel_scale)
-        if bias_mode == 'zero':
-            self.bias_initial = tf.zeros_initializer()
+            self._initializer = HeInitial(kernel_scale)
+
+    def adaptive_weight(self, inputs):
+        """Adaptive weight."""
+        res = OrderedDict()
+        for name, weight in self._weights_buffer.items():
+            in_channels = inputs.shape.as_list()[1]
+            w_in_shape = weight.shape[2]
+            if w_in_shape < in_channels:
+                weight = np.tile(weight, (2, 1))
+            elif w_in_shape > in_channels:
+                cut = list(range(w_in_shape)[:in_channels])
+                weight = weight[:, :, cut, :]
+            w_out_shape = weight.shape[3]
+            if w_out_shape < self.out_channels:
+                weight = np.tile(weight, (1, 2))
+            elif w_out_shape > self.out_channels:
+                cut = list(range(w_out_shape)[:self.out_channels])
+                weight = weight[:, :, :, cut]
+            res[name] = weight
+        return res
 
 
 @ClassFactory.register(ClassType.NETWORK)
@@ -230,19 +346,20 @@ class SeparableConv2d(Module, OperatorSerializable):
         self.bias = bias
         self.dilation = dilation
 
-    def __call__(self, input, **kwargs):
+    def call(self, input, **kwargs):
         """Call separable_conv2d function."""
-        with tf.variable_scope(self._scope_name, reuse=tf.AUTO_REUSE):
-            return tf.keras.layers.SeparableConv2D(filters=self.out_channels,
-                                                   kernel_size=self.kernel_size,
-                                                   strides=self.stride,
-                                                   data_format=self.data_format,
-                                                   dilation_rate=self.dilation,
-                                                   depthwise_initializer=tf.variance_scaling_initializer(),
-                                                   pointwise_initializer=tf.variance_scaling_initializer(),
-                                                   padding='SAME', use_bias=self.bias,
-                                                   name='SeparableConv2d',
-                                                   reuse=self.reuse)(inputs=input)
+        model = tf.keras.layers.SeparableConv2D(filters=self.out_channels,
+                                                kernel_size=self.kernel_size,
+                                                strides=self.stride,
+                                                data_format=self.data_format,
+                                                dilation_rate=self.dilation,
+                                                depthwise_initializer=tf.variance_scaling_initializer(),
+                                                pointwise_initializer=tf.variance_scaling_initializer(),
+                                                padding='SAME', use_bias=self.bias,
+                                                name=self.name,
+                                                reuse=self.reuse, trainable=self._trainable)
+
+        return model(inputs=input)
 
 
 @ClassFactory.register(ClassType.NETWORK)
@@ -255,11 +372,13 @@ class MaxPool2d(Module, OperatorSerializable):
         self.stride = stride
         self.padding = padding
 
-    def __call__(self, input, **kwargs):
+    def call(self, input, **kwargs):
         """Call MaxPooling2D function."""
-        with tf.variable_scope(self._scope_name, reuse=tf.AUTO_REUSE):
-            return tf.layers.MaxPooling2D(pool_size=self.kernel_size, strides=self.stride,
-                                          data_format=self.data_format, padding='SAME', name='MaxPool2d')(input)
+        model = tf.layers.MaxPooling2D(pool_size=self.kernel_size, strides=self.stride,
+                                       data_format=self.data_format, padding='SAME', name=self.name,
+                                       trainable=self._trainable)
+        x = model(inputs=input)
+        return x
 
 
 @ClassFactory.register(ClassType.NETWORK)
@@ -271,7 +390,7 @@ class Zero(Module, OperatorSerializable):
         super(Zero, self).__init__()
         self.stride = stride
 
-    def __call__(self, x, **kwargs):
+    def call(self, x, **kwargs):
         """Forward Function fo Zero."""
         if self.stride == 1:
             return tf.zeros_like(x)
@@ -289,7 +408,7 @@ class View(Module, OperatorSerializable):
         super(View, self).__init__()
         self.size = size
 
-    def __call__(self, inputs, **kwargs):
+    def call(self, inputs, **kwargs):
         """Call squeeze function."""
         if not self.size:
             total_shape = 1
@@ -309,7 +428,7 @@ class Relu(Module, OperatorSerializable):
         super(Relu, self).__init__()
         self.inplace = inplace
 
-    def __call__(self, input, **kwargs):
+    def call(self, input, **kwargs):
         """Call relu function."""
         return tf.nn.relu(input)
 
@@ -322,7 +441,7 @@ class Relu6(Module, OperatorSerializable):
         super(Relu6, self).__init__()
         self.inplace = inplace
 
-    def __call__(self, input, **kwargs):
+    def call(self, input, **kwargs):
         """Call relu6 function."""
         return tf.nn.relu6(input)
 
@@ -335,7 +454,7 @@ class Hswish(Module, OperatorSerializable):
         super(Hswish, self).__init__()
         self.inplace = inplace
 
-    def __call__(self, input, **kwargs):
+    def call(self, input, **kwargs):
         """Call Hswish function."""
         return input * tf.nn.relu6(input + 3.) / 6.
 
@@ -348,7 +467,7 @@ class Hsigmoid(Module, OperatorSerializable):
         super(Hsigmoid, self).__init__()
         self.inplace = inplace
 
-    def __call__(self, input, **kwargs):
+    def call(self, input, **kwargs):
         """Call Hsigmoid function."""
         return tf.nn.relu6(input + 3.) / 6.
 
@@ -361,7 +480,7 @@ class AdaptiveAvgPool2d(Module, OperatorSerializable):
         super(AdaptiveAvgPool2d, self).__init__()
         self.output_size = output_size
 
-    def __call__(self, input, **kwargs):
+    def call(self, input, **kwargs):
         """Call reduce_mean function."""
         axes = [2, 3] if self.data_format == 'channels_first' else [1, 2]
         return tf.reduce_mean(input, axes, keepdims=True)
@@ -371,18 +490,43 @@ class AdaptiveAvgPool2d(Module, OperatorSerializable):
 class Linear(Module, OperatorSerializable):
     """Call dense."""
 
-    def __init__(self, in_features, out_features, use_bias=True, activation=None):
+    def __init__(self, in_features=None, out_features=None, use_bias=True, activation=None):
         super(Linear, self).__init__()
         self.in_features = in_features
         self.out_features = out_features
         self.use_bias = use_bias
         self.activation = activation
 
-    def __call__(self, input, **kwargs):
+    def call(self, input, **kwargs):
         """Call dense function."""
-        with tf.variable_scope(self._scope_name, reuse=tf.AUTO_REUSE):
-            return tf.keras.layers.Dense(units=self.out_features, use_bias=self.use_bias, name='Linear',
-                                         activation=self.activation)(inputs=input)
+        fc = tf.keras.layers.Dense(units=self.out_features, use_bias=self.use_bias, name=self.name,
+                                   activation=self.activation)
+        out = fc(inputs=input)
+        return out
+
+    def adaptive_weight(self, inputs):
+        """Adaptive weight."""
+        self.in_features = inputs.shape.as_list()[1]
+        res = OrderedDict()
+        for name, weight in self.get_weights().items():
+            if 'kernel' in name:
+                if weight.shape[0] < self.in_features:
+                    res[name] = np.tile(weight, (2, 1))
+                elif weight.shape[0] > self.in_features:
+                    idx = list(range(weight.shape[0])[:self.in_features])
+                    res[name] = weight[idx, :]
+                if weight.shape[1] < self.out_features:
+                    res[name] = np.tile(weight, (1, 2))
+                elif weight.shape[1] > self.out_features:
+                    idx = list(range(weight.shape[1])[:self.out_features])
+                    res[name] = weight[:, idx]
+            elif 'bias' in name:
+                if weight.shape[0] < self.out_features:
+                    res[name] = np.tile(weight, 2)
+                elif weight.shape[0] > self.out_features:
+                    idx = list(range(weight.shape[0])[:self.out_features])
+                    res[name] = weight[idx]
+        return res
 
 
 @ClassFactory.register(ClassType.NETWORK)
@@ -398,21 +542,20 @@ class AvgPool2d(Module, OperatorSerializable):
         self.padding = padding
         self.count_include_pad = count_include_pad
 
-    def __call__(self, input, **kwargs):
+    def call(self, input, **kwargs):
         """Call average_pooling2d function."""
-        with tf.variable_scope(self._scope_name, reuse=tf.AUTO_REUSE):
-            return tf.keras.layers.AveragePooling2D(pool_size=self.kernel_size,
-                                                    strides=self.stride,
-                                                    data_format=self.data_format,
-                                                    padding='SAME',
-                                                    name='AvgPool2d')(input)
+        return tf.keras.layers.AveragePooling2D(pool_size=self.kernel_size,
+                                                strides=self.stride,
+                                                data_format=self.data_format,
+                                                padding='SAME',
+                                                name=self.name, trainable=self._trainable)(input)
 
 
 @ClassFactory.register(ClassType.NETWORK)
 class BatchNorm2d(Module, OperatorSerializable):
     """Call batch_normalization."""
 
-    def __init__(self, num_features, eps=1e-05, momentum=0.997, affine=None):
+    def __init__(self, num_features=None, eps=1e-05, momentum=0.997, affine=None):
         super(BatchNorm2d, self).__init__()
         self.num_features = num_features
         self.eps = eps
@@ -420,14 +563,33 @@ class BatchNorm2d(Module, OperatorSerializable):
         self.training = affine if affine is not None else self.training
         self.affine = affine
 
-    def __call__(self, input, **kwargs):
+    def call(self, input, **kwargs):
         """Call batch_normalization function."""
-        with tf.variable_scope(self._scope_name, reuse=tf.AUTO_REUSE):
-            return tf.keras.layers.BatchNormalization(momentum=self.momentum,
-                                                      axis=1 if self.data_format == 'channels_first' else 3,
-                                                      epsilon=self.eps,
-                                                      center=True, scale=True, fused=True,
-                                                      name='BatchNorm2d')(inputs=input, training=self.training)
+        bn = tf.keras.layers.BatchNormalization(momentum=self.momentum,
+                                                axis=1 if self.data_format == 'channels_first' else 3,
+                                                epsilon=self.eps,
+                                                center=True, scale=True, fused=True,
+                                                name=self.name, trainable=self._trainable)
+        if self._is_load_pretrained:
+            self.training = True
+        out = bn(inputs=input, training=self.training)
+        # update  moving average
+        if self._trainable:
+            for item in bn.updates:
+                tf.add_to_collections(tf.GraphKeys.UPDATE_OPS, item)
+        return out
+
+    def adaptive_weight(self, input):
+        """Adaptive weight."""
+        self.num_features = input.shape.as_list()[1]
+        res = OrderedDict()
+        for name, weight in self.get_weights().items():
+            if weight.shape[0] < self.num_features:
+                res[name] = np.tile(weight, 2)
+            elif weight.shape[0] > self.num_features:
+                idx = list(range(weight.shape[0])[:self.num_features])
+                res[name] = weight[idx]
+        return res
 
 
 @ClassFactory.register(ClassType.NETWORK)
@@ -438,9 +600,46 @@ class Identity(Module, OperatorSerializable):
         """Init Identity."""
         super(Identity, self).__init__()
 
-    def __call__(self, x, **kwargs):
+    def call(self, x, **kwargs):
         """Forward function of Identity."""
         return tf.identity(x)
+
+
+@ClassFactory.register(ClassType.NETWORK)
+class Dropout(Module, OperatorSerializable):
+    """Class of Dropout."""
+
+    def __init__(self, prob=0.5, inplace=False):
+        """Construct Dropout class."""
+        super(Dropout, self).__init__(prob, inplace)
+        self.dropout = tf.keras.layers.Dropout(prob)
+
+    def call(self, x, **kwargs):
+        """Call Dropout function."""
+        out = self.dropout(x)
+        return out
+
+
+@ClassFactory.register(ClassType.NETWORK)
+class Tanh(Module, OperatorSerializable):
+    """Class of Dropout."""
+
+    def call(self, x, **kwargs):
+        """Forward Tanh."""
+        return super(Tanh, self).forward(x)
+
+
+@ClassFactory.register(ClassType.NETWORK)
+class Embedding(Module, OperatorSerializable):
+    """Class of Embedding."""
+
+    def __init__(self, num_embeddings, embedding_dim):
+        super(Embedding, self).__init__()
+        self.embedding = tf.keras.layers.Embedding(num_embeddings, embedding_dim, )
+
+    def call(self, x, **kwargs):
+        """Call embedding."""
+        return self.embedding(x)
 
 
 @ClassFactory.register(ClassType.NETWORK)
@@ -451,7 +650,7 @@ class PixelShuffle(Module, OperatorSerializable):
         super(PixelShuffle, self).__init__()
         self.upscale = upscale
 
-    def __call__(self, inputs, **kwargs):
+    def call(self, inputs, **kwargs):
         """Forward function of PixelShuffle."""
         inputs = tf.cast(inputs, tf.float16)
         if self.data_format == 'channels_first':
@@ -472,7 +671,7 @@ class Split(Module, OperatorSerializable):
         self.size = size
         self.dim = dim
 
-    def __call__(self, inputs, **kwargs):
+    def call(self, inputs, **kwargs):
         """Forward function of Split."""
         length = inputs.shape[self.dim]
         number = length // self.size
@@ -487,7 +686,7 @@ class Squeeze(Module, OperatorSerializable):
         self.dim = dim
         super(Squeeze, self).__init__()
 
-    def __call__(self, inputs, **kwargs):
+    def call(self, inputs, **kwargs):
         """Forward function of squeeze."""
         return tf.squeeze(inputs, [self.dim])
 
@@ -500,7 +699,7 @@ class Permute(Module, OperatorSerializable):
         super(Permute, self).__init__()
         self.size = size
 
-    def __call__(self, inputs, **kwargs):
+    def call(self, inputs, **kwargs):
         """Forward function of Permute."""
         return tf.transpose(inputs, self.size)
 
@@ -513,7 +712,7 @@ class Stack(Module, OperatorSerializable):
         super(Stack, self).__init__()
         self.dim = dim
 
-    def __call__(self, inputs, **kwargs):
+    def call(self, inputs, **kwargs):
         """Forward function of Stack."""
         return tf.stack(inputs, self.dim)
 
@@ -526,7 +725,7 @@ class Transpose(Module, OperatorSerializable):
         super(Transpose, self).__init__()
         self.dim1, self.dim2 = dim1, dim2
 
-    def __call__(self, inputs, **kwargs):
+    def call(self, inputs, **kwargs):
         """Call Transpose."""
         new_dim = [i for i in range(len(inputs.shape))]
         new_dim[self.dim1], new_dim[self.dim2] = new_dim[self.dim2], new_dim[self.dim1]
@@ -542,7 +741,7 @@ class LeakyReLU(Module, OperatorSerializable):
         self.inplace = inplace
         self.alpha = negative_slope
 
-    def __call__(self, input, **kwargs):
+    def call(self, input, **kwargs):
         """Call LeakyReLU."""
         return tf.nn.leaky_relu(input, self.alpha)
 
@@ -558,7 +757,7 @@ class InterpolateScale(Module, OperatorSerializable):
         self.align_corners = align_corners
         self.size = size
 
-    def __call__(self, inputs, **kwargs):
+    def call(self, inputs, **kwargs):
         """Call InterpolateScale."""
         inputs = tf.transpose(inputs, [0, 2, 3, 1])
         if self.size is not None:
@@ -590,10 +789,10 @@ class MeanShift(Module, OperatorSerializable):
         self.sign = sign
         self.rgb_range = rgb_range
 
-    def __call__(self, inputs, *args, **kwargs):
+    def call(self, inputs, *args, **kwargs):
         """Call MeanShift."""
         std = tf.convert_to_tensor(self.rgb_std, dtype=tf.float32)
-        self.weight = tf.eye(3)
+        self.weight = tf.convert_to_tensor(np.eye(3).astype(np.float32))  # tf.eye(3)
         self.weight = tf.div(self.weight, std)
         self.bias = self.sign * self.rgb_range * tf.convert_to_tensor(self.rgb_mean, dtype=tf.float32)
         self.bias = tf.div(self.bias, std)
@@ -652,6 +851,11 @@ def mul(a, b):
     return tf.multiply(a, b)
 
 
+def matmul(a, b):
+    """Call matmul according to backends."""
+    return tf.matmul(a, b)
+
+
 def random_normal(*size):
     """Apply random values from a normal distribution."""
     return tf.random.normal(size)
@@ -673,7 +877,7 @@ def gumbel_softmax_sample(input, temperature, eps=1e-20):
 
 def gumbel_softmax(input, dim=-1, tau=1, hard=True, eps=1e-20):
     """Apply a gumbel-softmax function."""
-    keep_dims = True if dim == -1 else False
+    # keep_dims = True if dim == -1 else False
     y = gumbel_softmax_sample(input, tau, eps)
     if hard:
         y_hard = tf.cast(tf.equal(y, tf.reduce_max(y, 1, keep_dims=True)), y.dtype)
@@ -869,6 +1073,16 @@ def one_hot(inputs, num_classes):
     return tf.one_hot(inputs, num_classes)
 
 
+def ones_like(out):
+    """Return a tensor with all 1s. The shape is defined by the variable parameter size."""
+    return tf.ones_like(out)
+
+
+def zeros_like(out):
+    """Return a tensor with all 1s. The shape is defined by the variable parameter size."""
+    return tf.zeros_like(out)
+
+
 def to(input, dtype):
     """Convert input to dtype."""
     if dtype == 'long':
@@ -886,3 +1100,42 @@ def reduce_sum(input, dim=0, dtype=None):
     if dtype is not None:
         out = to(out, dtype)
     return out
+
+
+def gelu(x):
+    """Apply gelu function."""
+    return x * 0.5 * (1.0 + tf.erf(x / math.sqrt(2.0)))
+
+
+def swish(x):
+    """Apply swish function."""
+    return x * tf.sigmoid(x)
+
+
+def relu(x):
+    """Apply relu function."""
+    return tf.nn.relu(x)
+
+
+def sqrt(x):
+    """Apply sqrt function."""
+    return tf.sqrt(x)
+
+
+@ClassFactory.register(ClassType.NETWORK)
+class LayerNorm(Module, OperatorSerializable):
+    """Layer Norm module."""
+
+    def __init__(self, hidden_size, eps=1e-12):
+        """Construct a layernorm module in the TF style (epsilon inside the square root)."""
+        super(LayerNorm, self).__init__()
+        self.weight = self.set_parameters('gamma', ones(hidden_size))
+        self.bias = self.set_parameters('beta', zeros(hidden_size))
+        self.variance_epsilon = eps
+
+    def call(self, x):
+        """Call LayerNorm."""
+        u = x.mean(-1, keepdim=True)
+        s = (x - u).pow(2).mean(-1, keepdim=True)
+        x = (x - u) / sqrt(s + self.variance_epsilon)
+        return self.weight * x + self.bias

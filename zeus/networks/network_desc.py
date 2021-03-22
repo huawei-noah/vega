@@ -12,21 +12,24 @@
 import logging
 from copy import deepcopy
 from zeus.common import Config
-from zeus.modules.module import Module
+from zeus.common.class_factory import ClassFactory, ClassType
 
 
 class NetworkDesc(object):
     """NetworkDesc."""
 
-    def __init__(self, desc):
+    def __init__(self, desc, is_deformation=False):
         """Init NetworkDesc."""
         self._desc = Config(deepcopy(desc))
+        self.is_deformation = is_deformation
 
     def to_model(self):
         """Transform a NetworkDesc to a special model."""
         logging.debug("Start to Create a Network.")
-        model = Module.from_desc(self._desc)
+        module = ClassFactory.get_cls(ClassType.NETWORK, "Module")
+        model = module.from_desc(self._desc)
         if not model:
             raise Exception("Failed to create model, model desc={}".format(self._desc))
-        model.desc = self._desc
+        if not self.is_deformation:
+            model.desc = self._desc
         return model

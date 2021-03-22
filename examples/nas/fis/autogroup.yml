@@ -1,8 +1,13 @@
+general:
+    backend: pytorch
+
+
 pipeline: [fully_train]
+
 
 fully_train:
     pipe_step:
-        type: FullyTrainPipeStep
+        type: TrainPipeStep
 
     dataset:
         type: AvazuDataset
@@ -49,7 +54,7 @@ fully_train:
 
     evaluator:
         type: Evaluator
-        gpu_evaluator:
-            type: GpuEvaluator
+        host_evaluator:
+            type: HostEvaluator
             metric:
                 type: auc

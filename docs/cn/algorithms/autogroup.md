@@ -8,8 +8,9 @@ AutoGroup是推荐场景的自动特征交互建模算法。推荐场景的神�
 
 AutoGroup将有效的N阶特征交互的选择过程转化为一个结构化参数的优化问题，通过[Gumbel-Softmax](https://arxiv.org/pdf/1611.01144.pdf)策略将该过程可微分化。  
 
-在训练过程中，AutoGroup交替地优化用于选择特征的结构化参数，以及模型的其他参数（如网络权重等），以达到最佳效果。  
-![FIS AutoGroup](images/fis_autogroup_overview.png)
+在训练过程中，AutoGroup交替地优化用于选择特征的结构化参数，以及模型的其他参数（如网络权重等），以达到最佳效果。
+
+![FIS AutoGroup](../../images/fis_autogroup_overview.png)
 
 ### 2.1 搜索空间和搜索策略
 
@@ -20,7 +21,7 @@ AutoGroup将有效的N阶特征交互的选择过程转化为一个结构化参�
 ```yaml
 fully_train:
     pipe_step:
-        type: FullyTrainPipeStep
+        type: TrainPipeStep
 
     dataset:
         type: AvazuDataset
@@ -31,13 +32,13 @@ fully_train:
         model_desc:
             modules: ["custom"]
             custom:
+	        type: AutoGroupModel
                 input_dim: 645195
                 input_dim4lookup: 24
                 hidden_dims: [1024, 512, 256, 1]
                 dropout_prob: 0.0
                 batch_norm: False
                 layer_norm: False
-                name: AutoGroupModel
                 max_order: 3
                 embed_dims: [40, 60, 100]
                 bucket_nums: [15, 130, 180]
@@ -65,8 +66,8 @@ fully_train:
 
     evaluator:
         type: Evaluator
-        gpu_evaluator:
-            type: GpuEvaluator
+        host_evaluator:
+            type: HostEvaluator
             ref: trainer
 ```
 
@@ -97,13 +98,13 @@ model:
     model_desc:
         modules: ["custom"]
         custom:
+	    type: AutoGroupModel    # model name
             input_dim: 645195       # feature num
             input_dim4lookup: 24    # feature fields num
             hidden_dims: [1024, 512, 256, 1] # DNN part
             dropout_prob: 0.0       # dropout rate
             batch_norm: False
             layer_norm: False
-            name: AutoGroupModel    # model name
             max_order: 3            # max order interaction in autogroup
             embed_dims: [40, 60, 100] # embed dimension for each order.
             bucket_nums: [15, 130, 180] # feature groups in each order

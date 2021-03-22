@@ -13,6 +13,8 @@ from functools import reduce
 import mindspore.nn as nn
 import mindspore
 import numpy as np
+import os
+import uuid
 from mindspore.ops import operations as P
 from mindspore import Parameter, Tensor
 from mindspore.common import initializer as init
@@ -30,7 +32,8 @@ class Module(nn.Cell):
     def __init__(self):
         super(Module, self).__init__()
         self.children_ms = []
-        self._modules = Config()
+        self._modules = self._cells
+        self.need_adjust = False
 
     def add_module(self, name, model):
         """Add models into self._models."""
@@ -61,13 +64,19 @@ class Module(nn.Cell):
                 _names_modules.extend(child_modules)
         return _names_modules
 
-    def initializer(self):
+    def initialize(self):
         """Init params."""
         pass
 
-    def call(self, inputs, *args, **kwargs):
+    def call(self, *inputs):
         """Call inputs."""
-        output = inputs
+        if len(inputs) == 1:
+            output = inputs[0]
+            args = ()
+        else:
+            output = inputs[0]
+            args = inputs[1:-1]
+
         models = self.children()
         for model in models:
             if args == ():
@@ -76,14 +85,15 @@ class Module(nn.Cell):
                 output = model(output, *args)
         return output
 
-    def construct(self, inputs, *args, **kwargs):
+    def construct(self, *inputs):
         """Construct x."""
-        return self.call(inputs, *args, **kwargs)
+        return self.call(*inputs)
 
     def set_parameters(self, name, value):
         """Set Parameters."""
         # self.insert_param_to_cell(name, value)
         setattr(self, name, value)
+        return 0
 
     def get_weights(self, name):
         """Get Weights."""
@@ -92,6 +102,27 @@ class Module(nn.Cell):
     def get_weight_ops(self, name):
         """Get weight ops."""
         return self.get_weights(name)
+
+    def pretrained(self, pretrained_model_file=None):
+        """Load pretrained weights."""
+        if pretrained_model_file.endswith(".pth"):
+            from .pytorch_to_ms import pytorch2mindspore, pytorch2mindspore_extend
+            if self.need_adjust:
+                ms_pretrained_weight = pytorch2mindspore_extend(pretrained_model_file, self)
+            else:
+                ms_pretrained_weight = pytorch2mindspore(pretrained_model_file)
+        else:
+            if os.path.isfile(pretrained_model_file):
+                ms_pretrained_weight = pretrained_model_file
+            else:
+                for file in os.listdir(pretrained_model_file):
+                    if file.endswith(".ckpt"):
+                        ms_pretrained_weight = os.path.join(pretrained_model_file, file)
+                        break
+        if self.need_adjust:
+            from .pytorch_to_ms import adaptive_weight
+            ms_pretrained_weight = adaptive_weight(ms_pretrained_weight, self)
+        return ms_pretrained_weight
 
 
 @ClassFactory.register(ClassType.NETWORK)
@@ -105,6 +136,19 @@ class QuantizeConv2d(OperatorSerializable):
     def construct(self, input):
         """Call QuantizeConv2d function."""
         # todo
+        return input
+
+
+@ClassFactory.register(ClassType.NETWORK)
+class Pad(nn.Cell, OperatorSerializable):
+    """Pad layer."""
+
+    def __init__(self, output_size=(1, 1)):
+        super(Pad, self).__init__()
+        self.output_size = output_size
+
+    def construct(self, input):
+        """Call Pad function."""
         return input
 
 
@@ -148,11 +192,11 @@ class View(nn.Cell, OperatorSerializable):
 class Linear(nn.Cell, OperatorSerializable):
     """Call dense."""
 
-    def __init__(self, in_features, out_features, has_bias=True, activation=None):
+    def __init__(self, in_features=None, out_features=None, has_bias=True, activation=None):
         super(Linear, self).__init__()
         self.activation = activation
         self.linear = nn.Dense(in_features, out_features, has_bias=has_bias)
-        self.linear.update_parameters_name("linear_" + str(np.random.rand()) + ".")
+        self.linear.update_parameters_name("linear_" + uuid.uuid1().hex[:8] + ".")
 
     def construct(self, input):
         """Call dense function."""
@@ -253,20 +297,29 @@ class Conv2d(nn.Cell, OperatorSerializable):
     def __init__(self, in_channels, out_channels, kernel_size=3, stride=1, padding=0, bias=True,
                  groups=1, dilation=1, separable=False, depthwise=False):
         super(Conv2d, self).__init__()
+        if kernel_size % 2 == 0:
+            pad_mode = "same"
+            padding = 0
+        elif padding == 0:
+            pad_mode = "same"
+        else:
+            pad_mode = "pad"
+
         self.out_channels = out_channels
         if groups == 1:
             self.conv2d = nn.Conv2d(in_channels, out_channels, kernel_size=kernel_size, stride=stride, padding=padding,
-                                    has_bias=bias, group=groups, dilation=dilation, pad_mode="pad")
-            self.conv2d.update_parameters_name("conv2d_" + str(np.random.rand()) + ".")
+                                    has_bias=bias, group=groups, dilation=dilation, pad_mode=pad_mode)
+            self.conv2d.update_parameters_name("conv2d_" + uuid.uuid1().hex[:8] + ".")
+
         elif in_channels == out_channels and in_channels == groups:
-            self.conv2d = DepthwiseConv2d(in_channels, kernel_size=kernel_size, stride=stride, pad_mode="pad",
+            self.conv2d = DepthwiseConv2d(in_channels, kernel_size=kernel_size, stride=stride, pad_mode=pad_mode,
                                           pad=padding, has_bias=bias, dilation=dilation)
-            self.conv2d.update_parameters_name("conv2d_" + str(np.random.rand()) + ".")
+            self.conv2d.update_parameters_name("conv2d_" + uuid.uuid1().hex[:8] + ".")
         else:
             # TODO delete
             self.conv2d = nn.Conv2d(in_channels, out_channels, kernel_size=kernel_size, stride=stride, padding=padding,
-                                    has_bias=bias, group=1, dilation=dilation, pad_mode="pad")
-            self.conv2d.update_parameters_name("conv2d_" + str(np.random.rand()) + ".")
+                                    has_bias=bias, group=1, dilation=dilation, pad_mode=pad_mode)
+            self.conv2d.update_parameters_name("conv2d_" + uuid.uuid1().hex[:8] + ".")
             # raise ValueError("For group not equal to 1, the in_channels, out_chanels and group should be equal.")
 
     def construct(self, input):
@@ -275,13 +328,14 @@ class Conv2d(nn.Cell, OperatorSerializable):
 
     def initial(self, kernel_mode='he', bias_mode='zero', kernel_scale=1., bias_scale=1.):
         """Initialize weight and bias."""
-        if kernel_mode == 'he':
-            self.conv2d.weight = init.initializer(  # self.conv2d.weight.default_input for mindspore 0.5~0.7
-                KaimingNormal(a=math.sqrt(5), mode='fan_out', nonlinearity='relu'),
-                self.conv2d.weight.shape, self.conv2d.weight.dtype).to_tensor()
-        if bias_mode == "zero":
-            self.conv2d.bias = init.initializer(
-                'zeros', self.conv2d.bias.shape, self.conv2d.bias.dtype).to_tensor()
+        return
+        # if kernel_mode == 'he':
+        #     self.conv2d.weight = init.initializer(  # self.conv2d.weight.default_input for mindspore 0.5~0.7
+        #         KaimingNormal(a=0, mode='fan_in', nonlinearity='relu'),
+        #         self.conv2d.weight.shape, self.conv2d.weight.dtype).to_tensor()
+        # if bias_mode == "zero":
+        #     self.conv2d.bias = init.initializer(
+        #         'zeros', self.conv2d.bias.shape, self.conv2d.bias.dtype).to_tensor()
 
 
 @ClassFactory.register(ClassType.NETWORK)
@@ -292,7 +346,7 @@ class BatchNorm2d(nn.Cell, OperatorSerializable):
         super(BatchNorm2d, self).__init__()
 
         self.batch_norm = nn.BatchNorm2d(num_features=num_features, eps=eps, momentum=momentum, affine=affine)
-        self.batch_norm.update_parameters_name("batchnorm_" + str(np.random.rand()) + ".")
+        self.batch_norm.update_parameters_name("batchnorm_" + uuid.uuid1().hex[:8] + ".")
 
     def construct(self, input):
         """Call batch_norm function."""
@@ -307,9 +361,9 @@ class SeparableConv2d(nn.Cell, OperatorSerializable):
         super(SeparableConv2d, self).__init__()
         self.conv1 = nn.Conv2d(in_channels, in_channels, kernel_size=kernel_size, stride=stride,
                                padding=padding, dilation=dilation, groups=in_channels, bias=bias, pad_mode="pad")
-        self.conv1.update_parameters_name("conv1_" + str(np.random.rand()) + ".")
+        self.conv1.update_parameters_name("conv1_" + uuid.uuid1().hex[:8] + ".")
         self.conv2 = nn.Conv2d(in_channels, out_channels, kernel_size=1, padding=0, bias=bias)
-        self.conv2.update_parameters_name("conv2_" + str(np.random.rand()) + ".")
+        self.conv2.update_parameters_name("conv2_" + uuid.uuid1().hex[:8] + ".")
 
     def construct(self, x):
         """Call separable_conv2d function."""
@@ -329,7 +383,7 @@ class MaxPool2d(nn.Cell, OperatorSerializable):
         # if padding != 0:
         #     pad_mode = "same"
         self.max_pool2d = nn.MaxPool2d(kernel_size=kernel_size, stride=stride, pad_mode=pad_mode)
-        self.max_pool2d.update_parameters_name("maxpool2d_" + str(np.random.rand()) + ".")
+        self.max_pool2d.update_parameters_name("maxpool2d_" + uuid.uuid1().hex[:8] + ".")
 
     def construct(self, x):
         """Call maxpool2d function."""
@@ -350,7 +404,7 @@ class AvgPool2d(nn.Cell, OperatorSerializable):
         # if padding != 0:
         #     pad_mode = "same"
         self.avg_pool2d = nn.AvgPool2d(kernel_size=kernel_size, stride=stride, pad_mode=pad_mode)
-        self.avg_pool2d.update_parameters_name("avgpool2d_" + str(np.random.rand()) + ".")
+        self.avg_pool2d.update_parameters_name("avgpool2d_" + uuid.uuid1().hex[:8] + ".")
 
     def construct(self, x):
         """Call maxpool2d function."""
@@ -366,7 +420,7 @@ class Relu(nn.Cell, OperatorSerializable):
     def __init__(self, inplace=False):
         super(Relu, self).__init__()
         self.relu = nn.ReLU()
-        self.relu.update_parameters_name("relu_" + str(np.random.rand()) + ".")
+        self.relu.update_parameters_name("relu_" + uuid.uuid1().hex[:8] + ".")
 
     def construct(self, x):
         """Call relu function."""
@@ -380,7 +434,7 @@ class Relu6(nn.Cell, OperatorSerializable):
     def __init__(self, inplace=False):
         super(Relu6, self).__init__()
         self.relu6 = nn.ReLU6()
-        self.relu6.update_parameters_name("relu6_" + str(np.random.rand()) + ".")
+        self.relu6.update_parameters_name("relu6_" + uuid.uuid1().hex[:8] + ".")
 
     def construct(self, x):
         """Call relu function."""
@@ -394,10 +448,10 @@ class Hsigmoid(nn.Cell, OperatorSerializable):
     def __init__(self, inplace=False):
         super(Hsigmoid, self).__init__()
         self.relu6 = nn.ReLU6()
-        self.relu6.update_parameters_name("relu6_" + str(np.random.rand()) + ".")
+        self.relu6.update_parameters_name("relu6_" + uuid.uuid1().hex[:8] + ".")
 
     def construct(self, x):
-        """Call relu function."""
+        """Call Hsigmoid function."""
         return self.relu6(x + 3.) / 6.
 
 
@@ -408,10 +462,10 @@ class Hswish(nn.Cell, OperatorSerializable):
     def __init__(self, inplace=False):
         super(Hswish, self).__init__()
         self.relu6 = nn.ReLU6()
-        self.relu6.update_parameters_name("relu6_" + str(np.random.rand()) + ".")
+        self.relu6.update_parameters_name("relu6_" + uuid.uuid1().hex[:8] + ".")
 
     def construct(self, x):
-        """Call relu function."""
+        """Call Hswish function."""
         return x * self.relu6(x + 3.) / 6.
 
 
@@ -433,6 +487,20 @@ class Identity(nn.Cell, OperatorSerializable):
 
 
 @ClassFactory.register(ClassType.NETWORK)
+class Dropout(Module, OperatorSerializable):
+    """Dropout block."""
+
+    def __init__(self, prob=0.5, inplace=False):
+        """Construct Dropout class."""
+        super(Dropout, self).__init__(prob, inplace)
+        pass
+
+    def construct(self, x, **kwargs):
+        """Do an inference on Dropout."""
+        return x
+
+
+@ClassFactory.register(ClassType.NETWORK)
 class Zero(nn.Cell, OperatorSerializable):
     """Zero block."""
 
@@ -443,6 +511,7 @@ class Zero(nn.Cell, OperatorSerializable):
         """
         super(Zero, self).__init__()
         self.zeroslike = P.ZerosLike()
+        # self.zeros = P.Zeros()
         self.stride = stride
         self.shape = P.Shape()
 
@@ -452,10 +521,11 @@ class Zero(nn.Cell, OperatorSerializable):
         :param x: input tensor
         :return: output tensor
         """
-        in_shape = self.shape(x)
-        out_shape = (in_shape[0], in_shape[1], in_shape[2] // self.stride, in_shape[3] // self.stride)
-        return Tensor(np.zeros(out_shape, np.float32))
-        # return self.zeroslike(x)[:, :, ::self.stride, ::self.stride]
+        # in_shape = self.shape(x)
+        # out_shape = (in_shape[0], in_shape[1], in_shape[2] // self.stride, in_shape[3] // self.stride)
+        # return Tensor(np.zeros(out_shape, np.float32))
+        # return self.zeros(out_shape,mindspore.float32)
+        return self.zeroslike(x[:, :, ::self.stride, ::self.stride])
 
 
 def zeros(shape):
@@ -605,7 +675,7 @@ class MeanShift(nn.Cell, OperatorSerializable):
         super(MeanShift, self).__init__()
         self.conv2d = nn.Conv2d(3, 3, kernel_size=1, stride=1, padding=0,
                                 has_bias=True, group=1, dilation=1, pad_mode="pad")
-        self.conv2d.update_parameters_name("conv2d_" + str(np.random.rand()) + ".")
+        self.conv2d.update_parameters_name("conv2d_" + uuid.uuid1().hex[:8] + ".")
         std = Tensor(rgb_std, mindspore.float32)
         self.conv2d.weight = Tensor(np.eye(3).reshape(3, 3, 1, 1).astype(np.float32))
         self.reshape = P.Reshape()
@@ -636,6 +706,20 @@ class MoudleList(nn.CellList, OperatorSerializable):
         super(MoudleList, self).__init__()
 
 
+@ClassFactory.register(ClassType.NETWORK)
+class Tanh(nn.Tanh, OperatorSerializable):
+    """Class of Dropout."""
+
+    pass
+
+
+@ClassFactory.register(ClassType.NETWORK)
+class Embedding(nn.Embedding, OperatorSerializable):
+    """Class of Dropout."""
+
+    pass
+
+
 def concat(inputs, dim=1):
     """Call concat according to backends."""
     return P.Concat(dim)(inputs)
@@ -652,17 +736,22 @@ def mul(a, b):
     return P.Mul()(a, b)
 
 
+def matmul(a, b):
+    """Call matmul according to backends."""
+    pass
+
+
 def random_normal(*size):
     """Apply random values from a normal distribution."""
     # return P.StandardNormal()(size)
     return Tensor(np.random.randn(*size).astype(np.float32))
     # return P.Normal()(size, 0,1)
-    # return Parameter(Tensor(np.random.randn(*size)), name="random_" + str(np.random.rand()))
+    # return Parameter(Tensor(np.random.randn(*size)), name="random_" + uuid.uuid1().hex[:8])
 
 
 def softmax(input, dim=-1):
     """Apply a softmax function."""
-    return nn.Softmax(axis=dim)(input)
+    return nn.Softmax(dim)(input)
 
 
 def gumbel_softmax(input, dim=-1, tau=1, hard=True, eps=1e-20):
@@ -687,7 +776,8 @@ def interpolate(input, size, mode='bilinear', align_corners=False):
 
 def add_n(input):
     """Apply sum function."""
-    return sum(input)
+    # return sum(input)
+    return P.AddN()(input)
 
 
 def get_shape(input):
@@ -818,6 +908,16 @@ def ones(input_size, out):
     pass
 
 
+def ones_like(out):
+    """Return a tensor with all 1s. The shape is defined by the variable parameter size."""
+    pass
+
+
+def zeros_like(out):
+    """Return a tensor with all 1s. The shape is defined by the variable parameter size."""
+    pass
+
+
 def one_hot(inputs, num_classes):
     """Take LongTensor with index values of shape."""
     pass
@@ -830,4 +930,31 @@ def to(input, dtype):
 
 def reduce_sum(input, dim=0, dtype=None):
     """Apply sum function."""
+    pass
+
+
+def gelu(x):
+    """Apply gelu function."""
+    pass
+
+
+def swish(x):
+    """Apply swish function."""
+    pass
+
+
+def relu(x):
+    """Apply relu function."""
+    pass
+
+
+def sqrt(x):
+    """Apply sqrt function."""
+    pass
+
+
+@ClassFactory.register(ClassType.NETWORK)
+class LayerNorm(Module, OperatorSerializable):
+    """Layer Norm module."""
+
     pass

@@ -21,9 +21,9 @@ class OptimConfig(ConfigSerializable):
     params = {"lr": 0.1}
 
     @classmethod
-    def from_json(cls, data, skip_check=True):
+    def from_dict(cls, data, skip_check=True):
         """Restore config from a dictionary or a file."""
-        cls = super(OptimConfig, cls).from_json(data, skip_check)
+        cls = super(OptimConfig, cls).from_dict(data, skip_check)
         if "params" not in data:
             cls.params = {}
         return cls
@@ -41,7 +41,8 @@ class OptimMappingDict(object):
 
     type_mapping_dict = dict(
         SGD=dict(torch='SGD', tf='MomentumOptimizer', ms='Momentum'),
-        Adam=dict(torch='Adam', tf='AdamOptimizer', ms='Adam')
+        Adam=dict(torch='Adam', tf='AdamOptimizer', ms='Adam'),
+        RMSProp=dict(torch='RMSProp', tf='RMSPropOptimizer', ms='RMSProp')
     )
 
     params_mapping_dict = dict(
@@ -51,6 +52,10 @@ class OptimMappingDict(object):
             weight_decay=dict(torch='weight_decay', tf='weight_decay', ms='weight_decay'),
         ),
         Adam=dict(
+            lr=dict(torch='lr', tf='learning_rate', ms='learning_rate'),
+            weight_decay=dict(torch='weight_decay', tf='weight_decay', ms='weight_decay'),
+        ),
+        RMSProp=dict(
             lr=dict(torch='lr', tf='learning_rate', ms='learning_rate'),
             weight_decay=dict(torch='weight_decay', tf='weight_decay', ms='weight_decay'),
         )

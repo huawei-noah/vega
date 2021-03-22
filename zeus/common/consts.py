@@ -18,5 +18,5 @@ class WorkerTypes(IntEnum):
 
     TRAINER = 1
     EVALUATOR = 2
-    GPU_EVALUATOR = 3
-    HAVA_D_EVALUATOR = 4
+    HOST_EVALUATOR = 3
+    DeviceEvaluator = 5

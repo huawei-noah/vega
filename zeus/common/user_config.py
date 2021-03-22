@@ -12,7 +12,7 @@
 from copy import deepcopy
 from .config import Config
 from .utils import singleton, update_dict
-from zeus.common.util.check import valid_rule
+from zeus.common.check import valid_rule
 
 
 @singleton

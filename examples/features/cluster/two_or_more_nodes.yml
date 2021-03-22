@@ -1,0 +1,63 @@
+# Distributed parallel searching or training in two or more nodes:
+# 1. Distributed parallel search in the NAS and HPO phases. 
+# 2. Distributed parallel training of multiple models in the fullytrain phase.
+#
+# You need to adjust the general configuration according to the following example.
+# The cluster requires NFS support. You need to configure NFS directories that can be accessed by all nodes.
+
+
+#### copy the following configuration to your yaml file ####
+general:
+    task:
+        local_base_path: "/home/<home dir>/nfs_folder/"    # root path of the task, which must be an NFS path
+    backend: pytorch   # pytorch, tensorflow or mindspore  
+    parallel_search: True
+    parallel_fully_train: True
+    cluster:
+        master_ip: 192.168.0.2  # IP address of the node where the Vega is started.
+        listen_port: 8786
+        slaves: [192.168.0.3]   # or [192.168.0.3, 192.168.0.4, 192.168.0.5], according to cluster information
+########################### end #############################
+
+
+pipeline: [nas, fullytrain]
+
+
+nas:
+    pipe_step:
+        type: SearchPipeStep
+    search_algorithm:
+        type: RandomSearch
+        policy:
+            num_sample: 50
+    search_space:
+        hyperparameters:
+            -   key: network.backbone.depth
+                type: CATEGORY
+                range: [18, 34]
+            -   key: network.backbone.base_channel
+                type: CATEGORY
+                range:  [32, 48, 56]
+    model:
+        model_desc:
+            modules: ['backbone']
+            backbone:
+                type: ResNet
+                num_class: 10
+    trainer:
+        type: Trainer
+        epochs: 3
+    dataset:
+        type: Cifar10
+        common:
+            data_path: /cache/datasets/cifar10/
+
+
+fullytrain:
+    pipe_step:
+        type: TrainPipeStep
+        models_folder: "{local_base_path}/output/nas/"
+    trainer:
+        ref: nas.trainer
+    dataset:
+        ref: nas.dataset

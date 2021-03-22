@@ -128,7 +128,7 @@ class ResNetVariantDetCodec(Backbone):
             base_depth, base_channel = map(int, m.groups()[:-1])
             arch = m.group('arch')
             return dict(base_depth=base_depth, base_channel=base_channel, arch=arch)
-        except:
+        except Exception:
             raise ValueError('Cannot parse arch code {}'.format(arch_code))
 
     @property
@@ -293,7 +293,7 @@ class ResNetVariantDetCodec(Backbone):
                 try:
                     arch[idx], arch[idx + direction] = arch[idx + direction], arch[idx]
                     break
-                except:
+                except Exception:
                     continue
             ops.append('swap:{}&{}'.format(idx, idx + direction))
             return arch
@@ -335,7 +335,7 @@ class ResNetVariantDetCodec(Backbone):
                         new_arch = _swap(new_arch, R)
                     else:
                         raise ('operation index out of range')
-            except:
+            except Exception:
                 continue
             new_arch = ''.join(new_arch)
             if is_valid(new_arch) and (new_arch != base_arch or new_channel != base_channel):

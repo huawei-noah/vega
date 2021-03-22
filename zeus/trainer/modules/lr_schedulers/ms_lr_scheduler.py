@@ -10,13 +10,11 @@
 
 """Cosine annealing lr scheduler."""
 from zeus.common import ClassFactory, ClassType
-from mindspore.nn.learning_rate_schedule import LearningRateSchedule
-from mindspore import Tensor
 import numpy as np
 
 
 @ClassFactory.register(ClassType.LR_SCHEDULER)
-class MultiStepLR(LearningRateSchedule):
+class MultiStepLR():
     """Multiple Step learning rate with warm up.
 
     :param milestones: list of decay epochs
@@ -29,25 +27,26 @@ class MultiStepLR(LearningRateSchedule):
     :type epoch_steps: int
     """
 
-    def __init__(self, base_lr, milestones, gamma, total_epoch):
+    def __init__(self, optimizer=None, milestones=None, gamma=0.1):
         """Initialize."""
         super(MultiStepLR, self).__init__()
         self.milestones = milestones
-        self.base_lr = base_lr
         self.gamma = gamma
-        self.total_epoch = total_epoch
 
-    def construct(self, global_step):
+    def __call__(self, base_lr, global_step, total_epoch):
         """Call lr scheduler class."""
         lr_each_step = []
-        decay_step_index = [int(global_step * (self.milestones[i] / self.total_epoch)) for i in
-                            range(len(self.milestones) + 1)]
+        decay_step_index = [int(global_step * (self.milestones[i] / total_epoch)) for i in
+                            range(len(self.milestones))]
+
         for i in range(global_step):
             if i < decay_step_index[0]:
-                lr_each_step.append(self.base_lr)
-            elif i < decay_step_index[1]:
-                lr_each_step.append(self.base_lr * self.gamma)
+                lr_each_step.append(base_lr)
+            elif i < decay_step_index[min(1, len(self.milestones) - 1)]:
+                lr_each_step.append(base_lr * self.gamma)
+            elif i < decay_step_index[min(2, len(self.milestones) - 1)]:
+                lr_each_step.append(base_lr * self.gamma * self.gamma)
             else:
-                lr_each_step.append(self.base_lr * self.gamma * self.gamma)
+                lr_each_step.append(base_lr * self.gamma * self.gamma * self.gamma)
         lr_each_step = np.array(lr_each_step).astype(np.float32)
-        return Tensor(lr_each_step)
+        return lr_each_step

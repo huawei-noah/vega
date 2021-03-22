@@ -10,6 +10,9 @@
 
 """DifferentialAlgorithm."""
 import importlib
+import math
+import logging
+import numpy as np
 from functools import partial
 import vega
 from .search_algorithm import SearchAlgorithm
@@ -20,6 +23,9 @@ from zeus.common import ConfigSerializable
 
 if vega.is_torch_backend():
     import torch
+    import torch.nn as nn
+    import torch.nn.functional as F
+    import torch.distributions.categorical as cate
 elif vega.is_tf_backend():
     import tensorflow as tf
 
@@ -42,6 +48,12 @@ class DifferentialConfig(ConfigSerializable):
     tf_arch_optim = dict(type='AdamOptimizer', learning_rate=3.0e-4, beta1=0.5, beta2=0.999)
     tf_criterion = dict(type='CrossEntropyLoss')
     objective_keys = 'accuracy'
+    # config for sgas algorithm
+    use_history = True
+    history_size = 5
+    warmup_dec_epoch = 9
+    decision_freq = 5
+    _remove_watched_var = False
 
 
 @ClassFactory.register(ClassType.SEARCH_ALGORITHM)
@@ -63,7 +75,13 @@ class DifferentialAlgorithm(SearchAlgorithm):
         self.parallel = self.config.parallel
         self.criterion = self.config.criterion
         self.sample_num = self.config.sample_num
+        self._remove_watched_var = self.config._remove_watched_var
         self.sample_idx = 0
+        # sgas config
+        self.use_history = self.config.use_history
+        self.history_size = self.config.history_size
+        self.warmup_dec_epoch = self.config.warmup_dec_epoch
+        self.decision_freq = self.config.decision_freq
 
     def set_model(self, model):
         """Set model."""
@@ -80,7 +98,8 @@ class DifferentialAlgorithm(SearchAlgorithm):
             optim_config = self.config.arch_optim.copy()
             optim_name = optim_config.pop('type')
             optim_class = getattr(importlib.import_module('torch.optim'), optim_name)
-            learnable_params = [model.alphas_normal, model.alphas_reduce]
+            learnable_params = getattr(self.model, 'learnable_params',
+                                       [model.alphas_normal, model.alphas_reduce])
             optimizer = optim_class(learnable_params, **optim_config)
         elif vega.is_tf_backend():
             optim_config = self.config.tf_arch_optim.copy()
@@ -162,3 +181,111 @@ class DifferentialAlgorithm(SearchAlgorithm):
         """Check if the search is finished."""
         self.sample_idx += 1
         return self.sample_idx > self.sample_num
+
+    def edge_decision(self, type, alphas, selected_idxs, candidate_flags, probs_history, epoch):
+        """Calculate the decision for each edge.
+
+        :param type: the type of cell
+        :type type: str ('normal' or 'reduce')
+        """
+        mat = F.softmax(torch.stack(alphas, dim=0), dim=-1).detach()
+        logging.info('alpha: {}'.format(mat))
+        importance = torch.sum(mat[:, 1:], dim=-1)
+        logging.info(type + " importance {}".format(importance))
+
+        probs = mat[:, 1:] / importance[:, None]
+        logging.info(type + " probs {}".format(probs))
+        entropy = cate.Categorical(probs=probs).entropy() / math.log(probs.shape[1])
+        logging.info(type + " entropy {}".format(entropy))
+
+        if self.use_history:
+            # SGAS Cri.2
+            logging.info(type + " probs history {}".format(probs_history))
+            histogram_inter = self.histogram_average(probs_history, probs)
+            logging.info(type + " histogram intersection average {}".format(histogram_inter))
+            probs_history.append(probs)
+            if (len(probs_history) > self.history_size):
+                probs_history.pop(0)
+
+            score = self.normalize(importance) * self.normalize(1 - entropy) * self.normalize(histogram_inter)
+            logging.info(type + " score {}".format(score))
+        else:
+            # SGAS Cri.1
+            score = self.normalize(importance) * self.normalize(1 - entropy)
+            logging.info(type + " score {}".format(score))
+
+        if torch.sum(candidate_flags.int()) > 0 and epoch >= self.warmup_dec_epoch and \
+                (epoch - self.warmup_dec_epoch) % self.decision_freq == 0:
+            masked_score = torch.min(score, (2 * candidate_flags.float() - 1) * np.inf)
+            selected_edge_idx = torch.argmax(masked_score)
+            # add 1 since none op
+            selected_op_idx = torch.argmax(probs[selected_edge_idx]) + 1
+            selected_idxs[selected_edge_idx] = selected_op_idx
+
+            candidate_flags[selected_edge_idx] = False
+            alphas[selected_edge_idx].requires_grad = False
+            if type == 'normal':
+                reduction = False
+            elif type == 'reduce':
+                reduction = True
+            else:
+                raise Exception('Unknown Cell Type')
+            candidate_flags, selected_idxs = self.check_edges(candidate_flags, selected_idxs, reduction=reduction)
+            logging.info("#" * 30 + " Decision Epoch " + "#" * 30)
+            logging.info("epoch {}, {}_selected_idxs {}, added edge {} with op idx {}".format(
+                epoch, type, selected_idxs, selected_edge_idx, selected_op_idx))
+            logging.info(type + "_candidate_flags {}".format(candidate_flags))
+            return True, selected_idxs, candidate_flags
+
+        else:
+            logging.info("#" * 30 + " Not a Decision Epoch " + "#" * 30)
+            logging.info("epoch {}, {}_selected_idxs {}".format(epoch, type, selected_idxs))
+            logging.info(type + "_candidate_flags {}".format(candidate_flags))
+            return False, selected_idxs, candidate_flags
+
+    def normalize(self, alphas, epsilon=1e-9):
+        """Normalize alphas."""
+        min_ = torch.min(alphas, dim=-1, keepdim=True)[0] + epsilon
+        max_ = torch.max(alphas, dim=-1, keepdim=True)[0] + epsilon
+        range_ = max_ - min_ + epsilon
+        return (alphas - min_) / range_
+
+    def histogram_average(self, history, probs):
+        """Calculate the average history information using the histogram intersection method."""
+        def histogram_intersection(a, b):
+            c = np.minimum(a.detach().cpu().numpy(), b.detach().cpu().numpy())
+            c = torch.from_numpy(c).cuda()
+            sums = c.sum(dim=1)
+            return sums
+        histogram_inter = torch.zeros(probs.shape[0], dtype=torch.float).cuda()
+        if not history:
+            return histogram_inter
+        for hist in history:
+            histogram_inter += histogram_intersection(hist, probs)
+        histogram_inter /= len(history)
+        return histogram_inter
+
+    def check_edges(self, flags, selected_idxs, reduction=False):
+        """Check and prune edge."""
+        n = 2
+        max_num_edges = 2
+        start = 0
+        for i in range(self.model.steps):
+            end = start + n
+            num_selected_edges = torch.sum(1 - flags[start:end].int())
+            if num_selected_edges >= max_num_edges:
+                for j in range(start, end):
+                    if flags[j]:
+                        flags[j] = False
+                        # pruned edges PRIMITIVES.index('none')
+                        selected_idxs[j] = 0
+                        if reduction:
+                            self.model.alphas_reduce[j].requires_grad = False
+                        else:
+                            self.model.alphas_normal[j].requires_grad = False
+                    else:
+                        pass
+            start = end
+            n += 1
+
+        return flags, selected_idxs

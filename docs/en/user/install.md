@@ -4,31 +4,31 @@
 
 The host where the Vega is installed has a GPU and meets the following requirements:
 
-1. Ubuntu 18.04 or later (other Linux distributions are not fully tested)
-2. CUDA 10.0
+1. Ubuntu 18.04 or EulerOS 2.0 SP8
+2. CUDA 10.0 or CANN 20.1
 3. Python 3.7
-4. pip
-
-Before installing Vega, you need to install MMDetection and pycocotools in addition to some mandatory software packages through pip.
+4. pip3
 
 ## 2. Installing Vega
 
 Execute the following command to install:
 
 ```bash
-pip3 install --user noah-vega
+pip3 install --user --upgrade noah-vega
 ```
 
-Vega's dependent packages are not installed during the Vega installation process. After completing the Vega installation, you need to execute the following commands to install the dependent packages:
+**Important:**
 
-```bash
-python3 -m vega.tools.install_pkgs
-```
+1. Before installing the VGA, run the following command to upgrade the PIP:
 
-## 3. Installing the MMDetection
+    ```bash
+    pip3 install --user --upgrade pip
+    ```
 
-If the detection algorithm (SP-NAS) is required, install MMDetection and download `mmdetection-1.0rc1.zip`. Install the software according to the installation instructions on the home page of the software.
+2. After the installation is complete, if `~/.local/bin` is not in the `$PATH` environment variable, you need to log in again to make the environment variable take effect.
 
-## 4. Mixing precision and SyncBNN are supported.
+If the training is performed on the Atlas 900, please contact us.
+
+## 3. Mixing precision and SyncBNN are supported
 
 To support mixed precision and SyncBN, install Apex, download the Apex source code `apex-master.zip`, and install the software according to the installation instructions on the home page of the software.

@@ -18,10 +18,34 @@ class SRPolicyConfig(ConfigSerializable):
     num_sample = 10
     num_mutate = 10
 
+    @classmethod
+    def rules(cls):
+        """Return rules for checking."""
+        rules_SRPolicyConfig = {"num_sample": {"type": int},
+                                "num_mutate": {"type": int}
+                                }
+        return rules_SRPolicyConfig
+
 
 class SRConfig(ConfigSerializable):
     """SR Config."""
 
     codec = 'SRCodec'
     policy = SRPolicyConfig
-    objective_keys = ['SRMetric', 'flops']
+    objective_keys = ['PSNR', 'flops']
+
+    @classmethod
+    def rules(cls):
+        """Return rules for checking."""
+        rules_SRConfig = {"codec": {"type": str},
+                          "policy": {"type": dict},
+                          "objective_keys": {"type": (list, str)}
+                          }
+        return rules_SRConfig
+
+    @classmethod
+    def get_config(cls):
+        """Get sub config."""
+        return {
+            "policy": cls.policy
+        }

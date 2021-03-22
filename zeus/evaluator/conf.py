@@ -13,10 +13,10 @@ from zeus.common import ClassType
 from zeus.common import ConfigSerializable
 
 
-class GPUEvaluatorConfig(ConfigSerializable):
-    """Default Evaluator config for GPUEvaluator."""
+class HostEvaluatorConfig(ConfigSerializable):
+    """Default Evaluator config for HostEvaluator."""
 
-    _type_name = ClassType.GPU_EVALUATOR
+    _type_name = ClassType.HOST_EVALUATOR
     type = None
     evaluate_latency = None
     cuda = True
@@ -30,17 +30,19 @@ class GPUEvaluatorConfig(ConfigSerializable):
         return check_rules
 
 
-class DavinciMobileEvaluatorConfig(ConfigSerializable):
-    """Default Evaluator config for DavinciMobileEvaluator."""
+class DeviceEvaluatorConfig(ConfigSerializable):
+    """Default Evaluator config for DeviceEvaluator."""
 
-    _type_name = ClassType.DAVINCI_MOBILE_EVALUATOR
+    _type_name = ClassType.DEVICE_EVALUATOR
     backend = "pytorch"
     hardware = "Davinci"
     remote_host = ""
     cuda = False
     evaluate_latency = True
     metric = {'type': 'accuracy'}
+    calculate_metric = False
     report_freq = 10
+    quantize = False
 
 
 class EvaluatorConfig(ConfigSerializable):
@@ -48,14 +50,14 @@ class EvaluatorConfig(ConfigSerializable):
 
     _type_name = ClassType.EVALUATOR
     type = 'Evaluator'
-    gpu_evaluator = GPUEvaluatorConfig
-    gpu_evaluator_enable = False
-    davinci_mobile_evaluator = DavinciMobileEvaluatorConfig
-    davinci_mobile_evaluator_enable = False
+    host_evaluator = HostEvaluatorConfig
+    host_evaluator_enable = False
+    device_evaluator = DeviceEvaluatorConfig
+    device_evaluator_enable = False
 
     @classmethod
     def rules(cls):
         """Return rules for checking."""
         rules = {"type": {"required": True, "type": str},
-                 "gpu_evaluator": {"type": dict}}
+                 "host_evaluator": {"type": dict}}
         return rules

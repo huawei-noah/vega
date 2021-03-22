@@ -46,14 +46,14 @@ class Dataset(TaskOps):
             self.args = Config(kwargs)
         if hasattr(self, 'config'):
             config = getattr(self.config, self.mode)
-            config.from_json(self.args)
-            self.args = config().to_json()
+            config.from_dict(self.args)
+            self.args = config().to_dict()
         self._init_hps(hps)
         self.train = self.mode in ["train", "val"]
         transforms_list = self._init_transforms()
         self._transforms = Transforms(transforms_list)
-        if "transforms" in kwargs.keys():
-            self._transforms.__transform__ = kwargs["transforms"]
+        # if "transforms" in kwargs.keys():
+        #     self._transforms.__transform__ = kwargs["transforms"]
         self.dataset_init()
         self.world_size = 1
         self.rank = 0
@@ -76,8 +76,7 @@ class Dataset(TaskOps):
     @transforms.setter
     def transforms(self, value):
         """Set function of transforms."""
-        if isinstance(value, list):
-            self.transforms.__transform__ = value
+        self._transforms = value
 
     def _init_transforms(self):
         """Initialize transforms method.

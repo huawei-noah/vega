@@ -10,6 +10,13 @@
 
 """Import and register modules automatically."""
 
+from zeus.common.class_factory import ClassFactory
+
+
+ClassFactory.lazy_register("zeus.modules", {
+    "module": ["network:Module"],
+})
+
 
 def register_modules():
     """Import and register modules automatically."""
@@ -19,3 +26,7 @@ def register_modules():
     from . import operators
     from . import preprocess
     from . import loss
+    from . import getters
+    from . import deformations
+    from . import necks
+    from . import backbones

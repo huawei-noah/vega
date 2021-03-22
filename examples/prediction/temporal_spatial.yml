@@ -1,0 +1,77 @@
+general:
+    backend: tensorflow
+
+pipeline: [search]
+
+search:
+    pipe_step:
+        type: SearchPipeStep
+
+    search_algorithm:
+        type: AshaHpo
+        objective_keys: RMSE
+        policy:
+            total_epochs: 100
+
+    search_space:
+        type: SearchSpace
+        hyperparameters:
+            -   key: dataset.batch_size
+                type: CATEGORY
+                range: [8, 16, 24, 32]
+            -   key: trainer.optimizer.params.lr
+                type: FLOAT_EXP
+                range: [0.0001, 0.1]
+            -   key: trainer.optimizer.type
+                type: CATEGORY
+                range: ['Adam', 'SGD','RMSProp']
+            -   key: trainer.optimizer.params.momentum
+                type: FLOAT
+                range: [0.0, 0.99]
+            -   key: network.gru_layers
+                type: CATEGORY
+                range: [1, 2, 3, 4]
+            -   key: network.gcn_layers
+                type: CATEGORY
+                range: [1, 2, 3, 4]
+        condition:
+            -   key: condition_for_sgd_momentum
+                child: trainer.optimizer.params.momentum
+                parent: trainer.optimizer.type
+                type: EQUAL
+                range: ["SGD"]
+                #            -   key: network.kernel_size
+                #                type: CATEGORY
+                #                range: [1, 2, 3, 4, 5]
+    model:
+        model_desc:
+            type: GCN
+
+    trainer:
+        type: Trainer
+        optimizer:
+            type: SGD
+            params:
+                lr: 0.01
+                momentum: 0.9
+        loss:
+            type: ForecastLoss
+        metric:
+            type: RMSE
+    evaluator:
+        type: Evaluator
+        host_evaluator:
+            type: HostEvaluator
+            metric:
+                type: RMSE
+
+    dataset:
+        type: SpatiotemporalDataset
+        common:
+            data_path: /cache/Abilene/df_inputated.csv
+            n_his: 12
+            n_pred: 4
+
+
+
+

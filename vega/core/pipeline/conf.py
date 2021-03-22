@@ -15,7 +15,7 @@ from zeus.networks.model_config import ModelConfig
 from zeus.trainer.conf import TrainerConfig
 from zeus.evaluator.conf import EvaluatorConfig
 from zeus.datasets.conf.dataset import DatasetConfig
-from zeus.common.util.check import valid_rule
+from zeus.common.check import valid_rule
 
 
 class SearchSpaceConfig(ConfigSerializable):
@@ -25,9 +25,9 @@ class SearchSpaceConfig(ConfigSerializable):
     type = None
 
     @classmethod
-    def from_json(cls, data, skip_check=True):
+    def from_dict(cls, data, skip_check=True):
         """Restore config from a dictionary or a file."""
-        cls = super(SearchSpaceConfig, cls).from_json(data, skip_check)
+        cls = super(SearchSpaceConfig, cls).from_dict(data, skip_check)
         if "type" in data and not data["type"]:
             if hasattr(cls, "hyperparameters"):
                 del cls.hyperparameters
@@ -55,9 +55,9 @@ class SearchAlgorithmConfig(ConfigSerializable):
     _class_data = None
 
     @classmethod
-    def from_json(cls, data, skip_check=True):
+    def from_dict(cls, data, skip_check=True):
         """Restore config from a dictionary or a file."""
-        cls = super(SearchAlgorithmConfig, cls).from_json(data, skip_check)
+        cls = super(SearchAlgorithmConfig, cls).from_dict(data, skip_check)
         if "type" in data and not data["type"]:
             cls._class_data = None
             cls.type = None
@@ -74,7 +74,7 @@ class SearchAlgorithmConfig(ConfigSerializable):
 class PipeStepConfig(ConfigSerializable):
     """Default Pipeline config for Pipe Step."""
 
-    type = "NasPipeStep"
+    type = "SearchPipeStep"
     dataset = DatasetConfig
     search_algorithm = SearchAlgorithmConfig
     search_space = SearchSpaceConfig
@@ -86,9 +86,9 @@ class PipeStepConfig(ConfigSerializable):
     pipe_step = {}
 
     @classmethod
-    def from_json(cls, data, skip_check=True):
+    def from_dict(cls, data, skip_check=True):
         """Restore config from a dictionary or a file."""
-        cls = super(PipeStepConfig, cls).from_json(data, skip_check)
+        cls = super(PipeStepConfig, cls).from_dict(data, skip_check)
         if "pipe_step" in data:
             if "type" in data["pipe_step"]:
                 cls.type = data["pipe_step"]["type"]
@@ -111,9 +111,9 @@ class PipeStepConfig(ConfigSerializable):
                            }
 
         if 'pipe_step' in config:
-            if config["pipe_step"]['type'] == 'NasPipeStep':
+            if config["pipe_step"]['type'] == 'SearchPipeStep':
                 valid_rule(cls, config, check_rules_nas)
-            elif config["pipe_step"]['type'] == 'FullyTrainPipeStep':
+            elif config["pipe_step"]['type'] == 'TrainPipeStep':
                 pass
         else:
             raise Exception(

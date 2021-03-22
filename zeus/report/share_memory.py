@@ -52,7 +52,7 @@ class ShareMemoryClient():
 
     def close(self):
         """Close Client."""
-        if self._client:
+        if hasattr(self, "_client") and self._client:
             try:
                 self._client.close()
             except Exception as ex:

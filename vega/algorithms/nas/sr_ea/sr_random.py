@@ -58,7 +58,7 @@ class SRRandom(SearchAlgorithm):
         search_desc = self.codec.encode(search_desc)
         desc['custom'] = search_desc
         self.sample_count += 1
-        return dict(worker_id=self.sample_count, desc=desc)
+        return dict(worker_id=self.sample_count, encoded_desc=desc)
 
     def update(self, record):
         """Nothing need to update."""

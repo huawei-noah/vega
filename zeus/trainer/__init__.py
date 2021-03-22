@@ -13,6 +13,9 @@
 
 def register_trainer(backend):
     """Import and register trainer automatically."""
-    # from . import trainer
     if backend == "pytorch":
-        from . import timm_trainer_callback
+        from zeus.trainer.trainer_torch import TrainerTorch
+    elif backend == "tensorflow":
+        from zeus.trainer.trainer_tf import TrainerTf
+    elif backend == "mindspore":
+        from zeus.trainer.trainer_ms import TrainerMs

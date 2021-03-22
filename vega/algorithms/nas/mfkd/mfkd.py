@@ -17,7 +17,7 @@ import logging
 from sklearn import preprocessing
 from sklearn.gaussian_process import GaussianProcessRegressor as GPR
 from sklearn.gaussian_process.kernels import RBF
-from zeus.report import Report
+from zeus.report import ReportClient
 from zeus.common import update_dict
 from zeus.common import ClassFactory, ClassType
 from vega.core.search_algs import SearchAlgorithm
@@ -129,10 +129,10 @@ class MFKD1(SearchAlgorithm):
         return _completed
 
     def _save_best(self, desc):
-        record = Report().receive(self.step_name, self.sample_count + 1)
+        record = ReportClient.get_record(self.step_name, self.sample_count + 1)
         record.performance = {"accuracy": 100}
         record.desc = desc
-        Report().broadcast(record)
+        ReportClient.broadcast(record)
 
     @property
     def max_samples(self):

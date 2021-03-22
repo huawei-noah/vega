@@ -9,6 +9,7 @@
 # MIT License for more details.
 
 """This script contains some common tools."""
+
 from collections import Sequence
 import matplotlib.pyplot as plt
 import mmcv

@@ -22,6 +22,16 @@ class QuantPolicyConfig(EAConfig):
     num_individual = 16
     random_models = 32
 
+    @classmethod
+    def rules(cls):
+        """Return rules for checking."""
+        rules_QuantPolicyConfig = {"length": {"type": int},
+                                   "num_generation": {"type": int},
+                                   "num_individual": {"type": int},
+                                   "random_models": {"type": int}
+                                   }
+        return rules_QuantPolicyConfig
+
 
 class QuantConfig(ConfigSerializable):
     """Quant Config."""
@@ -29,3 +39,19 @@ class QuantConfig(ConfigSerializable):
     codec = 'QuantCodec'
     policy = QuantPolicyConfig
     objective_keys = ['accuracy', 'flops']
+
+    @classmethod
+    def rules(cls):
+        """Return rules for checking."""
+        rules_QuantConfig = {"codec": {"type": str},
+                             "policy": {"type": dict},
+                             "objective_keys": {"type": (list, str)}
+                             }
+        return rules_QuantConfig
+
+    @classmethod
+    def get_config(cls):
+        """Get sub config."""
+        return {
+            "policy": cls.policy
+        }

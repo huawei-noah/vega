@@ -52,7 +52,7 @@ from zeus.common import ConfigSerializable
 class ClassificationDatasetCommonConfig(ConfigSerializable):
     data_path = None
     batch_size = 1
-    shuffle = True
+    shuffle = False
     drop_last = True
     n_class = None
     train_portion = 1.0
@@ -65,15 +65,29 @@ class ClassificationDatasetCommonConfig(ConfigSerializable):
 
 
 class ClassificationDatasetTraineConfig(ClassificationDatasetCommonConfig):
-    pass
+    shuffle = True
+    transforms = [
+        dict(type='Resize', size=[256, 256]),
+        dict(type='RandomCrop', size=[224, 224]),
+        dict(type='RandomHorizontalFlip'),
+        dict(type='ToTensor'),
+        dict(type='Normalize', mean=[0.50, 0.5, 0.5], std=[0.50, 0.5, 0.5])]
 
 
 class ClassificationDatasetValConfig(ClassificationDatasetCommonConfig):
-    pass
+    shuffle = False
+    transforms = [
+        dict(type='Resize', size=[224, 224]),
+        dict(type='ToTensor'),
+        dict(type='Normalize', mean=[0.50, 0.5, 0.5], std=[0.50, 0.5, 0.5])]
 
 
 class ClassificationDatasetTestConfig(ClassificationDatasetCommonConfig):
     shuffle = False
+    transforms = [
+        dict(type='Resize', size=[224, 224]),
+        dict(type='ToTensor'),
+        dict(type='Normalize', mean=[0.50, 0.5, 0.5], std=[0.50, 0.5, 0.5])]
 
 
 class ClassificationDatasetConfig(ConfigSerializable):
@@ -81,7 +95,6 @@ class ClassificationDatasetConfig(ConfigSerializable):
     train = ClassificationDatasetTraineConfig
     val = ClassificationDatasetValConfig
     test = ClassificationDatasetTestConfig
-
 ```
 
 ## 2.2 实现Dataset
@@ -97,13 +110,13 @@ class ClassificationDatasetConfig(ConfigSerializable):
 ```python
 import numpy as np
 import random
-import cv2
 import os
-import vega
+import PIL
+import zeus
 from zeus.common import ClassFactory, ClassType
 from zeus.common import FileOps
 from zeus.datasets.conf.cls_ds import ClassificationDatasetConfig
-from zeus.datasets.common.utils.dataset import Dataset
+from .utils.dataset import Dataset
 
 
 @ClassFactory.register(ClassType.DATASET)
@@ -115,6 +128,10 @@ class ClassificationDataset(Dataset):
         Dataset.__init__(self, **kwargs)
         self.args.data_path = FileOps.download_dataset(self.args.data_path)
         sub_path = os.path.abspath(os.path.join(self.args.data_path, self.mode))
+        if self.args.train_portion != 1.0 and self.mode == "val":
+            sub_path = os.path.abspath(os.path.join(self.args.data_path, "train"))
+        if self.args.train_portion == 1.0 and self.mode == "val" and not os.path.exists(sub_path):
+            sub_path = os.path.abspath(os.path.join(self.args.data_path, "test"))
         if not os.path.exists(sub_path):
             raise("dataset path is not existed, path={}".format(sub_path))
         self._load_file_indexes(sub_path)
@@ -145,7 +162,7 @@ class ClassificationDataset(Dataset):
         else:
             (label, _file) = self.file_indexes[index]
             image = self._load_image(_file)
-        image, label = self.transforms(image, label)
+        image = self.transforms(image)
         n_label = self.classes.index(label)
         return image, n_label
 
@@ -155,11 +172,9 @@ class ClassificationDataset(Dataset):
         self.data = [(_cls, _file, self._load_image(_file)) for (_cls, _file) in self.file_indexes]
 
     def _load_image(self, image_file):
-        img = cv2.imread(image_file)
-        img = img / 255
-        img = img.astype(np.float32)
-        width, height, channel = img.shape
-        return img.reshape(channel, height, width)
+        img = PIL.Image.open(image_file)
+        img = img.convert("RGB")
+        return img
 
     def _to_tensor(self, data):
         if vega.is_torch_backend():
@@ -174,13 +189,6 @@ class ClassificationDataset(Dataset):
             random.shuffle(self.data)
         else:
             random.shuffle(self.file_indexes)
-
-    def input_shape(self, batch_size=1):
-        (_, _file) = self.file_indexes[0]
-        image = self._load_image(_file)
-        img_shape = image.shape
-        shape = [batch_size, img_shape[0], img_shape[1], img_shape[2]]
-        return shape
 ```
 
 ## 2.3 调测
@@ -190,7 +198,7 @@ class ClassificationDataset(Dataset):
 ```python
 import unittest
 import vega
-from zeus.common import ClassFactory, ClassType
+from zeus.common.class_factory import ClassFactory, ClassType
 
 
 class TestDataset(unittest.TestCase):

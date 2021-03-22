@@ -23,7 +23,7 @@ class IoUMetric(Metric):
     def update(self, *inputs):
         """Update the metric."""
         if len(inputs) != 2:
-            raise ValueError('SRMetric need 2 inputs (y_pred, y), but got {}'.format(len(inputs)))
+            raise ValueError('IoUMetric need 2 inputs (y_pred, y), but got {}'.format(len(inputs)))
         y_pred = self._convert_data(inputs[0])
         y = self._convert_data(inputs[1])
         self.result = self.compute_metric(y_pred, y)

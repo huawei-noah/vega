@@ -1,0 +1,129 @@
+general:
+    backend: pytorch
+
+
+pipeline: [nas, fully_train]
+
+
+nas:
+    pipe_step:
+        type: SearchPipeStep
+
+    dataset:
+        type: Cifar10
+        common:
+            data_path: /cache/datasets/cifar10
+            batch_size: 64
+            train_portion: 0.8
+
+    search_algorithm:
+        type: ModNasAlgorithm
+        optim:
+            type: EvolutionOptim
+
+    search_space:
+        type: SearchSpace
+        modules: [custom]
+        custom:
+            type: ModNasArchSpace
+            device_ids: '0'
+            model:
+                type: CIFAR_MobileNetV2_GPU
+                args:
+                    n_classes: 10
+            construct:
+                predefined: MobileNetV2PredefinedConstructor
+                elastic: MobileNetV2ElasticConstructor
+            desc_construct:
+                arch_desc: MobileNetV2ArchDescConstructor
+
+    trainer:
+        type: Trainer
+        ### modnas begin
+        callbacks: ModNasTrainerCallback
+        modnas:
+            imports:
+                - modnas.contrib.estim.progressive_shrinking
+                - modnas.contrib.arch_space.mobilenetv2_elastic
+            export:
+                default:
+                    type: MobileNetV2ElasticArchDescExporter
+            estim:
+                teacher:
+                    type: DefaultEstim
+                    epochs: 1
+                ps:
+                    type: ProgressiveShrinkingEstim
+                    save_arch_desc: True
+                    save_freq: 0
+                    epochs: 1
+                    criterion:
+                        -   type: KnowledgeDistillLoss
+                            mode: train
+                            args:
+                                kd_model_constructor:
+                                    -   type: DefaultModelConstructor
+                                        args:
+                                            model_type: CIFAR_MobileNetV2_GPU
+                                            args:
+                                                n_classes: 10
+                                    -   type: MobileNetV2PredefinedConstructor
+                                    -   type: DefaultTorchCheckpointLoader
+                                        args:
+                                            path: '{local_worker_path}/exp/default/chkpt/model_teacher_best.pt'
+                    args:
+                        stages:
+                            -   sequential: [1.0, 0.75, 0.5]
+                            -   sequential: [1.0, 0.75, 0.5, 0.25]
+                            -   spatial: [1.0, 0.67, 0.5]
+                            -   spatial: [1.0, 0.67, 0.5, 0.17]
+                        n_subnet_batch: 2
+                        use_ratio: True
+                        save_stage: True
+                        subnet_valid_freq: 25
+                search:
+                    type: SubNetEstim
+                    save_arch_desc: False
+                    epochs: 3
+                    subnet_epochs: 0
+                    args:
+                        num_bn_batch: 200
+                        clear_subnet_bn: True
+        ### modnas end
+        valid_interval: 0
+        lazy_built: True
+        epochs: 100 # >= total estim training epochs
+        optimizer:
+            type: SGD
+            params:
+                lr: 0.025
+                momentum: 0.9
+                weight_decay: !!float 3e-4
+        lr_scheduler:
+            type: CosineAnnealingLR
+            params:
+                T_max: 50.0
+                eta_min: 0.001
+
+fully_train:
+    pipe_step:
+        type: TrainPipeStep
+        models_folder: '{local_base_path}/output/nas/'
+
+    trainer:
+        ref: nas.trainer
+        type: Trainer
+        epochs: 1
+        lazy_built: False
+        valid_interval: 1
+        lr_scheduler:
+            type: CosineAnnealingLR
+            params:
+                T_max: 600.0
+
+    dataset:
+        type: Cifar10
+        common:
+            data_path: /cache/datasets/cifar10
+            batch_size: 64
+            train_portion: 1

@@ -67,8 +67,7 @@ class FasterRCNN(object):
         self.use_static_shapes = False  # Default
         self.first_stage_sampler = sampler.BalancedPositiveNegativeSampler(
             positive_fraction=self.first_stage_positive_balance_fraction,
-            is_static=(self.use_static_balanced_label_sampler and
-                       self.use_static_shapes))
+            is_static=(self.use_static_balanced_label_sampler and self.use_static_shapes))
 
         # First stage NMS
         self.first_stage_nms_score_threshold = 0.0
@@ -101,8 +100,7 @@ class FasterRCNN(object):
         self.second_stage_balance_fraction = 0.25  # Default
         self.second_stage_sampler = sampler.BalancedPositiveNegativeSampler(
             positive_fraction=self.second_stage_balance_fraction,
-            is_static=(self.use_static_balanced_label_sampler and
-                       self.use_static_shapes))
+            is_static=(self.use_static_balanced_label_sampler and self.use_static_shapes))
 
         # Second stage box predictor
         self.second_stage_box_predictor = NetworkDesc(

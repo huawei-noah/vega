@@ -9,6 +9,8 @@
 # MIT License for more details.
 
 """Custom functions of pytorch."""
+import logging
+import math
 import torch
 import torch.nn as nn
 from torch.functional import F
@@ -21,19 +23,72 @@ from zeus.common.class_factory import ClassType, ClassFactory
 class Module(nn.Module):
     """Base Module to adapter pytorch Module."""
 
-    data_format = 'channels_first'
-
     def __init__(self):
         super(Module, self).__init__()
         self._is_cuda = False
+        self.strict = True
+        self.data_format = 'channels_first'
+        self.exclude_weight_prefix = None
+        self.weight_file = None
+        self._apply_once = True
+        self._is_adaptive_weight = False
 
-    def initializer(self):
-        """Init params."""
+    @property
+    def is_adaptive_weight(self):
+        """Get _is_adaptive_weight flag."""
+        return self._is_adaptive_weight
+
+    @is_adaptive_weight.setter
+    def is_adaptive_weight(self, value):
+        """Set _is_adaptive_weight flag."""
+        self._is_adaptive_weight = value
+        for module in self.children():
+            module.is_adaptive_weight = value
+
+    def build(self):
+        """Build network or params."""
         pass
+
+    def load_state_dict(self, state_dict=None, strict=None, file_path=None):
+        """Load state dict from state_dict or file."""
+        state_dict = torch.load(file_path) if file_path is not None else state_dict
+        self.strict = strict if strict is not None else self.strict
+        state_dict = self._exclude_checkpoint_by_prefix(state_dict)
+        own_states = self.state_dict()
+        not_swap_keys = []
+        for own_key, own_state in own_states.items():
+            state = state_dict.get(own_key)
+            if state is None or own_state.shape != state.shape:
+                if 'num_batches_tracked' in own_key:
+                    continue
+                not_swap_keys.append(own_key)
+            else:
+                own_states[own_key] = state
+        if not_swap_keys:
+            logging.info("Not Swap Keys: {}".format(not_swap_keys))
+        super().load_state_dict(state_dict, self.strict)
+
+    def freeze(self):
+        """Freeze parameters."""
+        for name, parameter in self.named_parameters():
+            parameter.requires_grad_(False)
+        for name, module in self.named_modules():
+            if isinstance(module, nn.BatchNorm2d):
+                module.eval()
+
+    def _exclude_checkpoint_by_prefix(self, states):
+        if self.exclude_weight_prefix:
+            if not isinstance(self.exclude_weight_prefix, list):
+                self.exclude_weight_prefix = [self.exclude_weight_prefix]
+            for prefix in self.exclude_weight_prefix:
+                states = {k: v for k, v in states.items() if not k.startswith(prefix)}
+            self.strict = False
+        return states
 
     def set_parameters(self, name, value):
         """Set Parameters."""
-        self.register_buffer(name, value.cuda().requires_grad_())
+        self.register_parameter(name, nn.Parameter(value.cuda()))
+        return getattr(self, name)
 
     def get_weights(self, name):
         """Get Weights."""
@@ -51,18 +106,25 @@ class Module(nn.Module):
             output = model(output)
         return output
 
-    def cuda(self, device=None):
-        """Set cuda flag."""
-        self._is_cuda = True
-        return super().cuda(device)
+    def _apply_names(self):
+        """Apply names spaces."""
+        for name, module in self.named_modules():
+            module.name = name
 
-    @property
-    def is_cuda(self):
-        """Judge is cuda."""
-        return self._is_cuda
+    def adaptive_weight(self, inputs):
+        """Adaptive weight."""
+        return {}
 
     def forward(self, inputs, *args, **kwargs):
         """Call compiled function."""
+        if self._apply_once:
+            self.build()
+            if self.weight_file is not None:
+                logging.info("Start to load weight file : {}".format(self.weight_file))
+                self.load_state_dict(torch.load(self.weight_file))
+            if self.is_adaptive_weight:
+                self.adaptive_weight(inputs)
+            self._apply_once = False
         return self.call(inputs, *args, **kwargs)
 
 
@@ -99,11 +161,17 @@ class Conv2d(nn.Conv2d, OperatorSerializable):
     def __init__(self, in_channels, out_channels, kernel_size=3, stride=1, padding=0, bias=True, groups=1,
                  dilation=1, separable=False, depthwise=False):
         """Construct Identity class."""
+        self.is_adaptive_weight = False
+        if isinstance(padding, str):
+            padding = kernel_size // 2 if isinstance(kernel_size, int) else [v // 2 for v in kernel_size]
+        padding = padding if not isinstance(padding, str) else kernel_size // 2
         super(Conv2d, self).__init__(in_channels, out_channels, kernel_size=kernel_size, stride=stride, groups=groups,
                                      padding=padding, bias=bias, dilation=dilation)
 
     def forward(self, x):
         """Do an inference on Identity."""
+        if self.is_adaptive_weight:
+            self.adaptive_weight(x)
         return super().forward(x)
 
     def initial(self, kernel_mode='he', bias_mode='zero', kernel_scale=1., bias_scale=1.):
@@ -114,6 +182,31 @@ class Conv2d(nn.Conv2d, OperatorSerializable):
         if bias_mode == 'zero':
             if self.bias is not None:
                 self.bias.data.zero_()
+
+    def adaptive_weight(self, inputs):
+        """Adaptive weight."""
+        in_channels = inputs.shape[1]
+        w_in_shape = self.weight.data.shape[1]
+        self.in_channels = in_channels
+        if in_channels > w_in_shape:
+            self.weight.data = self.weight.data.repeat(1, 2, 1, 1)
+        elif in_channels < w_in_shape:
+            cut = list(range(w_in_shape)[:in_channels])
+            self.weight.data = self.weight.data[:, cut, :, :]
+        w_out_shape = self.weight.data.shape[0]
+        if self.out_channels > w_out_shape:
+            self.weight.data = self.weight.data.repeat(2, 1, 1, 1)
+        elif self.out_channels < w_out_shape:
+            cut = list(range(w_out_shape)[:self.out_channels])
+            self.weight.data = self.weight.data[cut, :, :, :]
+
+    def get_weights(self):
+        """Get weights."""
+        return self._parameters
+
+    def set_weights(self, name, weight):
+        """Set weights."""
+        self._parameters[name] = nn.Parameter(weight)
 
 
 @ClassFactory.register(ClassType.NETWORK)
@@ -138,11 +231,57 @@ class BatchNorm2d(nn.BatchNorm2d, OperatorSerializable):
 
     def __init__(self, num_features, eps=1e-05, momentum=0.1, affine=True):
         """Construct Identity class."""
+        self.is_adaptive_weight = False
         super(BatchNorm2d, self).__init__(num_features, eps, momentum, affine)
 
     def forward(self, x):
         """Do an inference on Identity."""
+        if self.is_adaptive_weight:
+            self.adaptive_weight(x)
         return super().forward(x)
+
+    def get_weights(self):
+        """Get weights."""
+        weights = {**self._parameters, **self._buffers}
+        if 'num_batches_tracked' in weights:
+            weights.pop('num_batches_tracked')
+        return weights
+
+    def adaptive_weight(self, inputs):
+        """Adaptive weight."""
+        if self.num_features < inputs.shape[1]:
+            self.num_features = inputs.shape[1]
+            self.weight.data = self.weight.data.repeat(2)
+            self.bias.data = self.bias.data.repeat(2)
+            self.running_mean = self.running_mean.repeat(2)
+            self.running_var = self.running_var.repeat(2)
+        elif self.num_features > inputs.shape[1]:
+            self.num_features = inputs.shape[1]
+            idx = list(range(inputs.shape[1])[:inputs.shape[1]])
+            self.weight.data = self.weight.data[idx]
+            self.bias.data = self.bias.data[idx]
+            self.running_mean = self.running_mean[idx]
+            self.running_var = self.running_var[idx]
+
+    def set_weights(self, name, weight):
+        """Set weights."""
+        if name in ['running_mean', 'running_var']:
+            self._buffers[name] = weight
+        else:
+            self._parameters[name] = nn.Parameter(weight)
+
+
+@ClassFactory.register(ClassType.NETWORK)
+class Pad(nn.ZeroPad2d, OperatorSerializable):
+    """Pad Module inherit nn.ZeroPad2d."""
+
+    def __init__(self, kernel_size=None, stride=1, padding=0):
+        """Construct MaxPool2d class."""
+        super(Pad, self).__init__(padding)
+
+    def forward(self, x):
+        """Do an inference on Identity."""
+        return x
 
 
 @ClassFactory.register(ClassType.NETWORK)
@@ -151,6 +290,7 @@ class MaxPool2d(nn.MaxPool2d, OperatorSerializable):
 
     def __init__(self, kernel_size, stride=1, padding=0):
         """Construct MaxPool2d class."""
+        padding = padding if not isinstance(padding, str) else 1
         super(MaxPool2d, self).__init__(kernel_size, stride, padding)
 
     def forward(self, x):
@@ -183,7 +323,7 @@ class Relu(nn.ReLU, OperatorSerializable):
         super(Relu, self).__init__(inplace)
 
     def forward(self, x):
-        """Do an inference on Identity."""
+        """Do an inference on Relu."""
         return super().forward(x)
 
 
@@ -192,11 +332,11 @@ class Relu6(nn.ReLU6, OperatorSerializable):
     """Relu6 Module inherit nn.Relu6."""
 
     def __init__(self, inplace=False):
-        """Construct ReLU class."""
+        """Construct Relu6 class."""
         super(Relu6, self).__init__(inplace)
 
     def forward(self, x):
-        """Do an inference on Identity."""
+        """Do an inference on Relu6."""
         return super().forward(x)
 
 
@@ -234,7 +374,7 @@ class AdaptiveAvgPool2d(nn.AdaptiveAvgPool2d, OperatorSerializable):
         super(AdaptiveAvgPool2d, self).__init__(output_size)
 
     def forward(self, x):
-        """Do an inference on Identity."""
+        """Do an inference on AdaptiveAvgPool2d."""
         return super().forward(x)
 
 
@@ -244,15 +384,36 @@ class Linear(nn.Linear, OperatorSerializable):
 
     def __init__(self, in_features, out_features, use_bias=True, activation=None):
         """Construct Linear class."""
+        self.is_adaptive_weight = False
         super(Linear, self).__init__(in_features, out_features, use_bias)
         self.activation = activation
 
     def forward(self, x):
-        """Do an inference on Identity."""
+        """Do an inference on Linear."""
+        if self.is_adaptive_weight:
+            self.adaptive_weight(x)
         out = super().forward(x)
         if self.activation == 'softmax':
             return F.softmax(out)
         return out
+
+    def adaptive_weight(self, inputs):
+        """Adaptive weight."""
+        if self.in_features < inputs.shape[1]:
+            self.weight.data = self.weight.data.repeat(1, 2)
+            self.in_features = inputs.shape[1]
+        elif self.in_features > inputs.shape[1]:
+            idx = list(range(inputs.shape[1])[:inputs.shape[1]])
+            self.weight.data = self.weight.data[:, idx]
+            self.in_features = inputs.shape[1]
+
+    def get_weights(self):
+        """Get weights."""
+        return self._parameters
+
+    def set_weights(self, name, weight):
+        """Set weights."""
+        self._parameters[name] = nn.Parameter(weight)
 
 
 @ClassFactory.register(ClassType.NETWORK)
@@ -270,6 +431,20 @@ class Identity(nn.Module, OperatorSerializable):
         :return: output tensor
         """
         return x
+
+
+@ClassFactory.register(ClassType.NETWORK)
+class Dropout(nn.Dropout, OperatorSerializable):
+    """Dropout Module inherit nn.Dropout."""
+
+    def __init__(self, prob=0.5, inplace=False):
+        """Construct Dropout class."""
+        super(Dropout, self).__init__(prob, inplace)
+
+    def forward(self, x):
+        """Do an inference on Dropout."""
+        out = super().forward(x)
+        return out
 
 
 @ClassFactory.register(ClassType.NETWORK)
@@ -458,6 +633,24 @@ class MoudleList(nn.ModuleList, OperatorSerializable):
         super(MoudleList, self).__init__()
 
 
+@ClassFactory.register(ClassType.NETWORK)
+class Tanh(nn.Tanh, OperatorSerializable):
+    """Class of Dropout."""
+
+    def forward(self, x):
+        """Forward Tanh."""
+        return super(Tanh, self).forward(x)
+
+
+@ClassFactory.register(ClassType.NETWORK)
+class Embedding(nn.Embedding, OperatorSerializable):
+    """Class of Dropout."""
+
+    def forward(self, x):
+        """Call embedding."""
+        return super(Embedding, self).forward(x)
+
+
 def concat(inputs, dim=1):
     """Call concat according to backends."""
     return torch.cat(inputs, dim=dim)
@@ -466,6 +659,16 @@ def concat(inputs, dim=1):
 def mul(a, b):
     """Call mul according to backends."""
     return torch.mul(a, b)
+
+
+def cat(a, b):
+    """Call mul according to backends."""
+    return torch.mul(a, b)
+
+
+def matmul(a, b):
+    """Call matmul according to backends."""
+    return torch.matmul(a, b)
 
 
 def random_normal(*size):
@@ -544,7 +747,7 @@ def drop_path(x, prob):
 
 def zeros(shape):
     """Create zeros like shape."""
-    return torch.zeros(shape).cuda()
+    return torch.zeros(shape)
 
 
 def moduleList():
@@ -622,15 +825,15 @@ def new_ones(tensor, size, dtype=None):
         return tensor.new_ones(size, dtype=dtype)
 
 
-def arange(left, right, dtype, device):
-    """Reange from left to right."""
+def arange(*inputs, dtype='long', device=None):
+    """Rearange from left to right."""
     if dtype == 'long':
         dtype = torch.long
     elif dtype == 'uint8':
         dtype = torch.uint8
     else:
         dtype = None
-    return torch.arange(left, right, dtype=dtype, device=device)
+    return torch.arange(*inputs, dtype=dtype, device=device)
 
 
 def compare_where(cond, x, y):
@@ -658,9 +861,19 @@ def pow(input, exponent, out=None):
     return torch.pow(input, exponent, out=out)
 
 
-def ones(input_size, out):
+def ones(input_size, out=None):
     """Return a tensor with all 1s. The shape is defined by the variable parameter size."""
-    return torch.ones(input_size, out)
+    return torch.ones(input_size, out=out)
+
+
+def ones_like(out):
+    """Return a tensor with all 1s. The shape is defined by the variable parameter size."""
+    return torch.ones_like(out)
+
+
+def zeros_like(out):
+    """Return a tensor with all 1s. The shape is defined by the variable parameter size."""
+    return torch.zeros_like(out)
 
 
 def one_hot(inputs, num_classes, dtype=None):
@@ -688,3 +901,149 @@ def reduce_sum(input, dim=0, dtype=None):
     elif dtype == 'float32':
         dtype = torch.float32
     return torch.sum(input, dim=dim, dtype=dtype)
+
+
+def gelu(x):
+    """Apply gelu function."""
+    return x * 0.5 * (1.0 + torch.erf(x / math.sqrt(2.0)))
+
+
+def swish(x):
+    """Apply swish function."""
+    return x * torch.sigmoid(x)
+
+
+def relu(x, inplace=False):
+    """Apply relu function."""
+    return F.relu(x, inplace)
+
+
+def sqrt(x):
+    """Apply sqrt function."""
+    return torch.sqrt(x)
+
+
+@ClassFactory.register(ClassType.NETWORK)
+class LayerNorm(Module, OperatorSerializable):
+    """Layer Norm module."""
+
+    def __init__(self, hidden_size, eps=1e-12):
+        """Construct a layernorm module in the TF style (epsilon inside the square root)."""
+        super(LayerNorm, self).__init__()
+        self.weight = self.set_parameters('gamma', ones(hidden_size))
+        self.bias = self.set_parameters('beta', zeros(hidden_size))
+        self.variance_epsilon = eps
+
+    def call(self, x):
+        """Call LayerNorm."""
+        u = x.mean(-1, keepdim=True)
+        s = (x - u).pow(2).mean(-1, keepdim=True)
+        x = (x - u) / sqrt(s + self.variance_epsilon)
+        return self.weight * x + self.bias
+
+
+@ClassFactory.register(ClassType.NETWORK)
+class GroupNorm(nn.GroupNorm, OperatorSerializable):
+    """GroupNorm Module inherit nn.GroupNorm."""
+
+    def __init__(self, num_groups, num_channels, eps=1e-5, affine=True):
+        """Construct Identity class."""
+        super(GroupNorm, self).__init__(num_groups, num_channels, eps, affine)
+
+    def forward(self, x):
+        """Do an inference on Identity."""
+        return super().forward(x)
+
+
+@ClassFactory.register(ClassType.NETWORK)
+class SyncBatchNorm(nn.SyncBatchNorm, OperatorSerializable):
+    """SyncBatchNorm Module inherit nn.SyncBatchNorm."""
+
+    def __init__(self, num_features, eps=1e-5, momentum=0.1, affine=True,
+                 track_running_stats=True, process_group=None):
+        """Construct Identity class."""
+        super(SyncBatchNorm, self).__init__(num_features, eps, momentum, affine, track_running_stats, process_group)
+
+    def forward(self, x):
+        """Do an inference on Identity."""
+        return super().forward(x)
+
+
+def conv_ws_2d(input,
+               weight,
+               bias=None,
+               stride=1,
+               padding=0,
+               dilation=1,
+               groups=1,
+               eps=1e-5):
+    """Conv2d with weight standarlization.
+
+    :param input: input feature map
+    :type input: torch.Tensor
+    :param weight: weight of conv layer
+    :type weight: torch.Tensor
+    :param bias: bias
+    :type bias: torch.Tensor
+    :param stride: conv stride
+    :type stride: int
+    :param padding: num of padding
+    :type padding: int
+    :param dilation: num of dilation
+    :type dilation: int
+    :param groups: num of group
+    :type groups: int
+    :param eps: weight eps
+    :type eps: float
+    :return: feature map after weight standarlization
+    :rtype: torch.Tensor
+    """
+    c_in = weight.size(0)
+    weight_flat = weight.view(c_in, -1)
+    mean = weight_flat.mean(dim=1, keepdim=True).view(c_in, 1, 1, 1)
+    std = weight_flat.std(dim=1, keepdim=True).view(c_in, 1, 1, 1)
+    weight = (weight - mean) / (std + eps)
+    return F.conv2d(input, weight, bias, stride, padding, dilation, groups)
+
+
+@ClassFactory.register(ClassType.NETWORK)
+class ConvWS2d(nn.Conv2d):
+    """Conv2d with weight standarlization."""
+
+    def __init__(self,
+                 in_channels,
+                 out_channels,
+                 kernel_size,
+                 stride=1,
+                 padding=0,
+                 dilation=1,
+                 groups=1,
+                 bias=True,
+                 eps=1e-5):
+        """Init conv2d with weight standarlization.
+
+        :param in_channels: input channels
+        :param out_channels: output channels
+        :param kernel_size: kernel size
+        :param stride: stride
+        :param padding: num of padding
+        :param dilation: num of dilation
+        :param groups: num of groups
+        :param bias: bias
+        :param eps: eps
+        """
+        super(ConvWS2d, self).__init__(
+            in_channels,
+            out_channels,
+            kernel_size,
+            stride=stride,
+            padding=padding,
+            dilation=dilation,
+            groups=groups,
+            bias=bias)
+        self.eps = eps
+
+    def forward(self, x):
+        """Forward function of conv2d with weight standarlization."""
+        return conv_ws_2d(x, self.weight, self.bias, self.stride, self.padding,
+                          self.dilation, self.groups, self.eps)

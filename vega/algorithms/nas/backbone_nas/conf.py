@@ -20,12 +20,28 @@ class BackboneNasPolicyConfig(ConfigSerializable):
     random_ratio = 0.2
     num_mutate = 10
 
+    @classmethod
+    def rules(cls):
+        """Return rules for checking."""
+        rules_BackboneNasPolicyConfig = {"random_ratio": {"type": float},
+                                         "num_mutate": {"type": int}
+                                         }
+        return rules_BackboneNasPolicyConfig
+
 
 class BackboneNasRangeConfig(ConfigSerializable):
     """BackboneNas Range Config."""
 
     max_sample = 100
     min_sample = 10
+
+    @classmethod
+    def rules(cls):
+        """Return rules for checking."""
+        rules_BackboneNasRangeConfig = {"max_sample": {"type": int},
+                                        "min_sample": {"type": int}
+                                        }
+        return rules_BackboneNasRangeConfig
 
 
 class BackboneNasConfig(ConfigSerializable):
@@ -36,3 +52,23 @@ class BackboneNasConfig(ConfigSerializable):
     range = BackboneNasRangeConfig
     pareto = ParetoFrontConfig
     objective_keys = 'accuracy'
+
+    @classmethod
+    def rules(cls):
+        """Return rules for checking."""
+        rules_BackboneNasConfig = {"codec": {"type": str},
+                                   "policy": {"type": dict},
+                                   "range": {"type": dict},
+                                   "pareto": {"type": dict},
+                                   "objective_keys": {"type": (list, str)}
+                                   }
+        return rules_BackboneNasConfig
+
+    @classmethod
+    def get_config(cls):
+        """Get sub config."""
+        return {
+            "policy": cls.policy,
+            "range": cls.range,
+            "pareto": cls.pareto
+        }

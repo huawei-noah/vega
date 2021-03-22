@@ -39,7 +39,7 @@ class CocoDataset(Dataset):
         """Construct method."""
         self.num_classes = self.args.num_classes
         self.data_root = self.args.data_root
-        img_prefix = self.args.img_prefix
+        img_prefix = str(self.args.img_prefix)
         ann_prefix = self.args.ann_prefix
         self.ann_file = os.path.join(self.data_root, 'annotations',
                                      '{}_{}{}.json'.format(ann_prefix, self.mode, img_prefix))

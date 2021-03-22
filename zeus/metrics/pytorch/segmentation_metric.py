@@ -69,7 +69,10 @@ class IoUMetric(MetricBase):
         :param target: ground truth from dataset
         :return: confusion matrix sum
         """
-        confusion = calc_confusion_matrix(output, target, self.num_class)
+        if isinstance(output, list):
+            confusion = calc_confusion_matrix(output[-1], target, self.num_class)
+        else:
+            confusion = calc_confusion_matrix(output, target, self.num_class)
         self.confusion_sum += confusion
         return confusion
 

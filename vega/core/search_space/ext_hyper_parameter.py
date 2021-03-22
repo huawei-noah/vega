@@ -324,17 +324,45 @@ class AdjacencyListHyperParameter(CatHyperParameter):
                                                           'AdjacencyList', sample_num)
 
 
-class BinaryCatHyperParameter(CatHyperParameter):
-    """Int Category HyperParameter."""
+class BinaryCodeHyperParameter(HyperParameter):
+    """Int BinaryCode HyperParameter."""
 
-    param_type = ParamTypes.BINARY_LIST
+    param_type = ParamTypes.BINARY_CODE
 
     def __init__(self, param_name='param', param_slice=0, param_type=None, param_range=None, generator=None,
                  sample_num=None):
-        self.sample_num = sample_num or 1
-        super(BinaryCatHyperParameter, self).__init__(param_name, param_slice, param_type, param_range, 'BinaryList',
-                                                      self.sample_num)
+        super(BinaryCodeHyperParameter, self).__init__(param_name, param_slice, param_type, param_range)
 
-    def multi_sample(self, param_range):
-        """Sample multi values."""
-        return [list(value) for value in param_range if sum(value) == self.sample_num]
+    def cast(self, value):
+        """Cast value.
+
+        :param value: input `value`.
+        :return: casted `value`.
+        :rtype: float.
+
+        """
+        return value
+
+    def decode(self, x, forbidden=''):
+        """Inverse transform.
+
+        :param x: input `x`.
+        :param str forbidden: forbidden, default is empty.
+        :return: inverse transform to real `x`.
+        """
+        individual = []
+        if len(self.range) == 1:
+            prob = random.uniform(0.8, 0.95)
+            for _ in range(self.range[0]):
+                s = random.uniform(0, 1)
+                if s > prob:
+                    individual.append(0)
+                else:
+                    individual.append(1)
+        else:
+            if len(self.range) == 2:
+                size = self.range[0]
+                times = self.range[1]
+                change_ids = random.sample(range(size), times)
+                individual = [1 if i in change_ids else 0 for i in range(size)]
+        return individual

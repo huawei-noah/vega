@@ -103,7 +103,7 @@
 
 HyperparameterSpace的整体架构：
 
-![sha.png](./images/hyperparameter_space_1.png)
+![sha.png](../../images/hyperparameter_space_1.png)
 
 ### 3.1 HyperparameterSpace
 
@@ -119,7 +119,7 @@ HyperparameterSpace中实现了一个DAG的框架，能够在HyperparameterSpace
 
 整体架构：
 
-![sha.png](./images/hyperparameter_space_2.png)
+![sha.png](../../images/hyperparameter_space_2.png)
 
 Hyperparameter主要提供对每种超参数的名称、类型和具体超参范围的存储功能，并将超参范围映射到一个能够计算的均匀数值范围内。这里主要面向EXP和CAT结尾的超参数类型，主要做法为对EXP类型的超参数进行log后确定其范围，而CAT类型的需要进行按照类型的数量，映射到[0,1]区间内的不同范围。
 
@@ -131,7 +131,7 @@ Hyperparameter还提供对每个超参数的反向映射，即接收到搜索算
 
 整体架构：
 
-![sha.png](./images/hyperparameter_space_3.png)
+![sha.png](../../images/hyperparameter_space_3.png)
 
 Condition主要提供对超参数之间的关联关系的管理功能。具体的每个超参数关系需要一个child和一个parent对应，即某个超参数child当前是否选择，取决于parent的当前取值是否满足一定条件。
 
@@ -147,18 +147,14 @@ Condition主要提供对超参数之间的关联关系的管理功能。具体�
 
 ### 4.1 Example
 
-我们结合example中的asha_hpo示例来介绍如何使用HPO模块。该example主要包含以下2个文件：
+我们结合example中的asha_hpo示例来介绍如何使用HPO模块。该example主要包含配置文件：asha.yaml 。
 
-- main.py
-- asha.yaml
-
-#### 启动程序main.py
+#### 启动程序
 
 用户可以参考完整代码。与所有Vega pipeline的启动文件相同，当前的example中的启动文件结构与其他示例相同。主要的功能在以下这一语句中，即添加了一个hpo的pipestep。
 
-```python
-if __name__ == '__main__':
-    vega.run('./asha.yml')
+```bash
+vega ./hpo/asha/asha.yml
 ```
 
 功能主要是启动vega pipeline，并加载配置文件asha.yml。
@@ -217,6 +213,7 @@ hpo:
             backbone:
                 type: ResNet
                 depth: 18
+		        num_class: 10
     trainer:
         type: Trainer
         epochs: 1
@@ -241,13 +238,13 @@ hpo:
 hpo:
     evaluator:
         type: Evaluator
-        gpu_evaluator:
-            type: GpuEvaluator
+        host_evaluator:
+            type: HostEvaluator
             metric:
                 type: accuracy
 ```
 
-当前系统支持gpu_evaluator，用于在valid dataset上根据metric配置评估模型性能，并返回评估结果，用于hpo算法进行更新和排序。
+当前系统支持host_evaluator，用于在valid dataset上根据metric配置评估模型性能，并返回评估结果，用于hpo算法进行更新和排序。
 
 #### 运行Example
 
@@ -318,9 +315,9 @@ BOHB算法的当前实现中没有异步并行，效率低于ASHA算法，但其
 
 ### 6.1 ASHA算法介绍
 
-https://arxiv.org/abs/1810.05934
+<https://arxiv.org/abs/1810.05934>
 
-https://blog.ml.cmu.edu/2018/12/12/massively-parallel-hyperparameter-optimization/
+<https://blog.ml.cmu.edu/2018/12/12/massively-parallel-hyperparameter-optimization/>
 
 基于动态资源分配的超参优化算法最早以SHA算法出现，即连续减半算法()。基础思想为：由于深度神经网络训练迭代次数多，每次的训练时间很长，所以对多组超参数，每轮训练少量步数，然后对所有超参进行一轮评估和排序，将排在后半部分的超参数对应的训练全部早停终止，然后再对剩余的超参进行下一轮评估（从上一轮暂存的checkpoint 加载上一轮的模型继续训练），然后再评估再减半，直到达到优化目标。
 
@@ -331,11 +328,11 @@ https://blog.ml.cmu.edu/2018/12/12/massively-parallel-hyperparameter-optimizatio
 3. 将排序靠前一般的超参提升到下一轮（next rung）；
 4. 在新的一轮将资源加倍（训练步数加倍，或以一定策略增加），分配给该轮内的所有超参，然后再迭代，直到到达优化目标。
 
-![sha.png](./images/sha.png)
+![sha.png](../../images/sha.png)
 
 以上是SHA的具体操作和思想，其中的问题在于其是一个序列化或者可以同步并行的操作，必须等待同一轮的所有超参训练评估结束后才能进入下一轮，所以提出了异步并行的算法ASHA。ASHA算法自底向上生长，不需要评估所有一轮才promote下一轮候选者，而是在当前轮进行中同时进行下一轮评估，不断同步生长的过程，能够异步并行，极大提升优化效率。
 
-![asha.png](./images/asha.png)
+![asha.png](../../images/asha.png)
 
 由于ASHA的异步并行的对资源的高效利用，使得该算法在资源较多的情况下能够极大加速HPO的过程。
 
@@ -343,7 +340,7 @@ https://blog.ml.cmu.edu/2018/12/12/massively-parallel-hyperparameter-optimizatio
 
 [Hyperband: Bandit-Based Configuration Evaluation for Hyperparameter Optimization](https://openreview.net/pdf?id=ry18Ww5ee)
 
-![sha.png](./images/hyperband.png)
+![sha.png](../../images/hyperband.png)
 
 - $r$: 单个超参数组合**实际**所能分配的预算；
 - $R$: 单个超参数组合所能分配的**最大**预算；
@@ -366,7 +363,7 @@ https://blog.ml.cmu.edu/2018/12/12/massively-parallel-hyperparameter-optimizatio
 
 右边的图给出了不同ss对搜索结果的影响，可以看到s=0s=0或者s=4s=4并不是最好的，所以并不是说ss越大越好。
 
-![sha.png](./images/hyperband_example.png)
+![sha.png](../../images/hyperband_example.png)
 
 ### 6.3 BOHB算法介绍
 
@@ -398,7 +395,7 @@ BOHB 的 BO 与 TPE 非常相似, 它们的主要区别是: BOHB 中使用一个
 
 #### BOHB流程
 
-![sha.png](./images/bohb_3.jpg)
+![sha.png](../../images/bohb_3.jpg)
 
 以上这张图展示了 BOHB 的工作流程。 将每次训练的最大资源配置（max_budget）设为 9，最小资源配置设为（min_budget）1，逐次减半比例（eta）设为 3，其他的超参数为默认值。 那么在这个例子中，s_max 计算的值为 2, 所以会持续地进行 {s=2, s=1, s=0, s=2, s=1, s=0, ...} 的循环。 在“逐次减半”（SuccessiveHalving）算法的每一个阶段，即图中橙色框，都将选取表现最好的前 1/eta 个参数，并在赋予更多计算资源（budget）的情况下运行。不断重复“逐次减半” （SuccessiveHalving）过程，直到这个循环结束。 同时，收集这些试验的超参数组合，使用了计算资源（budget）和其表现（metrics），使用这些数据来建立一个以使用了多少计算资源（budget）为维度的多维核密度估计（KDE）模型。 这个多维的核密度估计（KDE）模型将用于指导下一个循环的参数选择。
 
@@ -426,35 +423,35 @@ BOSS全称Bayesian Optimization via Sub-Sampling，是基于贝叶斯优化框�
 
 BOSS算法基础框架使用贝叶斯优化，如下图所示：
 
-![hpo_bayes.png](./images/hpo_bayes.png)
+![hpo_bayes.png](../../images/hpo_bayes.png)
 
 贝叶斯优化假设初始模型，去选取模型下最优可能符合预设条件的超参组合，观察是否满足条件，如果满足则过程终止，如果不满足，则利用该组新数据修正模型后，继续下一轮迭代。在深度神经网络中，获得一个超参组合的表现并不是一件容易的事，甚至需要一周的时间，这里的计算资源是比较宽泛的概念，在神经网络的训练中，主要是指训练的迭代次数，迭代的越多，则对该超参组合下神经网络的表现评估越精确，消耗的计算资源越多。
 
 那么在计算资源有限的情况下，如何设计计算资源分配方案，能够快速评估各个超参组合，有效估计贝叶斯优化中所使用的模型，加快迭代过程，更快的搜索到最优的超参组合。利用Sub-Sampling方案，在少量计算资源下，衡量超参组合在充分计算资源时候的潜力，对有潜力成为最优超参组合的备选组合分配尽可能多的计算资源，对于没有潜力的组合分配极少的计算资源。评价潜力的标准主要有两层，第一层是对于探索极其少量的超参组合，将认为其探索程度不够，具备一定潜力；第二层是对于有一定计算资源的超参组合，去和当前最优组合比较，将最优组合的计算资源降到该组合的水平时，去观察两者的表现，若当前最优组合有劣势的可能，则认为目前观察的这个组合具备一定潜力，核心流程如图2所示，以eta=2为例。
 
-![hpo_ss.png](./images/hpo_ss.png)
+![hpo_ss.png](../../images/hpo_ss.png)
 
 训练过程：
 
 1. 用b份计算资源对K个超参组合做评估。
 2. 选出leader，即选出评估次数最多的超参组合，如何评估次数相同，则表现好的优先。
 3. 遍历剩余K-1个超参组合，判断是否“好”于leader。“好”的定义如下：称第k个组合比第k’个组合好，如果以下条件之一满足，  
-   ![hpo_good.png](./images/hpo_good.png)  
+   ![hpo_good.png](../../images/hpo_good.png)  
     其中n_k表示第k个组合的评估次数，c_n为事先给定的与n相关的阈值，常取为sqrt(log⁡n )，Y_j^{(k)}反映第k个组合第j次评估的表现。  
 4. 对所有“好”于leader的超参组合使用双倍的计算资源进行下一次评估，若没有这样的组合，则对leader使用双倍资源进行下一次评估。
 5. 重复步骤2,3,4直至计算资源耗尽，返回K个超参组合及其最终评估。
 
 ### 6.5 TPE算法介绍
 
-https://papers.nips.cc/paper/4443-algorithms-for-hyper-parameter-optimization.pdf
+<https://papers.nips.cc/paper/4443-algorithms-for-hyper-parameter-optimization.pdf>
 
 TPE是基于贝叶斯思想，不同于GP过程，tpe在建模损失函数的过程中通过模拟p(x|y)来代替p(y|x).
 TPE主要包括两个过程：
 
 1. 拟合两个概率密度函数：  
-    ![tpe_pdf.png](./images/tpe_pdf.png)  
+    ![tpe_pdf.png](../../images/tpe_pdf.png)  
     其中l(x)代表损失小于阈值y\*时所有x构成的概率密度函数，g(x)代表损失不小于阈值y\*时所有x构成的概率密度函数  
 2. Expected improvement(EI)过程：  
-    ![tpe_EI.png](./images/tpe_EI.png)  
+    ![tpe_EI.png](../../images/tpe_EI.png)  
     EI与g(x)/l(x)呈负相关关系，最小化g(x)/l(x)即可得到最大的EI。  
     将最小化的x\*放回数据中，重新拟合两个概率密度函数，不断最小化直到达到预定设置。

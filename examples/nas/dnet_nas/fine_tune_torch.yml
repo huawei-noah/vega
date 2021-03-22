@@ -1,0 +1,76 @@
+general:
+    backend: pytorch
+
+
+pipeline: [fine_tune]
+
+
+fine_tune:
+    pipe_step:
+        type: TrainPipeStep
+    model:
+        model_desc:
+            type: DNet
+            encoding: "031-_64_12-1111-11211112-2"
+            n_class: 10
+        pretrained_model_file: "/cache/models/031-_64_12-1111-11211112-2.pth"
+        head: "fc"
+    trainer:
+        type: Trainer
+        epochs: 40
+        mixup: True
+        optimizer:
+            type: SGD
+            params:
+                lr: 0.003
+                momentum: 0.9
+                weight_decay: 0.0001
+        lr_scheduler:
+            type: WarmupScheduler
+            by_epoch: False
+            params:
+                warmup_type: linear
+                warmup_iters: 500
+                warmup_ratio: 0.00001
+                after_scheduler_config:
+                    type: MultiStepLR
+                    by_epoch: True
+                    params:
+                        milestones: [30]
+                        gamma: 0.1
+        loss:
+            type: CrossEntropyLoss
+            params:
+                sparse: True
+    dataset:
+        type: Cifar10
+        common:
+            data_path: /cache/datasets/cifar10/
+            batch_size: 128
+        train:
+            transforms:
+                -   type: Resize
+                    size: [256, 256]
+                -   type: RandomCrop
+                    size: [224, 224]
+                -   type: RandomHorizontalFlip
+                -   type: ToTensor
+                -   type: Normalize
+                    mean: [0.50, 0.5, 0.5]
+                    std: [0.50, 0.5, 0.5]
+        val:
+            transforms:
+                -   type: Resize
+                    size: [224, 224]
+                -   type: ToTensor
+                -   type: Normalize
+                    mean: [0.50, 0.5, 0.5]
+                    std: [0.50, 0.5, 0.5]
+        test:
+            transforms:
+                -   type: Resize
+                    size: [224, 224]
+                -   type: ToTensor
+                -   type: Normalize
+                    mean: [0.50, 0.5, 0.5]
+                    std: [0.50, 0.5, 0.5]

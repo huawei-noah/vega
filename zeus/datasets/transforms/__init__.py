@@ -1,48 +1,62 @@
-# -*- coding: utf-8 -*-
-from .AutoContrast import AutoContrast
-from .BboxTransform import BboxTransform
-from .Brightness import Brightness
-from .Color import Color
-from .Compose import Compose
-from .Compose_pair import Compose_pair
-from .Contrast import Contrast
-from .Cutout import Cutout
-from .Equalize import Equalize
-from .ImageTransform import ImageTransform
-from .Invert import Invert
-from .MaskTransform import MaskTransform
-from .Posterize import Posterize
-from .RandomCrop_pair import RandomCrop_pair
-from .RandomHorizontalFlip_pair import RandomHorizontalFlip_pair
-from .RandomMirrow_pair import RandomMirrow_pair
-from .RandomRotate90_pair import RandomRotate90_pair
-from .RandomVerticallFlip_pair import RandomVerticallFlip_pair
-from .Rotate import Rotate
-from .SegMapTransform import SegMapTransform
-from .Sharpness import Sharpness
-from .Shear_X import Shear_X
-from .Shear_Y import Shear_Y
-from .Solarize import Solarize
-from .Translate_X import Translate_X
-from .Translate_Y import Translate_Y
-from .RandomColor_pair import RandomColor_pair
-from .RandomGaussianBlur_pair import RandomGaussianBlur_pair
-from .RandomRotate_pair import RandomRotate_pair
-from .Rescale_pair import Rescale_pair
-from .Normalize_pair import Normalize_pair
+# -*- coding:utf-8 -*-
 
-import zeus
+# Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the MIT License.
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# MIT License for more details.
 
-if zeus.is_torch_backend():
-    from .pytorch import *
-elif zeus.is_tf_backend():
-    from .tensorflow import *
-elif zeus.is_ms_backend():
-    pass
-else:
-    raise ValueError
+"""Lazy import transforms."""
 
-try:
-    from mmdet.datasets.extra_aug import PhotoMetricDistortion, Expand, ExtraAugmentation
-except Exception:
-    pass
+from zeus.common.class_factory import ClassFactory
+
+
+ClassFactory.lazy_register("zeus.datasets.transforms", {
+    # common
+    "AutoContrast": ["AutoContrast"],
+    "BboxTransform": ["BboxTransform"],
+    "Brightness": ["Brightness"],
+    "Color": ["Color"],
+    "Compose": ["Compose", "ComposeAll"],
+    "Compose_pair": ["Compose_pair"],
+    "Contrast": ["Contrast"],
+    "Cutout": ["Cutout"],
+    "Equalize": ["Equalize"],
+    "RandomCrop_pair": ["RandomCrop_pair"],
+    "RandomHorizontalFlip_pair": ["RandomHorizontalFlip_pair"],
+    "RandomMirrow_pair": ["RandomMirrow_pair"],
+    "RandomRotate90_pair": ["RandomRotate90_pair"],
+    "RandomVerticallFlip_pair": ["RandomVerticallFlip_pair"],
+    "RandomColor_pair": ["RandomColor_pair"],
+    "RandomRotate_pair": ["RandomRotate_pair"],
+    "Rescale_pair": ["Rescale_pair"],
+    "Normalize_pair": ["Normalize_pair"],
+    # GPU only
+    "ImageTransform": ["ImageTransform"],
+    "Invert": ["Invert"],
+    "MaskTransform": ["MaskTransform"],
+    "Posterize": ["Posterize"],
+    "Rotate": ["Rotate"],
+    "SegMapTransform": ["SegMapTransform"],
+    "Sharpness": ["Sharpness"],
+    "Shear_X": ["Shear_X"],
+    "Shear_Y": ["Shear_Y"],
+    "Solarize": ["Solarize"],
+    "Translate_X": ["Translate_X"],
+    "Translate_Y": ["Translate_Y"],
+    "RandomGaussianBlur_pair": ["RandomGaussianBlur_pair"],
+    "RandomHorizontalFlipWithBoxes": ["RandomHorizontalFlipWithBoxes"],
+})
+
+ClassFactory.lazy_register("zeus.datasets.transforms.pytorch", {
+    "Numpy2Tensor": ["Numpy2Tensor"],
+    "PBATransformer": ["PBATransformer"],
+    "ToPILImage_pair": ["ToPILImage_pair"],
+    "ToTensor_pair": ["ToTensor_pair", "PILToTensor"],
+})
+
+ClassFactory.lazy_register("mmdet.datasets", {
+    "extra_aug": ["PhotoMetricDistortion", "Expand", "ExtraAugmentation"],
+})

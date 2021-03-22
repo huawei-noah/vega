@@ -1,0 +1,66 @@
+general:
+    backend: mindspore
+
+pipeline: [fine_tune]
+
+
+fine_tune:
+    pipe_step:
+        type: TrainPipeStep
+    model:
+        model_desc:
+            modules: ['backbone']
+            backbone:
+                type: DNet
+                n_class: 10
+                encoding: "031-_64_12-1111-11211112-2"
+        pretrained_model_file: "/cache/models/031-_64_12-1111-11211112-2.pth"
+    trainer:
+        type: Trainer
+        epochs: 40
+        optimizer:
+            type: Adam
+            params:
+                lr: 0.0001
+        lr_scheduler:
+            type: MultiStepLR
+            params:
+                milestones: [10,20,30]
+                gamma: 0.1
+        loss:
+            type: CrossEntropyLoss
+            params:
+                sparse: True
+
+    dataset:
+        type: Cifar10
+        common:
+            data_path: /cache/datasets/cifar10/
+            batch_size: 256
+        train:
+            transforms:
+                -   type: Resize
+                    size: [256, 256]
+                -   type: RandomCrop
+                    size: [224, 224]
+                -   type: RandomHorizontalFlip
+                -   type: ToTensor
+                -   type: Normalize
+                    mean: [0.50, 0.5, 0.5]
+                    std: [0.50, 0.5, 0.5]
+        val:
+            transforms:
+                -   type: Resize
+                    size: [224, 224]
+                -   type: ToTensor
+                -   type: Normalize
+                    mean: [0.50, 0.5, 0.5]
+                    std: [0.50, 0.5, 0.5]
+        test:
+            transforms:
+                -   type: Resize
+                    size: [224, 224]
+                -   type: ToTensor
+                -   type: Normalize
+                    mean: [0.50, 0.5, 0.5]
+                    std: [0.50, 0.5, 0.5]

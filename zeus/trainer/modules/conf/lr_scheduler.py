@@ -21,9 +21,9 @@ class LrSchedulerConfig(ConfigSerializable):
     params = {"milestones": [75, 150], "gamma": 0.5}
 
     @classmethod
-    def from_json(cls, data, skip_check=True):
+    def from_dict(cls, data, skip_check=True):
         """Restore config from a dictionary or a file."""
-        cls = super(LrSchedulerConfig, cls).from_json(data, skip_check)
+        cls = super(LrSchedulerConfig, cls).from_dict(data, skip_check)
         if "params" not in data:
             cls.params = {}
         return cls
@@ -40,24 +40,7 @@ class LrSchedulerMappingDict(object):
     """Lr Scheduler Mapping Dictionary."""
 
     type_mapping_dict = dict(
-        StepLR=dict(torch='StepLR', tf='StepLR'),
-        MultiStepLR=dict(torch='MultiStepLR', tf='MultiStepLRWarmUp'),
-        CosineAnnealingLR=dict(torch='CosineAnnealingLR', tf='CosineAnnealingLR'),
     )
 
     params_mapping_dict = dict(
-        StepLR=dict(
-            step_size=dict(torch='step_size', tf='step_size'),
-            gamma=dict(torch='gamma', tf='gamma'),
-        ),
-        MultiStepLR=dict(
-            milestones=dict(torch='milestones', tf='milestones'),
-            gamma=dict(torch='gamma', tf='gamma'),
-            warmup=dict(torch=None, tf='warmup'),
-        ),
-        CosineAnnealingLR=dict(
-            T_max=dict(torch='T_max', tf='T_max'),
-            warmup=dict(torch=None, tf='warmup'),
-            eta_min=dict(torch='eta_min', tf='eta_min'),
-        )
     )

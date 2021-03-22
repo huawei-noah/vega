@@ -10,27 +10,30 @@
 
 """TaskOps class.
 
-tasks/[task_id]/
+tasks/<task_id>/
     +-- output
-    |       +-- (step name)
-    |               +-- model_desc.json          # model desc, save_model_desc(model_desc, performance)
-    |               +-- hyperparameters.json     # hyper-parameters, save_hps(hps), load_hps()
-    |               +-- models                   # folder, save models, save_model(id, model, desc, performance)
-    |                     +-- (worker_id).pth    # model file
-    |                     +-- (worker_id).json   # model desc and performance file
+    |       +-- <config file>                           # backuped config file
+    |       +-- <step name>
+    |               +-- output.csv                      # step output data
+    |               +-- report.csv                      # history file
+    |               +-- desc_<worker id>.json           # model desc or hp desc
+    |               +-- performance_<worker id>.pth     # performance file
+    |               +-- model_<worker id>.pth           # pytorch model weight file
+    |               +-- model_<worker id>               # tensorflow model
     +-- workers
-    |       +-- [step name]
-    |       |       +-- [worker_id]
-    |       |       +-- [worker_id]
-    |       |               +-- logs
-    |       |               +-- checkpoints
-    |       |               |     +-- [epoch num].pth
-    |       |               |     +-- model.pkl
-    |       |               +-- result
-    |       +-- [step name]
+    |       +-- <step name>
+    |       |       +-- <worker id>
+    |       |               +-- desc_<worker id>.json   # model desc or hp desc
+    |       |               +-- model.ckpt              # checkpoint file
+    |       |               +-- model_<worker id>[.pth] # best model
+    |       |               +-- performance_<worker id>.json   # model performance
+    |       +-- <step name>
     +-- temp
     +-- visual
     +-- logs
+            +-- pipeline.log                            # main log
+            +-- worker_<worker id>.log                  # worker log
+            +-- evaluator_<worker id>.log               # evaluator log
 
 properties:
     task_id
@@ -48,7 +51,6 @@ properties:
     backup_base_path
     need_backup
 
-    use_dloop
     model_zoo_path
     temp_path
 

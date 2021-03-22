@@ -68,7 +68,7 @@ print(model)
   
   hpo:
       pipe_step:
-          type: NasPipeStep
+          type: SearchPipeStep
   
       search_algorithm:
           type: RandomSearch
@@ -130,7 +130,7 @@ print(model)
 
 例如一个ResNet18的组成如下：
 
-![resnet](./images/resnet.png)
+![resnet](../../images/resnet.png)
 
 ## 4.  Search Space的定义
 
@@ -182,7 +182,7 @@ Search Space 分为**hyper_parameters**和**condition**两部分：
 - **ops**：上层调用算子的接口，统一了不同平台同一功能算子的命名和输入输出。
 - **Serializable：** 对模块中的超参和层次结构进行提取和解析，并序列化成json格式的字典。
 
-![fine_grained_space](./images/fine_grained_space.png)
+![fine_grained_space](../../images/fine_grained_space.png)
 
 ## 6. 如何进行细粒度网络的开发
 

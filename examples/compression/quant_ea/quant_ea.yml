@@ -1,15 +1,13 @@
 general:
-    parallel_search: True
-    parallel_fully_train: True
-    backend: pytorch
+    backend: pytorch  # pytorch | tensorflow
 
-pipeline: [nas]
-# pipeline: [nas ,fully_train]
+
+pipeline: [nas, fully_train]
+
 
 nas:
     pipe_step:
-        type: NasPipeStep
-
+        type: SearchPipeStep
     dataset:
         type: Cifar10
         common:
@@ -19,7 +17,6 @@ nas:
             batch_size: 128
         test:
             batch_size: 256
-
     search_algorithm:
         type: QuantEA
         codec: QuantCodec
@@ -28,7 +25,6 @@ nas:
             num_generation: 50
             num_individual: 16
             random_models: 32
-
     search_space:
         type: SearchSpace
         modules: ['backbone', 'head']
@@ -42,7 +38,6 @@ nas:
             type: LinearClassificationHead
             base_channel: 64
             num_classes: 10
-
     trainer:
         type: Trainer
         callbacks: QuantTrainerCallback
@@ -63,9 +58,10 @@ nas:
         limits:
             flop_range: [!!float 0, !!float 1e10]
 
+
 fully_train:
     pipe_step:
-        type: FullyTrainPipeStep
+        type: TrainPipeStep
         models_folder: "{local_base_path}/output/nas/"
     dataset:
         ref: nas.dataset
@@ -76,29 +72,15 @@ fully_train:
     trainer:
         ref: nas.trainer
         callbacks: QuantTrainerCallback
-        epochs: 3
+        epochs: 400
         lr_scheduler:
             type: MultiStepLR
             params:
                 milestones: [200, 300, 375]
                 gamma: 0.1
-
-benchmark:
-    pipeline: [nas, fully_train, benchmark_cifar10]
-    fully_train:
-        trainer:
-            epochs: 400
-    benchmark_cifar10:
-        pipe_step:
-            type: BenchmarkPipeStep
-            models_folder: "{local_base_path}/output/fully_train/"
-        dataset:
-            ref: nas.dataset
-            common:
-                train_portion: 1.0
-        evaluator:
-            type: Evaluator
-            gpu_evaluator:
-                type: GpuEvaluator
-                metric:
-                    type: accuracy
+    evaluator:
+        type: Evaluator
+        host_evaluator:
+            type: HostEvaluator
+            metric:
+                type: accuracy

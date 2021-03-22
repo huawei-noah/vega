@@ -100,7 +100,7 @@ class CycleSRModel(TransModel):
             elif mode == 'train':
                 net.train()
             else:
-                raise ValueError("Not recognize mode %s.".format(mode))
+                raise ValueError("Not recognize mode {}.".format(mode))
 
     def update_G(self, lam):
         """Update generators.

@@ -1,14 +1,13 @@
 general:
-    parallel_search: False
-    parallel_fully_train: True
-    backend: pytorch
+    backend: pytorch  # pytorch
+
 
 pipeline: [nas]
-#pipeline: [nas, fully_train]
+
 
 nas:
     pipe_step:
-        type: NasPipeStep
+        type: SearchPipeStep
 
     dataset:
         type: Cifar10
@@ -88,7 +87,7 @@ nas:
         type: Trainer
         darts_template_file: "{default_darts_cifar10_template}"
         callbacks: DartsTrainerCallback
-        epochs: 1
+        epochs: 50
         optimizer:
             type: SGD
             params:
@@ -109,15 +108,16 @@ nas:
                 is_grad: False
                 sparse: True
 
+
 fully_train:
     pipe_step:
-        type: FullyTrainPipeStep
+        type: TrainPipeStep
         models_folder: "{local_base_path}/output/nas/"
 
     trainer:
         ref: nas.trainer
         callbacks: DartsFullTrainerCallback
-        epochs: 6
+        epochs: 600
         lr_scheduler:
             type: CosineAnnealingLR
             params:
@@ -139,12 +139,3 @@ fully_train:
             batch_size: 96
         train:
             cutout_length: 8
-
-benchmark:
-    pipeline: [nas, fully_train]
-    nas:
-        trainer:
-            epochs: 50
-    fully_train:
-        trainer:
-            epochs: 600

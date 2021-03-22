@@ -10,25 +10,38 @@
 
 """Import and register network automatically."""
 
+from zeus.common.class_factory import ClassFactory
+from .network_desc import NetworkDesc
+
+ClassFactory.lazy_register("zeus.networks", {
+    "adelaide": ["AdelaideFastNAS"],
+    "bert": ["BertClassifier"],
+    "dnet": ["DNet", "DNetBackbone"],
+    "erdb_esr": ["ESRN"],
+    "faster_backbone": ["FasterBackbone"],
+    "faster_rcnn": ["FasterRCNN"],
+    "mobilenet": ["MobileNetV3Tiny", "MobileNetV2Tiny"],
+    "mobilenetv3": ["MobileNetV3Small", "MobileNetV3Large"],
+    "necks": ["FPN"],
+    "quant": ["Quantizer"],
+    "resnet_det": ["ResNetDet"],
+    "resnet_general": ["ResNetGeneral"],
+    "resnet": ["ResNet"],
+    "resnext_det": ["ResNeXtDet"],
+    "sgas_network": ["SGASNetwork"],
+    "simple_cnn": ["SimpleCnn"],
+    "spnet_backbone": ["SpResNetDet"],
+    "super_network": ["DartsNetwork", "CARSDartsNetwork", "GDASDartsNetwork"],
+    "text_cnn": ["TextCells", "TextCNN"],
+    "gcn": ["GCN"],
+    # xingtian
+    "mtm_sr": ["MtMSR"],
+    "xt_model": ["DqnMlpNet", "DqnCnnNet", "mse_loss"],
+})
+
 
 def register_networks(backend):
     """Import and register network automatically."""
-    from .network_desc import NetworkDesc
-    from .adelaide import AdelaideFastNAS
-    from .erdb_esr import ESRN
-    from .mobilenet import MobileNetV3Tiny, MobileNetV2Tiny
-    from .mobilenetv3 import MobileNetV3Small, MobileNetV3Large
-    from .necks import FPN
-    from . import resnet
-    from . import quant
-    from . import mtm_sr
-    from . import super_network
-    from . import resnet_det
-    from . import resnet_general
-    from . import resnext_det
-    from . import xt_model
-    from . import text_cnn
-    from . import faster_rcnn
     if backend == "pytorch":
         from . import pytorch
     elif backend == "tensorflow":

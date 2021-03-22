@@ -18,11 +18,11 @@
 
 该算法的目标是搜索轻量级、快速准确的超分网络结构。首先，为了硬件友好，该算法以模块以基础构建搜索空间，以参数量和计算量为约束，网络准确性（PSNR）为目标，搜索高效的超分网络结构。除此之外，还以RDB为基础设计了高效超分模块，分别从通道方面、卷积方面和特征尺度方面压缩超分网络冗余信息。最终以遗传算法搜索各个类型模块的数目、相应位置以及具体的内部参数。这样可以自动分配不同方面冗余压缩的程度。具体的算法框架示意图如下：
 
-![arch](images/esr_arch.png)
+![arch](../../images/esr_arch.png)
 
 该算法以RDN为整体结构框架，以Efficient RDB（Residual Dense Block）为基本单元结构，对网络结构的模块数目、模块的类型以及模块内部参数进行搜索；通过网络结构搜索具体确定各个方面压缩的程度，以及每种模块所在的位置。该算法设计了三种高效的残差密集模块，分别压缩模块通道方面、卷积方面和特征尺度方面的冗余，其具体结构如下：
 
-![block](images/esr_block.png)
+![block](../../images/esr_block.png)
 
 该算法主要分为两个过程：网络结构搜索和完全训练；为了加快搜索速度，网络结构搜索过程中的模型评价一般采用快速训练的方式；因此要获得最终的模型，还需要在网络结构搜索之后进行大数据集的完整训练。
 
@@ -46,12 +46,12 @@
 
 ```yaml
 
-esr_search:
+nas:
     search_space:                       # 网络结构搜索参数设置
         type: SearchSpace
         modules: ['esrbody']
         esrbody:
-            name: ESRN
+            type: ESRN
             block_type: [S,G,C]         # 模块的类型
             conv_num: [4,6,8]           # 模块内包含的卷积数目
             growth_rate: [8,16,24,32]   # 模块内的卷积的通道数目
@@ -75,7 +75,7 @@ esr_search:
             min_params: 315000          # 网络包含参数量的最小值
 ```
 
-目前的搜索空间主要以Efficient RDB为基本结构，如果需要其他的block作为基本单元结构或者多种block一起搜索，可以参考源代码`vega/search_space/networks/esrbodys/erdb_esr.py`进行扩充。
+目前的搜索空间主要以Efficient RDB为基本结构，可以扩充其他的block作为基本单元结构或者多种block一起搜索。
 
 ## 3. 适用场景
 
@@ -88,7 +88,7 @@ esr_search:
 若希望加快搜索速度，或在运行较长时间的搜索和训练之前先进行代码调测，可以减少以下文件的参数的数值：
 
 ```yaml
-esr_search:
+nas:
     search_algorithm:
         policy:
             num_generation: 20      # 进化算法的迭代次数
@@ -100,7 +100,7 @@ esr_search:
 若希望提高模型的精度，可以尝试增大以下参数：
 
 ```yaml
-esr_search:
+nas:
     search_algorithm:
         policy:
             num_generation: 20      # 进化算法的迭代次数
@@ -123,14 +123,10 @@ fully_train:
 
 ## 5. 算法输出
 
-本方法在运行结束后，基于benchmark配置，可以达到下图的结果：
+本方法在运行结束后，基于默认配置，可以达到下图的结果：
 
-![result](images/esr_results.png)
+![result](../../images/esr_results.png)
 
 ```text
 [1] Chu, X.; Zhang, B.; Ma, H.; Xu, R.; Li, J.; and Li, Q. 2019. Fast, accurate and lightweight super-resolution with neural architecture search. arXiv preprint arXiv:1901.07261.
 ```
-
-## 6. Benchmark
-
-Benchmark配置信息请参考: [esr_ea.yml](https://github.com/huawei-noah/vega/tree/master/benchmark/algs/nas/esr_ea.yml)

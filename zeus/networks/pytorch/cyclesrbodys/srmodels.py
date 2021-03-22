@@ -10,10 +10,7 @@
 
 """SR models."""
 import math
-
-import torch
 import torch.nn as nn
-
 from .networks import ConvBlock, UpsampleBlock, ShortcutBlock, ResBlock
 
 

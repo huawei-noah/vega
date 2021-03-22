@@ -21,7 +21,7 @@ from vega.core.search_space import SearchSpace
 from vega.core.search_algs import SearchAlgorithm
 from zeus.trainer.modules.optimizer import Optimizer
 from zeus.trainer.modules.lr_schedulers import LrScheduler
-from zeus.trainer.modules.losses import Loss
+from zeus.modules.loss import Loss
 
 if vega.is_torch_backend():
     pass
@@ -159,6 +159,8 @@ class DartsTrainerCallback(Callback):
         genotypes = self.search_alg.codec.calc_genotype(self._get_arch_weights())
         if template_file == "{default_darts_cifar10_template}":
             template = DartsNetworkTemplateConfig.cifar10
+        elif template_file == "{default_darts_cifar100_template}":
+            template = DartsNetworkTemplateConfig.cifar100
         elif template_file == "{default_darts_imagenet_template}":
             template = DartsNetworkTemplateConfig.imagenet
         else:

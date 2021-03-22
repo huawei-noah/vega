@@ -1,8 +1,16 @@
+general:
+    backend: pytorch
+    parallel_search: True
+    parallel_fully_train: True
+    requires: ["intervaltree", "ujson", "PrettyTable"]
+
+
 pipeline: [nas, fully_train]
+
 
 nas:
     pipe_step:
-        type: NasPipeStep
+        type: SearchPipeStep
 
     search_algorithm:
         type: AutoLaneNas
@@ -16,13 +24,13 @@ nas:
         hyperparameters:
             -   key: network.backbone.base_depth
                 type: CATEGORY
-                range: [18, ]
+                range: [18, 34, 50, 101]
             -   key: network.backbone.type
                 type: CATEGORY
                 range: [ResNetVariantDet, ResNeXtVariantDet]
             -   key: network.backbone.base_channel
                 type: CATEGORY
-                range:  [32, ]
+                range:  [32, 48, 56, 64]
             -   key: network.neck.arch_code
                 type: CATEGORY
                 range: ['012-022', '012-122', '122-022','-']
@@ -44,10 +52,9 @@ nas:
         with_valid: True
         is_detection_trainer: True
         callbacks: ['AutoLaneTrainerCallback','DetectionMetricsEvaluator','DetectionProgressLogger']
-        lr_adjustment_position: 'after_train_step'
         report_freq: 50
         valid_interval: 10
-        epochs: 20  # truth is 40
+        epoch: 40
         optimizer:
             type: SGD
             params:
@@ -57,14 +64,14 @@ nas:
         lr_scheduler:
             type: WarmupScheduler
             params:
-                by_epoch: False
                 warmup_type: linear
                 warmup_iters: 5000
                 warmup_ratio: 0.1
-                after_scheduler_by_epoch: False
                 after_scheduler_config:
+                    by_epoch: False
                     type: CosineAnnealingLR
-                    T_max: 120000 # int(10_0000/batch_size)*epoch-warmup_iters
+                    params:
+                        T_max: 120000 # int(10_0000/batch_size)*epoch-warmup_iters
         metric:
             type: LaneMetric
             params:
@@ -73,7 +80,7 @@ nas:
                 eval_height: 590
                 iou_thresh: 0.5
                 lane_width: 30
-                thresh_list:  [0.56, 0.60, 0.63, 0.66, 0.70, 0.73, 0.76, 0.80, 0.83, 0.86, 0.90, 0.93]
+                thresh_list:  [0.50, 0.60, 0.70, 0.80, 0.90]
 
     dataset:
         type: AutoLaneDataset
@@ -97,7 +104,7 @@ nas:
 
 fully_train:
     pipe_step:
-        type: FullyTrainPipeStep
+        type: TrainPipeStep
         models_folder: "{local_base_path}/output/nas/"
     trainer:
         type: Trainer
@@ -105,8 +112,7 @@ fully_train:
         valid_interval: 100
         callbacks: ['AutoLaneTrainerCallback','DetectionMetricsEvaluator','DetectionProgressLogger']
         report_freq: 50
-        epochs: 3  # truth is 40
-        lr_adjustment_position: 'after_train_step'
+        epochs: 40
         optimizer:
             type: SGD
             params:
@@ -115,15 +121,16 @@ fully_train:
                 weight_decay: 0.0001
         lr_scheduler:
             type: WarmupScheduler
+            by_epoch: False
             params:
-                by_epoch: False
                 warmup_type: linear
                 warmup_iters: 5000
                 warmup_ratio: 0.1
-                after_scheduler_by_epoch: False
                 after_scheduler_config:
+                    by_epoch: False
                     type: CosineAnnealingLR
-                    T_max: 120000 # int(10_0000/batch_size)*epoch-warmup_iters
+                    params:
+                        T_max: 120000 # int(10_0000/batch_size)*epoch-warmup_iters
         metric:
             type: LaneMetric
             params:
@@ -132,7 +139,7 @@ fully_train:
                 eval_height: 590
                 iou_thresh: 0.5
                 lane_width: 30
-                thresh_list:  [0.56, 0.60, 0.63, 0.66, 0.70, 0.73, 0.76, 0.80, 0.83, 0.86, 0.90, 0.93]
+                thresh_list:  [0.50, 0.60, 0.70, 0.80, 0.90]
 
     dataset:
         type: AutoLaneDataset
@@ -153,40 +160,3 @@ fully_train:
             shuffle: False
         test:
             shuffle: False
-
-benchmark:
-    nas:
-        search_space:
-            hyperparameters:
-                -   key: network.backbone.base_depth
-                    type: CATEGORY
-                    range: [18, 34, 50, 101]
-                -   key: network.backbone.type
-                    type: CATEGORY
-                    range: [ResNetVariantDet, ResNeXtVariantDet]
-                -   key: network.backbone.base_channel
-                    type: CATEGORY
-                    range:  [32, 48, 56, 64]
-                -   key: network.neck.arch_code
-                    type: CATEGORY
-                    range: ['012-022', '012-122', '122-022','-']
-                -   key: network.neck.type
-                    type: CATEGORY
-                    range: [FeatureFusionModule]
-
-        model:
-            model_desc:
-                modules: ['backbone','neck']
-                backbone:
-                    type: [ResNetVariantDet, ResNeXtVariantDet]
-                neck:
-                    type: FeatureFusionModule
-        trainer:
-            epoch: 40
-            metric:
-                thresh_list:  [0.50, 0.60, 0.70, 0.80, 0.90]
-    fully_train:
-        trainer:
-            epochs: 40
-            metric:
-                thresh_list:  [0.50, 0.60, 0.70, 0.80, 0.90]

@@ -20,6 +20,10 @@ elif is_ms_backend():
 else:
     from .functions import pytorch_fn as fn
 
+    ConvWS2d = fn.ConvWS2d
+    GroupNorm = fn.GroupNorm
+    SyncBatchNorm = fn.SyncBatchNorm
+
 Module = fn.Module
 Conv2d = fn.Conv2d
 QuantizeConv2d = fn.QuantizeConv2d
@@ -31,11 +35,13 @@ AdaptiveAvgPool2d = fn.AdaptiveAvgPool2d
 Identity = fn.Identity
 Zero = fn.Zero
 create_zeros = fn.zeros
+zeros = fn.zeros
 Relu = fn.Relu
 Relu6 = fn.Relu6
 Hswish = fn.Hswish
 Hsigmoid = fn.Hsigmoid
 Linear = fn.Linear
+Pad = fn.Pad
 View = fn.View
 concat = fn.concat
 mul = fn.mul
@@ -82,6 +88,18 @@ ones = fn.ones
 one_hot = fn.one_hot
 reduce_sum = fn.reduce_sum
 to = fn.to
+
+Dropout = fn.Dropout
+Tanh = fn.Tanh
+matmul = fn.matmul
+gelu = fn.gelu
+swish = fn.swish
+relu = fn.relu
+Embedding = fn.Embedding
+sqrt = fn.sqrt
+ones_like = fn.ones_like
+zeros_like = fn.zeros_like
+LayerNorm = fn.LayerNorm
 
 
 @ClassFactory.register(ClassType.NETWORK)

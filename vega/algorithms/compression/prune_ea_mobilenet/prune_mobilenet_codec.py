@@ -11,7 +11,6 @@
 """Codec of Prune EA."""
 import copy
 import random
-import numpy as np
 from zeus.common import Config
 from zeus.common import ClassFactory, ClassType
 from zeus.common import update_dict

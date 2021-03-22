@@ -4,18 +4,14 @@
 
 同时针对网络架构搜索、超参优化、数据增广等算法，Vega设计了独立于搜索算法的网络和超参搜索空间，可根据实际需要，通过调整配置文件，实现个性化的搜索。
 
-可以看出只需要根据需要，配置合适的配置文件，然后运行Vega加载该配置文件，即可完成AutoML流程，如下：
+如下是运行CARS算法示例：
 
-```python
-import vega
-
-
-if __name__ == "__main__":
-    vega.set_backend("pytorch", "GPU")
-    vega.run("./main.yml")
+```bash
+cd examples
+vega ./nas/cars/cars.yml
 ```
 
-The following describes the configuration items in the `main.yml` configuration file.
+以下详细介绍配置文件中的每个配置项。
 
 ## 1. 整体结构
 
@@ -69,8 +65,9 @@ my_fully_train:
 | quota / restrict / flops | - | ~ | 采样模型的浮点计算量最大值或范围，单位为M。 |
 | quota / restrict / params | - | ~ | 采样模型的参数量最大值或范围，单位为K。 |
 | quota / restrict / latency | - | ~ | 采样模型的时延最大值或范围，单位为ms。 |
-| quota / target / type | accuracy \| IoUMetric \| SRMetric | ~ | 模型的训练metric目标类型。 |
+| quota / target / type | accuracy \| IoUMetric \| PSNR | ~ | 模型的训练metric目标类型。 |
 | quota / target / value | - | ~ | 模型的训练metric目标值。 |
+| quota / runtime | - | ~ | 用户设定的Pipeline最大运行时间估计值，单位为h。 |
 
 ```yaml
 general:
@@ -94,7 +91,41 @@ general:
         target:
             type: accuracy
             value: 0.98
+        runtime: 10
 ```
+
+## 2.1 并行和分布式
+
+涉及到分布式的配置项有：parallel_search, parallel_fully_train 和 trainer.distributed，若有多张GPU|NUP，可根据需要选择合适的并行和分布式设置。
+
+1. 在搜索阶段可考虑如下设置：
+
+    ```yaml
+    general:
+        parallel_search: True
+    ```
+
+2. 在fully train阶段，若需要训练较多模型，且数据量不大，可考虑一次同时训练多个模型：
+
+    ```yaml
+    general:
+        parallel_fully_train: True
+    ```
+
+3. 在fully train阶段，若需要训练单个模型，且数据量较大，需要考虑多张卡同时训练一个模型：
+
+    ```yaml
+    general:
+        parallel_fully_train: False
+
+    pipeline: [fully_train]
+
+    fully_train:
+        pipe_step:
+            type: TrainPipeStep
+        trainer:
+            distributed: True
+    ```
 
 ## 3. NAS和HPO配置项
 
@@ -102,11 +133,11 @@ HPO / NAS的配置项有如下几个主要部分：
 
 | 配置项 | 说明 |
 | :--: | :-- |
-| pipe_step / type | 配置为`NasPipeStep`标识本步骤为搜索步骤 |
+| pipe_step / type | 配置为`SearchPipeStep`标识本步骤为搜索步骤 |
 | search_algorithm | 搜索算法配置，详见本文搜索算法章节 |
 | search_space | 搜索空间配置，详见本文搜索空间章节 |
 | model | 模型配置，详见本文搜索空间章节 |
-| dataset | 数据集配置，详见本文数据集章节 |  
+| dataset | 数据集配置，详见本文数据集章节 |
 | trainer | 模型训练参数配置，详见本文训练器章节 |
 | evaluator | 评估器参数配置，详见本文评估器章节 |
 
@@ -115,7 +146,7 @@ HPO / NAS的配置项有如下几个主要部分：
 ```yaml
 my_nas:
     pipe_step:
-        type: NasPipeStep
+        type: SearchPipeStep
     search_algorithm:
         <search algorithm parameters>
     search_space:
@@ -139,7 +170,7 @@ my_nas:
 | 配置项 | 说明 | 示例 |
 | :--: | :-- | :-- |
 | type | 搜索算法名称 | `type: BackboneNas` |
-| codec | 搜索算法编码器，一般NAS类算法存在编码器，一般编码器和搜索算法配合使用。 | `codec: BackboneNasCodec` |
+| objective_keys | 优化目标 | 指定当前算法选取的优化目标，对应trainer配置的metrics，trainer默认metrics额外提供`flops`和`params`两个metrics<br/>如果配置了evaluator，额外增加`latency`作为metrics<br/>如果是单目标优化问题，指定优化目标名称：`objective_keys: 'accuracy'`，<br/>如果是多目标优化问题，采用数组形式表示：`objective_keys: ['accuracy', 'flops','latency']`，<br/>系统默认配置为`objective_keys:  'accuracy'` <br/>|
 | policy | 搜索策略，搜素算法自身参数 | 比如BackboneNas使用进化算法，其策略配置为： <br> `num_mutate: 10` <br> `random_ratio: 0.2` |
 | range | 搜索范围 | 比如BackboneNas的搜索范围可以确定为：<br> `min_sample: 10` <br> `max_sample: 300` |
 
@@ -416,18 +447,18 @@ HPO/NAS的配置项有如下几个主要部分：
 
 | 配置项 | 说明 |
 | :--: | :-- |
-| pipe_step / type | 配置为`FullyTrainPipeStep`标识本步骤为搜索步骤 |
+| pipe_step / type | 配置为`TrainPipeStep`标识本步骤为搜索步骤 |
 | pipe_step / models_folder | 指定模型描述文件所在的位置，依次读取该文件夹下文件名为`desc_<ID>.json`(其中ID为数字)的模型描述文件，依次训练这些模型。这个选项优先于model选项。 |
 | model / model_desc_file | 模型描述文件位置。该配置项优先级低于 `pipe_step/models_folder` ，高于 `model/model_desc`。 |
 | model / model_desc | 模型描述，详见本文搜索空间中model相关章节。该配置优先级低于 `pipe_step/models_folder` 和 `model/model_desc` |
-| dataset | 数据集配置，详见本文数据集章节 |  
+| dataset | 数据集配置，详见本文数据集章节 |
 | trainer | 模型训练参数配置，详见本文训练器章节 |
 | evaluator | 评估器参数配置，详见本文评估器章节 |
 
 ```yaml
 my_fully_train:
     pipe_step:
-        type: FullyTrainPipeStep
+        type: TrainPipeStep
         models_folder: "{local_base_path}/output/nas/"
     trainer:
         <trainer params>
@@ -468,7 +499,7 @@ Trainer的配置项如下：
 ```yaml
 my_fullytrain:
     pipe_step:
-        type: FullyTrainPipeStep
+        type: TrainPipeStep
         # models_folder: "{local_base_path}/output/nas/"
     trainer:
         ref: nas.trainer

@@ -1,37 +1,35 @@
 general:
+    backend: pytorch  # pytorch | tensorflow | mindspore
     parallel_search: True
     parallel_fully_train: True
-    backend: pytorch  #pytorch, tensorflow or mindspore
-    quota:
-        restrict:
-            flops: !!float 1.6
-            params: !!float 1e10
 
-pipeline: [nas]
-#pipeline: [nas, fullytrain]
+
+pipeline: [nas, fullytrain]
+
 
 nas:
     pipe_step:
-        type: NasPipeStep
+        type: SearchPipeStep
 
     search_algorithm:
         type: BackboneNas
         codec: BackboneNasCodec
+        objective_keys: ['accuracy', 'flops']
         policy:
             num_mutate: 10
             random_ratio: 0.2
         range:
-            max_sample: 3 #100
-            min_sample: 1 #10
+            max_sample: 100
+            min_sample: 10
 
     search_space:
         hyperparameters:
             -   key: network.backbone.depth
                 type: CATEGORY
-                range: [18, 34, 50, 101]
+                range: [18, 34, 50]
             -   key: network.backbone.base_channel
                 type: CATEGORY
-                range:  [32, 48, 56, 64]
+                range:  [32, 48, 56]
             -   key: network.backbone.doublechannel
                 type: CATEGORY
                 range: [3, 4]
@@ -43,6 +41,7 @@ nas:
             modules: ['backbone']
             backbone:
                 type: ResNet
+                num_class: 10
 
     trainer:
         type: Trainer
@@ -57,9 +56,10 @@ nas:
         common:
             data_path: /cache/datasets/cifar10/
 
+
 fullytrain:
     pipe_step:
-        type: FullyTrainPipeStep
+        type: TrainPipeStep
         models_folder: "{local_base_path}/output/nas/"
 
     trainer:
@@ -80,5 +80,9 @@ fullytrain:
     dataset:
         ref: nas.dataset
 
-benchmark:
-    pipeline: [nas, fullytrain]
+    evaluator:
+        type: Evaluator
+        host_evaluator:
+            type: HostEvaluator
+            metric:
+                type: accuracy

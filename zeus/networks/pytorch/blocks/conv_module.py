@@ -9,7 +9,7 @@
 # MIT License for more details.
 
 """Conv Module with Normalization."""
-import warnings
+
 import torch.nn as nn
 from .conv_ws import ConvWS2d
 

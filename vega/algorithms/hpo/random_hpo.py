@@ -16,7 +16,7 @@ from .random_conf import RandomConfig
 
 @ClassFactory.register(ClassType.SEARCH_ALGORITHM)
 class RandomSearch(SearchAlgorithm):
-    """An Hpo of Random, inherit from HpoGenerator."""
+    """An Hpo of Random."""
 
     config = RandomConfig()
 
@@ -30,7 +30,7 @@ class RandomSearch(SearchAlgorithm):
         """Search function, Not Implemented Yet."""
         self.sample_count += 1
         params = self.search_space.sample()
-        return self.sample_count, params
+        return {"worker_id": self.sample_count, "encoded_desc": params}
 
     @property
     def is_completed(self):

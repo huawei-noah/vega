@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-.
 """Main function to run a FmdPipeStep."""
 from zeus.common import ClassFactory, ClassType
-from fully_train.fmd.networks.resnet_cifar import resnet_cifar
+from networks.resnet_cifar import resnet_cifar
 
 
 @ClassFactory.register(ClassType.NETWORK)

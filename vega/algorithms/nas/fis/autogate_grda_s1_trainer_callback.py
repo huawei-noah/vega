@@ -93,7 +93,8 @@ class AutoGateGrdaS1TrainerCallback(CtrTrainerCallback):
         self.struc_optimizer.step()
 
         return {'loss': loss.item(),
-                'train_batch_output': output}
+                'train_batch_output': output,
+                'lr': self.trainer.lr_scheduler.get_lr()}
 
     def valid_step(self, batch):
         """

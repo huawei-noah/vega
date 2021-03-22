@@ -73,7 +73,7 @@ class Metrics(object):
     def __init__(self, metric_cfg=None):
         """Init Metrics."""
         self.mdict = {}
-        metric_config = self.config.to_json() if not metric_cfg else deepcopy(metric_cfg)
+        metric_config = self.config.to_dict() if not metric_cfg else deepcopy(metric_cfg)
         if not isinstance(metric_config, list):
             metric_config = [metric_config]
         for metric_item in metric_config:

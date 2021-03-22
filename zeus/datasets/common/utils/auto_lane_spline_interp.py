@@ -50,7 +50,7 @@ def calc_params(lane):
     if n_pt < 2:
         return params
     if n_pt == 2:
-        h0 = np.sqrt((lane[0]['x'] - lane[1]['x']) * (lane[0]['x'] - lane[1]['x']) +
+        h0 = np.sqrt((lane[0]['x'] - lane[1]['x']) * (lane[0]['x'] - lane[1]['x']) +  # noqa W504
                      (lane[0]['y'] - lane[1]['y']) * (lane[0]['y'] - lane[1]['y']))
         a_x = lane[0]['x']
         a_y = lane[0]['y']

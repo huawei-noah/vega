@@ -26,7 +26,6 @@ class DartsNetwork(Module):
         self.is_search = search
         self._auxiliary = auxiliary
         self.drop_path_prob = drop_path_prob
-        self._cells = cells
         if auxiliary:
             self._aux_size = aux_size
             self._auxiliary_layer = auxiliary_layer
@@ -43,14 +42,18 @@ class DartsNetwork(Module):
         if not search and auxiliary:
             self.auxiliary_head = AuxiliaryHead(c_aux, num_classes, aux_size)
         # head
-        self.head = ClassFactory.get_instance(ClassType.NETWORK, head, base_channel=c_prev,
-                                              num_classes=num_classes)
-        self.initializer()
+        self.head = ClassFactory.get_instance(ClassType.NETWORK, head, base_channel=c_prev, num_classes=num_classes)
+        self.build()
 
-    def initializer(self):
+    def build(self):
         """Initialize architecture parameters."""
         self.set_parameters('alphas_normal', 1e-3 * ops.random_normal(self.len_alpha, self.num_ops))
         self.set_parameters('alphas_reduce', 1e-3 * ops.random_normal(self.len_alpha, self.num_ops))
+
+    @property
+    def learnable_params(self):
+        """Get learnable params of alphas."""
+        return [self.alphas_normal, self.alphas_reduce]
 
     @property
     def arch_weights(self):
@@ -75,8 +78,6 @@ class DartsNetwork(Module):
         :param input: An input tensor
         :type input: Tensor
         """
-        # TODO: training for tf
-        self.initializer()
         s0, s1 = self.pre_stems(input)
         alphas_normal, alphas_reduce = self.alphas_normal, self.alphas_reduce
         if alpha is not None:

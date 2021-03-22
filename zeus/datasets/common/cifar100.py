@@ -10,7 +10,6 @@
 
 """This is a class for Cifar100 dataset."""
 from .utils.dataset import Dataset
-from zeus.datasets.transforms import Compose
 from zeus.common import ClassFactory, ClassType
 from zeus.common import FileOps
 from zeus.datasets.conf.cifar100 import Cifar100Config
@@ -39,7 +38,6 @@ class Cifar100(Dataset):
         self.args.data_path = FileOps.download_dataset(self.args.data_path)
         is_train = self.mode == 'train' or self.mode == 'val' and self.args.train_portion < 1
         self.base_folder = 'cifar-100-python'
-        self.transform = Compose(self.transforms.__transform__)
         if is_train:
             files_list = ["train"]
         else:
@@ -76,8 +74,8 @@ class Cifar100(Dataset):
         # to return a PIL Image
         img = Image.fromarray(img)
 
-        if self.transform is not None:
-            img = self.transform(img)
+        if self.transforms is not None:
+            img = self.transforms(img)
 
         return img, target
 

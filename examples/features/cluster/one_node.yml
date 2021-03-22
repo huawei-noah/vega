@@ -1,0 +1,55 @@
+# Distributed parallel searching or training in one node:
+# 1. Supports distributed parallel search in the NAS and HPO phases. 
+# 2. Supports distributed parallel training of multiple models in the fullytrain phase.
+#
+# You only need to set parameters parallel_search and parallel_fully_train to true..
+
+
+#### copy the following configuration to your yaml file ####
+general:
+    parallel_search: True
+    parallel_fully_train: True
+########################### end #############################
+
+
+pipeline: [nas, fullytrain]
+
+
+nas:
+    pipe_step:
+        type: SearchPipeStep
+    search_algorithm:
+        type: RandomSearch
+        policy:
+            num_sample: 50
+    search_space:
+        hyperparameters:
+            -   key: network.backbone.depth
+                type: CATEGORY
+                range: [18, 34]
+            -   key: network.backbone.base_channel
+                type: CATEGORY
+                range:  [32, 48, 56]
+    model:
+        model_desc:
+            modules: ['backbone']
+            backbone:
+                type: ResNet
+                num_class: 10
+    trainer:
+        type: Trainer
+        epochs: 3
+    dataset:
+        type: Cifar10
+        common:
+            data_path: /cache/datasets/cifar10/
+
+
+fullytrain:
+    pipe_step:
+        type: TrainPipeStep
+        models_folder: "{local_base_path}/output/nas/"
+    trainer:
+        ref: nas.trainer
+    dataset:
+        ref: nas.dataset

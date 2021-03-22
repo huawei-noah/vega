@@ -90,10 +90,18 @@ class MixedOp(ops.Module):
                     op = Seq(op, ops.BatchNorm2d(C, affine=False))
                 self.add_module(primitive, op)
 
-    def call(self, x, weights=None, *args, **kwargs):
+    def call(self, x, weights=None, selected_idx=None, *args, **kwargs):
         """Call function of MixedOp."""
-        if weights is None:
-            for model in self.children():
-                x = model(x)
-            return x
-        return ops.add_n(weights[idx] * op(x) for idx, op in enumerate(self.children()) if weights[idx] != 0)
+        if selected_idx is None:
+            if weights is None:
+                for model in self.children():
+                    x = model(x)
+                return x
+            weight_sum = ()
+            for idx, op in enumerate(self.children()):
+                weight_sum += (weights[idx] * op(x),)
+
+            return ops.add_n(weight_sum)
+        else:
+            # SGAS alg: unchosen operations are pruned
+            return list(self.children())[selected_idx](x)

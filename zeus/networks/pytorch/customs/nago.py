@@ -17,6 +17,9 @@ from .utils.logical_graph import GeneratorSolution, LogicalMasterGraph
 from .utils.layer import MasterNetwork
 
 
+logger = logging.getLogger(__name__)
+
+
 @ClassFactory.register(ClassType.NETWORK)
 class NAGO(Module):
     """Search space of NAGO."""
@@ -27,11 +30,11 @@ class NAGO(Module):
         :param net_desc: config of the searched structure
         """
         super(NAGO, self).__init__()
-        logging.info("start init NAGO")
+        logger.info("start init NAGO")
         # to prevent invalid graphs with G_nodes <= G_k
         kwargs['G1_K'] = int(np.min([kwargs['G1_nodes'] - 1, kwargs['G1_K']]))
         kwargs['G3_K'] = int(np.min([kwargs['G3_nodes'] - 1, kwargs['G3_K']]))
-        logging.info("NAGO desc: {}".format(kwargs))
+        logger.info("NAGO desc: {}".format(kwargs))
 
         top_graph_params = ['WS', kwargs['G1_nodes'], kwargs['G1_P'], kwargs['G1_K']]
         mid_graph_params = ['ER', kwargs['G2_nodes'], kwargs['G2_P']]

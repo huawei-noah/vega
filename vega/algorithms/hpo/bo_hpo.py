@@ -17,7 +17,7 @@ from .bo_conf import BoConfig
 
 @ClassFactory.register(ClassType.SEARCH_ALGORITHM)
 class BoHpo(HPOBase):
-    """An Hpo of Bayesian Optimization, inherit from HpoGenerator."""
+    """An Hpo of Bayesian Optimization."""
 
     config = BoConfig()
 

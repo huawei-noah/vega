@@ -19,7 +19,7 @@ from zeus.common.general import General
 from zeus.common.task_ops import TaskOps
 from vega.core.pipeline.conf import PipeStepConfig, PipelineConfig
 from zeus.evaluator.conf import EvaluatorConfig
-from zeus.report import Report, ReportRecord
+from zeus.report import ReportClient, ReportRecord, ReportServer
 from .pipe_step import PipeStep
 from ..scheduler import create_master
 
@@ -43,30 +43,25 @@ class BenchmarkPipeStep(PipeStep):
         self.master = create_master()
         for record in records:
             _record = ReportRecord(worker_id=record.worker_id, desc=record.desc, step_name=record.step_name)
-            Report().broadcast(_record)
+            ReportClient().broadcast(_record)
+            ReportServer().add_watched_var(record.step_name, record.worker_id)
             self._evaluate_single_model(record)
         self.master.join()
-        for record in records:
-            Report().update_report({"step_name": record.step_name, "worker_id": record.worker_id})
-        Report().output_step_all_records(
-            step_name=General.step_name,
-            weights_file=False,
-            performance=True)
+        ReportServer().output_step_all_records(step_name=General.step_name)
         self.master.close_client()
-        Report().backup_output_path()
+        ReportServer().backup_output_path()
 
     def _get_current_step_records(self):
         step_name = General.step_name
         models_folder = PipeStepConfig.pipe_step.get("models_folder")
         cur_index = PipelineConfig.steps.index(step_name)
         if cur_index >= 1 or models_folder:
-            # records = Report().get_step_records(PipelineConfig.steps[cur_index - 1])
             if not models_folder:
                 models_folder = FileOps.join_path(
                     TaskOps().local_output_path, PipelineConfig.steps[cur_index - 1])
             models_folder = models_folder.replace(
                 "{local_base_path}", TaskOps().local_base_path)
-            records = Report().load_records_from_model_folder(models_folder)
+            records = ReportServer().load_records_from_model_folder(models_folder)
         else:
             records = self._load_single_model_records()
         final_records = []
@@ -103,17 +98,17 @@ class BenchmarkPipeStep(PipeStep):
             worker_info = {"step_name": record.step_name, "worker_id": record.worker_id}
             _record = dict(worker_id=record.worker_id, desc=record.desc, step_name=record.step_name)
             _init_record = ReportRecord().load_dict(_record)
-            Report().broadcast(_init_record)
-            if EvaluatorConfig.gpu_evaluator_enable:
-                cls_evaluator = ClassFactory.get_cls(ClassType.GPU_EVALUATOR, "GpuEvaluator")
+            ReportClient().broadcast(_init_record)
+            if EvaluatorConfig.host_evaluator_enable:
+                cls_evaluator = ClassFactory.get_cls(ClassType.HOST_EVALUATOR, "HostEvaluator")
                 evaluator = cls_evaluator(
                     worker_info=worker_info,
                     model_desc=record.desc,
                     weights_file=record.weights_file)
                 self.master.run(evaluator)
-            if EvaluatorConfig.davinci_mobile_evaluator_enable:
+            if EvaluatorConfig.device_evaluator_enable:
                 cls_evaluator = ClassFactory.get_cls(
-                    ClassType.DAVINCI_MOBILE_EVALUATOR, "DavinciMobileEvaluator")
+                    ClassType.DEVICE_EVALUATOR, "DeviceEvaluator")
                 evaluator = cls_evaluator(
                     worker_info=worker_info,
                     model_desc=record.desc,

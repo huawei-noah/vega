@@ -1,8 +1,14 @@
-from .classifier_metric import *
-from .auc_metrics import *
-from .segmentation_metric import *
-from .sr_metric import *
 from .metrics import Metrics
-from .lane_metric import LaneMetric
-from .regression import MSE
-from .detection_metric import CocoMetric
+from zeus.common.class_factory import ClassFactory
+
+
+ClassFactory.lazy_register("zeus.metrics.pytorch", {
+    "lane_metric": ["trainer.metric:LaneMetric"],
+    "regression": ["trainer.metric:MSE", "trainer.metric:mse"],
+    "detection_metric": ["trainer.metric:CocoMetric", "trainer.metric:coco"],
+    "gan_metric": ["trainer.metric:GANMetric"],
+    "classifier_metric": ["trainer.metric:accuracy", "trainer.metric:Accuracy", "trainer.metric:SklearnMetrics"],
+    "auc_metrics": ["trainer.metric:AUC", "trainer.metric:auc"],
+    "segmentation_metric": ["trainer.metric:IoUMetric"],
+    "sr_metric": ["trainer.metric:PSNR", "trainer.metric:SSIM"],
+})

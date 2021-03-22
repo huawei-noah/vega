@@ -10,7 +10,7 @@
 
 """Inference of vega model."""
 import vega
-from vega.core.pipeline.fully_train_pipe_step import FullyTrainPipeStep
+from vega.core.pipeline.train_pipe_step import TrainPipeStep
 from vega.tools.init_env import _init_env
 from vega.tools.args import _parse_args, _set_config
 
@@ -18,9 +18,9 @@ from vega.tools.args import _parse_args, _set_config
 def _fully_train():
     args = _parse_args(["cluster", "model", "trainer"], "Fully train model.")
     vega.set_backend(args.general.backend)
-    _set_config(args, "fully_train", "FullyTrainPipeStep")
+    _set_config(args, "fully_train", "TrainPipeStep")
     _init_env()
-    FullyTrainPipeStep().do()
+    TrainPipeStep().do()
 
 
 if __name__ == "__main__":

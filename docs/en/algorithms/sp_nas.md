@@ -11,7 +11,7 @@ This method has two phases:
 1. In serial phase, the block sequence with optimal scaling ratio and output channel is found by using the "swap-expand-reignite" search policy. This search policy can guranteen a new searched architecture to completely inherit of weight from arichtectures before morphism.
 2. In parallel phase, parallized network structures are designed, sub-networks integrated by different feature layers are searched to better fuse the high-level and low-level semantic features. The following figure shows the search policy.
 
-![sp-nas](./images/sp_nas.png)
+![sp-nas](../../images/sp_nas.png)
 
 ## Search Space and Search Policy
 

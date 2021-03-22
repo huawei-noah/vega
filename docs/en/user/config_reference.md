@@ -4,18 +4,14 @@ Vega decomposes the entire AutoML process from data to models into multiple step
 
 In addition, Vega designs a network and hyperparameter search space independent of the search algorithm for algorithms such as network architecture search, hyperparameter optimization, and data augmentation. You can adjust the configuration file to implement personalized search.
 
-You only need to configure a proper configuration file as required, and then run Vega to load the configuration file to complete the AutoML process, as shown in the following figure.
+The following is an example of running the CARS algorithm:
 
 ```python
-import vega
-
-
-if __name__ == "__main__":
-    vega.set_backend("pytorch", "GPU")
-    vega.run("./main.yml")
+cd examples
+vega ./nas/cars/cars.yml
 ```
 
-The following describes the configuration items in the main.yml file in detail.
+The following describes each item in the configuration file.
 
 ## 1. Overall structure
 
@@ -68,8 +64,9 @@ The following public configuration items can be configured:
 | quota / restrict / flops | - | ~ | Maximum value or range of the floating-point calculation amount of the sampling model, in MB. |
 | quota / restrict / params | - | ~ | Maximum value or range of the parameter of the sampling model, in KB. |
 | quota / restrict / latency | - | ~ | Maximum value or range of the latency of the sampling model, in ms. |
-| quota / target / type | accuracy \| IoUMetric \| SRMetric | ~ | Model training metric target type. |
+| quota / target / type | accuracy \| IoUMetric \| PSNR | ~ | Model training metric target type. |
 | quota / target / value | - | ~ | Target training metric of a model. |
+| quota / runtime | - | ~ | Max pipeline estimated running time set by user, in h. |
 
 ```yaml
 general:
@@ -93,7 +90,41 @@ general:
         target:
             type: accuracy
             value: 0.98
+        runtime: 10
 ```
+
+## 2.1 Parallel and distributed
+
+If there are multiple GPU|NUPs in the running environment, select a proper parallel or distributed configuration as required. The configuration items related to distributed deployment are parallel_search, parallel_fully_train, and trainer.distributed.
+
+1. During the search phase, consider the following settings:
+
+    ```yaml
+    general:
+        parallel_search: True
+    ```
+
+2. In the fully train phase, if a large number of models need to be trained and the data volume is small, you can train multiple models at a time.
+
+    ```yaml
+    general:
+        parallel_fully_train: True
+    ```
+
+3. In the fully train phase, if a single model needs to be trained and the data volume is large, you need to train a model by multiple cards at the same time.
+
+    ```yaml
+    general:
+        parallel_fully_train: False
+
+    pipeline: [fully_train]
+
+    fully_train:
+        pipe_step:
+            type: TrainPipeStep
+        trainer:
+            distributed: True
+    ```
 
 ## 3. NAS and HPO configuration items
 
@@ -101,7 +132,7 @@ HPO and NAS configuration items include:
 
 | Configuration Item | Description |
 | :--: | :-- |
-| pipe_step / type | Set this parameter to `NasPipeStep`, indicating that this step is a search step. |
+| pipe_step / type | Set this parameter to `SearchPipeStep`, indicating that this step is a search step. |
 | search_algorithm | Search algorithm configuration. For details, see the search algorithm section in this document. |
 | search_space | Search space configuration. For details, see section "Search Space Configuration." |
 | model | Model configuration. For details, see the search space section in this document. |
@@ -114,7 +145,7 @@ The configuration:
 ```yaml
 my_nas:
     pipe_step:
-        type: NasPipeStep
+        type: SearchPipeStep
     search_algorithm:
         <search algorithm parameters>
     search_space:
@@ -415,7 +446,7 @@ The HPO/NAS configuration items are as follows:
 
 | Configuration item | Description |
 | :--: | :-- |
-| pipe_step / type | Set this parameter to `FullyTrainPipeStep`, indicating that this step is a search step. |
+| pipe_step / type | Set this parameter to `TrainPipeStep`, indicating that this step is a search step. |
 | pipe_step / models_folder | Specify the location of the model description file. Read the model description files named `desc_<ID>.json` (ID indicates a number) in the folder and train these models in sequence. This option takes precedence over the model option. |
 | model / model_desc_file | Location of the model description file. The priority of this configuration item is lower than that of `pipe_step/models_folder` and higher than that of `model/model_desc`. |
 | model / model_desc | Model description. For details, see the model-related section in the search space. This configuration has a lower priority than `pipe_step/models_folder` and `model/model_desc`. |
@@ -426,7 +457,7 @@ The HPO/NAS configuration items are as follows:
 ```yaml
 my_fully_train:
     pipe_step:
-        type: FullyTrainPipeStep
+        type: TrainPipeStep
         models_folder: "{local_base_path}/output/nas/"
     trainer:
         <trainer params>
@@ -467,7 +498,7 @@ Complete configuration example:
 ```yaml
 my_fullytrain:
     pipe_step:
-        type: FullyTrainPipeStep
+        type: TrainPipeStep
         # models_folder: "{local_base_path}/output/nas/"
     trainer:
         ref: nas.trainer

@@ -9,6 +9,7 @@
 # MIT License for more details.
 
 """Running Horovod Train."""
+
 import os
 import pickle
 import argparse
@@ -16,7 +17,6 @@ import logging
 import horovod.torch as hvd
 from zeus.common import ClassFactory
 from zeus.common.general import General
-from zeus.common import FileOps
 from vega.core.pipeline.conf import PipeStepConfig
 
 parser = argparse.ArgumentParser(description='Horovod Fully Train')
@@ -32,13 +32,15 @@ try:
     mox.file.set_auth(obs_client_log=False)
 except Exception:
     pass
-FileOps.copy_file(args.cf_file, './cf_file.pickle')
 hvd.join()
-with open('./cf_file.pickle', 'rb') as f:
+with open(args.cf_file, 'rb') as f:
     cf_content = pickle.load(f)
+model_desc = cf_content.get('model_desc')
+worker_id = cf_content.get('worker_id')
 ClassFactory.__registry__ = cf_content.get('registry')
-General.from_json(cf_content.get('general_config'))
-PipeStepConfig.from_json(cf_content.get('pipe_step_config'))
-cls_trainer = ClassFactory.get_cls('trainer', "Trainer")
-trainer = cls_trainer(None, 0)
+General.from_dict(cf_content.get('general_config'))
+PipeStepConfig.from_dict(cf_content.get('pipe_step_config'))
+cls_trainer = ClassFactory.get_cls('trainer')
+# for record in records:
+trainer = cls_trainer(model_desc=model_desc, id=worker_id)
 trainer.train_process()

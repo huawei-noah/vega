@@ -33,6 +33,8 @@ class BN_Conv2d(ops.Module):
 class ResNeXt_Block(ops.Module):
     """ResNeXt block with group convolutions."""
 
+    expansion = 4
+
     def __init__(self, in_chnls, cardinality, group_depth, stride):
         super(ResNeXt_Block, self).__init__()
         self.group_chnls = cardinality * group_depth
@@ -44,8 +46,7 @@ class ResNeXt_Block(ops.Module):
             self.group_chnls, self.group_chnls * 2, 1, stride=1, padding=0)
         self.bn = ops.BatchNorm2d(self.group_chnls * 2)
         self.short_cut = Sequential(
-            ops.Conv2d(in_chnls, self.group_chnls *
-                       2, 1, stride, 0, bias=False),
+            ops.Conv2d(in_chnls, self.group_chnls * 2, 1, stride, 0, bias=False),
             ops.BatchNorm2d(self.group_chnls * 2)
         )
 
@@ -79,6 +80,7 @@ class ResNeXtDet(ops.Module):
         self.inplanes = 64
         self._make_stem_layer()
         self.res_layers = []
+        inplanes = self.inplanes
         planes = 1
         self.cardinality = 32
         if code is None:
@@ -87,22 +89,23 @@ class ResNeXtDet(ops.Module):
             self.code = code.split('-')
         for i, num_blocks in enumerate(self.stage_blocks):
             stride = strides[i]
-            res_layer = self._make_layers(
-                planes, num_blocks, stride=stride, code=self.code[i])
+            res_layer, inplanes = self._make_layers(inplanes, planes,
+                                                    num_blocks, stride=stride,
+                                                    code=self.code[i])
             planes = planes * 2
             self.res_layers.append(res_layer)
         self.res_layers_seq = OutlistSequential(
             *self.res_layers, out_list=self.out_indices)
 
-    def _make_layers(self, d, blocks, stride, code):
+    def _make_layers(self, inplanes, d, blocks, stride, code):
         """Make layer."""
         strides = map(int, code)
         layers = []
         for stride in strides:
             layers.append(ResNeXt_Block(
-                self.inplanes, self.cardinality, d, stride))
-            self.inplanes = self.cardinality * d * 2
-        return Sequential(*layers)
+                inplanes, self.cardinality, d, stride))
+            inplanes = self.cardinality * d * 2
+        return Sequential(*layers), inplanes
 
     def _make_stem_layer(self):
         """Make stem layer."""

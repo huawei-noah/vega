@@ -1,7 +1,7 @@
-# MF-ASC: Multi-Fidelity neural Architecture Search with Co-kriging.
+# MF-ASC: Multi-Fidelity neural Architecture Search with Co-kriging
 
 MF-ASC is an individual optimization method (no weight sharing), that works with arbitrary search spaces.
-The search algorithm is described in the paper HYPERLINK "https://dl.acm.org/doi/10.1145/3292500.3330893" (see algorithm 1).
+The search algorithm is described in the [paper](https://dl.acm.org/doi/10.1145/3292500.3330893) (see algorithm 1).
 
 ## 1. Algorithm Introduction
 
@@ -16,7 +16,7 @@ For each fidelity choice, the algorithm first computes the parameters of a regre
 
 The algorithm is applicable to any search space that can be encoded into ℝ^n.
 
-We use a MobileNetV2 search space (see HYPERLINK "https://arxiv.org/abs/1906.09607") to demonstrate the work of MF-ASC.
+We use a [MobileNetV2 search space](https://arxiv.org/abs/1906.09607) to demonstrate the work of MF-ASC.
 The search space includes various combinations of values of repetitions and channels for each layer of the MobileNetV2.
 
 ## 4. Usage Guide
@@ -27,18 +27,18 @@ For details about how to search a model, see the following configuration file fo
 
 The configuration of the search algorithm includes the following parameters:
 
-```
-batch_size - the number randomly sampled candidates to be assessed by the search method at each iteration of sampling; the best candidate according to UCB criterion is sampled
-prior_rho - prior correlation between low- and high- fidelity quality metrics
-beta - parameter beta for the algorithm
-max_budget - the maximum number of training epochs in total for low- and high-fidelity evaluations
-hf_epochs - the number of training epochs for high-fidelity evaluation
-lf_epochs - the number of training epochs for low-fidelity evaluation
-fidelity_ratio - parameter r for the algorithm
-min_hf_sample_size - the minimum amount of high-fidelity evaluations (sampled randomly prior to the active search process)
-min_lf_sample_size - the minimum amount of low-fidelity evaluations (sampled randomly prior to the active search process)
-predictor_type - either 'mfgpr' for applying Multi-fidelity Gaussian process regression or 'gb_stacked' for applying stacking of fidelities in gradient boosting regressor
-```
+| parameter | desc |
+| :--: | :-- |
+| batch_size | the number randomly sampled candidates to be assessed by the search method at each iteration of sampling; the best candidate according to UCB criterion is sampled |
+| prior_rho | prior correlation between low- and high- fidelity quality metrics |
+| beta | parameter beta for the algorithm |
+| max_budget | the maximum number of training epochs in total for low- and high-fidelity evaluations |
+| hf_epochs | the number of training epochs for high-fidelity evaluation |
+| lf_epochs | the number of training epochs for low-fidelity evaluation |
+| fidelity_ratio | parameter r for the algorithm |
+| min_hf_sample_size | the minimum amount of high-fidelity evaluations (sampled randomly prior to the active search process) |
+| min_lf_sample_size | the minimum amount of low-fidelity evaluations (sampled randomly prior to the active search process) |
+| predictor_type | either 'mfgpr' for applying Multi-fidelity Gaussian process regression or 'gb_stacked' for applying stacking of fidelities in gradient boosting regressor |
 
 ## 5. Output
 

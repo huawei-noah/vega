@@ -11,6 +11,7 @@
 """Quantized Convlution."""
 import tensorflow.compat.v1 as tf
 from ..ops import Module
+from ..functions.serializable import OperatorSerializable
 
 
 @tf.custom_gradient
@@ -266,7 +267,7 @@ def bireal_a(input, nbit_a=1, *args, **kwargs):
     return bireal_a_calc(input)
 
 
-class QuantConv(tf.layers.Conv2D, Module):
+class QuantConv(Module, OperatorSerializable):
     """General QuantConv class for quantized convolution.
 
     The params are the same as nn.Conv2d
@@ -274,17 +275,16 @@ class QuantConv(tf.layers.Conv2D, Module):
 
     def __init__(self, in_channels, out_channels, kernel_size, stride=1, padding='same', dilation=1, groups=1,
                  bias=True):
-        Module.__init__(self)
-        super(QuantConv, self).__init__(out_channels, kernel_size, stride, 'SAME', self.data_format, dilation,
-                                        use_bias=bias, name=self._scope_name)
-
+        super(QuantConv, self).__init__()
+        self.in_channels = in_channels
         self.out_channels = out_channels
+        self.stride = stride
+        self.padding = padding if not isinstance(padding, int) else 'same'
         self.data_format = 'NCHW' if self.data_format == 'channels_first' else 'NHWC'
+        self.dilation = dilation
         self.group = groups
-        if self.use_bias:
-            self.bias = tf.get_variable(self._scope_name + '/bias', initializer=tf.zeros((out_channels)))
-        else:
-            self.bias = None
+        self.bias = bias
+        self.kernel_size = kernel_size if isinstance(kernel_size, tuple) else (kernel_size, kernel_size)
 
     def build(self, nbit_a=8, nbit_w=8, quan_name_w='dorefa', quan_name_a='dorefa', has_offset=False):
         """Config the quantization settings.
@@ -319,7 +319,7 @@ class QuantConv(tf.layers.Conv2D, Module):
         else:
             self.offset = None
 
-    def __call__(self, input):
+    def call(self, input, *args, **kwarg):
         """Forward function of quantized convolution.
 
         :param input: batch of input
@@ -335,7 +335,7 @@ class QuantConv(tf.layers.Conv2D, Module):
         # 0-bit: identity mapping
         if self.nbit_w == 0 or self.nbit_a == 0:
             diff_channels = self.out_channels - self.in_channels
-            if self.strides == 2 or self.strides == (2, 2):
+            if self.stride == 2 or self.stride == (2, 2):
                 if channel_axis == 1:
                     x = tf.pad(
                         input[:, :, ::2, ::2],
@@ -375,7 +375,7 @@ class QuantConv(tf.layers.Conv2D, Module):
         else:
             x = tf.nn.relu(input)
 
-        x = tf.nn.conv2d(x, w, strides=self.strides, padding=self.padding.upper(), dilations=self.dilation_rate,
+        x = tf.nn.conv2d(x, w, strides=self.stride, padding=self.padding.upper(), dilations=self.dilation,
                          name=self.name, data_format=self.data_format)
         return x
 

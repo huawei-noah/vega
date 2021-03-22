@@ -1,0 +1,134 @@
+general:
+    backend: mindspore
+
+
+pipeline: [fine_tune, nas, fully_train]
+
+
+fine_tune:
+    pipe_step:
+        type: TrainPipeStep
+    model:
+        model_desc:
+            modules: ['backbone']
+            backbone:
+                type: ResNet
+                depth: 50
+                num_class: 10
+                small_input: False
+                need_adjust: True
+        pretrained_model_file: "/cache/models/resnet50-19c8e357.pth"
+
+    trainer:
+        type: Trainer
+        epochs: 40
+        mixup: True
+        optimizer:
+            type: SGD
+            params:
+                lr: 0.0001
+                momentum: 0.9
+                weight_decay: !!float 1e-4
+        lr_scheduler:
+            type: MultiStepLR
+            params:
+                milestones: [10,20,30]
+                gamma: 0.1
+        loss:
+            type: CrossEntropyLoss
+
+    evaluator:
+        type: Evaluator
+        host_evaluator:
+            type: HostEvaluator
+            metric:
+                type: accuracy
+    dataset:
+        type: Cifar10
+        common:
+            data_path: /cache/datasets/cifar10/
+            batch_size: 128
+        train:
+            mixup: True
+            num_class: 10
+            transforms:
+                - type: Resize
+                  size: [256, 256]
+                - type: RandomCrop
+                  size: [224, 224]
+                - type: RandomHorizontalFlip
+                - type: ToTensor
+                - type: Normalize
+                  mean: [0.50, 0.5, 0.5]
+                  std: [0.50, 0.5, 0.5]
+        val:
+            transforms:
+                - type: Resize
+                  size: [224, 224]
+                - type: ToTensor
+                - type: Normalize
+                  mean: [0.50, 0.5, 0.5]
+                  std: [0.50, 0.5, 0.5]
+        test:
+            transforms:
+                - type: Resize
+                  size: [224, 224]
+                - type: ToTensor
+                - type: Normalize
+                  mean: [0.50, 0.5, 0.5]
+                  std: [0.50, 0.5, 0.5]
+
+
+nas:
+    pipe_step:
+        type: SearchPipeStep
+    search_algorithm:
+        type: BackboneNas
+        codec: BackboneNasCodec
+        objective_keys: ['accuracy', 'flops']
+        policy:
+            num_mutate: 10
+            random_ratio: 0.2
+        range:
+            max_sample: 100
+            min_sample: 10
+    search_space:
+        hyperparameters:
+            - key: network.backbone.depth
+              type: CATEGORY
+              range: [50]
+            - key: network.backbone.doublechannel
+              type: CATEGORY
+              range: [3, 4]
+            - key: network.backbone.downsample
+              type: CATEGORY
+              range: [3, 4]
+    model:
+        model_desc:
+            modules: ['backbone']
+            backbone:
+                type: ResNet
+                depth: 50
+                num_class: 10
+                small_input: False
+                need_adjust: True
+        pretrained_model_file: "{local_base_path}/output/fine_tune/"
+
+    trainer:
+        ref: fine_tune.trainer
+        epochs: 1
+    dataset:
+        ref: fine_tune.dataset
+
+
+fully_train:
+    pipe_step:
+        type: TrainPipeStep
+        models_folder: "{local_base_path}/output/nas/"
+    trainer:
+        ref: fine_tune.trainer
+    evaluator:
+        ref: fine_tune.evaluator
+    dataset:
+        ref: fine_tune.dataset
+

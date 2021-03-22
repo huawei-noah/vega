@@ -6,7 +6,7 @@
 
 ResNet-20结构如下图所示，主要包括第一个卷积核和三个顺序stage，每个stage由三个ResBlock构成，当第一个ResBlock的shortcut连接两个通道数不一致的卷积层时，shortcut由1x1的上采样卷积核构成。
 
-![res20_](./images/prune_res20.PNG)
+![res20_](../../images/prune_res20.PNG)
 
 以ResNet-20网络为例，详细阐述自动剪枝压缩的过程：
 
@@ -43,9 +43,9 @@ EA Pruning适合网络的通道剪枝，分为两个阶段：搜索剪枝网络�
 
 ### 2.2 运行说明
 
-在配置文件中进行参数配置，包括搜索剪枝模型、训练剪枝模型2个过程，配置文件为：
+在配置文件中进行参数配置，配置文件为：
 
-- `vega/examples/prune_ea/prune.yml`
+- `examples/compression/prune_ea/prune.yml`
 
 配置文件在`main.py`中直接传入给pipeline，两个过程会依次进行，搜索过程会搜出Pareto前沿，然后训练过程会把前沿的模型训到底，得到最终的表现。
 
@@ -64,11 +64,15 @@ nas:
 
     search_space:               # 搜索空间配置信息
         type: SearchSpace
-        modules: ['backbone']
+        modules: ['backbone', 'head']
         backbone:
-            name: 'PruneResNet'
-            base_chn: [16,16,16,32,32,32,64,64,64]
-            base_chn_node: [16,16,32,64]
+            type: ResNetGeneral
+            stage: 3
+            base_depth: 20
+            base_channel: 16
+        head:
+            type: LinearClassificationHead
+            base_channel: 64
             num_classes: 10
 ```
 
@@ -79,20 +83,24 @@ nas:
 ```yaml
 search_space:                   # ResNet20搜索空间
         type: SearchSpace
-        modules: ['backbone']
+        modules: ['backbone', 'head']
         backbone:
-            name: 'PruneResNet'
-            base_chn: [16,16,16,32,32,32,64,64,64]
-            base_chn_node: [16,16,32,64]
+            type: ResNetGeneral
+            stage: 3
+            base_depth: 20
+            base_channel: 16
+        head:
+            type: LinearClassificationHead
+            base_channel: 64
             num_classes: 10     # 分类数
 ```
 
 目前可支持的网络如下：
 | | search space | search algorithm |
 | --- | --- | --- |
-| ResNet-20 | base_chn_node: [16,16,32,64]<br>base_chn: [[16]\*3, [32]\*3,[64]\*3]<br>num_blocks: [3,3,3] | length:464       |
-| ResNet-32 | base_chn_node: [16,16,32,64]<br>base_chn: [[16]\*5, [32]\*5,[64]\*5]<br>num_blocks: [5,5,5] | length:688       |
-| ResNet-56 | base_chn_node: [16,16,32,64]<br>base_chn: [[16]\*9, [32]\*9,[64]\*9]<br>num_blocks: [9,9,9] | length: 1136     |
+| ResNet-20 | base_depth: 20 | length:464       |
+| ResNet-32 | base_depth: 32 | length:688       |
+| ResNet-56 | base_depth: 56 | length: 1136     |
 
 ### 2.4 搜索算法
 
@@ -102,10 +110,11 @@ search_space:                   # ResNet20搜索空间
 
 ### 2.5 输出结果描述
 
-输出2个文件：
+输出文件：
 
-- result.csv包含了搜索过程中所有模型的encoding/flops/parameters/accuracy；
-- pareto_front.csv包含了搜索出来的pareto front的信息。
+- 搜索到的帕雷托前沿的模型经充分训练后得到的模型及结果
+- reports.csv 包含了搜索过程中所有模型的encoding/flops/parameters/accuracy；
+- output.csv包含了搜索出来的pareto front的信息。
 
 ## 3. Benchmark Results
 
@@ -113,7 +122,7 @@ search_space:                   # ResNet20搜索空间
 
 - 搜出来的Pareto front,橙色表示第一代的Pareto front，蓝色表示第20代的Pareto front，可以明显看出，随着迭代数的增多，Pareto front向左上方移动。
 
-![res20_](./images/prune_pareto.png)
+![res20_](../../images/prune_pareto.png)
 
 - Pareto front上选3个不同剪枝比例的模型重训400epoch的结果。
 

@@ -9,13 +9,10 @@
 # MIT License for more details.
 
 """This script contains some common function to process the DIV2K dataset."""
-import logging
-import math
+
 import os
 import pickle
-import random
 import cv2
-# import lmdb
 import numpy as np
 import glob
 

@@ -9,6 +9,7 @@
 # MIT License for more details.
 
 """Default general."""
+import os
 from datetime import datetime
 from .config_serializable import ConfigSerializable
 
@@ -17,7 +18,7 @@ class TaskConfig(ConfigSerializable):
     """Task Config."""
 
     task_id = datetime.now().strftime('%m%d.%H%M%S.%f')[:-3]
-    local_base_path = "./tasks"
+    local_base_path = os.path.abspath("./tasks")
     output_subpath = "output"
     best_model_subpath = "best_model"
     log_subpath = "logs"
@@ -63,17 +64,34 @@ class Restrict(ConfigSerializable):
     flops = None
     latency = None
     params = None
+    model_valid = None
     duration = {}
     trials = {}
+
+
+class Affinity(ConfigSerializable):
+    """Affinity Config."""
+
+    type = None
+    affinity_file = None
+    affinity_value = None
+
+
+class Strategy(ConfigSerializable):
+    """Strategy Config."""
+
+    runtime = None
+    only_search = False
 
 
 class QuotaConfig(ConfigSerializable):
     """Quota Config."""
 
-    runtime = None
+    strategy = Strategy
     target = Target
     restrict = Restrict
     filter_rules = "(flops_params)"
+    affinity = Affinity
 
 
 class General(ConfigSerializable):
@@ -99,3 +117,5 @@ class General(ConfigSerializable):
     _parallel = False
     _resume = False
     devices_per_trainer = 1
+    clean_worker_dir = True
+    requires = []

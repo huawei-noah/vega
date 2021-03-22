@@ -23,9 +23,37 @@ class BohbPolicyConfig(ConfigSerializable):
     repeat_times = 1
     eta = 3
 
+    @classmethod
+    def rules(cls):
+        """Return rules for checking."""
+        rules_BohbPolicyConfig = {"total_epochs": {"type": int},
+                                  "min_epochs": {"type": int},
+                                  "max_epochs": {"type": int},
+                                  "num_samples": {"type": int},
+                                  "config_count": {"type": int},
+                                  "repeat_times": {"type": int},
+                                  "eta": {"type": int}
+                                  }
+        return rules_BohbPolicyConfig
+
 
 class BohbConfig(ConfigSerializable):
     """Bobh Config."""
 
     policy = BohbPolicyConfig
     objective_keys = 'accuracy'
+
+    @classmethod
+    def rules(cls):
+        """Return rules for checking."""
+        rules_BoConfig = {"policy": {"type": dict},
+                          "objective_keys": {"type": (list, str)}
+                          }
+        return rules_BoConfig
+
+    @classmethod
+    def get_config(cls):
+        """Get sub config."""
+        return {
+            "policy": cls.policy
+        }

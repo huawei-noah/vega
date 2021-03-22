@@ -12,10 +12,13 @@
 import time
 import zeus
 import numpy as np
-from zeus.common.user_config import UserConfig
+import os
+from zeus.evaluator.conf import DeviceEvaluatorConfig
+import datetime
+import logging
 
 
-def calc_forward_latency(model, input, sess_config=None, num=100):
+def calc_forward_latency(model, input, sess_config=None, num=10):
     """Model forward latency calculation.
 
     :param model: network model
@@ -27,15 +30,9 @@ def calc_forward_latency(model, input, sess_config=None, num=100):
     :return: forward latency
     :rtype: float
     """
-#     step_cfg = UserConfig().data.get("nas")
-#     if hasattr(step_cfg, "evaluator"):
-#         evaluate_cfg = step_cfg.get("evaluator")
-#         if hasattr(evaluate_cfg, "davinci_mobile_evaluator"):
-#             evaluate_config = evaluate_cfg.get("davinci_mobile_evaluator")
-#             latency = _calc_forward_latency_davinci(model, input, sess_config, evaluate_config)
-#     else:
-    latency = _calc_forward_latency_gpu(model, input, sess_config, num)
-    return latency
+    if DeviceEvaluatorConfig.remote_host:
+        return _calc_forward_latency_davinci(model, input, sess_config, num, DeviceEvaluatorConfig().to_dict())
+    return _calc_forward_latency_gpu(model, input, sess_config, num)
 
 
 def _calc_forward_latency_gpu(model, input, sess_config=None, num=100):
@@ -60,7 +57,7 @@ def _calc_forward_latency_gpu(model, input, sess_config=None, num=100):
         latency = (time.time() - start_time) / num
     elif zeus.is_tf_backend():
         import tensorflow.compat.v1 as tf
-        with tf.Graph().as_default() as graph:
+        with tf.Graph().as_default():
             input_holder = tf.placeholder(dtype=tf.float32, shape=input.shape.as_list())
             model.training = False
             output = model(input_holder)
@@ -73,13 +70,13 @@ def _calc_forward_latency_gpu(model, input, sess_config=None, num=100):
                 start_time = time.time()
                 for _ in range(num):
                     sess.run(output, feed_dict={input_holder: input_numpy})
-        latency = (time.time() - start_time) / num
+                latency = (time.time() - start_time) / num
     elif zeus.is_ms_backend():
         latency = 0.
     return latency
 
 
-def _calc_forward_latency_davinci(model, input, sess_config=None, num=1, evaluate_config=None):
+def _calc_forward_latency_davinci(model, input, sess_config=None, num=10, evaluate_config=None):
     """Model forward latency calculation.
 
     :param model: network model
@@ -94,19 +91,35 @@ def _calc_forward_latency_davinci(model, input, sess_config=None, num=1, evaluat
     :rtype: float
     """
     from zeus.evaluator.tools.evaluate_davinci_bolt import evaluate
+    from zeus.common.task_ops import TaskOps
     # backend = evaluate_config.get("backend")
     hardware = evaluate_config.get("hardware")
     remote_host = evaluate_config.get("remote_host")
+    worker_path = TaskOps().local_base_path
+    save_data_file = os.path.join(worker_path, "input.bin")
 
-    save_data_file = "./input.bin"
     latency = 0.
+    now_time = datetime.datetime.now().strftime('%Y%m%d%H%M%S%f')
+    job_id = "pre_evaluate_" + now_time
+    logging.info("The job id of evaluate service is {}.".format(job_id))
     if zeus.is_torch_backend():
         import torch
         input_shape = input.shape
         if torch.is_tensor(input):
-            input = input.numpy()
+            input = input.cpu().numpy()
         input.tofile(save_data_file)
-        for _ in range(num):
-            results = evaluate("pytorch", hardware, remote_host, model, None, save_data_file, input_shape)
+        for index in range(num):
+            reuse_model = False if index == 0 else True
+            results = evaluate("pytorch", hardware, remote_host, model, None, save_data_file, input_shape,
+                               reuse_model, job_id)
+            latency += np.float(results.get("latency"))
+    elif zeus.is_tf_backend():
+        input_shape = input.shape.as_list()
+        test_data = np.random.random(input_shape).astype(np.float32)
+        test_data.tofile(save_data_file)
+        for index in range(num):
+            reuse_model = False if index == 0 else True
+            results = evaluate("tensorflow", hardware, remote_host, model, None, save_data_file, input_shape,
+                               reuse_model, job_id)
             latency += np.float(results.get("latency"))
     return latency / num

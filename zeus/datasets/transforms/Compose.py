@@ -32,3 +32,26 @@ class Compose(object):
             format_string += '    {0}'.format(t)
         format_string += '\n)'
         return format_string
+
+
+class ComposeAll(object):
+    """Composes several transforms together."""
+
+    def __init__(self, transforms):
+        """Construct the Compose class."""
+        self.transforms = transforms
+
+    def __call__(self, *inputs):
+        """Call function of Compose."""
+        for t in self.transforms:
+            inputs = t(*inputs)
+        return inputs
+
+    def __repr__(self):
+        """Construct method."""
+        format_string = self.__class__.__name__ + '('
+        for t in self.transforms:
+            format_string += '\n'
+            format_string += '    {0}'.format(t)
+        format_string += '\n)'
+        return format_string

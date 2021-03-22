@@ -11,8 +11,6 @@
 """This is a class for Cifar10 dataset."""
 import numpy as np
 from .utils.dataset import Dataset
-import zeus
-from zeus.datasets.transforms import Compose
 from zeus.common import ClassFactory, ClassType
 from zeus.common import FileOps
 from zeus.datasets.conf.cifar10 import Cifar10Config
@@ -40,7 +38,6 @@ class Cifar10(Dataset):
         self.args.data_path = FileOps.download_dataset(self.args.data_path)
         is_train = self.mode == 'train' or self.mode == 'val' and self.args.train_portion < 1
         self.base_folder = 'cifar-10-batches-py'
-        self.transform = Compose(self.transforms.__transform__)
         if is_train:
             files_list = ["data_batch_1", "data_batch_2", "data_batch_3", "data_batch_4", "data_batch_5"]
         else:
@@ -77,8 +74,8 @@ class Cifar10(Dataset):
         # to return a PIL Image
         img = Image.fromarray(img)
 
-        if self.transform is not None:
-            img = self.transform(img)
+        if self.transforms is not None:
+            img = self.transforms(img)
 
         return img, target
 
@@ -114,27 +111,3 @@ class Cifar10(Dataset):
     def _check_integrity(self):
         """Check the integrity of the dataset."""
         return True
-
-    def _init_sampler(self):
-        """Init sampler used to cifar10.
-
-        :raises ValueError: the mode should be train, val or test, if not, will raise ValueError
-        :return: a sampler method
-        :rtype: if the mode is test, rerutrn None, else rerurn a sampler object
-        """
-        if zeus.is_torch_backend():
-            from torch.utils.data.sampler import SubsetRandomSampler
-        else:
-            return
-        if self.mode == 'test' or self.args.train_portion == 1:
-            return None
-        self.args.shuffle = False
-        num_train = len(self.data)
-        indices = list(range(num_train))
-        split = int(np.floor(self.args.train_portion * num_train))
-        if self.mode == 'train':
-            return SubsetRandomSampler(indices[:split])
-        elif self.mode == 'val':
-            return SubsetRandomSampler(indices[split:num_train])
-        else:
-            raise ValueError('the mode should be train, val or test')

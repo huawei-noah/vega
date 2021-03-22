@@ -10,7 +10,9 @@
 """Manage LrScheduler class."""
 import logging
 import zeus
+from copy import deepcopy
 from zeus.common import ClassFactory, ClassType
+from zeus.common.config import Config
 from ..config_bakcend_map import ConfigBackendMapping
 from ..conf.lr_scheduler import LrSchedulerConfig, LrSchedulerMappingDict
 
@@ -20,10 +22,15 @@ class LrScheduler(object):
 
     config = LrSchedulerConfig()
 
-    def __init__(self):
+    def __init__(self, config=None):
         """Initialize."""
         # register pytorch optim as default
-        raw_config = self.config.to_json()
+        if config:
+            self.config = Config(config)
+            raw_config = deepcopy(self.config)
+        else:
+            self.config = LrScheduler.config
+            raw_config = self.config.to_dict()
         raw_config.type = self.config.type
         map_dict = LrSchedulerMappingDict()
         self.map_config = ConfigBackendMapping(
@@ -35,23 +42,15 @@ class LrScheduler(object):
         params = self.map_config.get("params", {})
         logging.debug("Call LrScheduler. name={}, params={}".format(self._cls.__name__, params))
 
-        if self._cls.__name__ == "CosineAnnealingLR":
-            if params.get("T_max", -1) == -1:
-                if params.get("by_epoch", True):
-                    params["T_max"] = epochs
-                else:
-                    params["T_max"] = epochs * steps
-
-        if self._cls.__name__ == "WarmupScheduler":
-            params["epochs"] = epochs
-            params["steps"] = steps
+        setattr(self._cls, "by_epoch", True)
+        if hasattr(self.config, "by_epoch"):
+            setattr(self._cls, "by_epoch", self.config.by_epoch)
 
         try:
             if params:
                 return self._cls(optimizer, **params)
             else:
                 return self._cls(optimizer)
-
         except Exception as ex:
             logging.error("Failed to call LrScheduler name={}, params={}".format(self._cls.__name__, params))
             raise ex

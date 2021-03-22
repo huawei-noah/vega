@@ -10,10 +10,7 @@
 
 """RandomForestWithStdRegressor."""
 import numpy as np
-import threading
 from sklearn.ensemble import RandomForestRegressor
-from sklearn.ensemble.forest import _partition_estimators, Parallel, \
-    _joblib_parallel_args, delayed
 
 
 class RandomForestWithStdRegressor(RandomForestRegressor):
@@ -30,20 +27,16 @@ class RandomForestWithStdRegressor(RandomForestRegressor):
         :return:
         """
         X = self._validate_X_predict(X)
-        n_jobs, _, _ = _partition_estimators(self.n_estimators, self.n_jobs)
         t_pre = []
-        lock = threading.Lock()
-        Parallel(n_jobs=n_jobs, verbose=self.verbose,
-                 **_joblib_parallel_args(require="sharedmem"))(
-            delayed(_accumulate_prediction_std)(e.predict, X, t_pre, lock)
-            for e in self.estimators_)
+        for e in self.estimators_:
+            _accumulate_prediction_std(e.predict, X, t_pre)
         t_pre = np.concatenate(t_pre, axis=1)
         mean = t_pre.mean(axis=1)
         std = t_pre.std(axis=1)
         return mean, std
 
 
-def _accumulate_prediction_std(predict, X, out, lock):
+def _accumulate_prediction_std(predict, X, out):
     """Accumulate prediction std.
 
     This is a utility function for joblib's Parallel.
@@ -51,5 +44,4 @@ def _accumulate_prediction_std(predict, X, out, lock):
     complains that it cannot pickle it when placed there.
     """
     prediction = predict(X, check_input=False)
-    with lock:
-        out.append(prediction.reshape(-1, 1))
+    out.append(prediction.reshape(-1, 1))

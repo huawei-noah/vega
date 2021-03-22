@@ -18,14 +18,19 @@ import sys
 import logging
 import time
 import threading
+import uuid
+import glob
 from threading import Lock
 from queue import Queue
 from zeus.trainer import utils
-from .distribution import ClusterDaskDistributor, LocalDistributor
+from .distribution import ClusterDaskDistributor
 from zeus.common import TaskOps
 from zeus.common.general import General
 from .worker_env import WorkerEnv
 from .dask_env import DaskEnv
+from zeus.trainer.deserialize import pickle_worker
+from zeus.trainer.run_remote_worker import run_remote_worker
+from zeus.report import ReportServer
 
 
 class Master(object):
@@ -52,14 +57,13 @@ class Master(object):
         if not status or not self.dask_env.is_master:
             sys.exit(0)
         self._start_cluster()
-        self._start_evaluator_multiprocess()
         self.t_queue = Queue()
-        self.e_queue = utils.PairDictQueue()
         self.update_func = update_func
         self.evaluator_list = {}
         self._thread_runing = True
         self._lock = Lock()
         self._thread = self._run_monitor_thread()
+        ReportServer().renew()
         return
 
     def _start_cluster(self):
@@ -71,18 +75,26 @@ class Master(object):
             local_host = os.environ["BATCH_CURRENT_HOST"]
         elif "BATCH_CUSTOM0_HOSTS" in os.environ:
             local_host = os.environ["BATCH_CUSTOM0_HOSTS"]
+        if "CUDA_VISIBLE_DEVICES" in os.environ:
+            os.environ["ORIGIN_CUDA_VISIBLE_DEVICES"] = os.environ["CUDA_VISIBLE_DEVICES"]
+        self._remove_worker_number_file()
         plugin = WorkerEnv(self.dask_env.slave_proc_num,
                            self.dask_env.slave_device_num_per_proc,
                            local_host,
                            os.getpid(),
                            TaskOps().temp_path)
         self.client.register_worker_plugin(plugin)
+        if "ORIGIN_CUDA_VISIBLE_DEVICES" in os.environ:
+            os.environ["CUDA_VISIBLE_DEVICES"] = os.environ["ORIGIN_CUDA_VISIBLE_DEVICES"]
+        if "CUDA_VISIBLE_DEVICES" in os.environ and "ORIGIN_CUDA_VISIBLE_DEVICES" not in os.environ:
+            del os.environ["CUDA_VISIBLE_DEVICES"]
         return
 
-    def _start_evaluator_multiprocess(self):
-        """Set and start local multiprocess pool."""
-        self.dmd = LocalDistributor(self.eval_count)
-        return
+    def _remove_worker_number_file(self):
+        _worker_number_file = os.path.join(TaskOps().temp_path, ".*worker_number")
+        files = glob.glob(_worker_number_file)
+        for _file in files:
+            os.remove(_file)
 
     @property
     def has_free_worker(self):
@@ -115,18 +127,6 @@ class Master(object):
         if worker.worker_type == utils.WorkerTypes.EVALUATOR:
             for sub_worker in worker.sub_worker_list:
                 self.run(sub_worker)
-                self.e_queue.add_new("{}::{}".format(sub_worker.step_name, sub_worker.worker_id),
-                                     sub_worker.worker_type.name)
-        elif worker.worker_type == utils.WorkerTypes.HAVA_D_EVALUATOR:
-            p_id = self.task_count
-            if worker.step_name and worker.worker_id:
-                logging.info("master run EVALUATE_DLOOP")
-                p_id = "{0}::{1}::{2}".format(worker.worker_type.name,
-                                              worker.step_name,
-                                              worker.worker_id)
-            worker._save_env()
-            self.dmd.distribute(pid=p_id, func=worker, kwargs={})
-            return p_id
         else:
             finished = False
             while not finished:
@@ -136,9 +136,16 @@ class Master(object):
                         p_id = "{0}::{1}::{2}".format(worker.worker_type.name,
                                                       worker.step_name,
                                                       worker.worker_id)
-                    worker._save_env()
-                    self.md.distribute(client=self.client, pid=p_id,
-                                       func=worker, kwargs={})
+                    pickle_id = uuid.uuid1().hex[:8]
+                    pickle_worker(worker, pickle_id)
+                    self.md.distribute(
+                        client=self.client,
+                        pid=p_id,
+                        func=run_remote_worker,
+                        kwargs={
+                            "worker_id": worker.worker_id,
+                            "worker_path": worker.get_local_worker_path(),
+                            "id": pickle_id})
                     self.task_count = self.task_count + 1
                     return p_id
                 else:
@@ -147,24 +154,27 @@ class Master(object):
 
     @staticmethod
     def _monitor_thread(master):
+        evaluator_counter = {}
         while master and master._thread_runing:
-            worker_info_list = master._pop_all_finished_train_worker()
+            worker_info_list = master._pop_all_finished_worker()
             if worker_info_list:
                 for worker_info in worker_info_list:
                     worker_id = worker_info["worker_id"]
                     if str(worker_id) in master.evaluator_list.keys():
                         with master._lock:
                             evalutor = master.evaluator_list.pop(str(worker_id))
+                        evaluator_counter[worker_id] = len(evalutor.sub_worker_list) - 1
                         master.run(evalutor)
-                    else:
-                        master._update(worker_info["step_name"], worker_id)
-            worker_info_list = master._pop_all_finished_evaluate_worker()
-            if worker_info_list and master.update_func:
-                for worker_info in worker_info_list:
-                    master._update(worker_info["step_name"], worker_info["worker_id"])
+                    elif master.update_func:
+                        if worker_id not in evaluator_counter or evaluator_counter[worker_id] == 0:
+                            master._update(worker_info["step_name"], worker_id)
+                        else:
+                            evaluator_counter[worker_id] -= 1
             time.sleep(0.1)
 
     def _update(self, step_name, worker_id):
+        # Waiting report thread update all record
+        time.sleep(0.5)
         if not self.update_func:
             return
         if self.update_func.__code__.co_varnames.index("step_name") == 1:
@@ -174,18 +184,18 @@ class Master(object):
 
     def _run_monitor_thread(self):
         try:
-            logging.info("Start monitor thread.")
+            logging.debug("Start master monitor thread.")
             monitor_thread = threading.Thread(target=Master._monitor_thread, args=(self,))
+            monitor_thread.daemon = True
             monitor_thread.start()
             return monitor_thread
         except Exception as e:
-            logging.info("Failed to run monitor thread.")
+            logging.error("Failed to run monitor thread.")
             raise e
 
     def join(self):
         """Wait all workers to finished."""
         self.md.join()
-        self.dmd.join()
         return
 
     def update_status(self):
@@ -196,17 +206,7 @@ class Master(object):
             if len(pid_splited) >= 3:
                 (_type, step_name, worker_id) = pid_splited
                 pid = "{0}::{1}".format(step_name, worker_id)
-                if _type == utils.WorkerTypes.TRAINER.name:
-                    self.t_queue.put(pid)
-                else:
-                    self.e_queue.put(item=pid, type=_type)
-        dloop_pid = self.dmd.process_result_get()
-        if dloop_pid is not None:
-            pid_splited = dloop_pid.split("::")
-            if len(pid_splited) >= 3:
-                type = pid_splited[0]
-                pid = "{0}::{1}".format(pid_splited[1], pid_splited[2])
-            self.e_queue.put(item=pid, type=type)
+                self.t_queue.put(pid)
         return
 
     def get_result_from_worker(self):
@@ -223,7 +223,7 @@ class Master(object):
         else:
             return None, None
 
-    def _pop_finished_worker(self, train_worker=True):
+    def _pop_finished_worker(self):
         """Pop a finished dask worker's info, if there are finished dask worker in queue.
 
         :return: the finished worker info, include step_name and worker_id.
@@ -233,10 +233,8 @@ class Master(object):
         """
         self.update_status()
         pid = None
-        if train_worker and not self.t_queue.empty():
+        if not self.t_queue.empty():
             pid = self.t_queue.get()
-        if not train_worker and self.e_queue.qsize() > 0:
-            pid = self.e_queue.get()
         if pid is None:
             return None
         else:
@@ -247,27 +245,7 @@ class Master(object):
                 return {"step_name": pid_splited[0],
                         "worker_id": pid_splited[1]}
 
-    def _pop_finished_train_worker(self):
-        """Pop a finished evaluator worker's info, if there are finished evaluate workers in pool.
-
-        :return: the finished worker info, include step_name and worker_id.
-            eg. {"step_name":"round1", "worker_id":1}
-        :rtype: dict or None
-
-        """
-        return self._pop_finished_worker(train_worker=True)
-
-    def _pop_finished_evaluate_worker(self):
-        """Pop a finished evaluator worker's info, if there are finished evaluate workers in pool.
-
-        :return: the finished worker info, include step_name and worker_id.
-            eg. {"step_name":"round1", "worker_id":1}
-        :rtype: dict or None
-
-        """
-        return self._pop_finished_worker(train_worker=False)
-
-    def _pop_all_finished_train_worker(self):
+    def _pop_all_finished_worker(self):
         """Pop all finished train worker's info.
 
         :return: a finished worker info list.
@@ -275,39 +253,35 @@ class Master(object):
 
         """
         worker_info_list = []
-        finished_train_worker_info = self._pop_finished_train_worker()
+        finished_train_worker_info = self._pop_finished_worker()
         while finished_train_worker_info is not None:
             worker_info_list.append(finished_train_worker_info)
-            finished_train_worker_info = self._pop_finished_train_worker()
-        return worker_info_list
-
-    def _pop_all_finished_evaluate_worker(self):
-        """Pop all finished evaluator worker's info.
-
-        :return: a finished worker info list.
-        :rtype: list of dict
-
-        """
-        worker_info_list = []
-        finished_evaluate_worker_info = self._pop_finished_evaluate_worker()
-        while finished_evaluate_worker_info is not None:
-            worker_info_list.append(finished_evaluate_worker_info)
-            finished_evaluate_worker_info = self._pop_finished_evaluate_worker()
+            finished_train_worker_info = self._pop_finished_worker()
         return worker_info_list
 
     def close_client(self):
         """Close cluster client."""
+        ReportServer.stop()
         self._thread_runing = False
+        # Waiting thread exit.
+        time.sleep(1)
         if hasattr(self, "client") and self.client is not None:
             self.client.close()
             del self.client
+        # Waiting cluster closed
+        time.sleep(1)
 
     def shutdown(self):
         """Close cluster client."""
+        ReportServer.stop()
         self._thread_runing = False
         if self._thread:
             self._thread.join()
+        # Waiting thread exit.
+        time.sleep(1)
         if hasattr(self, "client") and self.client is not None:
             self.client.shutdown()
             self.client.close()
             del self.client
+        # Waiting cluster closed
+        time.sleep(1)

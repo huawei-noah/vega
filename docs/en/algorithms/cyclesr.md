@@ -12,8 +12,9 @@ This algorithm is applicable to most low level vision tasks without the need for
 
 ## 2. Algorithm Principles
 
-CycleSR consists of the transfer network and super-resolution network. The following figure shows the network structure. 
-![CycleSR](images/cyclesr.png)
+CycleSR consists of the transfer network and super-resolution network. The following figure shows the network structure.
+
+![CycleSR](../../images/cyclesr.png)
 
 The overall training process of CycleSR may be divided into the following three steps:
 
@@ -21,7 +22,7 @@ The overall training process of CycleSR may be divided into the following three 
 2. Super-resolution network: The low resolution images generated in step 1 and the corresponding HD images form a pair of data for training the super-resolution network.
 3. Joint training strategy: The joint training of transfer network and super-resolution network can promote and improve each other's performance. When the generator of the transfer network is updated, the loss of the super-resolution network is involved in the parameter of the update generator. The overall loss of the generator is shown in the following figure.
 
-![loss_trans](images/cyclesr_loss_trans.png)
+![loss_trans](../../images/cyclesr_loss_trans.png)
 
 ### 2.1 Network Configuration
 
@@ -46,7 +47,7 @@ cyclegan:
 The Cycle GAN model file is located in the
 
 ```text
-vega/search_space/networks/cyclesrbodys/trans_model.py
+zeus/networks/pytorch/cyclesrbodys/trans_model.py
 ```
 
 #### super-resolution network
@@ -65,7 +66,7 @@ VDSR:
 The model file of the super-resolution network is stored in the following directory:
 
 ```text
-vega/search_space/networks/cyclesrbodys/srmodels.py
+zeus/networks/pytorch/cyclesrbodys/srmodels.py
 ```
 
 #### Joint training
@@ -84,7 +85,7 @@ model:
     model_desc:
         modules: ["custom"]     # Module type
         custom:
-            name: CycleSRModel  # Model name
+            type: CycleSRModel  # Model name
             SR_lam: 1000        # SR loss weight
             cycleSR_lam: 1000   # SR loss weight for updating the cyclegan generator
             grad_clip: 50       # Gradient clip threshold
@@ -95,7 +96,7 @@ model:
 The network description for joint training is located at
 
 ```text
-vega/search_space/networks/cyclesrbodys/cyclesr_net.py
+zeus/networks/pytorch/cyclesrbodys/cyclesr_net.py
 ```
 
 ## 3. Usage
@@ -112,7 +113,3 @@ examples/data_augmentation/cyclesr/cyclesr.yml
 
 1. Log files generated during the training process, including console output and events stored in Writer
 2. Trained models
-
-## 5. Benchmark
-
-Benchmark configuration: [cyclesr.yml](https://github.com/huawei-noah/vega/tree/master/benchmark/algs/data_augmentation/cyclesr.yml)

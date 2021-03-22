@@ -98,4 +98,4 @@ class AutoLaneNasCodec(Codec):
             neck=neck_desc,
             head=head_desc
         )
-        return Config({'desc': {'modules': ['detector'], 'detector': {'type': 'AutoLaneDetector', 'desc': detector}}})
+        return Config({'modules': ['detector'], 'detector': {'type': 'AutoLaneDetector', 'desc': detector}})

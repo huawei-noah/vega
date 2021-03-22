@@ -14,15 +14,14 @@
 # Author: Jan Hendrik Metzen <jhm@informatik.uni-bremen.de>
 #
 # License: BSD 3 clause
+
 """Multi-fidelity Gaussian processes regression with co-Kriging."""
 
 import warnings
 from operator import itemgetter
-
 import numpy as np
 from scipy.linalg import cholesky, cho_solve, solve_triangular
 from scipy.optimize import fmin_l_bfgs_b
-
 from sklearn.base import BaseEstimator, RegressorMixin, clone
 from sklearn.base import MultiOutputMixin
 from sklearn.gaussian_process.kernels import RBF, ConstantKernel as C
@@ -130,8 +129,10 @@ class GaussianProcessCoKriging(BaseEstimator, RegressorMixin,
             # Additional runs are performed from log-uniform chosen initial
             # theta
             if self.n_restarts_optimizer > 0:
-                if not (np.isfinite(self.kernel_l_.bounds).all() and np.isfinite(self.kernel_d_.bounds).all()
-                        and np.isfinite(self.rho_bounds).all()):
+                flag = np.isfinite(self.kernel_l_.bounds).all() and \
+                    np.isfinite(self.kernel_d_.bounds).all() and \
+                    np.isfinite(self.rho_bounds).all()
+                if not flag:
                     raise ValueError(
                         "Multiple optimizer restarts (n_restarts_optimizer>0) "
                         "requires that all bounds are finite.")
@@ -141,7 +142,6 @@ class GaussianProcessCoKriging(BaseEstimator, RegressorMixin,
                     theta_initial = np.hstack((
                         self.rng.uniform(bounds[0, 0], bounds[0, 1]),
                         np.exp(self.rng.uniform(bounds[1:, 0], bounds[1:, 1]))
-
                     ))
                     optima.append(
                         self._constrained_optimization(obj_func, theta_initial,
@@ -165,7 +165,7 @@ class GaussianProcessCoKriging(BaseEstimator, RegressorMixin,
             np.hstack((self.kernel_l_(self.X_train_[:self.n_l_]),
                        self.rho * self.kernel_l_(self.X_train_[:self.n_l_], self.X_train_[self.n_l_:]))),
             np.hstack((self.rho * self.kernel_l_(self.X_train_[self.n_l_:], self.X_train_[:self.n_l_]),
-                       self.rho**2 * self.kernel_l_(self.X_train_[self.n_l_:]) +
+                       self.rho**2 * self.kernel_l_(self.X_train_[self.n_l_:]) +  # noqa W504
                        self.kernel_d_(self.X_train_[self.n_l_:])))
         ))
         K_lf[np.diag_indices_from(K_lf)] += self.alpha
@@ -308,7 +308,7 @@ class GaussianProcessCoKriging(BaseEstimator, RegressorMixin,
         else:  # Predict based on GP posterior
             K_trans = np.hstack((
                 self.rho * self.kernel_l_(X, self.X_train_[:self.n_l_]),
-                self.rho**2 * self.kernel_l_(X, self.X_train_[self.n_l_:]) +
+                self.rho**2 * self.kernel_l_(X, self.X_train_[self.n_l_:]) +  # noqa W504
                 self.kernel_d_(X, self.X_train_[self.n_l_:])
             ))
             y_mean = K_trans.dot(self.alpha_)  # Line 4 (y_mean = f_star)

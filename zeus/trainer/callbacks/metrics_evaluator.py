@@ -66,12 +66,18 @@ class MetricsEvaluator(Callback):
             self.cur_loss = logs['loss']
             self.loss_avg = self.cur_loss
         else:
-            batch_size = input.size(0)
+            if isinstance(input, dict):
+                batch_size = 1
+            else:
+                batch_size = input.size(0)
             self.cur_loss = logs['loss']
             self.loss_avg = self._average_loss(batch_size, self.cur_loss)
         output = logs['train_batch_output']
         if self.train_metrics is not None and self.trainer.call_metrics_on_train:
-            self.train_metrics(output, target)
+            if self.trainer.config.is_gan_trainer:
+                self.train_metrics(output, target, self.trainer.model.generator)
+            else:
+                self.train_metrics(output, target)
         logs.update({'cur_loss': self.cur_loss, 'loss_avg': self.loss_avg, 'lr': self.lr})
 
     def before_valid_step(self, batch_index, logs=None):
@@ -93,6 +99,10 @@ class MetricsEvaluator(Callback):
             if zeus.is_torch_backend() and self.trainer.distributed:
                 for key, value in metrics_results.items():
                     metrics_results[key] = self.trainer._metric_average(value, key)
+            if 'loss' in metrics_results:
+                metrics_results.pop('loss')
+            if 'global_step' in metrics_results:
+                metrics_results.pop('global_step')
             self.cur_valid_perfs = metrics_results
             logs.update({'cur_valid_perfs': self.cur_valid_perfs})
             # update best valid perfs based on current valid valid_perfs
@@ -128,6 +138,10 @@ class MetricsEvaluator(Callback):
                                        'best_valid_perfs_changed': self.best_valid_changed})
 
         logs.update({'summary_perfs': self.summary_perfs})
+
+    def after_train(self, logs=None):
+        """Be called before training."""
+        self.after_epoch(self.trainer.epochs, logs)
 
     def _update_best_perfs(self, cur_perfs, best_perfs):
         best_changed = False

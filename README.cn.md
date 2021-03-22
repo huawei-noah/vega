@@ -1,15 +1,23 @@
+
+<div align="center">
+  <img src="./docs/images/pipeline.png"/>
+</div>
+
 # Vega
 
-[English](./README.md)
+**[English](./README.md) | 中文**
 
-**Vega ver1.2.0 发布：**
+**Vega ver1.3.0 发布：**
 
 - 特性增强：
-  - 细粒度网络搜索空间：可以自由定义网络搜索空间，提供了丰富的网络架构参数供搜索空间使用，可同时搜索网络架构参数和模型训练超参，并且该搜索空间可以同时适用于Pytorch、TensorFlow和MindSpore。
+  - 支持昇腾平台，在Ascend 910搜索和训练（TensorFlow和MindSpore），在Ascend 310上模型评估。
+  - 支持在麒麟990上模型评估。
+  - 支持用户数据集在DNet预模型上FineTune，在Ascend 910/310上超越SOTA。
+  - 支持用户数据集和ResNet类模型的剪枝能力。Cifar100数据集，精度变化较小（+-0.5），时延降低15%，模型大小降低30%。
 - 新增算法：
-  - [NAGO: Neural Architecture Generator Optimization](https://arxiv.org/abs/2004.01395) 基于随机图生成器的，多阶层的神经网络搜索空间
-
-- 社区贡献者：[Chen Bo](https://github.com/chenboability), [cndylan](https://github.com/cndylan), [hasanirtiza](https://github.com/hasanirtiza), [IlyaTrofimov](https://github.com/IlyaTrofimov), [Lzc06](https://github.com/Lzc06), [marsggbo](https://github.com/marsggbo), [mengzhibin](https://github.com/mengzhibin), [qixiuai](https://github.com/qixiuai), [SHUHarold](https://github.com/SHUHarold), [sptj](https://github.com/sptj).
+  - ModularNAS: Towards Modularized and Reusable Neural Architecture Search, 支持权重共享和网络变换等方法的神经网络架构搜索算法集。
+  - DNet：提供和Davinci芯片亲和的预训练模型，和网络搜索算法。并提供DNet Model Zoo。
+  - MF-ASC: Multi-Fidelity neural Architecture Search with Co-kriging.
 
 ## Vega简介
 
@@ -19,13 +27,16 @@ Vega是诺亚方舟实验室自研的AutoML算法工具链，有主要特点：
 2. 业界标杆的自研算法：提供了诺亚方舟实验室自研的 **[业界标杆(Benchmark)](./docs/benchmark.md)** 算法，并提供 **[Model Zoo](./docs/model_zoo.md)** 下载SOTA(State-of-the-art)模型。
 3. 高并发模型训练能力：提供高性能Trainer，加速模型训练和评估。
 4. 细粒度SearchSpace：可以自由定义网络搜索空间，提供了丰富的网络架构参数供搜索空间使用，可同时搜索网络架构参数和模型训练超参，并且该搜索空间可以同时适用于Pytorch、TensorFlow和MindSpore。
-5. 多Backend支持：支持PyTorch，TensorFlow，MindSpore（试用中）。
+5. 多Backend支持：支持PyTorch(GPU), TensorFlow(GPU, Ascend 910), MindSpore(Ascend 910).。
+6. 支持昇腾平台：支持在Ascend 910搜索和训练，支持在Ascend 310上模型评估。
 
 ## 算法列表
 
 | 分类 | 算法 | 说明 | 参考 |
 | :--: | :-- | :-- | :-- |
 | NAS | [CARS: Continuous Evolution for Efficient Neural Architecture Search](https://arxiv.org/abs/1909.04977) | 基于连续进化的多目标高效神经网络结构搜索方法 | [参考](./docs/cn/algorithms/cars.md) |
+| NAS | ModularNAS: Towards Modularized and Reusable Neural Architecture Search |  支持权重共享和网络变换等方法的神经网络架构搜索算法集 | [参考](./docs/cn/algorithms/modnas.md) |
+| NAS | [MF-ASC](https://dl.acm.org/doi/10.1145/3292500.3330893) | Multi-Fidelity neural Architecture Search with Co-kriging | [参考](./docs/en/algorithms/mfasc.md) |
 | NAS | [NAGO: Neural Architecture Generator Optimization](https://arxiv.org/abs/2004.01395) | 基于随机图生成器的，多阶层的神经网络搜索空间 | [参考](./docs/cn/algorithms/nago.md) |
 | NAS | SR-EA | 适用于轻量级网络的自动网络架构搜索方法 | [参考](./docs/cn/algorithms/sr_ea.md) |
 | NAS | [ESR-EA: Efficient Residual Dense Block Search for Image Super-resolution](https://arxiv.org/abs/1909.11409) | 基于网络架构搜索的多目标图像超分方法 | [参考](./docs/cn/algorithms/esr_ea.md) |
@@ -51,15 +62,16 @@ Vega是诺亚方舟实验室自研的AutoML算法工具链，有主要特点：
 执行如下命令安装Vega和相关开源软件：
 
 ```bash
-pip3 install --user noah-vega
-python3 -m vega.tools.install_pkgs
+pip3 install --user --upgrade noah-vega
 ```
+
+若需要在Ascend 910训练环境上安装，请联系我们。
 
 ## 使用参考
 
 | 对象 | 参考 |
 | :--: | :-- |
-| [**用户**<br>(用户指南)](./docs/cn/user/README.md) | [安装指导](./docs/cn/user/install.md)、[部署指导](./docs/cn/user/deployment.md)、[配置指导](./docs/cn/user/config_reference.md)、[示例参考](./docs/cn/user/examples.md)、[评估服务](../docs/cn/user/evaluate_service.md)、任务参考([分类](./docs/cn/tasks/classification.md)、[检测](./docs/cn/tasks/detection.md)、[分割](./docs/cn/tasks/segmentation.md)、[超分](./docs/cn/tasks/segmentation.md)) |
+| [**用户**<br>(用户指南)](./docs/cn/user/README.md) | [安装指导](./docs/cn/user/install.md)、[部署指导](./docs/cn/user/deployment.md)、[配置指导](./docs/cn/user/config_reference.md)、[示例参考](./docs/cn/user/examples.md)、[评估服务](./docs/cn/user/evaluate_service.md)、任务参考([分类](./docs/cn/tasks/classification.md)、[检测](./docs/cn/tasks/detection.md)、[分割](./docs/cn/tasks/segmentation.md)、[超分](./docs/cn/tasks/segmentation.md)) |
 | [**开发者**<br>(开发者指南)](./docs/cn/developer/README.md) | [开发者指导](./docs/cn/developer/developer_guide.md)、[快速入门指导](./docs/cn/developer/quick_start.md)、[数据集指导](./docs/cn/developer/datasets.md)、[算法开发指导](./docs/cn/developer/new_algorithm.md)、[细粒度搜索空间指导](./docs/cn/developer/fine_grained_space.md) |
 
 ## FAQ

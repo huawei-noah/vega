@@ -22,7 +22,7 @@ class ParamTypes(Enum):
     FLOAT_EXP = 4
     CATEGORY = 5
     BOOL = 6
-    BINARY_LIST = 7
+    BINARY_CODE = 7
     ADJACENCY_LIST = 8
 
 
@@ -33,6 +33,6 @@ PARAM_TYPE_MAP = {
     'FLOAT_EXP': ParamTypes.FLOAT_EXP,
     'CATEGORY': ParamTypes.CATEGORY,
     'BOOL': ParamTypes.BOOL,
-    'BINARY_LIST': ParamTypes.BINARY_LIST,
+    'BINARY_CODE': ParamTypes.BINARY_CODE,
     'ADJACENCY_LIST': ParamTypes.ADJACENCY_LIST
 }

@@ -1,4 +1,4 @@
-**Vega ver1.2.0 released:**
+**Vega ver1.3.0 released:**
 
 **Introduction**
 
@@ -14,9 +14,7 @@ Vega is an AutoML algorithm tool chain developed by Noah's Ark Laboratory, the m
 
 Install Vega and the open source softwares that Vega depends on:
 
-`pip3 install noah-vega`
-
-`python3 -m vega.tools.install_pkgs`
+`pip3 install --user --upgrade noah-vega`
 
 **Cooperation and contribution**
 

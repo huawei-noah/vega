@@ -20,9 +20,34 @@ class AshaPolicyConfig(ConfigSerializable):
     config_count = 1
     num_samples = 9
 
+    @classmethod
+    def rules(cls):
+        """Return rules for checking."""
+        rules_AshaPolicyConfig = {"total_epochs": {"type": int},
+                                  "max_epochs": {"type": int},
+                                  "config_count": {"type": int},
+                                  "num_samples": {"type": int}
+                                  }
+        return rules_AshaPolicyConfig
+
 
 class AshaConfig(ConfigSerializable):
     """Asha Config."""
 
     policy = AshaPolicyConfig
     objective_keys = 'accuracy'
+
+    @classmethod
+    def rules(cls):
+        """Return rules for checking."""
+        rules_AshaConfig = {"policy": {"type": dict},
+                            "objective_keys": {"type": (list, str)}
+                            }
+        return rules_AshaConfig
+
+    @classmethod
+    def get_config(cls):
+        """Get sub config."""
+        return {
+            "policy": cls.policy
+        }

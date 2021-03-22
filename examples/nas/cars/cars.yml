@@ -1,21 +1,21 @@
 general:
-    parallel_search: False
-    parallel_fully_train: True
-    backend: pytorch
+    backend: pytorch  # pytorch
 
-#pipeline: [nas]
+
 pipeline: [nas, fully_train]
+
 
 nas:
     pipe_step:
-        type: NasPipeStep
+        type: SearchPipeStep
 
     dataset:
         type: Cifar10
         common:
-            num_workers: 0
             data_path: /cache/datasets/cifar10/
             train_portion: 0.5
+            num_workers: 8
+            drop_last: False
         train:
             shuffle: True
             batch_size: 128
@@ -25,11 +25,11 @@ nas:
     search_algorithm:
         type: CARSAlgorithm
         policy:
-            num_individual: 8 #128
-            start_ga_epoch: 0 #50
-            ga_interval: 1 #10
-            select_method: uniform #pareto
-            warmup: 0 #50
+            num_individual: 8
+            start_ga_epoch: 50
+            ga_interval: 10
+            select_method: uniform
+            warmup: 50
 
     search_space:
         type: SearchSpace
@@ -99,7 +99,7 @@ nas:
         type: Trainer
         darts_template_file: "{default_darts_cifar10_template}"
         callbacks: CARSTrainerCallback
-        epochs: 1
+        epochs: 500
         optimizer:
             type: SGD
             params:
@@ -117,18 +117,16 @@ nas:
         loss:
             type: CrossEntropyLoss
             params:
-                is_grad: False
                 sparse: True
+
 
 fully_train:
     pipe_step:
-        type: FullyTrainPipeStep
+        type: TrainPipeStep
         models_folder: "{local_base_path}/output/nas/"
-
     trainer:
         ref: nas.trainer
-        callbacks: DartsFullTrainerCallback
-        epochs: 50
+        epochs: 600
         lr_scheduler:
             type: CosineAnnealingLR
             params:
@@ -142,6 +140,12 @@ fully_train:
                 aux_weight: 0.4
         seed: 100
         drop_path_prob: 0.2
+    evaluator:
+        type: Evaluator
+        host_evaluator:
+            type: HostEvaluator
+            metric:
+                type: accuracy
     dataset:
         ref: nas.dataset
         common:
@@ -166,43 +170,6 @@ fully_train:
                         - 0.26158768
                 -   type: Cutout
                     length: 8 # pipeline scale this number to 8*20/10
-
         val:
             batch_size: 96
             shuffle: False
-
-benchmark:
-    pipeline: [nas, fully_train, benchmark_cifar10]
-    nas:
-        dataset:
-            common:
-                num_workers: 8
-                drop_last: False
-        search_algorithm:
-            policy:
-                num_individual: 8
-                start_ga_epoch: 50
-                ga_interval: 10
-                warmup: 50
-        trainer:
-            epochs: 500
-    fully_train:
-        trainer:
-            epochs: 600
-    benchmark_cifar10:
-        pipe_step:
-            type: BenchmarkPipeStep
-            models_folder: "{local_base_path}/output/fully_train/"
-        dataset:
-            ref: nas.dataset
-            test:
-                upscale: 2
-                num_workers: 8
-                batch_size: 256
-        evaluator:
-            type: Evaluator
-            gpu_evaluator:
-                type: GpuEvaluator
-                metric:
-                    type: accuracy
- 

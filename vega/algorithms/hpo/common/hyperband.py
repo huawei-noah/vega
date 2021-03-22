@@ -31,7 +31,6 @@ https://arxiv.org/pdf/1603.06560.pdf
     end
     return Configuration with the smallest intermediate loss seen so far
 """
-import logging
 import operator
 import math
 import random

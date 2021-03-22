@@ -33,7 +33,7 @@ class F1Loss(Module):
         y_pred = ops.softmax(inputs, dim=1)
 
         tp = ops.reduce_sum(y_true * y_pred, dtype='float32')
-        tn = ops.reduce_sum(((1 - y_true) * (1 - y_pred)), dtype='float32')
+        # tn = ops.reduce_sum(((1 - y_true) * (1 - y_pred)), dtype='float32')
         fp = ops.reduce_sum(((1 - y_true) * y_pred), dtype='float32')
         fn = ops.reduce_sum((y_true * (1 - y_pred)), dtype='float32')
 

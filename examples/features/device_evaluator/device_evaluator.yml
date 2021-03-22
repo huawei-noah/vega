@@ -1,0 +1,61 @@
+# If you want to evaluate the latency of the model on the device side, use DeviceEvaluator.
+# The configuration is as follows:
+
+
+pipeline: [nas, fullytrain]
+
+
+nas:
+    pipe_step:
+        type: SearchPipeStep
+    search_algorithm:
+        type: RandomSearch
+        policy:
+            num_sample: 50
+    search_space:
+        hyperparameters:
+            -   key: network.backbone.depth
+                type: CATEGORY
+                range: [18, 34]
+            -   key: network.backbone.base_channel
+                type: CATEGORY
+                range:  [32, 48, 56]
+    model:
+        model_desc:
+            modules: ['backbone']
+            backbone:
+                type: ResNet
+                num_class: 10
+    trainer:
+        type: Trainer
+        epochs: 3
+    dataset:
+        type: Cifar10
+        common:
+            data_path: /cache/datasets/cifar10/
+
+
+#### copy the following configuration to your yaml file ####
+    evaluator:
+        type: Evaluator
+        host_evaluator:                 # optional, evaluate the accuracy of the model on the host side
+            type: HostEvaluator
+            metric:
+                type: accuracy          # accuracy (classification) | psnr (super resolution)
+        device_evaluator:               # optional, evaluate the latency of the model on the device side
+            type: DeviceEvaluator
+            hardware: "Davinci"
+            remote_host: "http://192.168.0.2:8888"   # important: change the IP address of the evaluation
+########################### end #############################
+
+
+fullytrain:
+    pipe_step:
+        type: TrainPipeStep
+        models_folder: "{local_base_path}/output/nas/"
+    trainer:
+        ref: nas.trainer
+    dataset:
+        ref: nas.dataset
+    evaluator:
+        ref: nas.evaluator

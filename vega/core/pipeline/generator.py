@@ -8,7 +8,7 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 # MIT License for more details.
 
-"""Generator for NasPipeStep."""
+"""Generator for SearchPipeStep."""
 import logging
 import os
 import pickle
@@ -18,10 +18,12 @@ from vega.core.search_space.search_space import SearchSpace
 from vega.core.pipeline.conf import PipeStepConfig
 from zeus.common.general import General
 from zeus.common.task_ops import TaskOps
-from zeus.report import Report, ReportRecord
+from zeus.report import ReportServer, ReportClient, ReportRecord
 from zeus.common.config import Config
 from zeus.common import update_dict
+from zeus.common.utils import remove_np_value
 from zeus.quota.quota_compare import QuotaCompare
+from vega.core.quota.quota_affinity import QuotaAffinity
 
 
 class Generator(object):
@@ -31,12 +33,12 @@ class Generator(object):
         self.step_name = General.step_name
         self.search_space = SearchSpace()
         self.search_alg = SearchAlgorithm(self.search_space)
-        self.report = Report()
         self.record = ReportRecord()
         self.record.step_name = self.step_name
         if hasattr(self.search_alg.config, 'objective_keys'):
             self.record.objective_keys = self.search_alg.config.objective_keys
         self.quota = QuotaCompare('restrict')
+        self.affinity = None if General.quota.affinity.type is None else QuotaAffinity(General.quota.affinity)
 
     @property
     def is_completed(self):
@@ -54,20 +56,37 @@ class Generator(object):
             return None
         out = []
         for sample in res:
-            desc = sample.get("desc") if isinstance(sample, dict) else sample[1]
-            desc = self._decode_hps(desc)
-            model_desc = deepcopy(desc)
+
+            if isinstance(sample, dict):
+                id = sample["worker_id"]
+                desc = self._decode_hps(sample["encoded_desc"])
+                sample.pop("worker_id")
+                sample.pop("encoded_desc")
+                kwargs = sample
+                sample = _split_sample((id, desc))
+            else:
+                kwargs = {}
+                sample = _split_sample(sample)
+            (id, desc, hps) = sample
+
             if "modules" in desc:
                 PipeStepConfig.model.model_desc = deepcopy(desc)
             elif "network" in desc:
                 origin_desc = PipeStepConfig.model.model_desc
-                desc = update_dict(desc["network"], origin_desc)
-                PipeStepConfig.model.model_desc = deepcopy(desc)
+                model_desc = update_dict(desc["network"], origin_desc)
+                PipeStepConfig.model.model_desc = model_desc
+                desc.pop('network')
+                desc.update(model_desc)
+
             if self.quota.is_filtered(desc):
                 continue
-            record = self.record.from_sample(sample, desc)
-            Report().broadcast(record)
-            out.append((record.worker_id, model_desc))
+            if self.affinity and not self.affinity.is_affinity(desc):
+                continue
+
+            record = self.record.init(
+                step_name=General.step_name, worker_id=id, desc=desc, hps=hps, **kwargs)
+            ReportClient.broadcast(record)
+            out.append((id, desc, hps))
         return out
 
     def update(self, step_name, worker_id):
@@ -77,14 +96,14 @@ class Generator(object):
         :param worker_id: current worker id
         :return:
         """
-        report = Report()
-        record = report.receive(step_name, worker_id)
+        record = ReportClient.get_record(step_name, worker_id)
         logging.debug("Get Record=%s", str(record))
         self.search_alg.update(record.serialize())
-        report.dump_report(record.step_name, record)
         self.dump()
-        logging.info("Update Success. step_name=%s, worker_id=%s", step_name, worker_id)
-        logging.info("Best values: %s", Report().print_best(step_name=General.step_name))
+        if not hasattr(self.search_alg, '_remove_watched_var') or self.search_alg._remove_watched_var:
+            ReportServer.remove_watched_var(step_name, worker_id)
+        logging.info("Update Success. step_name=%s, worker_id=%s, desc=%s", step_name, worker_id, record.desc)
+        logging.info("Best values: %s", ReportServer().print_best(step_name=General.step_name))
 
     @staticmethod
     def _decode_hps(hps):
@@ -129,3 +148,19 @@ class Generator(object):
                 return pickle.load(f)
         else:
             return None
+
+
+def _split_sample(sample):
+    """Split sample to (id, model_desc, hps)."""
+    if len(sample) not in [2, 3]:
+        raise Exception("Incorrect sample length, sample: {}".format(sample))
+    if len(sample) == 3:
+        return sample[0], remove_np_value(sample[1]), remove_np_value(sample[2])
+    if len(sample) == 2:
+        mixed = deepcopy(sample[1])
+        hps = {}
+        for key in ["trainer", "dataset"]:
+            if key in mixed:
+                hps[key] = mixed[key]
+                mixed.pop(key)
+        return sample[0], remove_np_value(mixed), remove_np_value(hps)

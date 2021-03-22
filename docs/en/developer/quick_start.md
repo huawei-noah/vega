@@ -128,7 +128,7 @@ pipeline: [nas]
 
 nas:
     pipe_step:
-        type: NasPipeStep
+        type: SearchPipeStep
     search_algorithm:
         type: RandomSearch
         policy:

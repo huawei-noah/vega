@@ -2,79 +2,49 @@
 
 ## 1. 本地集群部署
 
-### 1.1 部署前准备
+### 1.1 部署
 
 本地集群部署Vega，需满足如下条件：
 
-1. Ubuntu 18.04 or later (其他Linux发行版和版本未测试）。
+1. Ubuntu 18.04 or later。
 2. CUDA 10.0
 3. Python 3.7
 4. pip3
 
-集群在部署时，需要在每个集群节点中安装vega和一些必备的软件包，可执行如下命令进行安装：：
+**注： 若需要在Ascend 910集群上部署，请和我们联系。**
+
+集群在部署时，需要在每个集群节点中安装vega和一些必备的软件包，可执行如下命令进行安装：
 
 ```bash
-pip3 install noah-vega
-```
-
-```bash
-python3 -m vega.tools.install_pkgs
+pip3 install --user --upgrade noah-vega
 ```
 
 除此之外，还需安装`MPI`软件，可参考附录[安装MPI](#MPI)完成安装过程。
-注：若需要使用检测相关算法（SP-NAS），则还需要安装MMDetection， 可参考附录[安装MMDetection](#MMDetection)完成安装过程。
 
 在各个主机上安装上述软件后，还需要[配置SSH互信](#ssh)，并[构建NFS](#nfs)。
 
-以上前期工作完成后，请从Vega库中下载如下部署包[vega deploy package]()，部署包含有如下脚本，准备开始部署：
+以上工作完成后，集群已部署完成。
 
-1. 部署脚本：`deploy_local_cluster.py`
-2. 调测脚本：`verify_local_cluster.py`
-3. 从节点启动脚本： `start_slave_worker.py`
+### 1.2 校验
 
-### 1.2 部署
+集群部署完成后，请执行以下命令检查集群是否可用：
 
-1. 首先配置部署信息到`deploy.yml`文件中，文件格式如下：
+```bash
+vega-verify-cluster -m <master IP> -s <slave IP 1> <slave IP 2> ... -n <shared NFS folder>
+```
 
-    ```yaml
-    master: n.n.n.n     # master节点的IP地址
-    listen_port: 8786   # 端口号
-    slaves: ["n.n.n.n", "n.n.n.n", "n.n.n.n"]    # slave节点地址
-    ```
+例如：
 
-2. 然后执行部署脚本
+```bash
+vega-verify-cluster -m 192.168.0.2 -s 192.168.0.3 192.168.0.4 -n /home/alan/nfs_folder
+```
 
-    在集群**主节点**中将`deploy_local_cluster.py`、`verify_local_cluster.py`、`deploy.yml`、`install_dependencies.sh`放到同一个文件夹中，执行如下命令，将Vega部署到主节点和从节点中：
-
-    ```bash
-    python3 deploy_local_cluster.py
-    ```
-
-    执行完成后，自动验证各个节点，会显示如下信息：
-
-    ```text
-    success.
-    ```
+校验结束后，会有显示"All cluster check items have passed."。
+若校验中出现错误，请根据异常信息调整集群。
 
 ## 参考
 
-### <span id="mmdetection"> 安装MMDetection </span>
-
-1. 下载MMDetection源码：
-
-    在<https://github.com/open-mmlab/mmdetection>下载最新版本的MMDetection。
-
-2. 安装：
-
-    切换到mmdetection目录下，执行下述命令即可编译安装：
-
-    ```bash
-    sudo python3 setup.py develop
-    ```
-
 ### <span id="MPI"> 安装MPI </span>
-
-**安装MPI：**
 
 1. 使用apt工具直接安装mpi
 
@@ -106,7 +76,7 @@ python3 -m vega.tools.install_pkgs
 
 ### <span id="nfs"> 构建NFS </span>
 
-服务器端：
+NFS服务器设置：
 
 1. 安装NFS服务器：
 
@@ -114,25 +84,32 @@ python3 -m vega.tools.install_pkgs
     sudo apt install nfs-kernel-server
     ```
 
-2. 编写配置文件，将共享路径写入配置文件中：
+2. 创建NFS服务器共享目录，如下例中的 `/<user home path>/nfs_cache`：
 
     ```bash
-    sudo echo "/data *(rw,sync,no_subtree_check,no_root_squash)" >> /etc/exports
+    cd ~
+    mkdir nfs_cache
     ```
 
-3. 创建共享目录：
+3. 将共享目录写入配置文件`/etc/exports`中：
 
     ```bash
-    sudo mkdir -p /data
+    sudo bash -c "echo '/home/<user home path>/nfs_cache *(rw,sync,no_subtree_check,no_root_squash,all_squash)' >> /etc/exports"
     ```
 
-4. 重启nfs服务器：
+4. 将共享目录设置为`nobody`用户
+
+    ```bash
+    sudo chown -R nobody: /<user home path>/nfs_cache
+    ```
+
+5. 重启nfs服务器：
 
     ```bash
     sudo service nfs-kernel-server restart
     ```
 
-客户端：
+在每个服务器都需要配置NFS客户端：
 
 1. 安装客户端工具：
 
@@ -143,11 +120,14 @@ python3 -m vega.tools.install_pkgs
 2. 创建本地挂载目录
 
     ```bash
-    sudo mkdir -p /mnt/data
+    cd ~
+    mkdir -p ./nfs_folder
     ```
 
 3. 挂载共享目录：
 
     ```bash
-    sudo mount -t nfs 服务器ip:/data /mnt/data
+    sudo mount -t nfs <服务器ip>:/<user home path>/nfs_cache /<user home path>/nfs_folder
     ```
+
+挂载完成后，`/<user home path>/nfs_folder` 就是多机集群的工作目录，请在该目录下运行Vega程序。

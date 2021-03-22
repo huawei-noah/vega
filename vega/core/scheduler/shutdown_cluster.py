@@ -13,6 +13,7 @@
 The shutdown_cluster method to shutdown cluster imminently.
 """
 import logging
+import time
 import traceback
 from zeus.common.general import General
 
@@ -24,6 +25,12 @@ def shutdown_cluster():
         return
     try:
         logging.info("Try to shutdown cluster.")
+
+        # stop ReportServer
+        from zeus.report import ReportServer
+        ReportServer.stop()
+
+        # stop Master
         from zeus.trainer.utils import load_master_ip
         from distributed import Client
         ip, port = load_master_ip()
@@ -35,6 +42,7 @@ def shutdown_cluster():
         shutdown_client.shutdown()
         shutdown_client.close()
         del shutdown_client
+        time.sleep(15)
         logging.info("Cluster is shut down.")
     except Exception as e:
         logging.error("Pipeline's cluster shutdown error: {}".format(str(e)))

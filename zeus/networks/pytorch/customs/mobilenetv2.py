@@ -7,18 +7,16 @@
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 # MIT License for more details.
+
 """MobileNetV2 architecture."""
 
-from copy import copy
 import torch.nn as nn
-from zeus.common import update_dict
-from zeus.common import ClassFactory, ClassType, UserConfig
-from vega.core.search_algs import SearchAlgorithm
+from zeus.common import ClassFactory, ClassType
 
 
 def _make_divisible(v, divisor, min_value=None):
     """
-    This function is taken from the original tf repo.
+    Taken from the original tf repo.
 
     It ensures that all layers have a channel number that is divisible by 8
     It can be seen here:
@@ -94,7 +92,7 @@ class MobileNetV2(nn.Module):
                  round_nearest=8,
                  block=None, kernels=[3] * 7, first_stride=1, last_channel=1280, desc=None):
         """
-        MobileNet V2 main class.
+        Network MobileNet V2 main class.
 
         Args:
             num_classes (int): Number of classes

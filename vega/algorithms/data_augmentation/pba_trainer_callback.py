@@ -8,15 +8,8 @@
 
 """The trainer program for pba."""
 import logging
-
-import vega
 from zeus.common.class_factory import ClassFactory, ClassType
 from zeus.trainer.callbacks import Callback
-
-if vega.is_torch_backend():
-    import torch
-elif vega.is_tf_backend():
-    import tensorflow as tf
 
 logger = logging.getLogger(__name__)
 

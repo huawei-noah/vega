@@ -121,7 +121,7 @@ def ssim(x, y):
     phixy = torch.sum(mean_subtracted_x * mean_subtracted_y, dim=1) / (tot_pixel - 1)
 
     # calculate ssim
-    result = torch.mean(((2 * miux * miuy + C1) * (2 * phixy + C2)) /
+    result = torch.mean(((2 * miux * miuy + C1) * (2 * phixy + C2)) /   # noqa W504
                         ((miux ** 2 + miuy ** 2 + C1) * (phix ** 2 + phiy ** 2 + C2))).item()
     return result
 
@@ -267,12 +267,57 @@ def compute_sr_metric(img_sr, img_hr, method='psnr', to_y=True, scale=2, max_rgb
         return compute_metric(img_sr, img_hr, method=method, to_y=to_y, scale=scale, max_rgb=max_rgb)
 
 
-@ClassFactory.register(ClassType.METRIC, alias='SRMetric')
-class SRMetric(MetricBase):
+@ClassFactory.register(ClassType.METRIC, alias='PSNR')
+class PSNR(MetricBase):
     """Calculate SR metric between output and target."""
 
-    def __init__(self, method='psnr', to_y=True, scale=2, max_rgb=1):
-        self.method = method
+    def __init__(self, to_y=True, scale=2, max_rgb=1):
+        self.method = "psnr"
+        self.to_y = to_y
+        self.sum = 0.
+        self.pfm = 0.
+        self.data_num = 0
+        self.scale = scale
+        self.max_rgb = max_rgb
+
+    def __call__(self, output, target, *args, **kwargs):
+        """Calculate SR metric.
+
+        :param output: output of segmentation network
+        :param target: ground truth from dataset
+        :return: confusion matrix sum
+        """
+        # force channels first
+        if output.size(1) != 1 and output.size(1) != 3:
+            output = output.transpose(2, 3).transpose(1, 2)
+        if target.size(1) != 1 and target.size(1) != 3:
+            target = target.transpose(2, 3).transpose(1, 2)
+        if isinstance(output, tuple):
+            output = output[0]
+        res = compute_sr_metric(output, target, self.method, self.to_y, self.scale, self.max_rgb)
+        n = output.size(0)
+        self.data_num += n
+        self.sum = self.sum + res * n
+        self.pfm = self.sum / self.data_num
+        return res
+
+    def reset(self):
+        """Reset states for new evaluation after each epoch."""
+        self.sum = 0.
+        self.pfm = 0.
+        self.data_num = 0
+
+    def summary(self):
+        """Summary all cached records, here is the last pfm record."""
+        return self.pfm
+
+
+@ClassFactory.register(ClassType.METRIC, alias='SSIM')
+class SSIM(MetricBase):
+    """Calculate SR metric between output and target."""
+
+    def __init__(self, to_y=True, scale=2, max_rgb=1):
+        self.method = "ssim"
         self.to_y = to_y
         self.sum = 0.
         self.pfm = 0.

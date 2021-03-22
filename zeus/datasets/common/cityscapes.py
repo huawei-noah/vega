@@ -14,7 +14,6 @@ import cv2
 import numpy as np
 import glob
 import pickle
-from .. import transforms
 from .utils.dataset import Dataset
 from zeus.common import ClassFactory, ClassType
 from zeus.common import FileOps
@@ -49,20 +48,23 @@ class Cityscapes(Dataset):
         if "Rescale" in self.args:
             import logging
             logging.info(str(dict(**self.args.Rescale)))
-            result.append(transforms.Rescale_pair(**self.args.Rescale))
+            result.append(self._get_cls("Rescale_pair")(**self.args.Rescale))
         if "RandomMirror" in self.args and self.args.RandomMirror:
-            result.append(transforms.RandomHorizontalFlip_pair())
+            result.append(self._get_cls("RandomHorizontalFlip_pair")())
         if "RandomColor" in self.args:
-            result.append(transforms.RandomColor_pair(**self.args.RandomColor))
+            result.append(self._get_cls("RandomColor_pair")(**self.args.RandomColor))
         if "RandomGaussianBlur" in self.args:
-            result.append(transforms.RandomGaussianBlur_pair(**self.args.RandomGaussianBlur))
+            result.append(self._get_cls("RandomGaussianBlur_pair")(**self.args.RandomGaussianBlur))
         if "RandomRotation" in self.args:
-            result.append(transforms.RandomRotate_pair(**self.args.RandomRotation))
+            result.append(self._get_cls("RandomRotate_pair")(**self.args.RandomRotation))
         if "Normalization" in self.args:
-            result.append(transforms.Normalize_pair(**self.args.Normalization))
+            result.append(self._get_cls("Normalize_pair")(**self.args.Normalization))
         if "RandomCrop" in self.args:
-            result.append(transforms.RandomCrop_pair(**self.args.RandomCrop))
+            result.append(self._get_cls("RandomCrop_pair")(**self.args.RandomCrop))
         return result
+
+    def _get_cls(self, _name):
+        return ClassFactory.get_cls(ClassType.TRANSFORM, _name)
 
     def dataset_init(self):
         """Construct method.
@@ -111,7 +113,7 @@ class Cityscapes(Dataset):
         :rtype: dict, {'data': xx, 'mask': xx, 'name': name}
         """
         image, label = self.read_fn(index)
-        image_name = self.data_files[index].split("/")[-1].split(".")[0]
+        # image_name = self.data_files[index].split("/")[-1].split(".")[0]
         image, label = self.transforms(image, label)
         image = np.transpose(image, [2, 0, 1]).astype(np.float32)
         mask = label.astype(np.int64)

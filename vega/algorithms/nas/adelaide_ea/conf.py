@@ -20,3 +20,14 @@ class AdelaideConfig(ConfigSerializable):
     pareto_front_file = "{local_base_path}/output/random/pareto_front.csv"
     random_file = "{local_base_path}/output/random/random.csv"
     objective_keys = ['IoUMetric', 'flops']
+
+    @classmethod
+    def rules(cls):
+        """Return rules for checking."""
+        rules_AdelaideConfig = {"codec": {"type": str},
+                                "max_sample": {"type": int},
+                                "pareto_front_file": {"type": str},
+                                "random_file": {"type": str},
+                                "objective_keys": {"type": (list, str)}
+                                }
+        return rules_AdelaideConfig

@@ -1,0 +1,151 @@
+{
+    "modules": [
+        "super_network"
+    ],
+    "super_network": {
+        "type": "DartsNetwork",
+        "stem": {
+            "type": "PreOneStem",
+            "init_channels": 16,
+            "stem_multi": 3
+        },
+        "head": {
+            "type": "LinearClassificationHead"
+        },
+        "init_channels": 36,
+        "auxiliary": true,
+        "num_classes": 100,
+        "aux_size": 8,
+        "auxiliary_layer": 13,
+        "search": false,
+        "drop_path_prob": 0.2,
+        "cells": {
+            "modules": [
+                "normal",
+                "normal",
+                "normal",
+                "normal",
+                "normal",
+                "normal",
+                "reduce",
+                "normal",
+                "normal",
+                "normal",
+                "normal",
+                "normal",
+                "normal",
+                "reduce",
+                "normal",
+                "normal",
+                "normal",
+                "normal",
+                "normal",
+                "normal"
+            ],
+            "normal": {
+                "type": "NormalCell",
+                "steps": 4,
+                "genotype": [
+                    [
+                        "sep_conv_5x5",
+                        2,
+                        0
+                    ],
+                    [
+                        "sep_conv_3x3",
+                        2,
+                        1
+                    ],
+                    [
+                        "sep_conv_3x3",
+                        3,
+                        0
+                    ],
+                    [
+                        "sep_conv_5x5",
+                        3,
+                        2
+                    ],
+                    [
+                        "sep_conv_3x3",
+                        4,
+                        0
+                    ],
+                    [
+                        "sep_conv_5x5",
+                        4,
+                        3
+                    ],
+                    [
+                        "sep_conv_3x3",
+                        5,
+                        0
+                    ],
+                    [
+                        "sep_conv_5x5",
+                        5,
+                        3
+                    ]
+                ],
+                "concat": [
+                    2,
+                    3,
+                    4,
+                    5
+                ]
+            },
+            "reduce": {
+                "type": "ReduceCell",
+                "steps": 4,
+                "genotype": [
+                    [
+                        "sep_conv_5x5",
+                        2,
+                        1
+                    ],
+                    [
+                        "sep_conv_5x5",
+                        2,
+                        0
+                    ],
+                    [
+                        "sep_conv_5x5",
+                        3,
+                        2
+                    ],
+                    [
+                        "sep_conv_5x5",
+                        3,
+                        1
+                    ],
+                    [
+                        "sep_conv_5x5",
+                        4,
+                        3
+                    ],
+                    [
+                        "sep_conv_5x5",
+                        4,
+                        2
+                    ],
+                    [
+                        "sep_conv_5x5",
+                        5,
+                        4
+                    ],
+                    [
+                        "sep_conv_5x5",
+                        5,
+                        2
+                    ]
+                ],
+                "concat": [
+                    2,
+                    3,
+                    4,
+                    5
+                ]
+            }
+        }
+    }
+}

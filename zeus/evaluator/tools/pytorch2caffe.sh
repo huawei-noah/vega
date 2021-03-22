@@ -1,1 +1,1 @@
-python3  ../../zeus/evaluator/tools/pytorch2caffe.py  $1  $2
+python3  $1/pytorch2caffe.py  $2  $3

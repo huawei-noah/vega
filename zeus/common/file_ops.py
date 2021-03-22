@@ -121,8 +121,7 @@ class FileOps(object):
                             name = os.path.join(src, files)
                             back_name = os.path.join(dst, files)
                             if os.path.isfile(name):
-                                if os.path.isfile(back_name):
-                                    shutil.copy(name, back_name)
+                                shutil.copy(name, back_name)
                             else:
                                 if not os.path.isdir(back_name):
                                     shutil.copytree(name, back_name)
