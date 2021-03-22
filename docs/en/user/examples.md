@@ -43,16 +43,16 @@ Before running the example, you need to download the dataset to the default data
 | example | Pre-trained Model | Default Path | Model Source |
 | :--: | :-- | :-- | :--: |
 | adelaide_ea | mobilenet_v2-b0353104.pth | /cache/models/mobilenet_v2-b0353104.pth | [download](https://box.saas.huaweicloud.com/p/e9e06f49505a1959da6cba9401b2bf38) |
-| BackboneNas (mindspore) | resnet50-19c8e357.pth | /cache/models/resnet50-19c8e357.pth | [download]() |
+| BackboneNas (mindspore) | resnet50-19c8e357.pth | /cache/models/resnet50-19c8e357.pth | [download](https://box.saas.huaweicloud.com/p/f2ab3a1869f55de2053fb1404fc1c6d3) |
 | BackboneNas (tensorflow), classification, prune_ea(tensorflow) | resnet_imagenet_v1_fp32_20181001 | /cache/models/resnet_imagenet_v1_fp32_20181001/ <br>  keep only these files: checkpoint, graph.pbtxt, model.ckpt-225207.data-00000-of-00002, model.ckpt-225207.data-00001-of-00002, model.ckpt-225207.index, model.ckpt-225207.meta | [download](http://download.tensorflow.org/models/official/20181001_resnet/checkpoints/resnet_imagenet_v1_fp32_20181001.tar.gz) |
-| dnet_nas | 031-_64_12-1111-11211112-2.pth | /cache/models/031-_64_12-1111-11211112-2.pth | [download]() |
+| dnet_nas | 031-_64_12-1111-11211112-2.pth | /cache/models/031-_64_12-1111-11211112-2.pth | [download](https://box.saas.huaweicloud.com/p/3e5b678ec970ad347c678fabde23fb27) |
 | prune_ea(pytorch) | resnet20.pth | /cache/models/resnet20.pth | [download](https://box.saas.huaweicloud.com/p/67cd96e5da41b1c5a88f2b323446c0f8) |
 | prune_ea(mindspore) | resnet20.ckpt | /cache/models/resnet20.ckpt | [download](https://box.saas.huaweicloud.com/p/7f1743a041a0ede7f68713d1360a57d5) |
-| sp_nas | fasterrcnn_coco.pth | /cache/models/fasterrcnn_coco.pth | [download]() |
-| sp_nas | fasterrcnn_serialnet_backbone.pth | /cache/models/fasterrcnn_serialnet_backbone.pth | [download]() |
-| sp_nas | serial_classification_net.pth | /cache/models/serial_classification_net.pth | [download]() |
-| sp_nas | torch_fpn.pth | /cache/models/torch_fpn.pth | [download]() |
-| sp_nas | torch_rpn.pth | /cache/models/torch_rpn.pth | [download]() |
+| sp_nas | fasterrcnn_coco.pth | /cache/models/fasterrcnn_coco.pth | [download](https://box.saas.huaweicloud.com/p/27882e18e1594eaba79ff4a827e136d7) |
+| sp_nas | fasterrcnn_serialnet_backbone.pth | /cache/models/fasterrcnn_serialnet_backbone.pth | [download](https://box.saas.huaweicloud.com/p/60d2fb4d65533b60f336e74aaaeb5d96) |
+| sp_nas | serial_classification_net.pth | /cache/models/serial_classification_net.pth | [download](https://box.saas.huaweicloud.com/p/9a22840425a6ed1b53f873c506488c1c) |
+| sp_nas | torch_fpn.pth | /cache/models/torch_fpn.pth | [download](https://box.saas.huaweicloud.com/p/0bb0b0cf5229368fac006b1d8955df5b) |
+| sp_nas | torch_rpn.pth | /cache/models/torch_rpn.pth | [download](https://box.saas.huaweicloud.com/p/a41b7ca75114a9b2488e4064ed6ba3fb) |
 
 In the configuration file of each example, the platform description (PyTorch, TensorFlow, and MindSpore) applicable to the example is provided in `general/backend`.
 
