@@ -1,0 +1,119 @@
+# ClassificationDataset is used to import image files. 
+# These files must be stored in a specified folder format.
+#
+# └─ custom_dataset
+#     ├─ train  # Train dataset folder.
+#     │  ├─ class_1
+#     │  │      image 1.jpg
+#     │  │      image 2.jpeg
+#     │  │      image 3.png
+#     │  ├─ class_2
+#     │  │      image 1.jpg
+#     │  │      image 2.jpeg
+#     │  │      image 3.png
+#     │  └─ class_3
+#     │  │      image 1.jpg
+#     │  │      image 2.jpeg
+#     │  │      image 3.png
+#     ├─ val   # This folder is optional. If the directory does not exist, you need to specify `portion` parameter.
+#     │  ├─ class_1
+#     │  │      image 1.jpg
+#     │  │      image 2.jpeg
+#     │  │      image 3.png
+#     │  ├─ class_2
+#     │  │      image 1.jpg
+#     │  │      image 2.jpeg
+#     │  │      image 3.png
+#     │  └─ class_3
+#     │         image 1.jpg
+#     │         image 2.jpeg
+#     │         image 3.png
+#     └─ test  # Test dataset folder.
+#         ├─ class_1
+#         │     image 1.jpg
+#         │     image 2.jpeg
+#         │     image 3.png
+#         ├─ class_2
+#         │     image 1.jpg
+#         │     image 2.jpeg
+#         │     image 3.png
+#         └─ class_3
+#              image 1.jpg
+#              image 2.jpeg
+#              image 3.png
+#
+# The following is a configuration example.
+
+
+pipeline: [nas, fullytrain]
+
+
+nas:
+    pipe_step:
+        type: SearchPipeStep
+    search_algorithm:
+        type: RandomSearch
+        policy:
+            num_sample: 50
+    search_space:
+        hyperparameters:
+            -   key: network.backbone.depth
+                type: CATEGORY
+                range: [18, 34]
+            -   key: network.backbone.base_channel
+                type: CATEGORY
+                range:  [32, 48, 56]
+    model:
+        model_desc:
+            modules: ['backbone']
+            backbone:
+                type: ResNet
+                num_class: 10
+    trainer:
+        type: Trainer
+        epochs: 3
+
+    #### copy the following configuration to your yaml file ####
+    dataset:
+        type: ClassificationDataset
+        common:
+            data_path: /cache/datasets/custom_dataset
+            batch_size: 32
+        train:
+            transforms:
+                -   type: Resize
+                    size: [256, 256]
+                -   type: RandomCrop
+                    size: [224, 224]
+                -   type: RandomHorizontalFlip
+                -   type: ToTensor
+                -   type: Normalize
+                    mean: [0.50, 0.5, 0.5]
+                    std: [0.50, 0.5, 0.5]
+        val:
+            transforms:
+                -   type: Resize
+                    size: [224, 224]
+                -   type: ToTensor
+                -   type: Normalize
+                    mean: [0.50, 0.5, 0.5]
+                    std: [0.50, 0.5, 0.5]
+        test:
+            transforms:
+                -   type: Resize
+                    size: [224, 224]
+                -   type: ToTensor
+                -   type: Normalize
+                    mean: [0.50, 0.5, 0.5]
+                    std: [0.50, 0.5, 0.5]
+    ########################### end #############################
+
+
+fullytrain:
+    pipe_step:
+        type: TrainPipeStep
+        models_folder: "{local_base_path}/output/nas/"
+    trainer:
+        ref: nas.trainer
+    dataset:
+        ref: nas.dataset

@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 """The tools to inference onnx model in cpu to get the benchmark output."""
 import onnxruntime
-import numpy as np
 from data_convert import binary2np
 
 

@@ -1,14 +1,15 @@
 general:
+    backend: pytorch  # pytorch | tensorflow | mindspore
     parallel_search: True
     parallel_fully_train: True
-    backend: pytorch
 
-pipeline: [random, mutate]
-# pipeline: [random, mutate, fully_train]
+
+pipeline: [random, mutate, fully_train, benchmark_DIV2K, benchmark_Set5, benchmark_Set14, benchmark_BSDS100]
+
 
 random:
     pipe_step:
-        type: NasPipeStep
+        type: SearchPipeStep
 
     dataset:
         type: DIV2K
@@ -49,46 +50,40 @@ random:
         type: SRRandom
         codec: SRCodec
         policy:
-            num_sample: 3 #10
+            num_sample: 1000
 
     trainer:
         type: Trainer
-        epochs: 2 #50
+        epochs: 400
         optimizer:
             type: Adam
             params:
                 lr: 0.0004
         lr_scheduler:
-            type: StepLR
+            type: MultiStepLR
             params:
-                step_size: 100
+                milestones: [100, 200]
                 gamma: 0.5
         loss:
             type: L1Loss
         metric:
-            type: SRMetric
+            type: PSNR
             params:
-                method: psnr
                 scale: 2
         calc_params_each_epoch: True
 
     evaluator:
         type: Evaluator
-        gpu_evaluator:
-            type: GpuEvaluator
+        host_evaluator:
+            type: HostEvaluator
             metric:
-                type: SRMetric
+                type: PSNR
             load_pkl: False
-    #    davinci_mobile_evaluator:
-    #        type: DavinciMobileEvaluator
-    #        hardware: "Bolt"
-    #        remote_host: "http://192.168.0.2:8888"
-    #         metric:
-    #             type: SRMetric
+
 
 mutate:
     pipe_step:
-        type: NasPipeStep
+        type: SearchPipeStep
 
     dataset:
         ref: random.dataset
@@ -102,16 +97,17 @@ mutate:
         codec: SRCodec
         policy:
             num_mutate: 3
-            num_sample: 10
+            num_sample: 1000
 
     trainer:
         ref: random.trainer
-        epochs: 2 #50
+        epochs: 100
         save_model_desc: True
+
 
 fully_train:
     pipe_step:
-        type: FullyTrainPipeStep
+        type: TrainPipeStep
         models_folder: "{local_base_path}/output/mutate/"
     dataset:
         ref: random.dataset
@@ -124,7 +120,7 @@ fully_train:
     trainer:
         type: Trainer
         seed: 0
-        epochs: 2 #10000
+        epochs: 20000
         optimizer:
             type: Adam
             params:
@@ -137,83 +133,65 @@ fully_train:
         loss:
             type: L1Loss
         metric:
-            type: SRMetric
+            type: PSNR
             params:
-                method: psnr
                 scale: 2
 
-benchmark:
-    pipeline: [random, mutate, fully_train, benchmark_DIV2K, benchmark_Set5, benchmark_Set14, benchmark_BSDS100]
-    random:
-        search_algorithm:
-            policy:
-                num_sample: 1000
-        trainer:
-            epochs: 400
-    mutate:
-        search_algorithm:
-            policy:
-                num_sample: 1000
-        trainer:
-            epochs: 100
-    fully_train:
-        trainer:
-            epochs: 20000
-    benchmark_DIV2K:
-        pipe_step:
-            type: BenchmarkPipeStep
-            models_folder: "{local_base_path}/output/fully_train/"
-        dataset:
-            type: DIV2K
-            test:
-                root_HR: /cache/datasets/DIV2K/div2k_valid/hr
-                root_LR: /cache/datasets/DIV2K/div2k_train/lr
-                upscale: 2
-        evaluator:
-            type: Evaluator
-            gpu_evaluator:
-                type: GpuEvaluator
-                metric:
-                    type: SRMetric
-                    params:
-                        method: psnr
-                        scale: 2
+            
+benchmark_DIV2K:
+    pipe_step:
+        type: BenchmarkPipeStep
+        models_folder: "{local_base_path}/output/fully_train/"
+    dataset:
+        type: DIV2K
+        test:
+            root_HR: /cache/datasets/DIV2K/div2k_valid/hr
+            root_LR: /cache/datasets/DIV2K/div2k_train/lr
+            upscale: 2
+    evaluator:
+        type: Evaluator
+        host_evaluator:
+            type: HostEvaluator
+            metric:
+                type: PSNR
+                params:
+                    scale: 2
 
-    benchmark_Set5:
-        pipe_step:
-            type: BenchmarkPipeStep
-            models_folder: "{local_base_path}/output/fully_train/"
-        dataset:
-            ref: benchmark_DIV2K.dataset
-            type: Set5
-            test:
-                root_HR: /cache/datasets/DIV2K/Set5/hr
-                root_LR: /cache/datasets/DIV2K/Set5/lr
-        evaluator:
-            ref: benchmark_DIV2K.evaluator
+benchmark_Set5:
+    pipe_step:
+        type: BenchmarkPipeStep
+        models_folder: "{local_base_path}/output/fully_train/"
+    dataset:
+        ref: benchmark_DIV2K.dataset
+        type: Set5
+        test:
+            root_HR: /cache/datasets/DIV2K/Set5/hr
+            root_LR: /cache/datasets/DIV2K/Set5/lr
+    evaluator:
+        ref: benchmark_DIV2K.evaluator
 
-    benchmark_Set14:
-        pipe_step:
-            type: BenchmarkPipeStep
-            models_folder: "{local_base_path}/output/fully_train/"
-        dataset:
-            ref: benchmark_DIV2K.dataset
-            type: Set14
-            test:
-                root_HR: /cache/datasets/DIV2K/Set14/hr
-                root_LR: /cache/datasets/DIV2K/Set14/lr
-        evaluator:
-            ref: benchmark_DIV2K.evaluator
+benchmark_Set14:
+    pipe_step:
+        type: BenchmarkPipeStep
+        models_folder: "{local_base_path}/output/fully_train/"
+    dataset:
+        ref: benchmark_DIV2K.dataset
+        type: Set14
+        test:
+            root_HR: /cache/datasets/DIV2K/Set14/hr
+            root_LR: /cache/datasets/DIV2K/Set14/lr
+    evaluator:
+        ref: benchmark_DIV2K.evaluator
 
-    benchmark_BSDS100:
-        pipe_step:
-            type: BenchmarkPipeStep
-            models_folder: "{local_base_path}/output/fully_train/"
-        dataset:
-            ref: benchmark_DIV2K.dataset
-            type: BSDS100
-            test:
-                root_HR: /cache/datasets/DIV2K/BSDS100/hr
-                root_LR: /cache/datasets/DIV2K/BSDS100/lr
-        evaluator:
-            ref: benchmark_DIV2K.evaluator      
+benchmark_BSDS100:
+    pipe_step:
+        type: BenchmarkPipeStep
+        models_folder: "{local_base_path}/output/fully_train/"
+    dataset:
+        ref: benchmark_DIV2K.dataset
+        type: BSDS100
+        test:
+            root_HR: /cache/datasets/DIV2K/BSDS100/hr
+            root_LR: /cache/datasets/DIV2K/BSDS100/lr
+    evaluator:
+        ref: benchmark_DIV2K.evaluator

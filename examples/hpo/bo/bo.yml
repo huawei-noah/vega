@@ -1,18 +1,17 @@
 general:
+    backend: pytorch  # pytorch | tensorflow | mindspore
     parallel_search: True
 
 pipeline: [hpo]
 
 hpo:
     pipe_step:
-        type: NasPipeStep
-
+        type: SearchPipeStep
     dataset:
         type: Cifar10
         common:
             data_path: /cache/datasets/cifar10/
             batch_size: 256
-
     search_space:
         type: SearchSpace
         hyperparameters:
@@ -34,26 +33,17 @@ hpo:
                 parent: trainer.optimizer.type
                 type: EQUAL
                 range: ["SGD"]
-
     search_algorithm:
         type: BoHpo
         policy:
             total_epochs: 10
-
     model:
         model_desc:
             modules: ["backbone"]
             backbone:
                 type: ResNet
                 depth: 18
-
+                num_class: 10
     trainer:
         type: Trainer
         epochs: 1
-
-    evaluator:
-        type: Evaluator
-        gpu_evaluator:
-            type: GpuEvaluator
-            metric:
-                type: accuracy

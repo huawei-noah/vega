@@ -8,7 +8,7 @@
 
 CARS算法的原理如下图所示。CARS算法维护一个超网络（SuperNet），每个子网络都是超网络的一个采样。在进化算法过程中，由于所有子网络权重与超网络共享，因此使得子代样本可以直接继承父代样本的权重，从而实现连续进化。CARS算法利用pNSGA-III算法在搜索过程中对大模型进行保护，增加搜索模型的覆盖范围。CARS算法利用帕累托前沿解集中的子网络来对超网络进行权重更新，超网络权重更新与子网络进化更新交替进行。
 
-![framework](./images/cars_framework.png)
+![framework](../../images/cars_framework.png)
 
 ### 2.1 搜索空间
 
@@ -16,7 +16,7 @@ CARS算法的原理如下图所示。CARS算法维护一个超网络（SuperNet�
 
 pipeline中的CARS算法集成了DARTS的搜索空间，整体结构大体如下：
 
-![darts_search_sapce](./images/cars_darts_search_sapce.png)
+![darts_search_sapce](../../images/cars_darts_search_sapce.png)
 
 DARTS搜索空间的详细介绍请参考相应的[ICLR'19文章](https://arxiv.org/abs/1806.09055)。
 
@@ -29,70 +29,65 @@ DARTS搜索空间的详细介绍请参考相应的[ICLR'19文章](https://arxiv.
         type: SearchSpace
         modules: ['super_network']
         super_network:
-            name: CARSDartsNetwork
-            network: ['PreOneStem',
-                      'normal', 'normal', 'reduce',
-                      'normal', 'normal', 'reduce',
-                      'normal', 'normal',
-            ]
-
-            input_size: 32
+           type: CARSDartsNetwork
+           stem:
+               type: PreOneStem
+                init_channels: 16
+                stem_multi: 3
+            head:
+                type: LinearClassificationHead
             init_channels: 16
             num_classes: 10
             auxiliary: False
             search: True
-
-            normal:
-                type: 'block'
-                name: 'Cell'
-                steps: 4
-                reduction: False
-                genotype:
-                  [
-                  [ ['none', 'max_pool_3x3', 'avg_pool_3x3', 'skip_connect', 'sep_conv_3x3', 'sep_conv_5x5', 'dil_conv_3x3', 'dil_conv_5x5'], 2, 0 ],
-                  [ ['none', 'max_pool_3x3', 'avg_pool_3x3', 'skip_connect', 'sep_conv_3x3', 'sep_conv_5x5', 'dil_conv_3x3', 'dil_conv_5x5'], 2, 1 ],
-                  [ ['none', 'max_pool_3x3', 'avg_pool_3x3', 'skip_connect', 'sep_conv_3x3', 'sep_conv_5x5', 'dil_conv_3x3', 'dil_conv_5x5'], 3, 0 ],
-                  [ ['none', 'max_pool_3x3', 'avg_pool_3x3', 'skip_connect', 'sep_conv_3x3', 'sep_conv_5x5', 'dil_conv_3x3', 'dil_conv_5x5'], 3, 1 ],
-                  [ ['none', 'max_pool_3x3', 'avg_pool_3x3', 'skip_connect', 'sep_conv_3x3', 'sep_conv_5x5', 'dil_conv_3x3', 'dil_conv_5x5'], 3, 2 ],
-                  [ ['none', 'max_pool_3x3', 'avg_pool_3x3', 'skip_connect', 'sep_conv_3x3', 'sep_conv_5x5', 'dil_conv_3x3', 'dil_conv_5x5'], 4, 0 ],
-                  [ ['none', 'max_pool_3x3', 'avg_pool_3x3', 'skip_connect', 'sep_conv_3x3', 'sep_conv_5x5', 'dil_conv_3x3', 'dil_conv_5x5'], 4, 1 ],
-                  [ ['none', 'max_pool_3x3', 'avg_pool_3x3', 'skip_connect', 'sep_conv_3x3', 'sep_conv_5x5', 'dil_conv_3x3', 'dil_conv_5x5'], 4, 2 ],
-                  [ ['none', 'max_pool_3x3', 'avg_pool_3x3', 'skip_connect', 'sep_conv_3x3', 'sep_conv_5x5', 'dil_conv_3x3', 'dil_conv_5x5'], 4, 3 ],
-                  [ ['none', 'max_pool_3x3', 'avg_pool_3x3', 'skip_connect', 'sep_conv_3x3', 'sep_conv_5x5', 'dil_conv_3x3', 'dil_conv_5x5'], 5, 0 ],
-                  [ ['none', 'max_pool_3x3', 'avg_pool_3x3', 'skip_connect', 'sep_conv_3x3', 'sep_conv_5x5', 'dil_conv_3x3', 'dil_conv_5x5'], 5, 1 ],
-                  [ ['none', 'max_pool_3x3', 'avg_pool_3x3', 'skip_connect', 'sep_conv_3x3', 'sep_conv_5x5', 'dil_conv_3x3', 'dil_conv_5x5'], 5, 2 ],
-                  [ ['none', 'max_pool_3x3', 'avg_pool_3x3', 'skip_connect', 'sep_conv_3x3', 'sep_conv_5x5', 'dil_conv_3x3', 'dil_conv_5x5'], 5, 3 ],
-                  [ ['none', 'max_pool_3x3', 'avg_pool_3x3', 'skip_connect', 'sep_conv_3x3', 'sep_conv_5x5', 'dil_conv_3x3', 'dil_conv_5x5'], 5, 4 ],
-                  ]
-                concat: [2, 3, 4, 5]
-            reduce:
-                type: 'block'
-                name: 'Cell'
-                steps: 4
-                reduction: True
-                genotype:
-                  [
-                  [ ['none', 'max_pool_3x3', 'avg_pool_3x3', 'skip_connect', 'sep_conv_3x3', 'sep_conv_5x5', 'dil_conv_3x3', 'dil_conv_5x5'], 2, 0 ],
-                  [ ['none', 'max_pool_3x3', 'avg_pool_3x3', 'skip_connect', 'sep_conv_3x3', 'sep_conv_5x5', 'dil_conv_3x3', 'dil_conv_5x5'], 2, 1 ],
-                  [ ['none', 'max_pool_3x3', 'avg_pool_3x3', 'skip_connect', 'sep_conv_3x3', 'sep_conv_5x5', 'dil_conv_3x3', 'dil_conv_5x5'], 3, 0 ],
-                  [ ['none', 'max_pool_3x3', 'avg_pool_3x3', 'skip_connect', 'sep_conv_3x3', 'sep_conv_5x5', 'dil_conv_3x3', 'dil_conv_5x5'], 3, 1 ],
-                  [ ['none', 'max_pool_3x3', 'avg_pool_3x3', 'skip_connect', 'sep_conv_3x3', 'sep_conv_5x5', 'dil_conv_3x3', 'dil_conv_5x5'], 3, 2 ],
-                  [ ['none', 'max_pool_3x3', 'avg_pool_3x3', 'skip_connect', 'sep_conv_3x3', 'sep_conv_5x5', 'dil_conv_3x3', 'dil_conv_5x5'], 4, 0 ],
-                  [ ['none', 'max_pool_3x3', 'avg_pool_3x3', 'skip_connect', 'sep_conv_3x3', 'sep_conv_5x5', 'dil_conv_3x3', 'dil_conv_5x5'], 4, 1 ],
-                  [ ['none', 'max_pool_3x3', 'avg_pool_3x3', 'skip_connect', 'sep_conv_3x3', 'sep_conv_5x5', 'dil_conv_3x3', 'dil_conv_5x5'], 4, 2 ],
-                  [ ['none', 'max_pool_3x3', 'avg_pool_3x3', 'skip_connect', 'sep_conv_3x3', 'sep_conv_5x5', 'dil_conv_3x3', 'dil_conv_5x5'], 4, 3 ],
-                  [ ['none', 'max_pool_3x3', 'avg_pool_3x3', 'skip_connect', 'sep_conv_3x3', 'sep_conv_5x5', 'dil_conv_3x3', 'dil_conv_5x5'], 5, 0 ],
-                  [ ['none', 'max_pool_3x3', 'avg_pool_3x3', 'skip_connect', 'sep_conv_3x3', 'sep_conv_5x5', 'dil_conv_3x3', 'dil_conv_5x5'], 5, 1 ],
-                  [ ['none', 'max_pool_3x3', 'avg_pool_3x3', 'skip_connect', 'sep_conv_3x3', 'sep_conv_5x5', 'dil_conv_3x3', 'dil_conv_5x5'], 5, 2 ],
-                  [ ['none', 'max_pool_3x3', 'avg_pool_3x3', 'skip_connect', 'sep_conv_3x3', 'sep_conv_5x5', 'dil_conv_3x3', 'dil_conv_5x5'], 5, 3 ],
-                  [ ['none', 'max_pool_3x3', 'avg_pool_3x3', 'skip_connect', 'sep_conv_3x3', 'sep_conv_5x5', 'dil_conv_3x3', 'dil_conv_5x5'], 5, 4 ],
-                  ]
-                concat: [2, 3, 4, 5]
-            preprocess:
-                name: 'darts_stem1'
-
-            linear:
-                name: 'linear'
+            cells:
+                modules: [
+                    'normal', 'normal', 'reduce',
+                    'normal', 'normal', 'reduce',
+                    'normal', 'normal'
+                ]
+                normal:
+                    type: NormalCell
+                    steps: 4
+                    genotype:
+                      [
+                      [ ['none', 'max_pool_3x3', 'avg_pool_3x3', 'skip_connect', 'sep_conv_3x3', 'sep_conv_5x5', 'dil_conv_3x3', 'dil_conv_5x5'], 2, 0 ],
+                      [ ['none', 'max_pool_3x3', 'avg_pool_3x3', 'skip_connect', 'sep_conv_3x3', 'sep_conv_5x5', 'dil_conv_3x3', 'dil_conv_5x5'], 2, 1 ],
+                      [ ['none', 'max_pool_3x3', 'avg_pool_3x3', 'skip_connect', 'sep_conv_3x3', 'sep_conv_5x5', 'dil_conv_3x3', 'dil_conv_5x5'], 3, 0 ],
+                      [ ['none', 'max_pool_3x3', 'avg_pool_3x3', 'skip_connect', 'sep_conv_3x3', 'sep_conv_5x5', 'dil_conv_3x3', 'dil_conv_5x5'], 3, 1 ],
+                      [ ['none', 'max_pool_3x3', 'avg_pool_3x3', 'skip_connect', 'sep_conv_3x3', 'sep_conv_5x5', 'dil_conv_3x3', 'dil_conv_5x5'], 3, 2 ],
+                      [ ['none', 'max_pool_3x3', 'avg_pool_3x3', 'skip_connect', 'sep_conv_3x3', 'sep_conv_5x5', 'dil_conv_3x3', 'dil_conv_5x5'], 4, 0 ],
+                      [ ['none', 'max_pool_3x3', 'avg_pool_3x3', 'skip_connect', 'sep_conv_3x3', 'sep_conv_5x5', 'dil_conv_3x3', 'dil_conv_5x5'], 4, 1 ],
+                      [ ['none', 'max_pool_3x3', 'avg_pool_3x3', 'skip_connect', 'sep_conv_3x3', 'sep_conv_5x5', 'dil_conv_3x3', 'dil_conv_5x5'], 4, 2 ],
+                      [ ['none', 'max_pool_3x3', 'avg_pool_3x3', 'skip_connect', 'sep_conv_3x3', 'sep_conv_5x5', 'dil_conv_3x3', 'dil_conv_5x5'], 4, 3 ],
+                      [ ['none', 'max_pool_3x3', 'avg_pool_3x3', 'skip_connect', 'sep_conv_3x3', 'sep_conv_5x5', 'dil_conv_3x3', 'dil_conv_5x5'], 5, 0 ],
+                      [ ['none', 'max_pool_3x3', 'avg_pool_3x3', 'skip_connect', 'sep_conv_3x3', 'sep_conv_5x5', 'dil_conv_3x3', 'dil_conv_5x5'], 5, 1 ],
+                      [ ['none', 'max_pool_3x3', 'avg_pool_3x3', 'skip_connect', 'sep_conv_3x3', 'sep_conv_5x5', 'dil_conv_3x3', 'dil_conv_5x5'], 5, 2 ],
+                      [ ['none', 'max_pool_3x3', 'avg_pool_3x3', 'skip_connect', 'sep_conv_3x3', 'sep_conv_5x5', 'dil_conv_3x3', 'dil_conv_5x5'], 5, 3 ],
+                      [ ['none', 'max_pool_3x3', 'avg_pool_3x3', 'skip_connect', 'sep_conv_3x3', 'sep_conv_5x5', 'dil_conv_3x3', 'dil_conv_5x5'], 5, 4 ],
+                      ]
+                    concat: [2, 3, 4, 5]
+                reduce:
+                    type: ReduceCell
+                    steps: 4
+                    genotype:
+                      [
+                      [ ['none', 'max_pool_3x3', 'avg_pool_3x3', 'skip_connect', 'sep_conv_3x3', 'sep_conv_5x5', 'dil_conv_3x3', 'dil_conv_5x5'], 2, 0 ],
+                      [ ['none', 'max_pool_3x3', 'avg_pool_3x3', 'skip_connect', 'sep_conv_3x3', 'sep_conv_5x5', 'dil_conv_3x3', 'dil_conv_5x5'], 2, 1 ],
+                      [ ['none', 'max_pool_3x3', 'avg_pool_3x3', 'skip_connect', 'sep_conv_3x3', 'sep_conv_5x5', 'dil_conv_3x3', 'dil_conv_5x5'], 3, 0 ],
+                      [ ['none', 'max_pool_3x3', 'avg_pool_3x3', 'skip_connect', 'sep_conv_3x3', 'sep_conv_5x5', 'dil_conv_3x3', 'dil_conv_5x5'], 3, 1 ],
+                      [ ['none', 'max_pool_3x3', 'avg_pool_3x3', 'skip_connect', 'sep_conv_3x3', 'sep_conv_5x5', 'dil_conv_3x3', 'dil_conv_5x5'], 3, 2 ],
+                      [ ['none', 'max_pool_3x3', 'avg_pool_3x3', 'skip_connect', 'sep_conv_3x3', 'sep_conv_5x5', 'dil_conv_3x3', 'dil_conv_5x5'], 4, 0 ],
+                      [ ['none', 'max_pool_3x3', 'avg_pool_3x3', 'skip_connect', 'sep_conv_3x3', 'sep_conv_5x5', 'dil_conv_3x3', 'dil_conv_5x5'], 4, 1 ],
+                      [ ['none', 'max_pool_3x3', 'avg_pool_3x3', 'skip_connect', 'sep_conv_3x3', 'sep_conv_5x5', 'dil_conv_3x3', 'dil_conv_5x5'], 4, 2 ],
+                      [ ['none', 'max_pool_3x3', 'avg_pool_3x3', 'skip_connect', 'sep_conv_3x3', 'sep_conv_5x5', 'dil_conv_3x3', 'dil_conv_5x5'], 4, 3 ],
+                      [ ['none', 'max_pool_3x3', 'avg_pool_3x3', 'skip_connect', 'sep_conv_3x3', 'sep_conv_5x5', 'dil_conv_3x3', 'dil_conv_5x5'], 5, 0 ],
+                      [ ['none', 'max_pool_3x3', 'avg_pool_3x3', 'skip_connect', 'sep_conv_3x3', 'sep_conv_5x5', 'dil_conv_3x3', 'dil_conv_5x5'], 5, 1 ],
+                      [ ['none', 'max_pool_3x3', 'avg_pool_3x3', 'skip_connect', 'sep_conv_3x3', 'sep_conv_5x5', 'dil_conv_3x3', 'dil_conv_5x5'], 5, 2 ],
+                      [ ['none', 'max_pool_3x3', 'avg_pool_3x3', 'skip_connect', 'sep_conv_3x3', 'sep_conv_5x5', 'dil_conv_3x3', 'dil_conv_5x5'], 5, 3 ],
+                      [ ['none', 'max_pool_3x3', 'avg_pool_3x3', 'skip_connect', 'sep_conv_3x3', 'sep_conv_5x5', 'dil_conv_3x3', 'dil_conv_5x5'], 5, 4 ],
+                      ]
+                    concat: [2, 3, 4, 5]
 ```
 
 ## 3. 使用指导
@@ -122,7 +117,7 @@ CIFAR-10数据集配置信息如下：
 
 在配置文件中进行参数配置，搜索模型、训练模型可参考以下配置文件：
 
-- vega/examples/nas/cars/cars.yml
+- `vega/examples/nas/cars/cars.yml`
 
 配置文件在`main.py`中直接传入给pipeline，两个过程会依次进行，搜索过程会搜出位于Pareto前沿的一系列模型，训练过程会把前沿的模型训到底，得到最终的模型性能。
 
@@ -131,7 +126,7 @@ CIFAR-10数据集配置信息如下：
 ```yaml
 nas:
     pipe_step:
-        type: NasPipeStep
+        type: SearchPipeStep
 
     search_algorithm:
         type: CARSAlgorithm
@@ -150,17 +145,19 @@ nas:
         epochs: 500
         optim:
             type: SGD
-            lr: 0.025
-            momentum: 0.9
-            weight_decay: !!float 3e-4
+	    params:
+	        lr: 0.025
+	        momentum: 0.9
+	        weight_decay: !!float 3e-4
         lr_scheduler:
             type: CosineAnnealingLR
-            T_max: 500
-            eta_min: 0.001
+	        params:
+                T_max: 500
+                eta_min: 0.001
         loss:
             type: CrossEntropyLoss
-        metric:
-            type: accuracy
+	        params:
+	            sparse: True
         grad_clip: 5.0
         seed: 10
         unrolled: True
@@ -171,7 +168,7 @@ Fully train阶段的配置：
 ```yaml
 fully_train:
     pipe_step:
-        type: FullyTrainPipeStep
+        type: TrainPipeStep
         models_folder: "{local_base_path}/output/nas/"
 
     trainer:
@@ -180,12 +177,16 @@ fully_train:
         epochs: 600
         lr_scheduler:
             type: CosineAnnealingLR
-            T_max: 600.0
-            eta_min: 0
+	        params:
+                T_max: 600.0
+                eta_min: 0
         loss:
             type: MixAuxiliaryLoss
-            loss_base:
-                type: torch.nn.CrossEntropyLoss
+	        params:
+                loss_base:
+                    type: CrossEntropyLoss
+		            params:
+                        sparse: True
             aux_weight: 0.4
         seed: 100
         drop_path_prob: 0.2
@@ -216,7 +217,8 @@ fully_train:
                       - 0.26158768
                 - type: Cutout
                   length: 8
-        test:
+        val:
+            batch_size: 96
             shuffle: False
 ```
 
@@ -234,4 +236,4 @@ fully train 的 models_folder 和 model_desc_n.json 参数说明：
 
 ## 4. Benchmark
 
-Benchmark配置信息请参考: [cars.yml](https://github.com/huawei-noah/vega/tree/master/benchmark/algs/nas/cars.yml)
+请参考 [cars.yml](https://github.com/huawei-noah/vega/blob/master/examples/nas/cars/cars.yml)。

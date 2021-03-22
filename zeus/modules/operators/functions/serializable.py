@@ -36,10 +36,10 @@ class Serializable(object):
         instance = super(Serializable, cls).__new__(cls)
         instance._deep_level = 0
         instance._target_level = None
-        instance.desc = Config(desc)
+        instance.desc = Config(desc) if desc else {}
         return instance
 
-    def to_desc(self, level=None):
+    def to_desc(self, recursion=None):
         """Convert Module to desc dict."""
         raise NotImplementedError
 
@@ -51,7 +51,7 @@ class Serializable(object):
     @property
     def md5(self):
         """MD5 value of network description."""
-        return self.get_md5(self.to_desc(1))
+        return self.get_md5(self.to_desc(False))
 
     @classmethod
     def get_md5(cls, desc):
@@ -71,6 +71,11 @@ class Serializable(object):
         """Return model name."""
         return self.__class__.__name__
 
+    @property
+    def props(self):
+        """Get props."""
+        return Props._values
+
     def define_props(self, key, default_value, dtype=None, params=None):
         """Define a prop and get value."""
         value = self.desc.get(key) or default_value
@@ -80,12 +85,19 @@ class Serializable(object):
 class OperatorSerializable(Serializable):
     """Seriablizable for Operator class."""
 
-    def to_desc(self, level=None):
+    def to_desc(self, recursion=None):
         """Convert Operator to desc dict.
 
         :param level: Specifies witch level to convert. all conversions are performed as default.
         """
         desc = dict(type=self.model_name)
+        if hasattr(self, 'name') and getattr(self, 'name'):
+            desc.update({'name': getattr(self, 'name')})
+        for k, v in self.desc.items():
+            if hasattr(self, k):
+                src_v = getattr(self, k)
+                if src_v and src_v != v:
+                    self.desc[k] = src_v
         desc.update(self.desc)
         return desc
 
@@ -98,26 +110,28 @@ class OperatorSerializable(Serializable):
 class ModuleSerializable(Serializable):
     """Seriablizable Module class."""
 
-    def to_desc(self, level=None):
+    def to_desc(self, recursion=True):
         """Convert Module to desc dict.
 
         :param level: Specifies witch level to convert. all conversions are performed as default.
         """
-        if level is not None:
-            self._target_level = level
-        if self._target_level and self._target_level == self._deep_level:
-            desc = {'type': self.__class__.__name__}
-            desc.update(self.desc)
-            return desc
-        desc = {'modules': [], "type": self.__class__.__name__}
-        if self._losses:
+        if not recursion:
+            if 'modules' in self.desc:
+                return self.desc
+            else:
+                return dict(self.desc, **dict(type=self.model_name))
+        desc = {}
+        if getattr(self, '_losses') and self._losses:
             desc['loss'] = self._losses
-        child_level = self._deep_level + 1
         for name, module in self.named_children():
-            module._deep_level = child_level
-            module._target_level = self._target_level
-            sub_desc = module.to_desc()
-            desc['modules'].append(name)
+            if hasattr(module, 'to_desc'):
+                sub_desc = module.to_desc()
+            else:
+                sub_desc = {'type': module.__class__.__name__}
+            if 'modules' in desc:
+                desc['modules'].append(name)
+            else:
+                desc['modules'] = [name]
             desc[name] = sub_desc
         return desc
 
@@ -139,9 +153,13 @@ class ModuleSerializable(Serializable):
         module_groups = desc.get('modules', [])
         module_type = desc.get('type', 'Sequential')
         loss = desc.get('loss')
+        if 'props' in desc:
+            Props.update(desc.pop('props'))
         modules = OrderedDict()
         for group_name in module_groups:
             module_desc = deepcopy(desc.get(group_name))
+            if not module_desc:
+                continue
             if 'modules' in module_desc:
                 module = cls.from_desc(module_desc)
             else:
@@ -150,7 +168,8 @@ class ModuleSerializable(Serializable):
                     raise ValueError("Network {} not exists.".format(cls_name))
                 module = ClassFactory.get_instance(ClassType.NETWORK, module_desc)
             modules[group_name] = module
-        if not modules and module_type:
+            module.name = str(group_name)
+        if not module_groups and module_type:
             model = ClassFactory.get_instance(ClassType.NETWORK, desc)
         else:
             if ClassFactory.is_exists(SearchSpaceType.CONNECTIONS, module_type):
@@ -180,12 +199,7 @@ class Props(object):
         self._check()
 
     def _add_prop(self):
-        if self.key in self._values and self._values.get(self.key):
-            result = self._values.get(self.key)
-        else:
-            result = self.default_value
-            self._values[self.key] = self.default_value
-        return result
+        self._values[self.key] = self.default_value
 
     @property
     def value(self):
@@ -196,17 +210,31 @@ class Props(object):
                 cls = ClassFactory.get_cls(ClassType.NETWORK, value)
                 value = cls() if self.params is None else cls(**self.params)
             else:
-                value = ClassFactory.get_instance(ClassType.NETWORK, value)
+                if self.params:
+                    value = ClassFactory.get_instance(ClassType.NETWORK, value, **self.params)
+                else:
+                    value = ClassFactory.get_instance(ClassType.NETWORK, value)
         return value
 
     @classmethod
     def update(cls, props):
         """Update props."""
+        props = cls._flatten_props(props)
         cls._values.update(props)
 
     def _check(self):
         if self.d_type is None:
             return
+
+    @classmethod
+    def _flatten_props(cls, props, name=None):
+        dict_props = {}
+        if isinstance(props, dict):
+            for k, v in props.items():
+                dict_props.update(cls._flatten_props(v, "{}.{}".format(name, k) if name else k))
+        else:
+            dict_props[name] = props
+        return dict_props
 
     def reset(self):
         """Reset props."""

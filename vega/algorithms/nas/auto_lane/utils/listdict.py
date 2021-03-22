@@ -10,7 +10,6 @@
 
 """Class of list dict."""
 
-import csv
 import os
 from collections import OrderedDict
 import pandas as pd

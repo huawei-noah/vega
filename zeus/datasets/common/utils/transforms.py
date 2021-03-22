@@ -9,8 +9,9 @@
 # MIT License for more details.
 
 """This is a class for Transforms."""
-from zeus.datasets.transforms import Compose
-from zeus.datasets.transforms import Compose_pair
+
+from zeus.datasets.transforms.Compose import Compose, ComposeAll
+from zeus.datasets.transforms.Compose_pair import Compose_pair
 from zeus.common import ClassFactory, ClassType
 
 
@@ -32,7 +33,7 @@ class Transforms(object):
         elif len(args) == 2:
             return Compose_pair(self.__transform__)(*args)
         else:
-            raise ValueError("Length of args must be either 1 or 2")
+            return ComposeAll(self.__transform__)(*args)
 
     def _new(self, transform_list):
         """Private method, which generate a list of transform.

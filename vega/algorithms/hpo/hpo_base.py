@@ -47,7 +47,7 @@ class HPOBase(SearchAlgorithm):
         desc = sample.get('configs')
         if 'epoch' in sample:
             desc['trainer.epochs'] = sample.get('epoch')
-        return dict(worker_id=sample_id, desc=desc, info=rung_id)
+        return dict(worker_id=sample_id, encoded_desc=desc, rung_id=rung_id)
 
     def update(self, record):
         """Update current performance into hpo score board.
@@ -57,7 +57,7 @@ class HPOBase(SearchAlgorithm):
         """
         rewards = record.get("rewards")
         config_id = record.get('worker_id')
-        rung_id = record.get('info')
+        rung_id = record.get('rung_id')
         if not rewards:
             rewards = -1
             logging.error("hpo get empty performance!")

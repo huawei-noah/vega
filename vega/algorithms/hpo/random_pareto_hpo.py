@@ -17,7 +17,7 @@ from .random_pareto_conf import RandomParetoConfig
 
 @ClassFactory.register(ClassType.SEARCH_ALGORITHM)
 class RandomParetoHpo(HPOBase):
-    """An Hpo of RandomPareto, inherit from HpoGenerator."""
+    """An Hpo of RandomPareto."""
 
     config = RandomParetoConfig()
 

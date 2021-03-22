@@ -19,10 +19,9 @@ def register_zeus(backend):
     from zeus.modules import register_modules
     from zeus.networks import register_networks
     from zeus.evaluator import register_evaluator
-    from zeus.trainer import register_trainer
+    from zeus.trainer import register_trainer, trainer_api
     from zeus.metrics import register_metrics
     from zeus.model_zoo import register_modelzoo
-    from . import trainer_api
     register_datasets(backend)
     register_trainer(backend)
     register_evaluator()

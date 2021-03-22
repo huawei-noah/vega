@@ -20,6 +20,7 @@ import time
 from datetime import datetime
 from distributed import Client
 from zeus.trainer import utils
+from zeus.common.file_ops import FileOps
 import shutil
 
 
@@ -167,9 +168,11 @@ class DaskEnv(object):
         address = "tcp://{0}:{1}".format(master_host, master_port)
         logging.info("master host({}), address({}).".format(master_host, address))
         # nproc_set = "--nprocs={}".format(self.slave_proc_num)
-        local_dir = "--local-directory={}/.vega_worker_{}".format(
+        _local_dir = "{}/.vega_worker_{}".format(
             self.temp_path,
             datetime.now().strftime('%m%d.%H%M%S.%f')[:-3])
+        FileOps.make_dir(_local_dir)
+        local_dir = "--local-directory={}".format(_local_dir)
         # run dask-worker in master
         for i in range(self.slave_proc_num):
             worker_p = subprocess.Popen(["dask-worker", address, '--nthreads=1', '--nprocs=1',

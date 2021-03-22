@@ -6,11 +6,11 @@ The key features of Vega are network architecture search and hyperparameter opti
 
 The following figure shows the class diagram of the search space and search algorithm.
 
-![Search Space diagram](./images/search_space_classes.png)
+![Search Space diagram](../../images/search_space_classes.png)
 
 The following figure shows the search space and search algorithm process.
 
-![Search Space process](./images/search_space_flow.png)
+![Search Space process](../../images/search_space_flow.png)
 
 Search space process
 The following describes the following parts:
@@ -84,7 +84,7 @@ class SearchSpace(object):
 
     @property
     def search_space(self):
-        return self.config.to_json()
+        return self.config.to_dict()
 ```
 
 Another important concept of the search space is the network description. The network description is the result sampled by the search algorithm from the search space and is a possible subset in the search space. The network description class has only one attribute, that is, the network description of the dict type (one or multiple networks). The network description class has only one general interface to_model(), which is responsible for analyzing the network description and automatically resolving the network description into the specific network object in the Networks through NetworFactory.
@@ -187,7 +187,7 @@ In the configuration file, you need to define the type of the search algorithm a
 
 The search process of NAS mainly includes two parts: generator and trainer. The generator samples a network model in the search space by using the search algorithm, initializes the network model as a trainer, and distributes the trainer to nodes for running.
 
-The NAS search process is completed in NasPipeStep. The main function of NasPipeStep is completed in the do() function. The code is as follows:
+The NAS search process is completed in SearchPipeStep. The main function of SearchPipeStep is completed in the do() function. The code is as follows:
 
 ```python
 def do(self):
@@ -200,7 +200,7 @@ def do(self):
         self._after_train(wait_until_finish=False)
     self.master.join()
     self._after_train(wait_until_finish=True)
-    Report().output_pareto_front(General.step_name)
+    ReportServer().output_pareto_front(General.step_name)
     self.master.close_client()
 ```
 
@@ -231,8 +231,7 @@ class Generator(object):
         return id, desc
 
     def update(self, step_name, worker_id):
-        report = Report()
-        record = report.receive(step_name, worker_id)
+        record = reportClinet.get_record(step_name, worker_id)
         logging.debug("Get Record=%s", str(record))
         self.search_alg.update(record.serialize())
 ```
@@ -317,7 +316,7 @@ pipeline: [nas]
 
 nas:
     pipe_step:
-        type: NasPipeStep
+        type: SearchPipeStep
 
     quota:
         strategy: [MaxDurationStrategy, MaxTrialNumberStrategy]
@@ -361,7 +360,7 @@ class Generator(object):
                 sample = dict(worker_id=sample[0], desc=sample[1])
             record = self.record.load_dict(sample)
             logging.debug("Broadcast Record=%s", str(record))
-            Report().broadcast(record)
+            ReportClient.broadcast(record)
             desc = self._decode_hps(record.desc)
             out.append((record.worker_id, desc))
         return out
@@ -718,7 +717,7 @@ For example, the configuration file of the NAS phase of the Prune-EA algorithm i
 ```yaml
 nas:
     pipe_step:
-        type: NasPipeStep
+        type: SearchPipeStep
 
     dataset:
         type: Cifar10
@@ -790,11 +789,11 @@ pipeline: [nas, fullytrain]
 
 nas:
     pipe_step:
-        type: NasPipeStep
+        type: SearchPipeStep
 
 fullytrain:
     pipe_step:
-        type: FullyTrainPipeStep
+        type: TrainPipeStep
 ```
 
 ### 7.1 Report
@@ -806,31 +805,32 @@ The trainer has integrated the report scheduling function. After training and ev
 
 ```python
 @singleton
-class Report(object):
+class ReportServer(object):
 
     @property
     def all_records(self):
 
     def pareto_front(self, step_name=None, nums=None, records=None):
 
-    def dump_report(self, step_name=None, record=None):
+    @classmethod
+    def close(cls, step_name, worker_id):
+
+
+class ReportClient(object):
 
     @classmethod
-    def receive(cls, step_name, worker_id):
+    def get_record(cls, step_name, worker_id):
 
     @classmethod
     def broadcast(cls, record):
-
-    @classmethod
-    def close(cls, step_name, worker_id):
 ```
 
 ### 7.2 Extend `pipestep`
 
 Currently, the following `pipesteps' have been preset:
 
-* NasPipeStep
-* FullyTrainPipeStep
+* SearchPipeStep
+* TrainPipeStep
 * BechmarkPipeStep
 
 To extend `pipestep`, inherit the base class `PipeStep` and implement the `do()` function. For details, see the implementation code of the preceding class.
@@ -845,16 +845,16 @@ class PipeStep(object):
 
 ## 8. Fully Train
 
-On `Fully Train`, we support single-card training and multi-device multi-card distributed training based on `Horovod`. `Fully Train` corresponds to `FullyTrainPipeStep` in `pipeline`.
+On `Fully Train`, we support single-card training and multi-device multi-card distributed training based on `Horovod`. `Fully Train` corresponds to `TrainPipeStep` in `pipeline`.
 
 ### 8.1 Configuration
 
-If you need to perform `Horovod` distributed training, add the configuration item `distributed` to the `trainer` configuration file of `FullyTrainPipeStep` and set it to `True`. If this configuration item is not added, the default value is False, indicating that distributed training is not used.
+If you need to perform `Horovod` distributed training, add the configuration item `distributed` to the `trainer` configuration file of `TrainPipeStep` and set it to `True`. If this configuration item is not added, the default value is False, indicating that distributed training is not used.
 
 ```yaml
 fullytrain:
     pipe_step:
-        type: FullyTrainPipeStep
+        type: TrainPipeStep
     trainer:
         type: trainer
         distributed: True

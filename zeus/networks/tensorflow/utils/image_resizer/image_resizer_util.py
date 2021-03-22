@@ -11,7 +11,6 @@
 """Defined faster rcnn detector."""
 import functools
 import tensorflow as tf
-
 from object_detection.core import preprocessor
 
 

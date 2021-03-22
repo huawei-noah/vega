@@ -1,14 +1,21 @@
 from .callback import Callback
 from .callback_list import CallbackList
-from .metrics_evaluator import MetricsEvaluator
-from .progress_logger import ProgressLogger
-from .perforamnce_saver import PerformanceSaver
-from .lr_scheduler import LearningRateScheduler
-from .model_builder import ModelBuilder
-from .model_statistics import ModelStatistics
-from .model_checkpoint import ModelCheckpoint
-from .report_callback import ReportCallback
-from .runtime_callback import RuntimeCallback
-from .detection_progress_logger import DetectionProgressLogger
-from .detection_metrics_evaluator import DetectionMetricsEvaluator
-from .visual_callback import VisualCallBack
+from zeus.common.class_factory import ClassFactory
+
+
+ClassFactory.lazy_register("zeus.trainer.callbacks", {
+    "metrics_evaluator": ["trainer.callback:MetricsEvaluator"],
+    "progress_logger": ["trainer.callback:ProgressLogger"],
+    "performance_saver": ["trainer.callback:PerformanceSaver"],
+    "lr_scheduler": ["trainer.callback:LearningRateScheduler"],
+    "model_builder": ["trainer.callback:ModelBuilder"],
+    "model_statistics": ["trainer.callback:ModelStatistics"],
+    "model_checkpoint": ["trainer.callback:ModelCheckpoint"],
+    "report_callback": ["trainer.callback:ReportCallback"],
+    "runtime_callback": ["trainer.callback:RuntimeCallback"],
+    "detection_progress_logger": ["trainer.callback:DetectionProgressLogger"],
+    "detection_metrics_evaluator": ["trainer.callback:DetectionMetricsEvaluator"],
+    "visual_callback": ["trainer.callback:VisualCallBack"],
+    "model_tuner": ["trainer.callback:ModelTuner"],
+    "timm_trainer_callback": ["trainer.callback:TimmTrainerCallback"],
+})

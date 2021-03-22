@@ -18,7 +18,7 @@ from .bohb_conf import BohbConfig
 
 @ClassFactory.register(ClassType.SEARCH_ALGORITHM)
 class BohbHpo(HPOBase):
-    """An Hpo of BOHB, inherit from HpoGenerator."""
+    """An Hpo of BOHB."""
 
     config = BohbConfig()
 

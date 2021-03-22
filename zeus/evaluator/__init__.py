@@ -14,5 +14,5 @@
 def register_evaluator():
     """Import and register evaluator automatically."""
     from .evaluator import Evaluator
-    from .gpu_evaluator import GpuEvaluator
-    from .davinci_mobile_evaluator import DavinciMobileEvaluator
+    from .host_evaluator import HostEvaluator
+    from .device_evaluator import DeviceEvaluator

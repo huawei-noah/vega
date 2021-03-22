@@ -190,8 +190,7 @@ def _weighted_truncated_norm_lpdf(X, lower_bound, upper_bound, mus, sigmas, weig
     sigmas = np.maximum(sigmas, EPS)
 
     p_inside = (weights * (
-        _gauss_cdf(upper_bound, mus, sigmas) -
-        _gauss_cdf(lower_bound, mus, sigmas)
+        _gauss_cdf(upper_bound, mus, sigmas) - _gauss_cdf(lower_bound, mus, sigmas)
     )).sum()
 
     standard_X = (X - mus) / sigmas

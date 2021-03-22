@@ -6,3 +6,5 @@ from .detectors import *
 from .necks import *
 from .losses import *
 from .cyclesrbodys import *
+from .getters import *
+from .gan import *

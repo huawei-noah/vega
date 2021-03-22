@@ -27,15 +27,15 @@ PBA搜索过程通常为如下步骤：
 由于PBA算法一共只完整训练了16个模型，每个200个epoch，相比AutoAugment所需搜索的16000个模型，每个120个epoch，在时间效率上有了极大提升的同时，获得与AutoAugment几乎相当的实验精度。下图分别展示了PBA算法的算法流程、数据增广操作选择策略以及“搜搜-利用“算法的策略。
 
 <center>
-<img src="./images/pba_1.png"/>
+<img src="../../images/pba_1.png"/>
 </center>
 
 <center>
-<img src="./images/pba_2.png" width=512 height=512 />
+<img src="../../images/pba_2.png" width=512 height=512 />
 </center>
 
 <center>
-<img src="./images/pba_3.png" width=512 height=512 />
+<img src="../../images/pba_3.png" width=512 height=512 />
 </center>
 
 ## 3. 搜索空间和搜索策略
@@ -49,7 +49,7 @@ PBA搜索过程通常为如下步骤：
 当前PBA算法支持的数据增广操作有以下15种：
 
 <center>
-<img src="./images/pba_4.png"/>
+<img src="../../images/pba_4.png"/>
 </center>
 
 在配置文件中，可以调整使用的数据增广操作。
@@ -59,7 +59,7 @@ pipeline: [hpo]
 
 hpo:
     pipe_step:
-        type: NasPipeStep
+        type: SearchPipeStep
     dataset:
         type: Cifar10
     search_space:
@@ -91,8 +91,8 @@ hpo:
         type: Trainer
     evaluator:
         type: Evaluator
-        gpu_evaluator:
-            type: GpuEvaluator
+        host_evaluator:
+            type: HostEvaluator
             metric:
                 type: accuracy
 ```

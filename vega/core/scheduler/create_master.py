@@ -13,13 +13,13 @@
 Create Master or LocalMaster.
 """
 from zeus.common.general import General
-from .local_master import LocalMaster
-from .master import Master
 
 
 def create_master(**kwargs):
     """Return a LocalMaster instance when run on local, else return a master instance."""
     if General._parallel:
+        from .master import Master
         return Master(**kwargs)
     else:
+        from .local_master import LocalMaster
         return LocalMaster(**kwargs)

@@ -14,7 +14,7 @@ import logging
 from zeus.common import init_log
 from zeus.common.general import General
 from zeus.common.task_ops import TaskOps
-from vega.core.run import init_local_cluster_args
+from vega.core.run import init_cluster_args
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +24,7 @@ def _init_env():
         sys.exit('Sorry, Python < 3.6 is not supported.')
     init_log(level=General.logger.level,
              log_path=TaskOps().local_log_path)
-    General.env = init_local_cluster_args()
+    General.env = init_cluster_args()
     _print_task_id()
 
 

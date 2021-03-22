@@ -1,0 +1,45 @@
+general:
+    backend: pytorch
+
+
+pipeline: [fully_train]
+
+
+fully_train:
+    pipe_step:
+        type: TrainPipeStep
+    
+    model:
+        model_desc:
+            modules: [custom]
+            custom:
+                type: ModNasArchSpace
+                fully_train: True
+                model:
+                    type: CIFAR_MobileNetV2_GPU
+                    args:
+                        n_classes: 10
+                desc_construct:
+                    predefined:
+                        type: MobileNetV2PredefinedConstructor
+
+    trainer:
+        type: Trainer
+        epochs: 1
+        optimizer:
+            type: SGD
+            params:
+                lr: 0.025
+                momentum: 0.9
+                weight_decay: !!float 3e-4
+        lr_scheduler:
+            type: CosineAnnealingLR
+            params:
+                T_max: 600.0
+
+    dataset:
+        type: Cifar10
+        common:
+            data_path: /cache/datasets/cifar10
+            batch_size: 64
+            train_portion: 1

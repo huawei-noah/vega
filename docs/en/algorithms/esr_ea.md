@@ -18,11 +18,11 @@ We propose a network architecture search algorithm , which constructs a modular 
 
 Firstly, the algorithm constructs a search space based on modules, takes the parameters and computations as constraints, and the network accuracy (PSNR) as the objective to search for an efficient super-resolution network structure. In addition, a high efficiency super-resolution module based on RDB is designed to compress the redundant information of super network from channel, convolution and characteristic scale. Finally, genetic algorithm is used to search for the number of each type of module, the corresponding location and the specific internal parameters. The following figure shows the algorithm framework.
 
-![arch](images/esr_arch.png)
+![arch](../../images/esr_arch.png)
 
 We take RDN as the basic network structure and Efficient Dense Block (RDB) as the basic module, and searches for the number, the types and the internal parameters of the modules. You can assign the compression ratio of each module and the location of each module in the whole network during the search. We design three kinds of efficient residual-intensive modules, which compress the redundancy of channel, convolution and feature scale respectively. The detailed network structure is as follows:
 
-![block](images/esr_block.png)
+![block](../../images/esr_block.png)
 
 The proposed algorithm has two steps : network structure search and full training. In order to speed up the search, the model evaluation is usually acheived by means of fast training. Fully train on a large data set needs to be performed after we have the searched candidates.
 
@@ -43,12 +43,12 @@ The search strategy is mainly based on evolutionary algorithms. Firstly, RDN is 
 For details, see the configuration file examples/nas/esr_ea/esr_ea.yml in the sample code.
 
 ```yaml
-esr_search:
+nas:
     search_space:                       # Set the network structure search parameters.
         type: SearchSpace
         modules: ['esrbody']
         esrbody:
-            name: ESRN
+            type: ESRN
             block_type: [S,G,C]         # module
             conv_num: [4,6,8]           # Number of convolutions in the module
             growth_rate: [8,16,24,32]   # Number of convolutional channels in the module
@@ -74,7 +74,7 @@ esr_search:
 
 ```
 
-If other blocks need to be used as the basic modular structure or multiple types of blocks need to be searched, you can expand the search space by referring to the source code vega/search_space/networks/esrbodys/erdb_esr.py.
+If other blocks need to be used as the basic modular structure or multiple types of blocks need to be searched.
 
 ## 3. Application Scenarios
 
@@ -87,7 +87,7 @@ You can refer to the example code examples/nas/esr_ea. In this folder, the esr_e
 If you want to speed up the search or debug the code before running the search and training for a long time, you can reduce the parameter values in the following setting:
 
 ```yaml
-esr_search:
+nas:
     search_algorithm:               # search algorithm parameter setting
         policy:
             num_generation: 20      # Number of iterations of the evolution algorithm
@@ -99,7 +99,7 @@ esr_search:
 To improve the model precision, increase the values of the following parameters:
 
 ```yaml
-esr_search:
+nas:
     search_algorithm:               # search algorithm parameter setting
         policy:
             num_generation: 20      # Number of iterations of the evolution algorithm
@@ -123,14 +123,10 @@ After the parameters are adjusted, run the pipeline by referring to the [example
 
 ## 5. Algorithm output
 
-The following results can be obtained based on the benchmark configuration:
+The following results can be obtained based on the default configuration:
 
-![result](images/esr_results.png)
+![result](../../images/esr_results.png)
 
 ```text
 [1] Chu, X.; Zhang, B.; Ma, H.; Xu, R.; Li, J.; and Li, Q. 2019. Fast, accurate and lightweight super-resolution with neural architecture search. arXiv preprint arXiv:1901.07261.
 ```
-
-## 6. Benchmark
-
-Benchmark configuration: [esr_ea.yml](https://github.com/huawei-noah/vega/tree/master/benchmark/algs/nas/esr_ea.yml)

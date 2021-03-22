@@ -1,11 +1,15 @@
 general:
+    backend: pytorch
     parallel_search: True
+    requires: ["dataclasses"]
+
 
 pipeline: [nas]
 
+
 nas:
     pipe_step:
-        type: NasPipeStep
+        type: SearchPipeStep
 
     dataset:
         type: Cifar10
@@ -84,7 +88,7 @@ nas:
 
     evaluator:
         type: Evaluator
-        gpu_evaluator:
-            type: GpuEvaluator
+        host_evaluator:
+            type: HostEvaluator
             metric:
                 type: accuracy

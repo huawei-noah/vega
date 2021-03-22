@@ -14,7 +14,7 @@
 ```yaml
 nas:
     pipe_step:
-        type: NasPipeStep
+        type: SearchPipeStep
 
     search_algorithm:
         type: BackboneNas
@@ -204,7 +204,7 @@ class BackboneNas(SearchAlgorithm):
         logging.info(sample)
         sample_desc = self.codec.decode(sample)
         print(sample_desc)
-        return dict(worker_id=self.sample_count, desc=sample_desc)
+        return dict(worker_id=self.sample_count, encoded_desc=sample_desc)
 
     def random_sample(self):
         """Random sample from search_space."""

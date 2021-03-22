@@ -1,0 +1,118 @@
+general:
+    backend: pytorch
+
+
+pipeline: [nas, fully_train]
+
+
+nas:
+    pipe_step:
+        type: SearchPipeStep
+    dataset:
+        type: Cityscapes
+        common:
+            root_dir: /cache/datasets/Cityscapes
+        train:
+            list_file: img_gt_train.txt
+            batch_size: 2
+            num_workers: 1
+            shuffle: true
+            RandomMirror: true
+            Normalization:
+                mean: [0.485, 0.456, 0.406]
+                std: [0.229, 0.224, 0.225]
+            RandomCrop:
+                crop: 480
+                pad_value: 255
+            Rescale:
+                scale_choices: [0.75, 1, 1.25, 1.5, 1.75, 2.0]
+        val:
+            list_file: img_gt_val.txt
+            num_workers: 1
+            Normalization:
+                mean: [0.485, 0.456, 0.406]
+                std: [0.229, 0.224, 0.225]
+    search_space:
+        type: SearchSpace
+        modules: ['custom']
+        custom:
+            type: BiSeNet
+            num_class: 19
+            conv: Conv2d  #'Conv2d'  'ConvWS2d'
+            conv_channel: 128
+            norm_layer:
+                norm_type: GN   # BN GN Sync
+                num_groups: 32
+                eps: 0.00001
+            backbone_args:
+                stem_width: 64
+                pretrained_model: None
+                num_classes: 1000
+                structure: full
+
+    search_algorithm:
+        type: SegmentationNas
+        codec: SegmentationCodec
+        max_sample_random: 5
+        max_sample_mutate: 3
+        num_transform: 3
+        context_path:
+            num_blocks: 10
+            num_double_channel: 3
+            num_stage: 4
+        spatial_path:
+            num_blocks: 5
+            num_stages: 3
+    trainer:
+        type: Trainer
+        callbacks: SegmentationEATrainerCallback
+        cuda: true
+        distributed: false
+        seed: 1
+        epochs: 5
+        call_metrics_on_train: false
+        optimizer:
+            type: SGD
+            params:
+                lr: 0.02
+                weight_decay: 0.0005
+                momentum: 0.9
+        lr_scheduler:
+            # type: WarmupCosineScheduler
+            # params:
+            #     num_iters: 7500
+            #     warmup_iters: 1000
+            by_epoch: False
+            type: WarmupScheduler
+            params:
+                warmup_type: linear
+                warmup_iters: 1000
+                warmup_ratio: 0.1
+                after_scheduler_config:
+                    by_epoch: False
+                    type: CosineAnnealingLR
+                    params:
+                        T_max: 7500
+        loss:
+            type: ProbOhemCrossEntropy2d
+            params:
+                ignore_label: 255
+                image_size: [480, 480]
+                batch_size: 2
+                thresh: 0.7
+                aux_weight: [1.0, 1.0, 1.0]
+        metric:
+            type: IoUMetric
+            params:
+                num_class: 19
+
+fully_train:
+    pipe_step:
+        type: TrainPipeStep
+        models_folder: "{local_base_path}/output/nas/"
+    dataset:
+        ref: nas.dataset
+    search_space:
+        ref: nas.search_space
+    trainer:
+        ref: nas.trainer

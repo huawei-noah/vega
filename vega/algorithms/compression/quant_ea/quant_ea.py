@@ -11,11 +11,10 @@
 """SEARCH_ALGORITHM for searching quantization model."""
 import logging
 import random
-from copy import deepcopy
 import numpy as np
 from .conf import QuantConfig
 from zeus.common import ClassFactory, ClassType
-from zeus.report import Report
+from zeus.report import ReportServer
 from vega.core.search_algs import SearchAlgorithm
 
 
@@ -84,7 +83,7 @@ class QuantEA(SearchAlgorithm):
         if self.random_count < self.random_models:
             desc = self._random_sample()
             return self.random_count, desc
-        records = Report().get_pareto_front_records(self.step_name, self.num_individual)
+        records = ReportServer().get_pareto_front_records(self.step_name, self.num_individual)
         codes = [record.desc.get('nbit_w_list') + record.desc.get('nbit_a_list') for record in records]
         logging.info("codes=%s", codes)
         if len(codes) < 2:

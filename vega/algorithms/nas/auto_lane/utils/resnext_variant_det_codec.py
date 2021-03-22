@@ -102,7 +102,7 @@ class ResNeXtVariantDetCodec(ResNetVariantDetCodec):
             arch = m.group('arch')
             return dict(base_depth=base_depth, groups=groups, base_width=base_width,
                         base_channel=base_channel, arch=arch)
-        except:
+        except Exception:
             raise ValueError('Cannot parse arch code {}'.format(arch_code))
 
     @property

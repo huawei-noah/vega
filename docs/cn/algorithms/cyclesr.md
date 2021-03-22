@@ -15,7 +15,8 @@ CycleSR是一种能够解决在非配对数据场景下图片超分任务的算�
 ## 2. 算法原理
 
 CycleSR包含转换网络和超分网络两部分，其网络结构图如下：
-![CycleSR](images/cyclesr.png)
+
+![CycleSR](../../images/cyclesr.png)
 
 为了解决在没有配对数据场景下的超分问题，CycleSR的整体训练过程可分以下三个步骤：
 
@@ -23,7 +24,7 @@ CycleSR包含转换网络和超分网络两部分，其网络结构图如下：
 2. 超分网络： 1中生成的具有真实降质特性的图片与对应的高清图片构成成对的数据，从而实现监督性的训练超分网络；
 3. 联合训练策略： 在整体训练过程中，联合训练转换网络和超分网络能够相互促进、提升各自的能力；在更新转换网络的生成器时，超分网络的损失会参与更新生成器参数，生成器的整体损失如下图所示。
 
-![loss_trans](images/cyclesr_loss_trans.png)
+![loss_trans](../../images/cyclesr_loss_trans.png)
 
 ### 2.1 网络配置
 
@@ -48,7 +49,7 @@ clegan:
 CycleGAN模型文件位于
 
 ```text
-vega/search_space/networks/cyclesrbodys/trans_model.py
+zeus/networks/pytorch/cyclesrbodys/trans_model.py
 ```
 
 #### 超分网络
@@ -67,7 +68,7 @@ VDSR:
 超分网络的模型文件位于:
 
 ```text
-vega/search_space/networks/cyclesrbodys/srmodels.py
+zeus/networks/pytorch/cyclesrbodys/srmodels.py
 ```
 
 #### 联合训练
@@ -87,7 +88,7 @@ model:
     model_desc:
         modules: ["custom"]     # module 类型
         custom:
-            name: CycleSRModel  # 模型名字
+            type: CycleSRModel  # 模型名字
             SR_lam: 1000        # SR loss权重
             cycleSR_lam: 1000   # 用于更新cyclegan生成器的SR loss的权重
             grad_clip: 50       # 梯度clip阈值
@@ -107,7 +108,7 @@ examples/data_augmentation/cyclesr/cyclesr.yml
 
 ## 4. 数据要求
 
-对于HR需要将一张图片裁剪成像素为`480*480`的多张子图，对于LR需要将一张图片裁剪成像素为`120*120`的多张子图 
+对于HR需要将一张图片裁剪成像素为`480*480`的多张子图，对于LR需要将一张图片裁剪成像素为`120*120`的多张子图。
 
 ## 5. 算法输出
 
@@ -115,7 +116,3 @@ examples/data_augmentation/cyclesr/cyclesr.yml
  2. 网络模型文件
 
 最终在NTIRE17 track2上使用unpair的setting达到PSNR (RGB:25.34)
-
-## 6. Benchmark
-
-Benchmark配置信息请参考: [cyclesr.yml](https://github.com/huawei-noah/vega/tree/master/benchmark/algs/data_augmentation/cyclesr.yml)

@@ -17,9 +17,32 @@ class RandomPolicyConfig(ConfigSerializable):
 
     num_sample = 10
 
+    @classmethod
+    def rules(cls):
+        """Return rules for checking."""
+        rules_RandomPolicyConfig = {
+            "num_sample": {"type": int}
+        }
+        return rules_RandomPolicyConfig
+
 
 class RandomConfig(ConfigSerializable):
     """Random Config."""
 
     policy = RandomPolicyConfig
     objective_keys = 'accuracy'
+
+    @classmethod
+    def rules(cls):
+        """Return rules for checking."""
+        rules_RandomConfig = {"policy": {"type": dict},
+                              "objective_keys": {"type": (list, str)}
+                              }
+        return rules_RandomConfig
+
+    @classmethod
+    def get_config(cls):
+        """Get sub config."""
+        return {
+            "policy": cls.policy
+        }

@@ -1,105 +1,75 @@
 general:
+    backend: pytorch  # pytorch | tensorflow | mindspore
     parallel_search: True
+    parallel_fully_train: True
 
-pipeline: [hpo]
+pipeline: [hpo, fully_train]
 
 hpo:
     pipe_step:
-        type: NasPipeStep
-
+        type: SearchPipeStep
     dataset:
         type: Cifar10
         common:
             data_path: /cache/datasets/cifar10/
             batch_size: 256
-
     search_algorithm:
         type: BohbHpo
         policy:
-            total_epochs: 10
+            total_epochs: 2430
             repeat_times: 2
-
     search_space:
         type: SearchSpace
         hyperparameters:
             -   key: dataset.batch_size
                 type: CATEGORY
-                range: [8, 16, 32, 64, 128, 256]
+                range: [64, 128, 256]
             -   key: trainer.optimizer.params.lr
-                type: FLOAT_EXP
-                range: [0.00001, 0.1]
+                type: CATEGORY
+                range: [0.001, 0.003, 0.007, 0.01, 0.03, 0.07, 0.1]
             -   key: trainer.optimizer.type
                 type: CATEGORY
                 range: ['Adam', 'SGD']
             -   key: trainer.optimizer.params.momentum
                 type: FLOAT
-                range: [0.0, 0.99]
+                range: [0.8, 0.99]
         condition:
             -   key: condition_for_sgd_momentum
                 child: trainer.optimizer.params.momentum
                 parent: trainer.optimizer.type
                 type: EQUAL
                 range: ["SGD"]
-
     model:
         model_desc:
             modules: ["backbone"]
             backbone:
                 type: ResNet
                 depth: 18
+                num_class: 10
     trainer:
         type: Trainer
         epochs: 1
-
     evaluator:
         type: Evaluator
-        gpu_evaluator:
-            type: GpuEvaluator
+        host_evaluator:
+            type: HostEvaluator
             metric:
                 type: accuracy
 
-benchmark:
-    pipeline: [hpo, fully_train, benchmark_cifar10]
-    hpo:
-        search_algorithm:
-            policy:
-                total_epochs: 2430
-        search_space:
-            hyperparameters:
-                -   key: dataset.batch_size
-                    type: CATEGORY
-                    range: [64, 128, 256]
-                -   key: trainer.optimizer.params.lr
-                    type: CATEGORY
-                    range: [0.001, 0.003, 0.007, 0.01, 0.03, 0.07, 0.1]
-                -   key: trainer.optimizer.type
-                    type: CATEGORY
-                    range: ['Adam', 'SGD']
-                -   key: trainer.optimizer.params.momentum
-                    type: FLOAT
-                    range: [0.8, 0.99]
-    fully_train:
-        pipe_step:
-            type: FullyTrainPipeStep
-        dataset:
-            ref: hpo.dataset
-        model:
-            ref: hpo.model
-        trainer:
-            ref: hpo.trainer
-            load_checkpoint: True
-            epochs: 200
-            hps_file: "{local_base_path}/output/hpo/best_hps.json"
-
-    benchmark_cifar10:
-        pipe_step:
-            type: BenchmarkPipeStep
-            models_folder: "{local_base_path}/output/fully_train/"
-        dataset:
-            type: Cifar10
-        evaluator:
-            type: Evaluator
-            gpu_evaluator:
-                type: GpuEvaluator
-                metric:
-                    type: accuracy    
+fully_train:
+    pipe_step:
+        type: TrainPipeStep
+    dataset:
+        ref: hpo.dataset
+    model:
+        ref: hpo.model
+    trainer:
+        ref: hpo.trainer
+        epochs: 200
+        hps_folder: "{local_base_path}/output/hpo"
+    evaluator:
+        type: Evaluator
+        host_evaluator:
+            type: HostEvaluator
+            metric:
+                type: accuracy

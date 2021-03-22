@@ -2,13 +2,15 @@
 
 ## 1. 算法介绍
 
-AutoFIS是推荐场景的自动特征选择算法。推荐场景的神经网络预测模型（包括但不限于CTR预测）可简单分为三个模块：Embedding Layer，Interaction Layer以及MLP Layer，其中Interaction Layer是整个预测模型的关键模块，它需要有效的对特征交互建模。现有预测模型主要基于FM(Factorization Machines)对特征交互建模，在二阶的情况下，即为所有二阶特征交互建模，总数目为O(N^2)。实际情况中，并非所有特征交互都是有效的，可能夹杂噪音，有损模型预测的精度。AutoFIS可以从O(N^2)特征空间中自动学习出有效的那部分特征交互，通过门限函数屏蔽冗余的部分，从而提升预测模型的精度。AutoFIS适用的模型有FM，FFM，DeepFM等。  
-![FIS AutoFIS](images/fis_autogate_overview.png)
+AutoFIS是推荐场景的自动特征选择算法。推荐场景的神经网络预测模型（包括但不限于CTR预测）可简单分为三个模块：Embedding Layer，Interaction Layer以及MLP Layer，其中Interaction Layer是整个预测模型的关键模块，它需要有效的对特征交互建模。现有预测模型主要基于FM(Factorization Machines)对特征交互建模，在二阶的情况下，即为所有二阶特征交互建模，总数目为O(N^2)。实际情况中，并非所有特征交互都是有效的，可能夹杂噪音，有损模型预测的精度。AutoFIS可以从O(N^2)特征空间中自动学习出有效的那部分特征交互，通过门限函数屏蔽冗余的部分，从而提升预测模型的精度。AutoFIS适用的模型有FM，FFM，DeepFM等。
+
+![FIS AutoFIS](../../images/fis_autogate_overview.png)
 
 ## 2. 算法原理
 
-AutoFIS主要由两个阶段构成。第一阶段（search），通过搜索自动学习得到每个特征交互的重要性得分；第二阶段（retrain），在第一阶段的基础上，将不重要的特征交互屏蔽，并重新训练模型，以达到更优效果。  
-![FIS AutoFIS Stage2](images/fis_autogate_avazu_performance.png)
+AutoFIS主要由两个阶段构成。第一阶段（search），通过搜索自动学习得到每个特征交互的重要性得分；第二阶段（retrain），在第一阶段的基础上，将不重要的特征交互屏蔽，并重新训练模型，以达到更优效果。
+
+![FIS AutoFIS Stage2](../../images/fis_autogate_avazu_performance.png)
 
 ### 2.1 搜索空间
 
@@ -24,7 +26,7 @@ retrain阶段，AutoFIS基于search阶段模型训练得到的结构参数`alpha
 
 ### 3.1 运行环境设置
 
-在配置文件中进行参数配置，该文件位于automl/examples/nas/fis/autogate_grda.yml。其由以下几个主要部分组成：
+在配置文件中进行参数配置，该文件位于 `examples/nas/fis/autogate_grda.yml`。其由以下几个主要部分组成：
 
 ```yaml
 pipeline: [search, retrain]                    # AutoFIS两个阶段的pipeline
@@ -63,6 +65,7 @@ model:
     model_desc:
         modules: ["custom"]
             custom:
+	        type: AutoGateModel            # 模型名称
                 input_dim: 645195              # 整个训练集的特征数目，即`x`向量的维度。
                 input_dim4lookup: 24           # 单个样本中非零特征的个数，即`feature_id`向量的维度
                 embed_dim: 40
@@ -73,7 +76,6 @@ model:
                 alpha_init_mean: 0.0
                 alpha_activation: 'tanh'
                 selected_pairs: []             # 默认为空，即保留所有特征交互
-                name: AutoGateModel            # 模型名称
 
 ```
 
@@ -107,7 +109,7 @@ trainer:
 
 ### 3.5 top-K AutoFIS
 
-AutoFIS的特征交互选择是通过GRDA优化器来进行稀疏选择，此外，还可以通过取top K个最优的特征交互来直接选择，对应的样例可以参考：automl/examples/nas/fis/autogate.yml
+AutoFIS的特征交互选择是通过GRDA优化器来进行稀疏选择，此外，还可以通过取top K个最优的特征交互来直接选择，对应的样例可以参考：`/examples/nas/fis/autogate.yml`
 
 与GRDA版本的AutoFIS不同，top K版本的AutoFIS只需要Adam一个优化器，因此训练较为便捷，模型的参数fis_ratio用于选择top比例的特征交互。
 

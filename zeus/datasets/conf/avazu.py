@@ -39,6 +39,31 @@ class AvazuCommonConfig(BaseConfig):
     random_sample = False
     shuffle_block = False
 
+    @classmethod
+    def rules(cls):
+        """Return rules for checking."""
+        rules_Common_AutoLane = {"batch_size": {"type": int},
+                                 "block_size": {"type": int},
+                                 "train_num_of_files": {"type": int},
+                                 "test_num_of_files": {"type": int},
+                                 "train_size": {"type": int},
+                                 "test_size": {"type": int},
+                                 "pos_train_samples": {"type": int},
+                                 "pos_test_samples": {"type": int},
+                                 "neg_train_samples": {"type": int},
+                                 "neg_test_samples": {"type": int},
+                                 "train_pos_ratio": {"type": int},
+                                 "test_pos_ratio": {"type": int},
+                                 "initialized": {"type": bool},
+                                 "max_length": {"type": int},
+                                 "num_of_feats": {"type": int},
+                                 "feat_names": {"type": list},
+                                 "feat_sizes": {"type": list},
+                                 "random_sample": {"type": bool},
+                                 "shuffle_block": {"type": bool}
+                                 }
+        return rules_Common_AutoLane
+
 
 class AvazuTrainConfig(AvazuCommonConfig):
     """Default Dataset config for Avazu."""
@@ -65,3 +90,22 @@ class AvazuConfig(ConfigSerializable):
     train = AvazuTrainConfig
     val = AvazuValConfig
     test = AvazuTestConfig
+
+    @classmethod
+    def rules(cls):
+        """Return rules for checking."""
+        rules_Avazu = {"common": {"type": dict},
+                       "train": {"type": dict},
+                       "val": {"type": dict},
+                       "test": {"type": dict}
+                       }
+        return rules_Avazu
+
+    @classmethod
+    def get_config(cls):
+        """Get sub config."""
+        return {'common': cls.common,
+                'train': cls.train,
+                'val': cls.val,
+                'test': cls.test
+                }

@@ -33,10 +33,6 @@ class Cell(ops.Module):
         self.C_prev = C_prev
         self.C = C
         self.concat_size = 0
-        self.build()
-
-    def build(self):
-        """Build Cell."""
         affine = True
         if isinstance(self.genotype[0][0], list):
             affine = False
@@ -48,7 +44,6 @@ class Cell(ops.Module):
         op_names, indices_out, indices_inp = zip(*self.genotype)
         self.build_ops(self.C, op_names, indices_out, indices_inp, self.concat, self.reduction)
         self.concat_size = len(self.concat)
-        return self
 
     def build_ops(self, C, op_names, indices_out, indices_inp, concat, reduction):
         """Compile the cell.
@@ -86,11 +81,12 @@ class Cell(ops.Module):
             op = MixedOp(C=C, stride=stride, ops_cands=op_names[i])
             _op_list.append(op)
         self.op_list = Seq(*tuple(_op_list))
+        self.oplist = list(self.op_list.children())
         self.out_inp_list.append(temp_list.copy())
         if len(self.out_inp_list) != self.steps:
             raise Exception("out_inp_list length should equal to steps")
 
-    def call(self, s0, s1, weights=None, drop_path_prob=0):
+    def call(self, s0, s1, weights=None, drop_path_prob=0, selected_idxs=None):
         """Forward function of Cell.
 
         :param s0: feature map of previous of previous cell
@@ -109,18 +105,35 @@ class Cell(ops.Module):
         for i in range(self.steps):
             hlist = []
             for j, inp in enumerate(self.out_inp_list[i]):
-                op = list(self.op_list.children())[idx + j]
-                if weights is None:
-                    h = op(states[inp])
-                else:
+                op = self.oplist[idx + j]
+                if selected_idxs is None:
+                    if weights is None:
+                        h = op(states[inp])
+                    else:
+                        h = op(states[inp], weights[idx + j])
+                    if drop_path_prob > 0. and not isinstance(list(op.children())[0], ops.Identity):
+                        h = ops.drop_path(h, drop_path_prob)
+                    hlist.append(h)
+                elif selected_idxs[idx + j] == -1:
+                    # undecided mix edges
                     h = op(states[inp], weights[idx + j])
-                if drop_path_prob > 0. and not isinstance(list(op.children())[0], ops.Identity):
-                    h = ops.drop_path(h, drop_path_prob)
-                hlist.append(h)
-            s = sum(hlist)
+                    hlist.append(h)
+                elif selected_idxs[idx + j] == 0:
+                    # zero operation
+                    continue
+                else:
+                    h = self.oplist[idx + j](states[inp], None, selected_idxs[idx + j])
+                    hlist.append(h)
+            # s = sum(hlist)
+            s = hlist[0]
+            for ii in range(1, len(hlist)):
+                s += hlist[ii]
             states.append(s)
             idx += len(self.out_inp_list[i])
-        states_list = tuple([states[i] for i in self._concat])
+        states_list = ()
+        for i in self._concat:
+            states_list += (states[i],)
+        # states_list = tuple([states[i] for i in self._concat])
         return ops.concat(states_list)
 
 
@@ -154,7 +167,7 @@ class ContextualCell_v1(ops.Module):
         :param concat: concat the result if set to True, otherwise add the result
         """
         super(ContextualCell_v1, self).__init__()
-        self._ops = ops.MoudleList()
+        self.ops = ops.MoudleList()
         self._pos = []
         self._collect_inds = [0]
         self._pools = ['x']
@@ -166,7 +179,7 @@ class ContextualCell_v1(ops.Module):
                 self._collect_inds.remove(pos)
                 op_name = op_names[op_id]
                 # turn-off scaling in batch norm
-                self._ops.append(OPS[op_name](inp, 1, True, repeats))
+                self.ops.append(OPS[op_name](inp, 1, True, repeats))
                 self._pos.append(pos)
                 self._collect_inds.append(ind + 1)
                 self._pools.append('{}({})'.format(op_name, self._pools[pos]))
@@ -178,15 +191,15 @@ class ContextualCell_v1(ops.Module):
                         self._collect_inds.remove(pos)
                     op_name = op_names[op_id]
                     # turn-off scaling in batch norm
-                    self._ops.append(OPS[op_name](inp, 1, True, repeats))
+                    self.ops.append(OPS[op_name](inp, 1, True, repeats))
                     self._pos.append(pos)
                     # self._collect_inds.append(ind * 3 + ind2 - 1) # Do not collect intermediate
                     self._pools.append('{}({})'.format(
                         op_name, self._pools[pos]))
                 # summation
                 op_name = 'sum'
-                self._ops.append(AggregateCell(size_1=None, size_2=None, agg_size=inp, pre_transform=False,
-                                               concat=concat))  # turn-off convbnrelu
+                self.ops.append(AggregateCell(size_1=None, size_2=None, agg_size=inp, pre_transform=False,
+                                              concat=concat))  # turn-off convbnrelu
                 self._pos.append([ind * 3 - 1, ind * 3])
                 self._collect_inds.append(ind * 3 + 1)
                 self._pools.append('{}({},{})'.format(
@@ -199,7 +212,7 @@ class ContextualCell_v1(ops.Module):
         :return: output tensor
         """
         feats = [x]
-        for pos, op in zip(self._pos, self._ops):
+        for pos, op in zip(self._pos, self.ops):
             if isinstance(pos, list):
                 assert len(pos) == 2, "Two ops must be provided"
                 feats.append(op(feats[pos[0]], feats[pos[1]]))

@@ -1,0 +1,131 @@
+# -*- coding:utf-8 -*-
+
+# Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the MIT License.
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# MIT License for more details.
+
+"""Default Constructors."""
+
+import importlib
+import copy
+from functools import partial
+from collections import OrderedDict
+from modnas.registry.arch_space import build as build_module
+from modnas.registry.construct import register, build
+from modnas.arch_space.slot import Slot
+from modnas.utils.logging import get_logger
+from modnas.utils import import_file
+
+
+logger = get_logger('construct')
+
+
+def get_convert_fn(convert_fn, **kwargs):
+    """Return a new convert function."""
+    if isinstance(convert_fn, str):
+        return build(convert_fn, **kwargs)
+    elif callable(convert_fn):
+        return convert_fn
+    else:
+        raise ValueError('unsupported convert_fn type: {}'.format(type(convert_fn)))
+
+
+@register
+class DefaultModelConstructor():
+    """Constructor that builds model from registered architectures."""
+
+    def __init__(self, model_type, args=None):
+        self.model_type = model_type
+        self.args = args or {}
+
+    def __call__(self, model):
+        """Run constructor."""
+        model = build_module(self.model_type, **copy.deepcopy(self.args))
+        return model
+
+
+@register
+class ExternalModelConstructor():
+    """Constructor that builds model from external sources or libraries."""
+
+    def __init__(self, model_type, src_path=None, import_path=None, args=None):
+        self.model_type = model_type
+        self.import_path = import_path
+        self.src_path = src_path
+        self.args = args or {}
+
+    def __call__(self, model):
+        """Run constructor."""
+        if self.src_path is not None:
+            logger.info('Importing model from path: {}'.format(self.src_path))
+            mod = import_file(self.src_path)
+        elif self.import_path is not None:
+            logger.info('Importing model from lib: {}'.format(self.import_path))
+            mod = importlib.import_module(self.import_path)
+        model = mod.__dict__[self.model_type](**self.args)
+        return model
+
+
+@register
+class DefaultSlotTraversalConstructor():
+    """Constructor that traverses and converts Slots."""
+
+    def __init__(self, gen=None, convert_fn=None, args=None, skip_exist=True):
+        self.gen = gen
+        self.skip_exist = skip_exist
+        if convert_fn:
+            self.convert = get_convert_fn(convert_fn, **(args or {}))
+
+    def convert(self, slot):
+        """Return converted module from slot."""
+        raise NotImplementedError
+
+    def __call__(self, model):
+        """Run constructor."""
+        gen = self.gen or Slot.gen_slots_model(model)
+        all_slots = list(gen())
+        for m in all_slots:
+            if self.skip_exist and m.get_entity() is not None:
+                continue
+            ent = self.convert(m)
+            if ent is not None:
+                m.set_entity(ent)
+        return model
+
+
+@register
+class DefaultMixedOpConstructor(DefaultSlotTraversalConstructor):
+    """Default Mixed Operator Constructor."""
+
+    def __init__(self, candidates, mixed_op, candidate_args=None):
+        DefaultSlotTraversalConstructor.__init__(self)
+        self.candidates = candidates
+        self.mixed_op_conf = mixed_op
+        self.candidate_args = candidate_args or {}
+
+    def convert(self, slot):
+        """Return converted MixedOp from slot."""
+        cands = OrderedDict([(cand, build_module(cand, slot, **self.candidate_args)) for cand in self.candidates])
+        return build_module(self.mixed_op_conf, candidates=cands)
+
+
+@register
+class DefaultOpConstructor(DefaultSlotTraversalConstructor):
+    """Default Network Operator Constructor."""
+
+    def __init__(self, op):
+        DefaultSlotTraversalConstructor.__init__(self)
+        self.op_conf = op
+
+    def convert(self, slot):
+        """Return converted operator from slot."""
+        return build_module(copy.deepcopy(self.op_conf), slot)
+
+
+def make_traversal_constructor(convert_fn):
+    """Return default slot traversal constructor with given function as converter."""
+    return partial(DefaultSlotTraversalConstructor, convert_fn=convert_fn)

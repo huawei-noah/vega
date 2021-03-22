@@ -1,0 +1,91 @@
+general:
+    backend: pytorch
+
+
+pipeline: [nas, fully_train]
+
+
+nas:
+    pipe_step:
+        type: SearchPipeStep
+
+    dataset:
+        type: Cifar10
+        common:
+            data_path: /cache/datasets/cifar10
+            batch_size: 64
+            train_portion: 0.5
+
+    search_algorithm:
+        type: ModNasAlgorithm
+        optim:
+            type: DARTSOptim
+
+    search_space:
+        type: SearchSpace
+        modules: [custom]
+        custom:
+            type: ModNasArchSpace
+            device_ids: '0'
+            model:
+                type: CIFAR_MobileNetV2_GPU
+                args:
+                    n_classes: 10
+            search:
+                mixed_op:
+                    type: SoftmaxSumMixedOp
+                    candidates:
+                        -   MB3E3
+                        -   MB3E6
+                        -   MB5E3
+                        -   MB5E6
+                        -   MB7E3
+                        -   MB7E6
+
+    trainer:
+        type: Trainer
+        ### modnas begin
+        callbacks: ModNasTrainerCallback
+        modnas:
+            estim:
+                search:
+                    type: SuperNetEstim
+                    epochs: 1
+        ### modnas end
+        valid_interval: 0
+        lazy_built: True
+        epochs: 1
+        optimizer:
+            type: SGD
+            params:
+                lr: 0.025
+                momentum: 0.9
+                weight_decay: !!float 3e-4
+        lr_scheduler:
+            type: CosineAnnealingLR
+            params:
+                T_max: 50.0
+                eta_min: 0.001
+
+fully_train:
+    pipe_step:
+        type: TrainPipeStep
+        models_folder: '{local_base_path}/output/nas/'
+
+    trainer:
+        ref: nas.trainer
+        type: Trainer
+        epochs: 1
+        lazy_built: False
+        valid_interval: 1
+        lr_scheduler:
+            type: CosineAnnealingLR
+            params:
+                T_max: 600.0
+
+    dataset:
+        type: Cifar10
+        common:
+            data_path: /cache/datasets/cifar10
+            batch_size: 64
+            train_portion: 1

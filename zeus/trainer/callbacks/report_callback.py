@@ -11,7 +11,7 @@
 """Report callback defination."""
 import logging
 from .callback import Callback
-from zeus.report import Report
+from zeus.report import ReportClient
 from zeus.common import ClassFactory, ClassType
 
 
@@ -38,17 +38,18 @@ class ReportCallback(Callback):
     def after_train(self, logs=None):
         """Close the connection of report."""
         self._broadcast(self.epoch)
-        Report().close(self.trainer.step_name, self.trainer.worker_id)
+        ReportClient.close(self.trainer.step_name, self.trainer.worker_id)
 
     def _broadcast(self, epoch=None):
-        record = Report().receive(self.trainer.step_name, self.trainer.worker_id)
+        record = ReportClient.get_record(self.trainer.step_name, self.trainer.worker_id)
         if self.trainer.config.report_on_epoch:
             record.epoch = self.trainer.epochs
-        # todo: remove in FinedGrainedSpace
-        if self.trainer.config.codec:
-            record.desc = self.trainer.config.codec
+        if hasattr(self.trainer.model, 'is_adaptive_weight') and self.trainer.model.is_adaptive_weight:
+            record.desc = self.trainer.model.to_desc()
         if not record.desc:
             record.desc = self.trainer.model_desc
+        if not record.hps and self.trainer.hps:
+            record.hps = self.trainer.hps
         record.performance = self.trainer.performance
         record.objectives = self.trainer.valid_metrics.objectives
         if record.performance is not None:
@@ -63,5 +64,5 @@ class ReportCallback(Callback):
         record.weights_file = self.trainer.weights_file
         if self.trainer.runtime is not None:
             record.runtime = self.trainer.runtime
-        Report().broadcast(record)
+        ReportClient.broadcast(record)
         logging.debug("report_callback record: {}".format(record))

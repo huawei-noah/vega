@@ -16,7 +16,7 @@ from copy import deepcopy
 from .conf import AdelaideConfig
 from zeus.common import ClassFactory, ClassType
 from zeus.common import FileOps
-from zeus.report import Report
+from zeus.report import ReportServer
 from vega.core.search_algs import SearchAlgorithm
 
 
@@ -70,7 +70,7 @@ class AdelaideMutate(SearchAlgorithm):
         """
         desc = deepcopy(self.search_space)
         search_desc = desc.custom
-        records = Report().get_pareto_front_records(['random', 'mutate'])
+        records = ReportServer().get_pareto_front_records(['random', 'mutate'])
         codes = []
         for record in records:
             custom = record.desc['custom']

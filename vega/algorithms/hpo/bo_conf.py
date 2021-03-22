@@ -20,9 +20,34 @@ class BoPolicyConfig(ConfigSerializable):
     warmup_count = 5
     alg_name = 'SMAC'
 
+    @classmethod
+    def rules(cls):
+        """Return rules for checking."""
+        rules_BoPolicyConfig = {"total_epochs": {"type": int},
+                                "max_epochs": {"type": int},
+                                "warmup_count": {"type": int},
+                                "alg_name": {"type": str}
+                                }
+        return rules_BoPolicyConfig
+
 
 class BoConfig(ConfigSerializable):
     """Bo Config."""
 
     policy = BoPolicyConfig
     objective_keys = 'accuracy'
+
+    @classmethod
+    def rules(cls):
+        """Return rules for checking."""
+        rules_BoConfig = {"policy": {"type": dict},
+                          "objective_keys": {"type": (list, str)}
+                          }
+        return rules_BoConfig
+
+    @classmethod
+    def get_config(cls):
+        """Get sub config."""
+        return {
+            "policy": cls.policy
+        }

@@ -38,13 +38,13 @@ optional arguments:
   -model_file MODEL.PRETRAINED_MODEL_FILE, --model.pretrained_model_file MODEL.PRETRAINED_MODEL_FILE
   -epochs TRAINER.EPOCHS, --trainer.epochs TRAINER.EPOCHS
   -evaluator [EVALUATOR [EVALUATOR ...]], --evaluator [EVALUATOR [EVALUATOR ...]]
-                        evaluator list, eg. -evaluator GpuEvaluator DavinciMobileEvaluator
+                        evaluator list, eg. -evaluator HostEvaluator DeviceEvaluator
 ```
 
 example:
 
 ```text
-python3 -m vega.tools.fully_train -dataset Cifar10 -batch_size 8 -data_path /cache/datasets/cifar10 -model_desc ./tasks/nas/workers/nas1/1/desc_1.json -epochs 1 -evaluator GpuEvaluator
+python3 -m vega.tools.fully_train -dataset Cifar10 -batch_size 8 -data_path /cache/datasets/cifar10 -model_desc ./tasks/nas/workers/nas1/1/desc_1.json -epochs 1 -evaluator HostEvaluator
 ```
 
 ## benchmark
@@ -73,11 +73,11 @@ optional arguments:
   -model_desc MODEL.MODEL_DESC, --model.model_desc MODEL.MODEL_DESC
   -model_file MODEL.PRETRAINED_MODEL_FILE, --model.pretrained_model_file MODEL.PRETRAINED_MODEL_FILE
   -evaluator [EVALUATOR [EVALUATOR ...]], --evaluator [EVALUATOR [EVALUATOR ...]]
-                        evaluator list, eg. -evaluator GpuEvaluator  DavinciMobileEvaluator
+                        evaluator list, eg. -evaluator HostEvaluator  DeviceEvaluator
 ```
 
 example:
 
 ```bash
-python3 -m vega.tools.benchmark -dataset Cifar10 -batch_size 8 -data_path /cache/datasets/cifar10 -model_desc ./tasks/fullytrain/output/fully_train/desc_0.json -model_file=./tasks/fullytrain/output/fully_train/model_0.pth -evaluator GpuEvaluator
+python3 -m vega.tools.benchmark -dataset Cifar10 -batch_size 8 -data_path /cache/datasets/cifar10 -model_desc ./tasks/fullytrain/output/fully_train/desc_0.json -model_file=./tasks/fullytrain/output/fully_train/model_0.pth -evaluator HostEvaluator
 ```

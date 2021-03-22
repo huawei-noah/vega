@@ -8,13 +8,13 @@ The existing prediction models are mainly based on FM (factorization machines) f
 However, in practice, not all feature interactions are effective, and noise may be involved, which may impair the accuracy of model prediction.
 Given this, AutoFIS can automatically learn the effective part of feature interaction from O(N^2) feature space, and shield the redundant interactions through gate function, so as to improve the prediction accuracy. The applicable models for AutoFIS include FM, FFM and deepfm, etc.
 
-![FIS AutoFIS](images/fis_autogate_overview.png)
+![FIS AutoFIS](../../images/fis_autogate_overview.png)
 
 ## 2. Theory
 
 AutoFIS consists of two phases. In the first stage (search stage), the importance score of each feature interaction is learned by automatic searching; In the second stage (retrain stage), on the basis of the search stage, the unimportant feature interactions are shielded and the model is retrained to achieve better results.
 
-![FIS AutoFIS Stage2](images/fis_autogate_avazu_performance.png)
+![FIS AutoFIS Stage2](../../images/fis_autogate_avazu_performance.png)
 
 ### 2.1 Search Space
 
@@ -72,6 +72,7 @@ model:
     model_desc:
         modules: ["custom"]
             custom:
+                type: AutoGateModel            # name of model
                 input_dim: 645195              # the number of features of the whole training set, that is, the dimension of the `x` vector
                 input_dim4lookup: 24           # the number of non-zero features in a sampler, that is, the dimension of `feature_id` vector
                 embed_dim: 40
@@ -82,7 +83,6 @@ model:
                 alpha_init_mean: 0.0
                 alpha_activation: 'tanh'
                 selected_pairs: []             # the default is [], that is, all feature interactions are retained
-                name: AutoGateModel            # name of model
 
 ```
 
@@ -117,7 +117,7 @@ trainer:
 
 ### 3.5 Top-K AutoFIS
 
-The feature interaction selection of AutoFIS is sparse selection through gRDA optimizer. In addition, the top-k optimal feature interactions can be selected directly. The corresponding examples can refer to: automl/examples/nas/fis/autogate.yml
+The feature interaction selection of AutoFIS is sparse selection through gRDA optimizer. In addition, the top-k optimal feature interactions can be selected directly. The corresponding examples can refer to: `/examples/nas/fis/autogate.yml`
 
 Different from the gRDA version, the top-k version of AutoFIS only needs Adam one optimizer, so the training is more convenient. The model parameters fis_ratio is used to select the scale of feature interaction.
 

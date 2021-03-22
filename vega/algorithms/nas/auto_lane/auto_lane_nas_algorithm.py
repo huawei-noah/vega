@@ -18,7 +18,7 @@ from .utils.resnet_variant_det_codec import ResNetVariantDetCodec
 from .utils.resnext_variant_det_codec import ResNeXtVariantDetCodec
 import pandas as pd
 from .conf import AutoLaneConfig
-from zeus.report import Report
+from zeus.report import ReportServer
 from zeus.common import ClassType, ClassFactory
 from zeus.common.config import Config
 from zeus.common import update_dict
@@ -47,7 +47,7 @@ class AutoLaneNas(SearchAlgorithm):
 
     def get_pareto_front(self):
         """Get the pareto front of trained candidates."""
-        records = Report().get_pareto_front_records()
+        records = ReportServer().get_pareto_front_records()
         codes = []
         for record in records:
             codes.append(record.desc['code'])
@@ -86,7 +86,7 @@ class AutoLaneNas(SearchAlgorithm):
         logging.info(sample)
         sample_desc = self.codec.decode(sample)
 
-        return sample_desc
+        return self.sample_count, sample_desc
 
     def ea_sample(self, code):
         """Run EA algorithm to generate new architecture."""

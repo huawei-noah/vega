@@ -21,7 +21,7 @@ from .pba_conf import PBAConfig
 
 @ClassFactory.register(ClassType.SEARCH_ALGORITHM)
 class PBAHpo(HPOBase):
-    """An Hpo of PBA, inherit from HpoGenerator."""
+    """An Hpo of PBA."""
 
     config = PBAConfig()
 
@@ -47,13 +47,13 @@ class PBAHpo(HPOBase):
         all_para = sample.get('all_configs')
         re_hps['dataset.transforms'] = [{'type': 'PBATransformer', 'para_array': trans_para, 'all_para': all_para,
                                          'operation_names': self.operation_names}]
-        checkpoint_path = FileOps.join_path(self.local_base_path, 'cache', 'pba', str(sample_id), 'checkpoint')
+        checkpoint_path = FileOps.join_path(self.local_base_path, 'worker', 'cache', str(sample_id), 'checkpoint')
         FileOps.make_dir(checkpoint_path)
         if os.path.exists(checkpoint_path):
             re_hps['trainer.checkpoint_path'] = checkpoint_path
         if 'epoch' in sample:
             re_hps['trainer.epochs'] = sample.get('epoch')
-        return dict(worker_id=sample_id, desc=re_hps, info=rung_id)
+        return dict(worker_id=sample_id, encoded_desc=re_hps, rung_id=rung_id)
 
     def update(self, record):
         """Update current performance into hpo score board.
@@ -65,7 +65,7 @@ class PBAHpo(HPOBase):
         config_id = str(record.get('worker_id'))
         step_name = record.get('step_name')
         worker_result_path = self.get_local_worker_path(step_name, config_id)
-        new_worker_result_path = FileOps.join_path(self.local_base_path, 'cache', 'pba', config_id, 'checkpoint')
+        new_worker_result_path = FileOps.join_path(self.local_base_path, 'worker', 'cache', config_id, 'checkpoint')
         FileOps.make_dir(worker_result_path)
         FileOps.make_dir(new_worker_result_path)
         if os.path.exists(new_worker_result_path):

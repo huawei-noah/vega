@@ -25,9 +25,24 @@ class ConnectionsDecorator(Module):
         for idx, model in enumerate(models):
             if isinstance(model, OrderedDict):
                 for name, value in model.items():
+                    if not isinstance(value, Module) and isinstance(value, dict):
+                        value = self.from_desc(value)
                     self.add_module(name, value)
             else:
+                if not isinstance(model, Module) and isinstance(model, dict):
+                    model = self.from_desc(model)
                 self.add_module(str(idx), model)
+
+    def to_desc(self, recursion=True):
+        """Convert module to desc."""
+        if not recursion:
+            return self.desc
+        desc = {"type": self.__class__.__name__}
+        for name, module in self.named_children():
+            if hasattr(module, 'to_desc'):
+                sub_desc = module.to_desc()
+                desc[name] = sub_desc
+        return desc
 
     def call(self, inputs):
         """Override call function."""
@@ -60,6 +75,11 @@ class Sequential(ConnectionsDecorator):
     def __init__(self, *models):
         super(Sequential, self).__init__(*models)
 
+    def append(self, module):
+        """Append new module."""
+        self.add_module(str(len(self._modules)), module)
+        return self
+
     def call(self, inputs):
         """Override call function, connect models into a seq."""
         output = inputs
@@ -67,6 +87,36 @@ class Sequential(ConnectionsDecorator):
         for model in models:
             output = model(output)
         return output
+
+
+@ClassFactory.register(SearchSpaceType.CONNECTIONS)
+class MultiOutputGetter(Module):
+    """Get output layer by layer names and connect into a OrderDict."""
+
+    def __init__(self, model, layer_names):
+        super(MultiOutputGetter, self).__init__(model)
+        if not layer_names or not set(layer_names).issubset([name for name, _ in model.named_children()]):
+            raise ValueError("layer_names are not present in model")
+        if isinstance(layer_names, list):
+            layer_names = {v: k for k, v in enumerate(layer_names)}
+        self.output_layers = OrderedDict()
+        for name, module in model.named_children():
+            if not layer_names:
+                break
+            self.add_module(name, module)
+            if name in layer_names:
+                layer_name = layer_names.pop(name)
+                self.output_layers[name] = layer_name
+
+    def call(self, inputs):
+        """Override call function, connect models into a OrderedDict."""
+        output = inputs
+        outs = OrderedDict()
+        for name, model in self.named_children():
+            output = model(output)
+            if name in self.output_layers:
+                outs[self.output_layers[name]] = output
+        return outs
 
 
 class ModuleList(Module):
@@ -90,9 +140,14 @@ class ModuleList(Module):
 class OutlistSequential(ConnectionsDecorator):
     """Sequential SearchSpace."""
 
-    def __init__(self, *models, out_list):
+    def __init__(self, *models, out_list=None):
         super(OutlistSequential, self).__init__(*models)
         self.out_list = out_list
+
+    def append(self, module):
+        """Append new module."""
+        self.add_module(str(len(self._modules)), module)
+        return self
 
     def call(self, inputs):
         """Override compile function, conect models into a seq."""
@@ -101,9 +156,46 @@ class OutlistSequential(ConnectionsDecorator):
         outputs = []
         for idx, model in enumerate(models):
             output = model(output)
-            if idx in self.out_list:
-                outputs.append(output)
+            if self.out_list and idx not in self.out_list:
+                continue
+            outputs.append(output)
         return outputs
+
+    @property
+    def out_channels(self):
+        """Output Channel for Module."""
+        return [layer.out_channels for layer in self.children()]
+
+
+@ClassFactory.register(SearchSpaceType.CONNECTIONS)
+class OutDictSequential(ConnectionsDecorator):
+    """Sequential SearchSpace."""
+
+    def __init__(self, *models, out_list=None):
+        super(OutDictSequential, self).__init__(*models)
+        self.out_list = out_list
+
+    def append(self, module):
+        """Append new module."""
+        self.add_module(str(len(self._modules)), module)
+        return self
+
+    def call(self, inputs):
+        """Override compile function, conect models into a seq."""
+        output = inputs
+        models = self.children()
+        outputs = {}
+        for idx, model in enumerate(models):
+            output = model(output)
+            if self.out_list and idx not in self.out_list:
+                continue
+            outputs[idx] = output
+        return outputs
+
+    @property
+    def out_channels(self):
+        """Output Channel for Module."""
+        return [layer.out_channels for layer in self.children()]
 
 
 @ClassFactory.register(SearchSpaceType.CONNECTIONS)

@@ -22,7 +22,7 @@ from zeus.datasets import Adapter
 from zeus.datasets.common.utils.dataset import Dataset
 from zeus.common import init_log, FileOps
 from zeus.common.general import General
-from zeus.report import Report, ReportRecord
+from zeus.report import ReportClient, ReportRecord
 from zeus.common import ClassFactory, ClassType
 from zeus.networks.network_desc import NetworkDesc
 from zeus.trainer.callbacks import Callback
@@ -277,9 +277,8 @@ class CyclesrTrainerCallback(Callback):
 
     def train_process(self):
         """Whole train and validate process for the fully train cyclesr."""
-        # self._init_all_settings()
         init_log(level=General.logger.level,
-                 log_file="log_worker_{}.txt".format(self.trainer.worker_id),
+                 log_file="worker_{}.log".format(self.trainer.worker_id),
                  log_path=self.trainer.local_log_path)
         self._init_report()
         if self.cfg.cuda:
@@ -417,10 +416,10 @@ class CyclesrTrainerCallback(Callback):
             weights_file=self.best_model_file)
         record = ReportRecord().load_dict(info)
         logging.debug("Broadcast Record=%s", str(record))
-        Report().broadcast(record)
+        ReportClient.broadcast(record)
 
     def _broadcast(self, epoch, performance):
-        record = Report().receive(self.trainer.step_name, self.trainer.worker_id)
+        record = ReportClient.get_record(self.trainer.step_name, self.trainer.worker_id)
         record.performance = performance
-        Report().broadcast(record)
+        ReportClient.broadcast(record)
         logging.debug("report_callback record: {}".format(record))

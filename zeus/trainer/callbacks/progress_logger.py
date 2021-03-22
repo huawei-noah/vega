@@ -73,8 +73,8 @@ class ProgressLogger(Callback):
                 loss_avg = 0
                 logging.warning("Cant't get the loss, maybe the loss doesn't update in the metric evaluator.")
             if metrics_results is not None:
-                log_info = "worker id [{}], epoch [{}/{}], train step {}, loss [{:8.3f}, {:8.3f}], lr [{:8.3f}], " \
-                           "train metrics {}"
+                log_info = "worker id [{}], epoch [{}/{}], train step {}, " \
+                           "loss [{:8.3f}, {:8.3f}], lr [{:12.7f}], train metrics {}"
                 log_info = log_info.format(
                     self.trainer.worker_id,
                     self.cur_epoch + 1, self.epochs,
@@ -83,7 +83,8 @@ class ProgressLogger(Callback):
                     self._format_metrics(metrics_results))
                 logging.info(log_info)
             else:
-                log_info = "worker id [{}], epoch [{}/{}], train step {}, loss [{:8.3f}, {:8.3f}], lr [{:8.3f}]".format(
+                log_info = "worker id [{}], epoch [{}/{}], train step {}, loss [{:8.3f}, {:8.3f}], lr [{:12.7f}]"
+                log_info = log_info.format(
                     self.trainer.worker_id,
                     self.cur_epoch + 1,
                     self.epochs,

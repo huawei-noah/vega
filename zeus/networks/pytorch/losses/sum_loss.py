@@ -11,9 +11,7 @@
 """Sum_loss for detection task."""
 import torch
 from torch import nn
-import logging
 from collections import OrderedDict
-from zeus.modules.module import Module
 from zeus.common import ClassType, ClassFactory
 
 

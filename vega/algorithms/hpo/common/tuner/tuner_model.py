@@ -16,7 +16,6 @@ from sklearn.gaussian_process.kernels import (Matern)
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
 from .rfr import RandomForestWithStdRegressor
-from vega.algorithms.hpo.common.tuner.double_gaussian import DoubleMultiGaussian
 from vega.algorithms.hpo.common.tuner.ParzenEstimator import ParzenEstimator
 
 

@@ -15,6 +15,7 @@ import shutil
 import sys
 import logging
 import imp
+import numpy as np
 from functools import wraps
 from copy import deepcopy
 from contextlib import contextmanager
@@ -165,3 +166,52 @@ def copy_search_file(srcDir, desDir):
         filePath = os.path.join(srcDir, line)
         if os.path.isfile(filePath):
             shutil.copy(filePath, desDir)
+
+
+def verify_requires(requires):
+    """Verify requires."""
+    if requires and isinstance(requires, list):
+        failed = []
+        for pkg in requires:
+            try:
+                __import__(pkg.split("=")[0].replace("<", "").replace(">", "").lower())
+            except Exception:
+                failed.append(pkg)
+        if failed:
+            logger.error("Missing modules: {}".format(failed))
+            logger.error("Please run the following command:")
+            for pkg in failed:
+                logger.error("    pip3 install --user \"{}\"".format(pkg))
+            return False
+    return True
+
+
+def remove_np_value(value):
+    """Remove np.int64 and np.float32."""
+    if value is None:
+        return value
+    if isinstance(value, np.int64):
+        data = int(value)
+    elif isinstance(value, np.float32):
+        data = float(value)
+    elif isinstance(value, dict):
+        data = {}
+        for key in value:
+            data[key] = remove_np_value(value[key])
+    elif isinstance(value, list):
+        data = []
+        for key in range(len(value)):
+            data.append(remove_np_value(value[key]))
+    elif isinstance(value, tuple):
+        data = []
+        for key in range(len(value)):
+            data.append(remove_np_value(value[key]))
+        data = tuple(data)
+    elif isinstance(value, np.ndarray):
+        data = []
+        value = value.tolist()
+        for key in range(len(value)):
+            data.append(remove_np_value(value[key]))
+    else:
+        data = value
+    return data

@@ -19,7 +19,7 @@ from .asha_conf import AshaConfig
 
 @ClassFactory.register(ClassType.SEARCH_ALGORITHM)
 class AshaHpo(HPOBase):
-    """An Hpo of ASHA, inherit from HpoGenerator."""
+    """An Hpo of ASHA."""
 
     config = AshaConfig()
 

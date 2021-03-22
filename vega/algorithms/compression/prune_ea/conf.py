@@ -22,6 +22,16 @@ class PrunePolicyConfig(EAConfig):
     num_individual = 4
     random_models = 32
 
+    @classmethod
+    def rules(cls):
+        """Return rules for checking."""
+        rules_PrunePolicyConfig = {"length": {"type": int},
+                                   "num_generation": {"type": int},
+                                   "num_individual": {"type": int},
+                                   "random_models": {"type": int}
+                                   }
+        return rules_PrunePolicyConfig
+
 
 class PruneConfig(ConfigSerializable):
     """Prune Config."""
@@ -29,3 +39,19 @@ class PruneConfig(ConfigSerializable):
     codec = 'PruneCodec'
     policy = PrunePolicyConfig
     objective_keys = ['accuracy', 'flops']
+
+    @classmethod
+    def rules(cls):
+        """Return rules for checking."""
+        rules_PruneConfig = {"codec": {"type": str},
+                             "policy": {"type": dict},
+                             "objective_keys": {"type": (list, str)}
+                             }
+        return rules_PruneConfig
+
+    @classmethod
+    def get_config(cls):
+        """Get sub config."""
+        return {
+            "policy": cls.policy
+        }

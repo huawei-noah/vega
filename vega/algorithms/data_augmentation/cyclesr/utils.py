@@ -13,19 +13,10 @@ from __future__ import absolute_import
 from __future__ import division
 
 import errno
-import logging
-import math
 import os
 import os.path as osp
-import random
 import sys
-
-import cv2
-import numpy as np
 import torch
-import torch.nn as nn
-import torchvision.transforms as transforms
-from PIL import Image
 
 
 def mkdir_if_missing(dirname):

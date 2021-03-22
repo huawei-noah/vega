@@ -2,34 +2,36 @@
 
 Vega提供了算法和任务的使用指导，也针对开发者，提供了算法开发的相关指导，如扩展搜索空间和搜索算法、构建适用于Vega的数据集等。
 
-## 1. 下载示例
+## 1. 示例列表
 
-在`release`下载示例，解压后，有如下目录：
+在`examples`目录下如下子目录：
 
 | 目录 | 说明 |
 | :--: | :-- |
-| compression | 压缩算法使用示例，包括 [Quant-EA](../algorithms/quant_ea.md)、 [Prune-EA](../algorithms/prune_ea.md) 两个算法 |
-| data augmentation | 数据增广算法使用示例，包括 [PBA](../algorithms/pba.md) 算法 |
-| hpo | 超参优化算法使用示例， 包括 [ASHA](../algorithms/hpo.md), [BO](../algorithms/hpo.md), [TPE](../algorithms/hpo.md), [BOHB](../algorithms/hpo.md), [BOSS](../algorithms/hpo.md) 等算法 |
-| nas | 网络架构搜索相关示例，包括 [CARS](../algorithms/cars.md), [SP-NAS](../algorithms/sp_nas.md), [Auto-Lane](../algorithms/auto_lane.md), [SR-EA](../algorithms/sr_ea.md), [ESR-EA](../algorithms/esr_ea.md), [Adelaide-EA](../algorithms/adelaide_ea.md), [NAGO](../algorithms/nago.md) |
-| searchspace | [细粒度搜索空间](../developer/fine_grained_search_space.md)相关示例 |
-| fully train | fully train 相关示例，包括训练 torch vision 的 restnet18 模型，训练 CARS 模型等示例 |
-| tasks/classification | 综合使用 NAS + HPO + FullyTrain 完成一个图像分类任务的示例 |
+| compression | 压缩算法使用示例，包括 [Quant-EA](../algorithms/quant_ea.md)、 [Prune-EA](../algorithms/prune_ea.md) 两个算法示例 |
+| data augmentation | 数据增广算法使用示例，包括 [PBA](../algorithms/pba.md)、[CycleSR](../algorithms/cyclesr.md) 算法示例 |
+| hpo | 超参优化算法使用示例， 包括 [ASHA](../algorithms/hpo.md)、[BO](../algorithms/hpo.md)、[TPE](../algorithms/hpo.md)、[BOHB](../algorithms/hpo.md)、[BOSS](../algorithms/hpo.md)、Random、Random Pareto 等算法示例 |
+| nas | 网络架构搜索相关示例，包括 [CARS](../algorithms/cars.md)、[SP-NAS](../algorithms/sp_nas.md)、[Auto-Lane](../algorithms/auto_lane.md)、[SR-EA](../algorithms/sr_ea.md)、[ESR-EA](../algorithms/esr_ea.md)、[Adelaide-EA](../algorithms/adelaide_ea.md)、[NAGO](../algorithms/nago.md)、BackboneNas、DartsCNN、FIS、GDAS、MFKD、SegmentationEA、SGAS、ModuleNas、DNet-NAS等算法示例 |
+| fully train | fully train 相关示例，包括训练 EfficientNet B0/B4 模型示例，FMD算子示例等 |
+| classification | 综合使用 NAS + HPO + FullyTrain 完成一个图像分类任务的示例 |
+| features | 集群、自定义数据集、模型评估、Quota等示例 |
 
-## 2. 示例说明
+## 2. 运行示例
+
+### 2.1 运行PyTorch示例
 
 一般一个算法示例包含了是一个配置文件，有一些算法还有一些配套的代码。
 
 进入 examples 目录后，可以执行如下命令运行示例：
 
 ```bash
-python3 ./run_pipeline.py <algorithm config file>
+vega <algorithm config file>
 ```
 
 比如要运行CARS算法示例，命令如下：
 
 ```bash
-python3 ./run_pipeline.py ./nas/cars/cars.yml
+vega ./nas/cars/cars.yml
 ```
 
 所有的信息都在配置文件中，配置项可分为公共配置项和算法相关配置项，公共配置项可参考[配置参考](./config_reference.md)，算法配置需要参考各个算法的参考文档。
@@ -38,15 +40,75 @@ python3 ./run_pipeline.py ./nas/cars/cars.yml
 
 另外，对于以下算法，需要加载预训练模型。在运行示例前，需要创建目录/cache/models/，然后从相应的位置下载对应的模型后，放置到该目录：
 
-| Algorithm | Pre-trained Model | Default Path | Model Source |
+| example | Pre-trained Model | Default Path | Model Source |
 | :--: | :-- | :-- | :--: |
-| Adelaide-EA | mobilenet_v2-b0353104.pth | /cache/models/mobilenet_v2-b0353104.pth | [下载](https://box.saas.huaweicloud.com/p/e9e06f49505a1959da6cba9401b2bf38) |
-| Prune-EA | resnet20.pth | /cache/models/resnet20.pth | [下载](https://box.saas.huaweicloud.com/p/67cd96e5da41b1c5a88f2b323446c0f8) |
-| Prune-EA | resnet20.ckpt | /cache/models/resnet20.ckpt | [下载](https://box.saas.huaweicloud.com/p/7f1743a041a0ede7f68713d1360a57d5) |
-| SP-NAS | resnet50-19c8e357.pth | /cache/models/resnet50-19c8e357.pth | [下载](https://box.saas.huaweicloud.com/p/f2ab3a1869f55de2053fb1404fc1c6d3) |
-| SP-NAS | SPNetXB_COCO_ImageNetPretrained.pth | /cache/models/SPNetXB_COCO_ImageNetPretrained.pth | [下载](https://box.saas.huaweicloud.com/p/40b2259114ac0e3343e278258a60d1fb) |
+| adelaide_ea | mobilenet_v2-b0353104.pth | /cache/models/mobilenet_v2-b0353104.pth | [download](https://box.saas.huaweicloud.com/p/e9e06f49505a1959da6cba9401b2bf38) |
+| BackboneNas (mindspore) | resnet50-19c8e357.pth | /cache/models/resnet50-19c8e357.pth | [download]() |
+| BackboneNas (tensorflow), classification, prune_ea(tensorflow) | resnet_imagenet_v1_fp32_20181001 | /cache/models/resnet_imagenet_v1_fp32_20181001/ <br>  keep only these files: checkpoint, graph.pbtxt, model.ckpt-225207.data-00000-of-00002, model.ckpt-225207.data-00001-of-00002, model.ckpt-225207.index, model.ckpt-225207.meta | [download](http://download.tensorflow.org/models/official/20181001_resnet/checkpoints/resnet_imagenet_v1_fp32_20181001.tar.gz) |
+| dnet_nas | 031-_64_12-1111-11211112-2.pth | /cache/models/031-_64_12-1111-11211112-2.pth | [download]() |
+| prune_ea(pytorch) | resnet20.pth | /cache/models/resnet20.pth | [download](https://box.saas.huaweicloud.com/p/67cd96e5da41b1c5a88f2b323446c0f8) |
+| prune_ea(mindspore) | resnet20.ckpt | /cache/models/resnet20.ckpt | [download](https://box.saas.huaweicloud.com/p/7f1743a041a0ede7f68713d1360a57d5) |
+| sp_nas | fasterrcnn_coco.pth | /cache/models/fasterrcnn_coco.pth | [download]() |
+| sp_nas | fasterrcnn_serialnet_backbone.pth | /cache/models/fasterrcnn_serialnet_backbone.pth | [download]() |
+| sp_nas | serial_classification_net.pth | /cache/models/serial_classification_net.pth | [download]() |
+| sp_nas | torch_fpn.pth | /cache/models/torch_fpn.pth | [download]() |
+| sp_nas | torch_rpn.pth | /cache/models/torch_rpn.pth | [download]() |
 
-要说明的是，示例中的配置项都设置的很小，是为了更快的运行出结果，但过小的配置会造成运行结果是不理想的，所以大家可以参考各个算法的说明文档，根据需要来修改和调整配置，运行出所需的结果。
+在每个示例的配置文件中，在 `general/backend` 中有该示例适用的平台说明（PyTorch、TensorFlow、MindSpore）。
+
+比如以下配置说明该示例可以运行在三个平台中：
+
+```yaml
+general:
+    backend: pytorch  # pytorch | tensorflow | mindspore
+```
+
+以下配置只能运行在TensorFlow：
+
+```yaml
+general:
+    backend: tensorflow
+```
+
+### 2.2 运行TensorFlow示例
+
+1. 运行命令（GPU）：
+
+    ```bash
+    vega <algorithm config file> -b t
+    ```
+
+    如：
+
+    ```bash
+    vega ./nas/backbone_nas/backbone_nas.yml -b t
+    ```
+
+2. 运行命令（Ascend 910）：
+
+    ```bash
+    vega <algorithm config file> -b t -d NPU
+    ```
+
+    如：
+
+    ```bash
+    vega ./nas/backbone_nas/backbone_nas.yml -b t -d NPU
+    ```
+
+### 2.3 运行MindSpore示例
+
+运行命令（Ascend 910）：
+
+```bash
+vega <algorithm config file> -b m -d NPU
+```
+
+如：
+
+```bash
+vega ./nas/backbone_nas/backbone_nas.yml -b m -d NPU
+```
 
 ## 3. 示例输入和输出
 

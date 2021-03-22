@@ -6,11 +6,11 @@ The evolution strategy is used to automatically prune channels for network struc
 
 Take the pruning of a ResNet structure as example. The following figure shows the structure of ResNet-20 which consists of the first convolution kernel and three sequential stages. Each stage consists of three ResBlocks. The shortcut of the first ResBlock connects to two convolutional layer with different numbers of channels, the shortcut consists of the 1x1 upsampling convolution kernel.
 
-![res20_](./images/prune_res20.PNG)
+![res20_](../../images/prune_res20.PNG)
 
  1. Code：
 
-    1.1. Taking 01 encoding on the output channel of convolutional layer to be pruned. The value 0 indicates that the channel is cut, and the value 1 indicates that the channel is reserved. 
+    1.1. Taking 01 encoding on the output channel of convolutional layer to be pruned. The value 0 indicates that the channel is cut, and the value 1 indicates that the channel is reserved.
 
     1.2. For the convolutional layer that have shortcut connections, ensure that the number of output channels of the two convolutional layer is the same when there is no 1x1 upsampling operation. To facilitate encoding, the numbers of output channels of the two convolutional layer are also the same. We use ch_final to indicate the part number. There are three part numbers in total.
 
@@ -43,6 +43,7 @@ EA Pruning is used to perform channel pruning for a CNN structure. It consists o
 Configure parameters including searching for the pruned model and training the pruned model are as follows:
 
 - `vega/examples/prune_ea/prune.yml`
+
 The configuration file is directly transferred to the pipeline through main.py. The two phases are performed in sequence. The Pareto front is found during the search process, and the models on front are trained to obtain the final performance.
 
 Prune.yml consists the following sections:
@@ -60,11 +61,15 @@ nas:
 
     search_space:               # Search space configuration information
         type: SearchSpace
-        modules: ['backbone']
+        modules: ['backbone', 'head']
         backbone:
-            name: 'PruneResNet'
-            base_chn: [16,16,16,32,32,32,64,64,64]
-            base_chn_node: [16,16,32,64]
+            type: ResNetGeneral
+            stage: 3
+            base_depth: 20
+            base_channel: 16
+        head:
+            type: LinearClassificationHead
+            base_channel: 64
             num_classes: 10
 ```
 
@@ -75,19 +80,23 @@ Currently, the network that can be pruned is the ResNet series, such as ResNet20
 ```yaml
 search_space:       # ResNet20 search space
         type: SearchSpace
-        modules: ['backbone']
+        modules: ['backbone', 'head']
         backbone:
-            name: 'PruneResNet'
-            base_chn: [16,16,16,32,32,32,64,64,64]
-            base_chn_node: [16,16,32,64]
+            type: ResNetGeneral
+            stage: 3
+            base_depth: 20
+            base_channel: 16
+        head:
+            type: LinearClassificationHead
+            base_channel: 64
             num_classes: 10     # number of categories
 ```
 
 | | search space | search algorithm |
 | --- | --- | --- |
-| ResNet-20 | base_chn_node: [16,16,32,64]<br>base_chn: [[16]\*3, [32]\*3,[64]\*3]<br>num_blocks: [3,3,3] | length:464       |
-| ResNet-32 | base_chn_node: [16,16,32,64]<br>base_chn: [[16]\*5, [32]\*5,[64]\*5]<br>num_blocks: [5,5,5] | length:688       |
-| ResNet-56 | base_chn_node: [16,16,32,64]<br>base_chn: [[16]\*9, [32]\*9,[64]\*9]<br>num_blocks: [9,9,9] | length: 1136     |
+| ResNet-20 | base_depth: 20 | length:464       |
+| ResNet-32 | base_depth: 32 | length:688       |
+| ResNet-56 | base_depth: 56 | length: 1136     |
 
 ### 2.4 Search Algorithm
 
@@ -97,10 +106,11 @@ Pareto front is performed using the NSGA-III multi-objective optimization evolut
 
 ### 2.5 Output Result Description
 
-The following two files are generated:
+The following files are generated:
 
-- The result.csv file contains the encoding, flops, parameters, and accuracy of all models during the search process.
-- pareto_front.csv contains the found pareto front information.
+- The model on the found Pareto front after fully training.
+- The reports.csv file contains the encoding, flops, parameters, and accuracy of all models during the search process.
+- output.csv contains the found pareto front information.
 
 ## 3. Benchmark Results
 
@@ -108,7 +118,7 @@ The ResNet20 network is automatically pruned on the CIFAR-10 data set. The test 
 
 - In the found Pareto front, the orange part indicates the first-generation Pareto front, and the blue part indicates the 20th-generation Pareto front. As the number of iterations increases, Pareto front moves to the upper left.
 
-![res20_](./images/prune_pareto.png)
+![res20_](../../images/prune_pareto.png)
 
 - Result of 400 epoch retraining for three models with different pruning ratios on the Pareto front.
 

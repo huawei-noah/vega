@@ -9,7 +9,7 @@
 # MIT License for more details.
 
 """cross Entropy Weight Decay Loss."""
-import importlib
+
 import tensorflow.compat.v1 as tf
 import zeus
 from zeus.common import ClassFactory, ClassType

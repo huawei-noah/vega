@@ -15,7 +15,7 @@ from copy import deepcopy
 
 from .conf import SRConfig
 from zeus.common import ClassFactory, ClassType
-from zeus.report import Report
+from zeus.report import ReportServer
 from vega.core.search_algs import SearchAlgorithm
 
 
@@ -51,7 +51,7 @@ class SRMutate(SearchAlgorithm):
         desc = deepcopy(self.search_space)
         search_desc = desc.custom
         # TODO: merge sr ea in one pipe step.
-        records = Report().get_pareto_front_records(['random', 'mutate'])
+        records = ReportServer().get_pareto_front_records(['random', 'mutate'])
         codes = []
         for record in records:
             codes.append(record.desc['custom']['code'])
@@ -69,7 +69,7 @@ class SRMutate(SearchAlgorithm):
         search_desc = self.codec.decode(search_desc)
         desc['custom'] = search_desc
         self.sample_count += 1
-        return dict(worker_id=self.sample_count, desc=desc)
+        return dict(worker_id=self.sample_count, encoded_desc=desc)
 
     def mutate_once(self, code, num_largest):
         """Do one mutate.

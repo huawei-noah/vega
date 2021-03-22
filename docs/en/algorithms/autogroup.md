@@ -15,7 +15,7 @@ Instead of using partial training data to optimize structure parameters and netw
 
 More specifically, during the training process, we first generate one batch of data. And then this batch training data are used to update network weights. After that, the same data are used to optimize structure parameters. The above optimization strategy works well in our problem.
 
-![FIS AutoGroup](images/fis_autogroup_overview.png)
+![FIS AutoGroup](../../images/fis_autogroup_overview.png)
 
 ### 2.1 Search space and strategy
 
@@ -26,7 +26,7 @@ The search space of AutoGroup is selection of feature interactions. In search st
 ```yaml
 fully_train:
     pipe_step:
-        type: FullyTrainPipeStep
+        type: TrainPipeStep
 
     dataset:
         type: AvazuDatasetNew
@@ -37,13 +37,13 @@ fully_train:
         model_desc:
             modules: ["custom"]
             custom:
+                type: AutoGroupModel
                 input_dim: 645195
                 input_dim4lookup: 24
                 hidden_dims: [1024, 512, 256, 1]
                 dropout_prob: 0.0
                 batch_norm: False
                 layer_norm: False
-                name: AutoGroupModel
                 max_order: 3
                 embed_dims: [40, 60, 100]
                 bucket_nums: [15, 130, 180]
@@ -71,8 +71,8 @@ fully_train:
 
     evaluator:
         type: Evaluator
-        gpu_evaluator:
-            type: GpuEvaluator
+        host_evaluator:
+            type: HostEvaluator
             ref: trainer
 ```
 
@@ -110,18 +110,18 @@ model:
     model_desc:
         modules: ["custom"]
         custom:
+            type: AutoGroupModel              # model name
             input_dim: 645195                 # feature num
             input_dim4lookup: 24              # feature fields num
             hidden_dims: [1024, 512, 256, 1]  # DNN part
             dropout_prob: 0.0                 # dropout rate
             batch_norm: False
             layer_norm: False
-            name: AutoGroupModel              # model name
             max_order: 3                      # max order interaction in autogroup
             embed_dims: [40, 60, 100]         # embed dimension for each order. 
             bucket_nums: [15, 130, 180]       # feature groups in each order
             temperature: 0.01                 # gumbel-softmax parameter
-            lambda_c: 0.01                    # coefficient to p-th order feature self-interaction 
+            lambda_c: 0.01                    # coefficient to p-th order feature self-interaction
 ```
 
 ### 3.3 Trainer Configuration

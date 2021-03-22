@@ -19,7 +19,7 @@ from vega.core.search_algs import SearchAlgorithm
 from zeus.trainer.callbacks import Callback
 from zeus.trainer.modules.optimizer import Optimizer
 from zeus.trainer.modules.lr_schedulers import LrScheduler
-from zeus.trainer.modules.losses import Loss
+from zeus.modules.loss import Loss
 
 if vega.is_torch_backend():
     import torch
@@ -35,7 +35,7 @@ Genotype = namedtuple('Genotype', 'normal normal_concat reduce reduce_concat')
 class CARSTrainerCallback(Callback):
     """A special callback for CARSTrainer."""
 
-    disable_callbacks = ["ModelStatistics"]
+    disable_callbacks = ["ModelStatistics", "ReportCallback"]
 
     def __init__(self):
         super(CARSTrainerCallback, self).__init__()

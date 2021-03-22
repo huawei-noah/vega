@@ -25,7 +25,7 @@ In addition, for algorithm research researchers, they are not satisfied with the
 
 The image classification scenarios include:
 
-![](./images/classification.png)
+![](../../images/classification.png)
 
 The following describes how to use Vega to search and train models in these scenarios:
 

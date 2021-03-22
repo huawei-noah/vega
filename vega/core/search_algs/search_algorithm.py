@@ -14,7 +14,7 @@ import json
 import glob
 from zeus.common import TaskOps, FileOps
 from zeus.common import ClassFactory, ClassType
-from zeus.report import Report, ReportRecord
+from zeus.report import ReportRecord
 from vega.core.search_algs.codec import Codec
 from vega.core.pipeline.conf import PipeStepConfig
 
@@ -46,14 +46,13 @@ class SearchAlgorithm(TaskOps):
         super(SearchAlgorithm, self).__init__()
         # modify config by kwargs, using local scope
         if self.config and kwargs:
-            self.config.from_json(kwargs)
+            self.config.from_dict(kwargs)
         self.search_space = search_space
         if hasattr(self.config, 'codec'):
             self.codec = Codec(search_space, type=self.config.codec)
         else:
             self.codec = None
         logging.debug("Config=%s", self.config)
-        self.report = Report()
         self.record = ReportRecord()
         self.record.step_name = self.step_name
         self._get_search_space_list()

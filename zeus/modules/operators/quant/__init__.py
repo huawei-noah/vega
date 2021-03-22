@@ -1,6 +1,7 @@
-from zeus import is_tf_backend
+import zeus
 
-if is_tf_backend():
+
+if zeus.is_tf_backend():
     from .tensorflow_quant import *
-else:
+elif zeus.is_torch_backend():
     from .pytorch_quant import *

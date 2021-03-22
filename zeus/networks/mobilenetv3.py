@@ -37,9 +37,9 @@ class SELayer(Module):
         self.avg_pool = ops.AdaptiveAvgPool2d(1)
         hidden_dim = _make_divisible(channel // reduction, 8)
         self.fc = Sequential(
-            ops.Linear(channel, hidden_dim),
+            ops.Linear(channel, hidden_dim, use_bias=False),
             ops.Relu(inplace=True),
-            ops.Linear(hidden_dim, channel),
+            ops.Linear(hidden_dim, channel, use_bias=False),
             ops.Hsigmoid()
         )
 
@@ -55,12 +55,12 @@ class SELayer(Module):
 class ConvBnAct(ops.Module):
     """Create group of Convolution + BN + Activation."""
 
-    def __init__(self, C_in, C_out, kernel_size, stride, padding,
-                 affine=True, activation='relu', inplace=False):
+    def __init__(self, C_in, C_out, kernel_size, stride, padding, bias=False, momentum=0.1,
+                 affine=True, activation='relu', inplace=True):
         """Construct ConvBnAct class."""
         super(ConvBnAct, self).__init__()
-        self.conv2d = ops.Conv2d(C_in, C_out, kernel_size, stride, padding, bias=False)
-        self.batch_norm2d = ops.BatchNorm2d(C_out, affine=affine)
+        self.conv2d = ops.Conv2d(C_in, C_out, kernel_size, stride, padding, bias=bias)
+        self.batch_norm2d = ops.BatchNorm2d(C_out, affine=affine, momentum=momentum)
         if activation == 'hswish':
             self.act = ops.Hswish(inplace=inplace)
         elif activation == 'hsigmoid':
@@ -75,25 +75,25 @@ class ConvBnAct(ops.Module):
 class InvertedResidualSE(Module):
     """This is the class of InvertedResidual with SELayer for MobileNetV3."""
 
-    def __init__(self, inp, hidden_dim, oup, kernel_size, stride, use_se=False, use_hs=False):
+    def __init__(self, inp, hidden_dim, oup, kernel_size, stride, use_se=False, use_hs=False, momentum=0.1):
         """Init InvertedResidualSE."""
         super(InvertedResidualSE, self).__init__()
         self.identity = stride == 1 and inp == oup
         self.ir_block = Sequential(
             # pw
             ops.Conv2d(inp, hidden_dim, 1, 1, 0, bias=False),
-            ops.BatchNorm2d(hidden_dim),
+            ops.BatchNorm2d(hidden_dim, momentum=momentum),
             ops.Hswish() if use_hs else ops.Relu(inplace=True),
             # dw
             ops.Conv2d(hidden_dim, hidden_dim, kernel_size, stride, (kernel_size - 1) // 2,
                        groups=hidden_dim, bias=False),
-            ops.BatchNorm2d(hidden_dim),
+            ops.BatchNorm2d(hidden_dim, momentum=momentum),
             # Squeeze-and-Excite
-            SELayer(hidden_dim) if use_se else ops.Identity(),
+            SELayer(hidden_dim) if use_se else Sequential(),
             ops.Hswish() if use_hs else ops.Relu(inplace=True),
             # pw-linear
             ops.Conv2d(hidden_dim, oup, 1, 1, 0, bias=False),
-            ops.BatchNorm2d(oup),
+            ops.BatchNorm2d(oup, momentum=momentum),
         )
 
     def __call__(self, x):
@@ -107,12 +107,14 @@ class InvertedResidualSE(Module):
 class MobileNetV3(Module):
     """This is the base class of MobileNetV3."""
 
-    def __init__(self, cfgs, input_channel=3, feat_channels=16,
-                 num_classes=10, width_mult=1., block=InvertedResidualSE, is_prune_mode=True, **kwargs):
+    def __init__(self, cfgs, mode='small', input_channel=3, feat_channels=16, special_stride=1, num_classes=10,
+                 width_mult=1., block=InvertedResidualSE, momentum=0.1, is_prune_mode=False, **kwargs):
         """Init MobileNetV3.
 
         :params cfgs: cfgs for mobilenetv3
         :type cfgs: list
+        :params special_stride: the stride of the first InvertedResidualSE block.
+        :type special_stride: int (1 for cifar10, 2 for imagenet)
         """
         super(MobileNetV3, self).__init__()
         self.cfgs = cfgs
@@ -122,22 +124,27 @@ class MobileNetV3(Module):
             feat_channels = _make_divisible(feat_channels * width_mult, 8)
         else:
             feat_channels = int(feat_channels * width_mult)
-        layers = [ConvBnAct(input_channel, feat_channels, kernel_size=3,
-                            stride=2, padding=1, activation='hswish')]
+        layers = [ConvBnAct(input_channel, feat_channels, kernel_size=3, momentum=momentum,
+                            stride=special_stride, padding=1, activation='hswish')]
 
         # buidling blocks
         # kernel_size, expand_ratio, output_channels, use_se, use_hs, stride
         for k, t, c, use_se, use_hs, s in self.cfgs:
             output_channel = _make_divisible(c * width_mult, 8) if not is_prune_mode else int(c * width_mult)
             hidden_dim = _make_divisible(t, 8) if not is_prune_mode else t
-            layers.append(block(feat_channels, hidden_dim, output_channel, k, s, use_se, use_hs))
+            layers.append(block(feat_channels, hidden_dim, output_channel, k, s, use_se, use_hs, momentum))
             feat_channels = output_channel
         self.features = Sequential(*layers)
 
         # building last linear layer
         self.avgpool = ops.AdaptiveAvgPool2d((1, 1))
+        chn = 1280 if mode == 'large' else 1024
         self.classifier = Sequential(
-            ops.Linear(feat_channels, num_classes),
+            ops.View(),
+            ops.Linear(feat_channels, chn),
+            ops.Hswish(),
+            ops.Dropout(0.2),
+            ops.Linear(chn, num_classes)
         )
         self._initialize_weights()
 
@@ -145,7 +152,6 @@ class MobileNetV3(Module):
         """Forward compute of MobileNetV3 for classification."""
         x = self.features(x)
         x = self.avgpool(x)
-        x = ops.View((x.shape[0], -1))(x)
         x = self.classifier(x)
         return x
 
@@ -163,7 +169,8 @@ class MobileNetV3(Module):
             elif isinstance(m, ops.Linear):
                 n = m.weight.size(1)
                 m.weight.data.normal_(0, 0.01)
-                m.bias.data.zero_()
+                if m.bias is not None:
+                    m.bias.data.zero_()
 
 
 @ClassFactory.register(ClassType.NETWORK)
@@ -172,26 +179,28 @@ class MobileNetV3Small(MobileNetV3):
 
     cfgs = [
         # k, t, c, SE, HS, s
-        [3, 16, 16, 1, 0, 2],
+        [3, 16, 16, 1, 0, 1],
         [3, 72, 24, 0, 0, 2],
         [3, 88, 24, 0, 0, 1],
         [5, 96, 40, 1, 1, 2],
         [5, 240, 40, 1, 1, 1],
         [5, 240, 40, 1, 1, 1],
         [5, 120, 48, 1, 1, 1],
-        [5, 246, 48, 1, 1, 1],
+        [5, 144, 48, 1, 1, 1],
         [5, 288, 96, 1, 1, 2],
         [5, 576, 96, 1, 1, 1],
         [5, 576, 96, 1, 1, 1],
     ]
 
-    def __init__(self, cfgs=None, input_channel=3, feat_channels=16, num_classes=10,
-                 width_mult=1., block=InvertedResidualSE, is_prune_mode=False, **kwargs):
+    def __init__(self, cfgs=None, mode='small', input_channel=3, feat_channels=16, special_stride=1, num_classes=10,
+                 width_mult=1., block=InvertedResidualSE, momentum=0.1, is_prune_mode=False, **kwargs):
         """Init MobileNetV3Small."""
         if cfgs is None:
+            if special_stride != self.cfgs[0][-1]:
+                self.cfgs[0][-1] = special_stride
             cfgs = self.cfgs
-        super(MobileNetV3Small, self).__init__(cfgs, input_channel, feat_channels,
-                                               num_classes, width_mult, block, is_prune_mode, **kwargs)
+        super(MobileNetV3Small, self).__init__(cfgs, mode, input_channel, feat_channels, special_stride, num_classes,
+                                               width_mult, block, momentum, is_prune_mode, **kwargs)
 
 
 @ClassFactory.register(ClassType.NETWORK)
@@ -201,7 +210,7 @@ class MobileNetV3Large(MobileNetV3):
     cfgs = [
         # k, t, c, SE, HS, s
         [3, 16, 16, 0, 0, 1],
-        [3, 64, 24, 0, 0, 2],
+        [3, 64, 24, 0, 0, 1],
         [3, 72, 24, 0, 0, 1],
         [5, 72, 40, 1, 0, 2],
         [5, 120, 40, 1, 0, 1],
@@ -217,10 +226,12 @@ class MobileNetV3Large(MobileNetV3):
         [5, 960, 160, 1, 1, 1]
     ]
 
-    def __init__(self, cfgs=None, input_channel=3, feat_channels=16, num_classes=10,
-                 width_mult=1., block=InvertedResidualSE, is_prune_mode=False, **kwargs):
+    def __init__(self, cfgs=None, mode='large', input_channel=3, feat_channels=16, special_stride=1, num_classes=10,
+                 width_mult=1., block=InvertedResidualSE, momentum=0.1, is_prune_mode=False, **kwargs):
         """Init MobileNetV3Large."""
         if cfgs is None:
+            if special_stride != self.cfgs[1][-1]:
+                self.cfgs[0][-1] = special_stride
             cfgs = self.cfgs
-        super(MobileNetV3Large, self).__init__(cfgs, input_channel, feat_channels, num_classes,
-                                               width_mult, block, is_prune_mode, **kwargs)
+        super(MobileNetV3Large, self).__init__(cfgs, mode, input_channel, feat_channels, special_stride, num_classes,
+                                               width_mult, block, momentum, is_prune_mode, **kwargs)

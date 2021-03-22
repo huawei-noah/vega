@@ -21,6 +21,8 @@ from vega.algorithms.nas.darts_cnn import DartsNetworkTemplateConfig
 from zeus.common import ClassFactory, ClassType
 from vega.core.search_algs import SearchAlgorithm
 from zeus.report import SortAndSelectPopulation
+from zeus.report.report_client import ReportClient
+from zeus.report.report_server import ReportServer
 from .nsga3 import CARS_NSGA
 from .utils import eval_model_parameters
 
@@ -52,6 +54,7 @@ class CARSAlgorithm(SearchAlgorithm):
         self.network_weight_decay = self.config.policy.weight_decay
         self.parallel = self.config.policy.parallel
         self.sample_num = self.config.policy.sample_num
+        self._remove_watched_var = self.config._remove_watched_var
         self.sample_idx = 0
         self.completed = False
         self.trainer = None
@@ -227,6 +230,13 @@ class CARSAlgorithm(SearchAlgorithm):
             eval_results = self.trainer.estimator.evaluate(input_fn=self.trainer.valid_loader.input_fn,
                                                            steps=len(self.trainer.valid_loader))
             metrics.update(eval_results)
+        elif vega.is_ms_backend():
+            metrics = self.trainer.valid_metrics
+            setattr(self.trainer, 'valid_alpha', alpha)
+            eval_metrics = self.trainer.ms_model.eval(valid_dataset=self.trainer.valid_loader,
+                                                      dataset_sink_mode=self.trainer.dataset_sink_mode)
+            metrics.update(eval_metrics)
+
         performance = metrics.results
         objectives = metrics.objectives
         # support min
@@ -273,7 +283,11 @@ class CARSAlgorithm(SearchAlgorithm):
         """
         # preprocess
         max_acc = fitness.max()
-        keep = (fitness > max_acc * 0.5)
+        min_acc = fitness.min()
+        # Normalization
+        _range = max_acc - min_acc
+        ratio = 0.5 / _range
+        keep = (((fitness - min_acc) / _range) > ratio)
         fitness = fitness[keep]
         obj = obj[keep]
         genotypes = [i for (i, v) in zip(genotypes, keep) if v]
@@ -490,6 +504,32 @@ class CARSAlgorithm(SearchAlgorithm):
         self.trainer.performance = performance
         self.trainer.config.codec = self.genotypes_to_json(genotype)
 
+        for index, value in enumerate(performance):
+            worker_id = index
+            model_desc = self.trainer.config.codec[index]
+
+            ReportServer.add_watched_var(self.trainer.step_name, worker_id)
+
+            record = ReportClient.get_record(self.trainer.step_name, worker_id)
+            record.epoch = self.trainer.epochs
+            record.desc = model_desc
+            record.performance = {"accuracy": value}
+            record.objectives = self.trainer.valid_metrics.objectives
+            if record.performance is not None:
+                for key in record.performance:
+                    if key not in record.objectives:
+                        if (key == 'flops' or key == 'params' or key == 'latency'):
+                            record.objectives.update({key: 'MIN'})
+                        else:
+                            record.objectives.update({key: 'MAX'})
+            record.model_path = self.trainer.model_path
+            record.checkpoint_path = self.trainer.checkpoint_file
+            record.weights_file = self.trainer.weights_file
+            if self.trainer.runtime is not None:
+                record.runtime = self.trainer.runtime
+            ReportClient.broadcast(record)
+            logging.debug("report_callback record: {}".format(record))
+
     def save_model_checkpoint(self, model, model_name):
         """Save checkpoint for a model.
 
@@ -538,6 +578,8 @@ class CARSAlgorithm(SearchAlgorithm):
         desc_list = []
         if self.trainer.config.darts_template_file == "{default_darts_cifar10_template}":
             template = DartsNetworkTemplateConfig.cifar10
+        elif self.trainer.config.darts_template_file == "{default_darts_cifar100_template}":
+            template = DartsNetworkTemplateConfig.cifar100
         elif self.trainer.config.darts_template_file == "{default_darts_imagenet_template}":
             template = DartsNetworkTemplateConfig.imagenet
         else:

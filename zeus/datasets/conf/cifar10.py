@@ -23,6 +23,18 @@ class Cifar10CommonConfig(BaseConfig):
     num_parallel_batches = 64
     fp16 = False
 
+    @classmethod
+    def rules(cls):
+        """Return rules for checking."""
+        rules_Cifar10CommonConfig = {"n_class": {"type": int},
+                                     "batch_size": {"type": int},
+                                     "num_workers": {"type": int},
+                                     "train_portion": {"type": (int, float)},
+                                     "num_parallel_batches": {"type": int},
+                                     "fp16": {"type": bool}
+                                     }
+        return rules_Cifar10CommonConfig
+
 
 class Cifar10TrainConfig(Cifar10CommonConfig):
     """Default Cifar10 config."""
@@ -37,6 +49,15 @@ class Cifar10TrainConfig(Cifar10CommonConfig):
     padding = 8
     num_images = 50000
 
+    @classmethod
+    def rules(cls):
+        """Return rules for checking."""
+        rules_Cifar10TrainConfig = {"padding": {"type": int},
+                                    "num_images": {"type": int},
+                                    "transforms": {"type": list}
+                                    }
+        return rules_Cifar10TrainConfig
+
 
 class Cifar10ValConfig(Cifar10CommonConfig):
     """Default Cifar10 config."""
@@ -47,6 +68,15 @@ class Cifar10ValConfig(Cifar10CommonConfig):
     num_images = 10000
     num_images_train = 50000
 
+    @classmethod
+    def rules(cls):
+        """Return rules for checking."""
+        rules_Cifar10ValConfig = {"num_images": {"type": int},
+                                  "num_images_train": {"type": int},
+                                  "transforms": {"type": list}
+                                  }
+        return rules_Cifar10ValConfig
+
 
 class Cifar10TestConfig(Cifar10CommonConfig):
     """Default Cifar10 config."""
@@ -56,6 +86,14 @@ class Cifar10TestConfig(Cifar10CommonConfig):
         dict(type='Normalize', mean=[0.49139968, 0.48215827, 0.44653124], std=[0.24703233, 0.24348505, 0.26158768])]
     num_images = 10000
 
+    @classmethod
+    def rules(cls):
+        """Return rules for checking."""
+        rules_Cifar10TestConfig = {"num_images": {"type": int},
+                                   "transforms": {"type": list}
+                                   }
+        return rules_Cifar10TestConfig
+
 
 class Cifar10Config(ConfigSerializable):
     """Default Dataset config for Cifar10."""
@@ -64,3 +102,22 @@ class Cifar10Config(ConfigSerializable):
     train = Cifar10TrainConfig
     val = Cifar10ValConfig
     test = Cifar10TestConfig
+
+    @classmethod
+    def rules(cls):
+        """Return rules for checking."""
+        rules_Cifar10 = {"common": {"type": dict},
+                         "train": {"type": dict},
+                         "val": {"type": dict},
+                         "test": {"type": dict}
+                         }
+        return rules_Cifar10
+
+    @classmethod
+    def get_config(cls):
+        """Get sub config."""
+        return {'common': cls.common,
+                'train': cls.train,
+                'val': cls.val,
+                'test': cls.test
+                }

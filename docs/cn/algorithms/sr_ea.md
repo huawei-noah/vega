@@ -11,7 +11,8 @@ SR-EA是利用进化算法（EA）搜索图片超分（SR）网络架构的模�
 ## 算法原理
 
 SR-EA目前里面提供了两种网络架构，分别为Modified SRResNet（作为baseline），以及CCRN-NAS（诺亚自研）。Modified SRResNet的结构如下图所示：
-![Modified SRResNet](images/sr_ea_SRResNet.png)
+
+![Modified SRResNet](../../images/sr_ea_SRResNet.png)
 
 SR-EA为Modified SRResNet提供了random search和brute force search两种架构搜索的方法，用于搜索架构中block的数量及通道数。
 
@@ -45,13 +46,13 @@ pipeline: [random, mutate]
 
 random:
     pipe_step:
-        type: NasPipeStep
+        type: SearchPipeStep
 
     search_space:
         type: SearchSpace
         modules: ['custom']
         custom:
-            name: MtMSR
+            type: MtMSR
             in_channel: 3
             out_channel: 3
             upscale: 2
@@ -83,8 +84,4 @@ mutate:
 算法的输出有
 
 - 搜索到的帕雷托前沿的模型经充分训练后得到的模型及结果。
-- 随机搜索及进化搜索过程中所有模型的结果result.csv，以及帕雷托前沿的结果pareto_front.csv。
-
-## Benchmark
-
-Benchmark配置信息请参考: [sr_ea.yml](https://github.com/huawei-noah/vega/tree/master/examples/nas/sr_ea.yml)
+- 随机搜索及进化搜索过程中所有模型的结果reports.csv，以及帕雷托前沿的结果output.csv。

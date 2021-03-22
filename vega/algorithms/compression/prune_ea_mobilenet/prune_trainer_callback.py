@@ -11,55 +11,19 @@
 """Trainer for searching pruned model."""
 import copy
 import os
-import numpy as np
 import vega
+from vega.algorithms.compression.prune_ea.prune_trainer_callback import PruneTrainerCallback
 from zeus.common import ClassFactory, ClassType, FileOps
-from zeus.metrics import calc_model_flops_params
 from zeus.networks.network_desc import NetworkDesc
-from zeus.trainer.callbacks import Callback
 from zeus.modules.operators import PruneMobileNet
 
 
-if vega.is_torch_backend():
-    import torch
-elif vega.is_tf_backend():
-    import tensorflow as tf
-elif vega.is_ms_backend():
-    import mindspore
-    from mindspore.train.serialization import load_checkpoint, load_param_into_net
-
-
 @ClassFactory.register(ClassType.CALLBACK)
-class PruneMobilenetTrainerCallback(Callback):
+class PruneMobilenetTrainerCallback(PruneTrainerCallback):
     """Callback of Prune Trainer."""
 
-    disable_callbacks = ["ModelStatistics"]
-
     def __init__(self):
-        super(Callback, self).__init__()
-        self.flops_count = None
-        self.params_count = None
-
-    def before_train(self, logs=None):
-        """Be called before the train process."""
-        self.config = self.trainer.config
-        self.device = self.trainer.config.device
-        self.base_net_desc = self.trainer.model.desc
-        if vega.is_torch_backend():
-            count_input = torch.FloatTensor(1, 3, 32, 32).to(self.device)
-        elif vega.is_tf_backend():
-            count_input = tf.random.uniform([1, 32, 32, 3], dtype=tf.float32)
-        elif vega.is_ms_backend():
-            count_input = mindspore.Tensor(np.random.randn(1, 3, 32, 32).astype(np.float32))
-        self.flops_count, self.params_count = calc_model_flops_params(self.trainer.model, count_input)
-        print(f"flops:{self.flops_count}, model size:{self.params_count*4/1024**2} MB")
-        self.trainer.model = self._generate_init_model()
-
-    def after_epoch(self, epoch, logs=None):
-        """Update flops and kparams."""
-        summary_perfs = logs.get('summary_perfs', {})
-        summary_perfs.update({'flops': self.flops_count, 'kparams': self.params_count})
-        logs.update({'summary_perfs': summary_perfs})
+        super(PruneMobilenetTrainerCallback, self).__init__()
 
     def _new_model_init(self):
         """Init new model.
@@ -96,11 +60,13 @@ class PruneMobilenetTrainerCallback(Callback):
         model_init = self._new_model_init()
         chn_mask = self._init_chn_node_mask()
         if vega.is_torch_backend():
+            import torch
             checkpoint = torch.load(self.config.init_model_file + '.pth')
             model_init.load_state_dict(checkpoint)
             model = PruneMobileNet(model_init).apply(chn_mask)
             model.to(self.device)
         elif vega.is_tf_backend():
+            import tensorflow as tf
             model = model_init
             with tf.compat.v1.Session(config=self.trainer._init_session_config()) as sess:
                 saver = tf.compat.v1.train.import_meta_graph("{}.meta".format(self.config.init_model_file))
@@ -111,6 +77,7 @@ class PruneMobilenetTrainerCallback(Callback):
                 save_file = FileOps.join_path(self.trainer.get_local_worker_path(), 'prune_model')
                 saver.save(sess, save_file)
         elif vega.is_ms_backend():
+            from mindspore.train.serialization import load_checkpoint, load_param_into_net
             parameter_dict = load_checkpoint(self.config.init_model_file)
             load_param_into_net(model_init, parameter_dict)
             model = PruneMobileNet(model_init).apply(chn_mask)

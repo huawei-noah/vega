@@ -9,6 +9,7 @@
 # MIT License for more details.
 
 """Defined Configs."""
+
 from zeus.common import ConfigSerializable
 
 
@@ -25,3 +26,4 @@ class MFASCConfig(ConfigSerializable):
     min_hf_sample_size = 3
     min_lf_sample_size = 10
     predictor_type = 'mfgpr'
+    objective_keys = ["accuracy"]

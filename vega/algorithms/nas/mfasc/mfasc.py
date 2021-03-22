@@ -7,25 +7,19 @@
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 # MIT License for more details.
+
 """Multi-fidelity Active Search with Co-kriging."""
 
-import os
 import copy
-import json
-import random
-import torch.nn as nn
-import vega
 from zeus.common import update_dict
-from zeus.common import ClassFactory, ClassType, UserConfig
+from zeus.common import ClassFactory, ClassType
 from vega.core.search_algs import SearchAlgorithm
-from sklearn.gaussian_process import GaussianProcessRegressor as GPR
-from sklearn.gaussian_process.kernels import RBF
 import itertools
 from sklearn import preprocessing
 import numpy as np
 import logging
 
-import vega.algorithms.nas.mfasc.mfasc_utils as mfasc_utils
+from . import mfasc_utils
 from .conf import MFASCConfig
 
 logger = logging.getLogger(__name__)
@@ -118,7 +112,8 @@ class MFASC(SearchAlgorithm):
         desc = self._desc_from_choices(self.choices[i])
         self.budget_spent += train_epochs
         self.cur_i = i
-        return self.budget_spent, desc, train_epochs
+        hps = {'trainer': {'epochs': train_epochs}}
+        return self.budget_spent, desc, hps
 
     def update(self, report):
         """Update function.

@@ -11,6 +11,8 @@
 """This is a base class of the dataset."""
 from torch.utils import data as torch_data
 from .samplers import DistributedSampler
+from torch.utils.data.sampler import SubsetRandomSampler
+import numpy as np
 
 
 class TorchAdapter(object):
@@ -41,17 +43,27 @@ class TorchAdapter(object):
         :return: if the distributed is True, return a sampler object, else return None
         :rtype: an object or None
         """
-        if hasattr(self.dataset, '_init_sampler'):
-            return self.dataset._init_sampler()
-
         if self.dataset.world_size > 1:
             self.args.shuffle = False
             sampler = DistributedSampler(self.dataset,
                                          num_replicas=self.dataset.world_size,
                                          rank=self.dataset.rank,
                                          shuffle=self.args.shuffle)
-        else:
+        elif not hasattr(self.args, "train_portion"):
             sampler = None
+        elif self.dataset.mode == 'test' or self.args.train_portion == 1:
+            sampler = None
+        else:
+            self.args.shuffle = False
+            num_train = len(self.dataset)
+            indices = list(range(num_train))
+            split = int(np.floor(self.args.train_portion * num_train))
+            if self.dataset.mode == 'train':
+                sampler = SubsetRandomSampler(indices[:split])
+            elif self.dataset.mode == 'val':
+                sampler = SubsetRandomSampler(indices[split:num_train])
+            else:
+                raise ValueError('the mode should be train, val or test')
         return sampler
 
     @property
@@ -61,8 +73,8 @@ class TorchAdapter(object):
         :return: a batch data
         :rtype: dict, list, optional
         """
-        if hasattr(self.dataset, "loader"):
-            return self.dataset.loader
+        if hasattr(self.dataset, "data_loader"):
+            return self.dataset.data_loader
         data_loader = torch_data.DataLoader(dataset=self.dataset,
                                             batch_size=self.args.batch_size,
                                             shuffle=self.args.shuffle,

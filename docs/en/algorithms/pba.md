@@ -27,15 +27,15 @@ In PBA, CIFAR10 is used as an example. In CIFAR10, the algorithm extracts a sub-
 The PBA algorithm trains only 16 models, each with 200 epochs. Compared with AutoAugment that needs to search for 16,000 models and 120 epochs, the PBA algorithm greatly improves the time efficiency and obtains the experimental precision that is almost the same as AutoAugment. The following figure shows the PBA algorithm process, data augmentation operation selection policy, and "exploit-and-explore" procedure.
 
 <center>
-<img src="./images/pba_1.png"/>
+<img src="../../images/pba_1.png"/>
 </center>
 
 <center>
-<img src="./images/pba_2.png" width=512 height=512 />
+<img src="../../images/pba_2.png" width=512 height=512 />
 </center>
 
 <center>
-<img src="./images/pba_3.png" width=512 height=512 />
+<img src="../../images/pba_3.png" width=512 height=512 />
 </center>
 
 ## 3. Search space and search policy
@@ -49,7 +49,7 @@ The search method is the same as that described in the algorithm principle. The 
 Currently, the PBA algorithm supports the following 15 data augmentation operations:
 
 <center>
-<img src="./images/pba_4.png"/>
+<img src="../../images/pba_4.png"/>
 </center>
 
 In the configuration file, you can adjust the data augmentation operation involved.
@@ -59,7 +59,7 @@ pipeline: [hpo]
 
 hpo:
     pipe_step:
-        type: NasPipeStep
+        type: SearchPipeStep
     dataset:
         type: Cifar10
     search_space:
@@ -91,8 +91,8 @@ hpo:
         type: Trainer
     evaluator:
         type: Evaluator
-        gpu_evaluator:
-            type: GpuEvaluator
+        host_evaluator:
+            type: HostEvaluator
             metric:
                 type: accuracy
 ```

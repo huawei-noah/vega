@@ -6,12 +6,11 @@ Vega的重点特性是网络架构搜索和超参优化，在网络架构搜索�
 
 搜索空间和搜索算法的类图如下所示：
 
-![Search Space类图](./images/search_space_classes.png)
+![Search Space类图](../../images/search_space_classes.png)
 
 搜索空间和搜索算法的流程图如下所示：
 
-![Search Space流程图](./images/search_space_flow.png)
-
+![Search Space流程图](../../images/search_space_flow.png)
 
 以下就分别介绍下面几个部分：
 
@@ -84,7 +83,7 @@ class SearchSpace(object):
 
     @property
     def search_space(self):
-        return self.config.to_json()
+        return self.config.to_dict()
 ```
 
 搜索空间还有一个重要的概念是网络描述`NetworkDesc`，网络描述是搜索算法从`SearchSpace`里采样出来的结果，它是`Search Space`中的一种可能性子集。网络描述类里只有一个属性，就是dict类型的网络描述（可以是一个网络或者多个网络）。网络描述类只一个通用的`to_model()`的接口，负责分析网络描述并通过`NetworFactory`自动解析成`Networks`里具体的网络对象。
@@ -187,7 +186,7 @@ search_algorithm:
 
 NAS的搜索流程主要包括`Generator`和`Trainer`两个部分，其中`Generator`负责通过搜索算法在搜索空间中采样出一个网络模型，将网络模型初始化成`Trainer`后，`Trainer`被分发到节点上运行。
 
-NAS的搜索流程是在`NasPipeStep`中完成的，`NasPipeStep`的主要功能是在`do()`函数中完成的，实现代码如下：
+NAS的搜索流程是在`SearchPipeStep`中完成的，`SearchPipeStep`的主要功能是在`do()`函数中完成的，实现代码如下：
 
 ```python
 def do(self):
@@ -200,7 +199,7 @@ def do(self):
         self._after_train(wait_until_finish=False)
     self.master.join()
     self._after_train(wait_until_finish=True)
-    Report().output_pareto_front(General.step_name)
+    ReportServer().output_pareto_front(General.step_name)
     self.master.close_client()
 ```
 
@@ -230,8 +229,7 @@ class Generator(object):
         return id, desc
 
     def update(self, step_name, worker_id):
-        report = Report()
-        record = report.receive(step_name, worker_id)
+        record = reportClinet.get_record(step_name, worker_id)
         logging.debug("Get Record=%s", str(record))
         self.search_alg.update(record.serialize())
 ```
@@ -314,7 +312,7 @@ pipeline: [nas]
 
 nas:
     pipe_step:
-        type: NasPipeStep
+        type: SearchPipeStep
 
     quota:
         strategy: [MaxDurationStrategy, MaxTrialNumberStrategy]
@@ -358,7 +356,7 @@ class Generator(object):
                 sample = dict(worker_id=sample[0], desc=sample[1])
             record = self.record.load_dict(sample)
             logging.debug("Broadcast Record=%s", str(record))
-            Report().broadcast(record)
+            ReportClient.broadcast(record)
             desc = self._decode_hps(record.desc)
             out.append((record.worker_id, desc))
         return out
@@ -715,7 +713,7 @@ install = _cls(params)
 ```yaml
 nas:
     pipe_step:
-        type: NasPipeStep
+        type: SearchPipeStep
 
     dataset:
         type: Cifar10
@@ -786,11 +784,11 @@ pipeline: [nas, fullytrain]
 
 nas:
     pipe_step:
-        type: NasPipeStep
+        type: SearchPipeStep
 
 fullytrain:
     pipe_step:
-        type: FullyTrainPipeStep
+        type: TrainPipeStep
 ```
 
 ### 7.1 Report
@@ -802,31 +800,32 @@ Trainer已集成了Report的调动，在完成训练和评估后，Trainer会将
 
 ```python
 @singleton
-class Report(object):
+class ReportServer(object):
 
     @property
     def all_records(self):
 
     def pareto_front(self, step_name=None, nums=None, records=None):
 
-    def dump_report(self, step_name=None, record=None):
+    @classmethod
+    def close(cls, step_name, worker_id):
+
+
+class ReportClient(object):
 
     @classmethod
-    def receive(cls, step_name, worker_id):
+    def get_record(cls, step_name, worker_id):
 
     @classmethod
     def broadcast(cls, record):
-
-    @classmethod
-    def close(cls, step_name, worker_id):
 ```
 
 ### 7.2 扩展`pipestep`
 
 当前已预置的`pipestep`有：
 
-* NasPipeStep
-* FullyTrainPipeStep
+* SearchPipeStep
+* TrainPipeStep
 * BechmarkPipeStep
 
 若需要扩展`pipestep`，需要继承基类`PipeStep`，实现`do()`函数即可，具体可参考如上类的实现代码：
@@ -841,16 +840,16 @@ class PipeStep(object):
 
 ## 8. Fully Train
 
-在`Fully Train`上，我们支持单卡训练和基于`Horovod`的多机多卡分布式训练，`Fully Train`对应于`pipeline`的`FullyTrainPipeStep`部分。
+在`Fully Train`上，我们支持单卡训练和基于`Horovod`的多机多卡分布式训练，`Fully Train`对应于`pipeline`的`TrainPipeStep`部分。
 
 ### 8.1 配置
 
-如果需要进行`Horovod`分布式训练，需要在`FullyTrainPipeStep`的`trainer`部分的配置文件里加上一个配置项`distributed`，并设置成`True`，如果没有这一项，默认是False，即不使用分布式训练。
+如果需要进行`Horovod`分布式训练，需要在`TrainPipeStep`的`trainer`部分的配置文件里加上一个配置项`distributed`，并设置成`True`，如果没有这一项，默认是False，即不使用分布式训练。
 
 ```yaml
 fullytrain:
     pipe_step:
-        type: FullyTrainPipeStep
+        type: TrainPipeStep
     trainer:
         type: trainer
         distributed: True

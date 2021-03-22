@@ -16,7 +16,7 @@ According to the description in the previous chapter, we can divide the applicat
 2. Scenario B: Object detection tasks for specific scenarios, such as lane line detection, etc.
 3. Scenario C: For advanced users, search the object detection network backbone, and then construct the object detection network to get the final object detection model.
 
-At the same time, the above three may need to deploy models for specific hardware devices, such as the Atlas 310 chip.
+At the same time, the above three may need to deploy models for specific hardware devices, such as the Ascend 310 chip.
 
 ### 2.1 Scenario A: Ordinary object detection task
 

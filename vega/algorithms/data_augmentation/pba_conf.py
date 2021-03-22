@@ -20,6 +20,16 @@ class PBAPolicyConfig(ConfigSerializable):
     each_epochs = 3
     total_rungs = 200
 
+    @classmethod
+    def rules(cls):
+        """Return rules for checking."""
+        rules_PBAPolicyConfig = {"total_epochs": {"type": int},
+                                 "config_count": {"type": int},
+                                 "each_epochs": {"type": int},
+                                 "total_rungs": {"type": int}
+                                 }
+        return rules_PBAPolicyConfig
+
 
 class PBAConfig(ConfigSerializable):
     """PBA Config."""
@@ -41,3 +51,19 @@ class PBAConfig(ConfigSerializable):
                         Equalize=True,
                         AutoContrast=True,
                         Contras=True)
+
+    @classmethod
+    def rules(cls):
+        """Return rules for checking."""
+        rules_PBAConfig = {"policy": {"type": dict},
+                           "objective_keys": {"type": (list, str)},
+                           "transformers": {"type": dict}
+                           }
+        return rules_PBAConfig
+
+    @classmethod
+    def get_config(cls):
+        """Get sub config."""
+        return {
+            "policy": cls.policy
+        }

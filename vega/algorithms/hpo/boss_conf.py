@@ -22,9 +22,35 @@ class BossPolicyConfig(ConfigSerializable):
     config_count = 1
     repeat_times = 2
 
+    @classmethod
+    def rules(cls):
+        """Return rules for checking."""
+        rules_BossPolicyConfig = {"total_epochs": {"type": int},
+                                  "max_epochs": {"type": int},
+                                  "num_samples": {"type": int},
+                                  "config_count": {"type": int},
+                                  "repeat_times": {"type": int}
+                                  }
+        return rules_BossPolicyConfig
+
 
 class BossConfig(ConfigSerializable):
     """Boss Config."""
 
     policy = BossPolicyConfig
     objective_keys = 'accuracy'
+
+    @classmethod
+    def rules(cls):
+        """Return rules for checking."""
+        rules_BossConfig = {"policy": {"type": dict},
+                            "objective_keys": {"type": (list, str)}
+                            }
+        return rules_BossConfig
+
+    @classmethod
+    def get_config(cls):
+        """Get sub config."""
+        return {
+            "policy": cls.policy
+        }

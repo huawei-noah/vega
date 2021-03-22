@@ -20,6 +20,14 @@ class RandomParetoPolicyConfig(ConfigSerializable):
     total_epochs = 10
     max_epochs = 1
 
+    @classmethod
+    def rules(cls):
+        """Return rules for checking."""
+        rules_RandomParetoPolicyConfig = {"total_epochs": {"type": int},
+                                          "max_epochs": {"type": int},
+                                          }
+        return rules_RandomParetoPolicyConfig
+
 
 class RandomParetoConfig(ConfigSerializable):
     """Random Pareto Config."""
@@ -27,3 +35,19 @@ class RandomParetoConfig(ConfigSerializable):
     policy = RandomParetoPolicyConfig
     pareto = ParetoFrontConfig
     objective_keys = 'accuracy'
+
+    @classmethod
+    def rules(cls):
+        """Return rules for checking."""
+        rules_RandomParetoConfig = {"policy": {"type": dict},
+                                    "pareto": {"type": dict},
+                                    "objective_keys": {"type": (list, str)}
+                                    }
+        return rules_RandomParetoConfig
+
+    @classmethod
+    def get_config(cls):
+        """Get sub config."""
+        return {
+            "policy": cls.policy
+        }

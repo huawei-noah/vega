@@ -9,9 +9,10 @@
 # MIT License for more details.
 
 """This is a class for Imagenet dataset."""
+
 from torchvision.datasets import ImageFolder
 from .utils.dataset import Dataset
-from zeus.datasets.transforms import Compose
+from zeus.datasets.transforms.Compose import Compose
 from zeus.common import ClassFactory, ClassType
 from zeus.common import FileOps
 from zeus.datasets.conf.imagenet import ImagenetConfig

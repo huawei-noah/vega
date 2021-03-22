@@ -2,13 +2,13 @@
 
 ## 1. 算法介绍
 
-SEGMENTATION-Adelaide-EA-NAS是图像分割网络架构搜索算法。该搜索算法是在Adelaide沈春华老师研究的Fast-NAS基础上改进的，并将搜索策略从原算法的强化学习(RL)改为遗传算法(EA)搜索，因此命名为SEGMENTATION-Adelaide-EA-NAS。需要了解更多的细节可以看arxiv上的文章 https://arxiv.org/abs/1810.10804。
+SEGMENTATION-Adelaide-EA-NAS是图像分割网络架构搜索算法。该搜索算法是在Adelaide沈春华老师研究的Fast-NAS基础上改进的，并将搜索策略从原算法的强化学习(RL)改为遗传算法(EA)搜索，因此命名为SEGMENTATION-Adelaide-EA-NAS。需要了解更多的细节可以看arxiv上的文章 <https://arxiv.org/abs/1810.10804> 。
 
 ## 2. 算法原理
 
 现有的语义分割模型一般可以被解耦成编码(encoder)部分（又可称为backbone）和解码（decoder）部分。通常情况下，backbone生成不同尺度的特征图，decoder通过选择不同特征图进行融合并最终上采样至原输入分辨率，进而实现了像素级别的分类即语义分割。SEGMENTATION-Adelaide-EA-NAS主要针对decoder结构进行搜索。
 
-![F3](./images/Adelaide-EA-NAS1.jpg)
+![F3](../../images/Adelaide-EA-NAS1.jpg)
 
 ### 2.1 搜索空间和搜索策略
 
@@ -16,13 +16,13 @@ SEGMENTATION-Adelaide-EA-NAS是图像分割网络架构搜索算法。该搜索�
 
 #### 2.1.1 搜索cell
 
-SEGMENTATION-Adelaide-EA-NAS的搜索空间定义在`vega/search_space/networks/pytorch/customs/adelaide_nn`下，相应的backbone实现代码也存放在该目录下，算子的定义主要包括，如：
+SEGMENTATION-Adelaide-EA-NAS的搜索空间定义的算子包括：
 
 `conv1x1, conv3x3, sep_conv_3x3, sep_conv_5x5, conv3x3_dil3, conv3x3_dil12, sep_conv_3x3_dil3, sep_conv_5x5_dil6`
 
 如下图所示的两个cell进行融合，融合的方式有两种：一是将两个cell输出的特征图进行concat；二是将两个cell输出的特征图进行“+”。搜索空间中每个cell的channel数是固定的，两特征图进行融合时可能只是分辨率不一致。在搜索空间中，我们定义如果两特征图分辨率不一致，就将低分辨的特征图Upsample至高分辨率特征图的大小，再进行融合即可。
 
-![F3](./images/Adelaide-EA-NAS3.jpg)
+![F3](../../images/Adelaide-EA-NAS3.jpg)
 
 融合的方式和cell的channel数可从配置文件中的agg_size、agg_concat获取。对decoder中cell结构的搜索，包括cell中的算子和连接方式。每一个模型都由19个字符组成，前13个字符代表的是decoder中cell的结构（包括cell中的算子和连接方式）。前13个字符又可以解析成如下的表示方式：
 
@@ -34,7 +34,7 @@ SEGMENTATION-Adelaide-EA-NAS的搜索空间定义在`vega/search_space/networks/
 
 ，则“3”就代表的是算子`sep_conv_5x5`。除去op1~op7，还有6个数字，代表的是对应算子的input来自哪个输出。比方说，从上面的例子来看，op2对应的是第“1”号输出，op3对应的是第“0”号输出，op4对应的是第“4”号输出，op5对应的是第“3”号输出，op6对应的是第“2”号输出，op7对应的是第“0”号输出。而上述的第0~9号输出就是下图中橙色所标记的算子或符号。
 
-![F3](./images/Adelaide-EA-NAS4.jpg)
+![F3](../../images/Adelaide-EA-NAS4.jpg)
 
 因此，用这13个字符就可以代表decoder cell中的算子和连接方式了。
 
@@ -46,7 +46,7 @@ SEGMENTATION-Adelaide-EA-NAS的搜索空间定义在`vega/search_space/networks/
 
 下图是`[[2, 3], [3, 1], [4, 4]]`的可视化形式，`[2,3]`表示的是将backbone输出的第2号特征图和第3号特征图进行融合，融合的方式包括：首先将第2号特征图和第3号特征图分别进入cell进行运算，然后调用MergeCell类的方法将两个特征图进行融合得到第4号特征图；相应地，`[3, 1]` 表示的是将backbone输出的第3号特征图和第1号特征图进行融合，`[4, 4]` 表示的是将上述过程中的第4号特征图和第4号特征图进行融合。最后将所有的融合特征图再进行一次`concat`和`conv1x1`得到网络输出。
 
-![F3](./images/Adelaide-EA-NAS5.jpg)
+![F3](../../images/Adelaide-EA-NAS5.jpg)
 
 特别地，在上述过程中，我们首先将backbone中的所有特征图都通过一个`conv1x1`卷积进行channel的变化，统一成配置文件中的`agg_size`大小。Backbone的特征图编号从0开始。通常我们取Backbone的4层特征图即可。
 
@@ -62,7 +62,7 @@ random:
         type: SearchSpace
         modules: ['custom']
         custom:
-            name: AdelaideFastNAS
+            type: AdelaideFastNAS
             backbone_load_path: /cache/models/mobilenet_v2-b0353104.pth
             backbone_out_sizes: [24, 32, 96, 320]
             op_names: [conv1x1, conv3x3, sep_conv_3x3, sep_conv_5x5, conv3x3_dil3, sep_conv_3x3_dil3, sep_conv_5x5_dil6]    # decoder cell中搜索的算子
@@ -104,4 +104,4 @@ mutate:
 
 ## 5. Benchmark
 
-Benchmark配置信息请参考: [adelaide_ea.yml](https://github.com/huawei-noah/vega/tree/master/benchmark/algs/nas/adelaide_ea.yml)
+请参考 [adelaide_ea.yml](https://github.com/huawei-noah/vega/blob/master/examples/nas/adelaide_ea/adelaide_ea.yml)。

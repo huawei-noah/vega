@@ -10,7 +10,6 @@
 
 """Flops and Parameters Filter."""
 import logging
-import time
 import zeus
 from zeus.common import ClassFactory, ClassType
 from zeus.metrics import calc_forward_latency
@@ -38,8 +37,9 @@ class LatencyFilter(FilterTerminateBase):
         trainer = ClassFactory.get_cls(ClassType.TRAINER)(model_desc=desc)
         sess_config = trainer._init_session_config() if zeus.is_tf_backend() else None
         latency = calc_forward_latency(model, count_input, sess_config)
-        logging.info('Sampled model\'s latency: {}ms'.format(latency * 1000))
+        logging.info('Sampled model\'s latency: {}ms'.format(latency))
         if latency > self.max_latency:
+            logging.info('The latency is out of range. Skip this network.')
             return True
         else:
             return False

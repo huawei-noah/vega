@@ -11,7 +11,8 @@ SR-EA is a module that uses the evolutionary algorithm (EA) to search for the im
 ## Algorithm Principle
 
 SR-EA provides two series of network architectures: modified SRResNet (baseline) and CCRN-NAS (from Noah's Ark ). The following figure shows the structure of Modified SRResNet:
-![Modified SRResNet](images/sr_ea_SRResNet.png)
+
+![Modified SRResNet](../../images/sr_ea_SRResNet.png)
 
 SR-EA provides two architecture search policies ( random search & brute force search ), which focus on searching for the number of blocks and channels in the architecture.
 CCRN-NAS is a network architecture dedicated to lightweight networks. The CCRN-NAS consists of three types of blocks:
@@ -43,13 +44,13 @@ pipeline: [random, mutate]
 
 random:
     pipe_step:
-        type: NasPipeStep
+        type: SearchPipeStep
 
     search_space:
         type: SearchSpace
         modules: ['custom']
         custom:
-            name: MtMSR
+            type: MtMSR
             in_channel: 3
             out_channel: 3
             upscale: 2
@@ -83,7 +84,3 @@ The outputs are as follows:
 • The model on the found Pareto front after fully training.
 • Logs of all models in random search and evolutionary search process (result.csv)
 • Logs of Pareto front results (pareto_front.csv).
-
-## Benchmark
-
-Benchmark configuration: [sr_ea.yml](https://github.com/huawei-noah/vega/tree/master/examples/nas/sr_ea.yml)

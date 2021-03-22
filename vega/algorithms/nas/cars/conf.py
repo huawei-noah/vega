@@ -29,6 +29,22 @@ class CARSPolicyConfig(EAConfig):
     arch_optim = dict(type='Adam', lr=3.0e-4, betas=[0.5, 0.999], weight_decay=1.0e-3)
     criterion = dict(type='CrossEntropyLoss')
 
+    @classmethod
+    def rules(cls):
+        """Return rules for checking."""
+        rules_CARSPolicyConfig = {"momentum": {"type": float},
+                                  "weight_decay": {"type": float},
+                                  "parallel": {"type": bool},
+                                  "warmup": {"type": int},
+                                  "sample_num": {"type": int},
+                                  "select_method": {"type": str},
+                                  "nsga_method": {"type": str},
+                                  "pareto_model_num": {"type": int},
+                                  "arch_optim": {"type": dict},
+                                  "criterion": {"type": dict}
+                                  }
+        return rules_CARSPolicyConfig
+
 
 class CARSConfig(ConfigSerializable):
     """CARS Config."""
@@ -36,3 +52,20 @@ class CARSConfig(ConfigSerializable):
     codec = 'DartsCodec'
     policy = CARSPolicyConfig
     objective_keys = 'accuracy'
+    _remove_watched_var = False
+
+    @classmethod
+    def rules(cls):
+        """Return rules for checking."""
+        rules_CARSConfig = {"codec": {"type": str},
+                            "policy": {"type": dict},
+                            "objective_keys": {"type": (list, str)}
+                            }
+        return rules_CARSConfig
+
+    @classmethod
+    def get_config(cls):
+        """Get sub config."""
+        return {
+            "policy": cls.policy
+        }

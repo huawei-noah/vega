@@ -18,4 +18,5 @@ class DartsNetworkTemplateConfig(ConfigSerializable):
     """Darts network template config."""
 
     cifar10 = Config(os.path.join(os.path.dirname(__file__), "darts_cifar10.json"))
+    cifar100 = Config(os.path.join(os.path.dirname(__file__), "darts_cifar100.json"))
     imagenet = Config(os.path.join(os.path.dirname(__file__), "darts_imagenet.json"))

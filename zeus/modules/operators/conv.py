@@ -56,16 +56,30 @@ def conv_bn_relu(C_in, C_out, kernel_size, stride, padding, affine=True):
 class ConvBnRelu(ops.Module):
     """Create group of Convolution + BN + Relu."""
 
-    def __init__(self, C_in, C_out, kernel_size, stride, padding, affine=True, use_relu6=False):
+    def __init__(self, C_in, C_out, kernel_size, stride, padding, Conv2d='Conv2d', affine=True, use_relu6=False,
+                 norm_layer='BN',
+                 has_bn=True, has_relu=True, **kwargs):
         """Construct ConvBnRelu class."""
         super(ConvBnRelu, self).__init__()
-        self.conv2d = ops.Conv2d(
-            C_in, C_out, kernel_size, stride=stride, padding=padding, bias=False)
-        self.batch_norm2d = ops.BatchNorm2d(C_out, affine=affine)
-        if use_relu6:
-            self.relu = ops.Relu6(inplace=False)
-        else:
-            self.relu = ops.Relu(inplace=False)
+        if Conv2d == 'Conv2d':
+            self.conv2d = ops.Conv2d(
+                C_in, C_out, kernel_size, stride=stride, padding=padding, bias=False)
+        elif Conv2d == 'ConvWS2d':
+            self.conv2d = ops.ConvWS2d(
+                C_in, C_out, kernel_size, stride=stride, padding=padding, bias=False)
+        if has_bn:
+            if norm_layer == 'BN':
+                self.batch_norm2d = ops.BatchNorm2d(C_out, affine=affine)
+            elif norm_layer == 'GN':
+                num_groups = kwargs.pop('num_groups')
+                self.batch_norm2d = ops.GroupNorm(num_groups, C_out, affine=affine)
+            elif norm_layer == 'Sync':
+                self.batch_norm2d = ops.SyncBatchNorm(C_out, affine=affine)
+        if has_relu:
+            if use_relu6:
+                self.relu = ops.Relu6(inplace=False)
+            else:
+                self.relu = ops.Relu(inplace=False)
 
 
 @ClassFactory.register(ClassType.NETWORK)
@@ -142,7 +156,7 @@ class FactorizedReduce(ops.Module):
     def call(self, x):
         """Do an inference on FactorizedReduce."""
         x = self.relu(x)
-        out = ops.concat(tuple([self.conv_1(x), self.conv_2(x[:, :, 1:, 1:])]))
+        out = ops.concat((self.conv_1(x), self.conv_2(x[:, :, 1:, 1:])))
         out = self.bn(out)
         return out
 

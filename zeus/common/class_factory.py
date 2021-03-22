@@ -12,7 +12,7 @@
 import logging
 from copy import deepcopy
 from enum import Enum
-from inspect import isfunction, isclass
+from inspect import isfunction, isclass, signature as sig
 
 logger = logging.getLogger(__name__)
 
@@ -26,9 +26,8 @@ class ClassType(object):
     LR_SCHEDULER = 'trainer.lr_scheduler'
     LOSS = 'trainer.loss'
     EVALUATOR = 'evaluator'
-    GPU_EVALUATOR = 'evaluator.gpu_evaluator'
-    HAVA_D_EVALUATOR = 'evaluator.hava_d_evaluator'
-    DAVINCI_MOBILE_EVALUATOR = 'evaluator.davinci_mobile_evaluator'
+    HOST_EVALUATOR = 'evaluator.host_evaluator'
+    DEVICE_EVALUATOR = 'evaluator.device_evaluator'
     SEARCH_ALGORITHM = 'search_algorithm'
     PIPE_STEP = 'pipe_step'
     GENERAL = 'general'
@@ -39,6 +38,10 @@ class ClassType(object):
     CODEC = 'search_algorithm.codec'
     QUOTA = 'quota'
     NETWORK = "network"
+    PRETRAINED_HOOK = 'pretrained_hook'
+    SEARCHSPACE = 'searchspace'
+    PACKAGE = "package"
+    GENERATOR = "generator"
 
 
 class SearchSpaceType(Enum):
@@ -127,7 +130,19 @@ class ClassFactory(object):
         """
         if cls_name is None:
             return type_name in cls.__registry__
-        return type_name in cls.__registry__ and cls_name in cls.__registry__.get(type_name)
+        registered = type_name in cls.__registry__ and cls_name in cls.__registry__.get(type_name)
+        if not registered:
+            cls._import_pkg(type_name, cls_name)
+        registered = type_name in cls.__registry__ and cls_name in cls.__registry__.get(type_name)
+        return registered
+
+    @classmethod
+    def _import_pkg(cls, type_name, cls_name):
+        type_cls = "{}:{}".format(type_name, cls_name)
+        pkg = cls.__registry__.get(ClassType.PACKAGE).get(type_cls) or \
+            cls.__registry__.get(ClassType.PACKAGE).get(cls_name)
+        if pkg:
+            __import__(pkg)
 
     @classmethod
     def get_cls(cls, type_name, t_cls_name=None):
@@ -137,6 +152,10 @@ class ClassFactory(object):
         :param t_cls_name: class name
         :return:t_cls
         """
+        # lazy load class
+        if not cls.is_exists(type_name, t_cls_name) and t_cls_name:
+            cls._import_pkg(type_name, t_cls_name)
+        # verify class
         if not cls.is_exists(type_name, t_cls_name):
             raise ValueError("can't find class type {} class name {} in class registry".format(type_name, t_cls_name))
         # create instance without configs
@@ -146,7 +165,13 @@ class ClassFactory(object):
             if type_name == ClassType.DATASET:
                 t_cls_name = DatasetConfig.type
             elif type_name == ClassType.TRAINER:
-                t_cls_name = "Trainer"
+                import zeus
+                if zeus.is_torch_backend():
+                    t_cls_name = "TrainerTorch"
+                elif zeus.is_tf_backend():
+                    t_cls_name = "TrainerTf"
+                elif zeus.is_ms_backend():
+                    t_cls_name = "TrainerMs"
             elif type_name == ClassType.EVALUATOR:
                 t_cls_name = EvaluatorConfig.type
             else:
@@ -166,4 +191,33 @@ class ClassFactory(object):
         if kwargs:
             _params.update(kwargs)
         t_cls = cls.get_cls(type_name, t_cls_name)
-        return t_cls(**_params) if _params else t_cls()
+        if type_name != ClassType.NETWORK:
+            return t_cls(**_params) if _params else t_cls()
+        # remove extra params
+        params_sig = sig(t_cls.__init__).parameters
+        for k, v in params_sig.items():
+            try:
+                if '*' in str(v) and '**' not in str(v):
+                    return t_cls(*list(_params.values())) if list(_params.values()) else t_cls()
+                if '**' in str(v):
+                    return t_cls(**_params) if _params else t_cls()
+            except Exception as ex:
+                logging.error("Failed to create instance:{}".format(t_cls))
+                raise ex
+        extra_param = {k: v for k, v in _params.items() if k not in params_sig}
+        _params = {k: v for k, v in _params.items() if k not in extra_param}
+        try:
+            instance = t_cls(**_params) if _params else t_cls()
+        except Exception as ex:
+            logging.error("Failed to create instance:{}".format(t_cls))
+            raise ex
+        for k, v in extra_param.items():
+            setattr(instance, k, v)
+        return instance
+
+    @classmethod
+    def lazy_register(cls, base_pkg, pkg_cls_dict):
+        """Get instance."""
+        for pkg, classes in pkg_cls_dict.items():
+            for _cls in classes:
+                cls.register_cls("{}.{}".format(base_pkg, pkg), ClassType.PACKAGE, _cls)

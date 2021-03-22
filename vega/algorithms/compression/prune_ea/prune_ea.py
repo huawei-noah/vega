@@ -14,7 +14,7 @@ import random
 import numpy as np
 from .conf import PruneConfig
 from zeus.common import ClassFactory, ClassType
-from zeus.report import Report
+from zeus.report import ReportServer
 from vega.core.search_algs import SearchAlgorithm
 
 
@@ -82,7 +82,7 @@ class PruneEA(SearchAlgorithm):
             desc = self._random_sample()
             # desc.update({"trainer.codec": dict(desc)})
             return self.random_count, desc
-        records = Report().get_pareto_front_records(self.step_name, self.num_individual)
+        records = ReportServer().get_pareto_front_records(self.step_name, self.num_individual)
         codes = [record.desc.get('backbone').get('encoding') for record in records]
         logging.info("codes=%s", codes)
         if len(codes) < 2:

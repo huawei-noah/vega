@@ -35,6 +35,7 @@ class ModelStatistics(Callback):
         self.params = None
         self.latency = None
         self.calc_params_each_epoch = self.trainer.config.calc_params_each_epoch
+        self.calc_latency = self.trainer.config.calc_latency
         if zeus.is_tf_backend():
             import tensorflow as tf
             datasets = self.trainer.valid_input_fn()
@@ -61,6 +62,8 @@ class ModelStatistics(Callback):
         """Be called after train."""
         if not self.calc_params_each_epoch:
             self.update_flops_params(logs=logs)
+        if self.calc_latency:
+            self.update_latency(logs=logs)
 
     def update_flops_params(self, epoch=None, logs=None):
         """Calculate flops and params."""
@@ -70,16 +73,29 @@ class ModelStatistics(Callback):
                 flops_count, params_count = calc_model_flops_params(self.model,
                                                                     self.input)
                 self.flops, self.params = flops_count * 1e-9, params_count * 1e-3
+            summary_perfs = logs.get('summary_perfs', {})
+            if epoch:
+                summary_perfs.update({'flops': self.flops, 'params': self.params, 'epoch': epoch})
+            else:
+                summary_perfs.update({'flops': self.flops, 'params': self.params})
+            logs.update({'summary_perfs': summary_perfs})
+            logging.info("flops: {} , params:{}".format(self.flops, self.params))
+        except Exception as ex:
+            logging.warning("model statics failed, ex=%s", ex)
+
+    def update_latency(self, epoch=None, logs=None):
+        """Calculate latency."""
+        self.model = self.trainer.model
+        try:
+            summary_perfs = logs.get('summary_perfs', {})
             if self.latency is None:
                 sess_config = self.trainer._init_session_config() if zeus.is_tf_backend() else None
                 self.latency = calc_forward_latency(self.model, self.input, sess_config) * 1000
-            summary_perfs = logs.get('summary_perfs', {})
             if epoch:
-                summary_perfs.update({'flops': self.flops, 'params': self.params,
-                                      'latency': self.latency, 'epoch': epoch})
+                summary_perfs.update({'latency': self.latency, 'epoch': epoch})
             else:
-                summary_perfs.update({'flops': self.flops, 'params': self.params,
-                                      'latency': self.latency})
+                summary_perfs.update({'latency': self.latency})
             logs.update({'summary_perfs': summary_perfs})
+            logging.info("flops: {} , params:{}, latency:{}".format(self.flops, self.params, self.latency))
         except Exception as ex:
             logging.warning("model statics failed, ex=%s", ex)

@@ -15,6 +15,58 @@ from zeus.modules.operators import ops
 from zeus.modules.connections import Sequential
 
 
+class BN_Conv2d(Module):
+    """Base conv2D."""
+
+    def __init__(self, in_channels, out_channels, kernel_size, stride, padding, dilation=1, groups=1, bias=False):
+        super(BN_Conv2d, self).__init__()
+        self.seq = Sequential(
+            ops.Conv2d(in_channels, out_channels, kernel_size=kernel_size, stride=stride,
+                       padding=padding, dilation=dilation, groups=groups, bias=bias),
+            ops.BatchNorm2d(out_channels),
+            ops.Relu()
+        )
+
+    def call(self, x):
+        """Call function."""
+        return self.seq(x)
+
+
+class ResNeXt_Block(Module):
+    """ResNeXt block with group convolutions."""
+
+    expansion = 4
+
+    def __init__(self, in_chnls, cardinality, group_depth, stride):
+        super(ResNeXt_Block, self).__init__()
+        self.group_chnls = cardinality * group_depth
+        self.conv1 = BN_Conv2d(in_chnls, self.group_chnls,
+                               1, stride=1, padding=0)
+        self.conv2 = BN_Conv2d(self.group_chnls, self.group_chnls,
+                               3, stride=stride, padding=1, groups=cardinality)
+        self.conv3 = ops.Conv2d(
+            self.group_chnls, self.group_chnls * 2, 1, stride=1, padding=0)
+        self.bn = ops.BatchNorm2d(self.group_chnls * 2)
+        if stride != 1 or in_chnls != self.group_chnls * 2:
+            self.short_cut = Sequential(
+                ops.Conv2d(in_chnls, self.group_chnls * 2, 1, stride, bias=False),
+                ops.BatchNorm2d(self.group_chnls * 2)
+            )
+        else:
+            self.short_cut = None
+
+    def call(self, x):
+        """Call function."""
+        out = self.conv1(x)
+        out = self.conv2(out)
+        out = self.bn(self.conv3(out))
+        if self.short_cut is not None:
+            out += self.short_cut(x)
+        else:
+            out += x
+        return ops.Relu(inplace=True)(out)
+
+
 class BasicBlock(Module):
     """This is the class of BasicBlock block for ResNet."""
 
@@ -32,11 +84,13 @@ class BasicBlock(Module):
         self.conv2 = ops.Conv2d(
             planes, planes, 3, padding=1, bias=False)
         self.relu = ops.Relu(inplace=True)
-        conv_layer = ops.Conv2d(inplanes, planes,
-                                kernel_size=1, stride=stride, bias=False)
-        norm_layer = ops.BatchNorm2d(planes)
-        downsample = Sequential(conv_layer, norm_layer)
-        self.downsample = downsample
+        if stride > 1 or downsample is not None:
+            conv_layer = ops.Conv2d(inplanes, planes * self.expansion,
+                                    kernel_size=1, stride=stride, bias=False)
+            norm_layer = ops.BatchNorm2d(planes)
+            self.downsample = Sequential(conv_layer, norm_layer)
+        else:
+            self.downsample = None
         self.inplanes = inplanes
         self.planes = planes
         self.stride = stride
@@ -75,32 +129,32 @@ class Bottleneck(Module):
         """Init Bottleneck."""
         super(Bottleneck, self).__init__()
         assert style in ['pytorch', 'caffe']
-        self.expansion = 4
         self.inplanes = inplanes
         self.planes = planes
         self.stride = stride
         self.dilation = dilation
         self.style = style
         self.with_cp = with_cp
-        if self.style == 'pytorch':
-            self.conv1_stride = 1
-            self.conv2_stride = stride
-        else:
-            self.conv1_stride = stride
-            self.conv2_stride = 1
-
         self.norm1 = ops.BatchNorm2d(planes)
         self.norm2 = ops.BatchNorm2d(planes)
         self.norm3 = ops.BatchNorm2d(planes * self.expansion)
+
         self.conv1 = ops.Conv2d(
-            inplanes, planes, kernel_size=1, stride=self.conv1_stride, bias=False)
+            inplanes, planes, kernel_size=1, bias=False)
         self.with_modulated_dcn = False
-        self.conv2 = ops.Conv2d(planes, planes, kernel_size=3, stride=self.conv2_stride,
+        self.conv2 = ops.Conv2d(planes, planes, kernel_size=3, stride=stride,
                                 padding=dilation, dilation=dilation, bias=False, )
         self.conv3 = ops.Conv2d(
             planes, planes * self.expansion, kernel_size=1, bias=False)
         self.relu = ops.Relu(inplace=True)
-        self.downsample = downsample
+
+        if stride > 1 or downsample is not None:
+            conv_layer = ops.Conv2d(inplanes, planes * self.expansion,
+                                    kernel_size=1, stride=stride, bias=False)
+            norm_layer = ops.BatchNorm2d(planes * self.expansion)
+            self.downsample = Sequential(conv_layer, norm_layer)
+        else:
+            self.downsample = None
 
     def call(self, x):
         """Forward compute.
@@ -123,23 +177,13 @@ class Bottleneck(Module):
             out = self.conv1(x)
             out = self.norm1(out)
             out = self.relu(out)
-            if not self.with_cp:
-                out = self.conv2(out)
-            elif self.with_modulated_dcn:
-                offset_mask = self.conv2_offset(out)
-                offset = offset_mask[:, :18 * self.deformable_groups, :, :]
-                mask = offset_mask[:, -9 * self.deformable_groups:, :, :]
-                mask = mask.sigmoid()
-                out = self.conv2(out, offset, mask)
-            else:
-                offset = self.conv2_offset(out)
-                out = self.conv2(out, offset)
+            out = self.conv2(out)
             out = self.norm2(out)
             out = self.relu(out)
             out = self.conv3(out)
             out = self.norm3(out)
             if self.downsample is not None:
-                identity = self.downsample(x)
+                identity = self.downsample(identity)
             out += identity
             return out
 
@@ -240,8 +284,7 @@ class FPN(Module):
     """FPN."""
 
     def __init__(self, in_channels=[64, 128, 256, 512], out_channels=256, num_outs=5,
-                 activation=None, start_level=0, end_level=-1,
-                 add_extra_convs=None, extra_convs_on_inputs=None, relu_before_extra_convs=None):
+                 activation=None, start_level=0, end_level=-1):
         """Init FPN.
 
         :param desc: config dict
@@ -250,9 +293,6 @@ class FPN(Module):
         self.num_ins = len(in_channels)
         self.num_outs = num_outs
         self.start_level = start_level
-        self.add_extra_convs = add_extra_convs
-        self.extra_convs_on_inputs = extra_convs_on_inputs
-        self.relu_before_extra_convs = relu_before_extra_convs
         if end_level == -1:
             self.backbone_end_level = self.num_ins
             assert self.num_outs >= self.num_ins - self.start_level
@@ -269,16 +309,6 @@ class FPN(Module):
                 out_channels, out_channels, 3, padding=1, activation=activation, inplace=False)
             self.lateral_convs.append(l_conv)
             self.fpn_convs.append(fpn_conv)
-        extra_levels = self.num_outs - self.backbone_end_level + self.start_level
-        if self.add_extra_convs and extra_levels >= 1:
-            for i in range(extra_levels):
-                if i == 0 and self.extra_convs_on_inputs:
-                    in_channels = in_channels[self.backbone_end_level - 1]
-                else:
-                    in_channels = out_channels
-                extra_fpn_conv = ConvModule(in_channels, out_channels, 3, stride=2, padding=1,
-                                            activation=activation, inplace=False)
-                self.fpn_convs.append(extra_fpn_conv)
 
     def call(self, inputs):
         """Forward compute.
@@ -291,23 +321,15 @@ class FPN(Module):
                     for i, lateral_conv in enumerate(self.lateral_convs)]
         used_backbone_levels = len(laterals)
         for i in range(used_backbone_levels - 1, 0, -1):
-            laterals[i - 1] += ops.InterpolateScale(
-                scale_factor=2, mode='nearest')(laterals[i])
+            try:
+                laterals[i - 1] += ops.InterpolateScale(
+                    scale_factor=2, mode='nearest')(laterals[i])
+            except Exception:
+                laterals[i - 1] += ops.InterpolateScale(
+                    size=laterals[i - 1].size()[2:], mode='nearest')(laterals[i])
         outs = [self.fpn_convs[i](laterals[i])
                 for i in range(used_backbone_levels)]
         if self.num_outs > len(outs):
-            if not self.add_extra_convs:
-                for i in range(self.num_outs - used_backbone_levels):
-                    outs.append(ops.MaxPool2d(1, stride=2)(outs[-1]))
-            else:
-                if self.extra_convs_on_inputs:
-                    orig = inputs[self.backbone_end_level - 1]
-                    outs.append(self.fpn_convs[used_backbone_levels](orig))
-                else:
-                    outs.append(self.fpn_convs[used_backbone_levels](outs[-1]))
-                for i in range(used_backbone_levels + 1, self.num_outs):
-                    if self.relu_before_extra_convs:
-                        outs.append(self.fpn_convs[i](ops.Relu()(outs[-1])))
-                    else:
-                        outs.append(self.fpn_convs[i](outs[-1]))
+            for i in range(self.num_outs - used_backbone_levels):
+                outs.append(ops.MaxPool2d(1, stride=2)(outs[-1]))
         return {idx: out for idx, out in enumerate(outs)}

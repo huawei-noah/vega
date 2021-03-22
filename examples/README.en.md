@@ -5,13 +5,13 @@
 Run the following command line to run the example:
 
 ```bash
-python3 ./run_pipeline.py <algorithms\' config file>
+vega <algorithms\' config file>
 ```
 
 E.g:
 
 ```bash
-python3 ./run_pipeline.py ./nas/cars/cars.yml
+vega ./nas/cars/cars.yml
 ```
 
 **Before running the example, please make sure that the path of the dataset and pre-trained model are configured correctly.**

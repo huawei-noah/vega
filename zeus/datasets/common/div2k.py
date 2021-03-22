@@ -12,7 +12,6 @@
 import os
 import os.path
 from .utils import div2k_util as util
-from .. import transforms
 from .utils.dataset import Dataset
 from zeus.common import ClassFactory, ClassType
 from zeus.common import FileOps
@@ -47,19 +46,22 @@ class DIV2K(Dataset):
         if self.train:
             result = list()
             if self.args.crop is not None:
-                result.append(transforms.RandomCrop_pair(self.args.crop, self.args.upscale))
+                result.append(self._get_cls("RandomCrop_pair")(self.args.crop, self.args.upscale))
             if self.args.hflip:
-                result.append(transforms.RandomHorizontalFlip_pair())
+                result.append(self._get_cls("RandomHorizontalFlip_pair")())
             if self.args.vflip:
-                result.append(transforms.RandomVerticallFlip_pair())
+                result.append(self._get_cls("RandomVerticallFlip_pair")())
             if self.args.rot90:
-                result.append(transforms.RandomRotate90_pair())
+                result.append(self._get_cls("RandomRotate90_pair")())
             return result
         else:
             result = list()
             if self.args.crop is not None:
-                result.append(transforms.RandomCrop_pair(self.args.crop, self.args.upscale))
+                result.append(self._get_cls("RandomCrop_pair")(self.args.crop, self.args.upscale))
             return result
+
+    def _get_cls(self, _name):
+        return ClassFactory.get_cls(ClassType.TRANSFORM, _name)
 
     def dataset_init(self):
         """Costruct method, which will load some dateset information."""

@@ -1,11 +1,13 @@
 general:
-    parallel_search: True
+    backend: pytorch
 
-pipeline: [pba]
+
+pipeline: [pba, fully_train]
+
 
 pba:
     pipe_step:
-        type: NasPipeStep
+        type: SearchPipeStep
 
     dataset:
         type: Cifar10
@@ -46,22 +48,15 @@ pba:
             backbone:
                 type: ResNet
                 depth: 18
-
+                num_class: 10
     trainer:
         type: Trainer
         epochs: 1
 
-    evaluator:
-        type: Evaluator
-        gpu_evaluator:
-            type: GpuEvaluator
-            metric:
-                type: accuracy
 
 fully_train:
     pipe_step:
-        type: FullyTrainPipeStep
-    hps_file:
+        type: TrainPipeStep
     dataset:
         ref: pba.dataset
     model:
@@ -71,6 +66,9 @@ fully_train:
         callbacks: PbaTrainerCallback
         epochs: 2000
         hps_folder: "{local_base_path}/output/pba/"
-
-benchmark:
-    pipeline: [pba, fully_train]
+    evaluator:
+        type: Evaluator
+        host_evaluator:
+            type: HostEvaluator
+            metric:
+                type: accuracy

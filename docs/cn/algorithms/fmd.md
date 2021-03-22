@@ -10,13 +10,13 @@
 
 本方法综合考虑了现有方法的不足，提出一种灵活通用的神经元输出扰动方法。在训练过程中，交替优化网络参数和扰动项：网络参数通过最小化通用损失函数（比如分类问题中的交叉熵损失函数）进行优化；给定当前的网络参数，通过最小化经验rademacher复杂度优化得到扰动项，并使用当前得到的扰动项干扰下一次迭代中网络的前向传递过程。实验结果显示，使用神经元输出扰动方法训练得到的网络，在测试集上有更好的性能。
 
-![F3](./images/fmd_framework.PNG)
+![F3](../../images/fmd_framework.PNG)
 
 本方法可以看成一个代替dropout的算子，一般用在convolution层之后（可以在conv层后接入bn层或relu层再加入本算子），主要用于分类任务场景。
 
 ## 2. 算子介绍
 
-FMD算子相关的参数如下
+FMD算子相关的参数如下：
 
 | 参数 | 说明 |
 | :-- | :-- |
@@ -49,7 +49,7 @@ examples/fully_train/fmd/networks/resnet_cifar.py
 
 该示例的默认参数在cifar10数据集中达到94.50%的精度。原论文中所展示的精度值如下：
 
-![F3](./images/fmd_2.PNG)  
+![F3](../../images/fmd_2.PNG)  
 
 若希望细致的调整参数，达到原文的精度。可以考虑调整.yml文件中model下的drop_prob, alpha和block_size三个参数。
 
@@ -59,12 +59,12 @@ examples/fully_train/fmd/networks/resnet_cifar.py
 
 关于网络的定义，参考resnet_cifar.py文件。关于fmd算子的调用参考第135行。
 
-![F3](./images/fmd_3.PNG)
+![F3](../../images/fmd_3.PNG)
 
    另外需要对网络的init操作和forward操作进行一定的修改。具体的，init方法中参考196-210行，含义为关于fmd层参数和conv层参数的记录。
 
-![F3](./images/fmd_4.PNG)
+![F3](../../images/fmd_4.PNG)
 
    foward方法中参考249-255行，含义为对fmd层的weight_behind参数赋值，并调整drop率，使得drop率从0最终变化到设定值。
 
-![F3](./images/fmd_5.PNG)
+![F3](../../images/fmd_5.PNG)

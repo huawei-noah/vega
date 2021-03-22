@@ -10,7 +10,6 @@
 
 """Defined faster rcnn detector."""
 import tf_slim as slim
-
 from zeus.common import ClassType, ClassFactory
 
 

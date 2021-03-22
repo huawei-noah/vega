@@ -24,6 +24,7 @@ class Module(ModuleSerializable, ops.Module):
     def __init__(self, *args, **kwargs):
         super(Module, self).__init__()
         self._losses = OrderedDict()
+        self._add_pretrained_hook()
 
     def set_module(self, names, layer):
         """Set Models by name."""
@@ -44,6 +45,20 @@ class Module(ModuleSerializable, ops.Module):
         self._losses[loss.__class__.__name__] = loss
 
     @property
+    def pretrained_hook(self):
+        """Define pretrained hook function or pertrained file path."""
+        return None
+
+    def _add_pretrained_hook(self):
+        if self.pretrained_hook is None:
+            return
+        if isinstance(self.pretrained_hook, str):
+            hook = ClassFactory.get_cls(ClassType.PRETRAINED_HOOK, self.pretrained_hook)
+        else:
+            hook = self.pretrained_hook
+        self._register_load_state_dict_pre_hook(hook)
+
+    @property
     def loss(self):
         """Define loss name or class."""
         return None
@@ -51,7 +66,8 @@ class Module(ModuleSerializable, ops.Module):
     @property
     def out_channels(self):
         """Output Channel for Module."""
-        return [conv.out_channels for name, conv in self.named_modules() if isinstance(conv, ops.Conv2d)][-1]
+        return [conv.out_channels for name, conv in self.named_modules() if
+                isinstance(conv, ops.Conv2d) or conv.__class__.__name__ == 'Conv2d'][-1]
 
     def _create_loss(self):
         """Create loss class."""
@@ -65,5 +81,5 @@ class Module(ModuleSerializable, ops.Module):
     def overall_loss(self):
         """Call loss function, default sum all losses."""
         self._create_loss()
-        from zeus.modules.loss.loss import MultiLoss
+        from zeus.modules.loss.multiloss import MultiLoss
         return MultiLoss(*list(self._losses.values()))

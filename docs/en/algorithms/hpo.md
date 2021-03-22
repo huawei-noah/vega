@@ -83,7 +83,8 @@ Stochastic gradient descent is a well-known optimization method for neural netwo
 Currently, Vega Pipeline provides a general search space that can contains independent discrete or continuous variables, and allows to set the conditional constraint relationship between variables (vega.algorithms.hpo.hyperparameter_space). This chapter describes the architecture design of the Hyperparameter Space. For details about how to use the HyperparameterSpace, see chapter "."
 
 Overall architecture of HyperparameterSpace:
-![sha.png](./images/hyperparameter_space_1.png)
+
+![sha.png](../../images/hyperparameter_space_1.png)
 
 ### 3.1 HyperparameterSpace
 
@@ -96,13 +97,13 @@ Currently, even random sampling is supported. It is mainly used to provide hyper
 
 Overall architecture:
 
-![sha.png](./images/hyperparameter_space_2.png)
+![sha.png](../../images/hyperparameter_space_2.png)
 
 Hyperparameter stores the name, type, and range of each hyperparameter and maps the hyperparameter range to a uniform value range that can be calculated. The hyperparameter types mainly used here are EXP and CAT. The EXP parameters are mapped to [0,1] after the log operation. The CAT parameters are mapped to [0,1] with a catogrized discretation. 
 
 ### 3.3 Condition
 
-![sha.png](./images/hyperparameter_space_3.png)
+![sha.png](../../images/hyperparameter_space_3.png)
 
 Condition is used to manage relationships between hyperparameters. Each hyperparameter relationship requires a child and a parent, whether a child is selected depends on whether the current value of the parent meets certain conditions.
 
@@ -116,18 +117,14 @@ Currently, the following conditions are provided: EQUAL, NOT_EQUAL, and IN.  A c
 
 ### 4.1 Example
 
-Asha_hpo is an example to show how to use the HPO module. The example contains the following two files:
+Asha_hpo is an example to show how to use the HPO module. The example contains the configure file: asha.yaml .
 
-- main.py
-- asha.yaml
-
-#### Start the main.py program
+#### Run Pipeline
 
 The main function is to add an HPO pipestep in the following statement:
 
-```python
-if __name__ == '__main__':
-    vega.run('./asha.yml')
+```bash
+vega ./hpo/asha/asha.yml
 ```
 
 The function is to start the VEGA pipeline for HPO and load the asha.yml configuration file.
@@ -186,6 +183,7 @@ hpo:
             backbone:
                 type: ResNet
                 depth: 18
+                num_class: 10
     trainer:
         type: Trainer
         epochs: 1
@@ -210,13 +208,13 @@ In addition to the basic configuration of a trainer, the model_desc of a current
 hpo:
     evaluator:
         type: Evaluator
-        gpu_evaluator:
-            type: GpuEvaluator
+        host_evaluator:
+            type: HostEvaluator
             metric:
                 type: accuracy
 ```
 
-Gpu_evaluator is used to evaluate model performance based on GPU platform and return evaluation results with performance sorting.
+Host_evaluator is used to evaluate model performance based on GPU platform and return evaluation results with performance sorting.
 
 #### Running Example
 
@@ -255,7 +253,7 @@ Mapping between config_id and hyperparameter combinations. The scoreboard table 
 The best hyperparameter selection: parameter combination with the highest score and the current config_id and score are selected as following:
 
 ```json
-{"config_id": 4, 
+{"config_id": 4,
  "score": 12.78772,
  "configs": {'dataset.batch_size': 256,
              'trainer.optim.lr': 0.016475469254323555,
@@ -267,21 +265,21 @@ The best hyperparameter selection: parameter combination with the highest score 
 
 ### 5.1 Introduction to the ASHA Algorithm
 
-https://arxiv.org/abs/1810.05934
+<https://arxiv.org/abs/1810.05934>
 
-https://blog.ml.cmu.edu/2018/12/12/massively-parallel-hyperparameter-optimization/
+<https://blog.ml.cmu.edu/2018/12/12/massively-parallel-hyperparameter-optimization/>
 
 Dynamic resource allocation hyper parameter optimization is used in the SHA algorithm, which is the continuous halving algorithm. The basic idea is as follows: Mmultiple groups of hyperparameters are trained in parallel, and a small number of training iteration are taken in each round. All hyperparameters are evaluated and sorted, all training with hyperparameters arranged in the lower half part is stopped early. A next round of evaluation is performed on the remaining hyperparameters. The evaluation is halved again until the optimization objective is reached.
-![sha.png](./images/sha.png)
+![sha.png](../../images/sha.png)
 
 The preceding describes the specific operations and ideas of SHA. The problem is that SHA is a serialized or synchronous parallel operation. The next round can be performed only after all hyperparameter training and evaluation in the same round are complete. The asynchronous and parallel algorithm ASHA is proposed for the training accerlation. It performs the next round of evaluation in the current round and continuously synchronizes the growth process, which can be asynchronous and concurrent, greatly improving optimization efficiency.
-![asha.png](./images/asha.png)
+![asha.png](../../images/asha.png)
 
 ### 5.2 HyperBand Algorithm
 
 [Hyperband: Bandit-Based Configuration Evaluation for Hyperparameter Optimization](https://openreview.net/pdf?id=ry18Ww5ee)
 
-![sha.png](./images/hyperband.png)
+![sha.png](../../images/hyperband.png)
 
 - $r$: Budget that can be allocated for a hyperparameter combination;
 - $R$: Maximum budget that can be allocated for a hyperparameter combination;
@@ -298,15 +296,16 @@ An example on the MNIST dataset is given, and the number of iterations is define
 R=81,η=3R=81,η=3, so smax=4,B=5R=5×81smax=4,B=5R=5×81.
 
 The following figure shows the number of hyperparameter groups to be trained and the allocation of hyperparameter resources in each group.
-![sha.png](./images/hyperband_example.png)
 
-There are two level of loops. The inner loop perform the successive halving, number of hyperparameter combinations used for evaluation decreases at each iteration. Meanwhile, the budget that can be allocated to a single hyperparameter combination increases gradually. Therefore, a proper hyperparameter can be found more quickly in this process. 
+![sha.png](../../images/hyperband_example.png)
+
+There are two level of loops. The inner loop perform the successive halving, number of hyperparameter combinations used for evaluation decreases at each iteration. Meanwhile, the budget that can be allocated to a single hyperparameter combination increases gradually. Therefore, a proper hyperparameter can be found more quickly in this process.
 
 ### 5.3 BOHB Algorithm
 
-BOHB is an efficient and stable parameter modulation algorithm proposed by  HYPERLINK "https://arxiv.org/abs/1807.01774" . Bayesian Optimization (BO) and Hyperband (HB) algorithms are short for BO and HB.
+BOHB is an efficient and stable parameter modulation algorithm proposed by <https://arxiv.org/abs/1807.01774> . Bayesian Optimization (BO) and Hyperband (HB) algorithms are short for BO and HB.
 
-The BOHB depends on the Hyperband (HB) to determine the number of groups of parameters and the amount of resources allocated to each group of parameters. The improvement is that the method of randomly selecting parameters at the beginning of each iteration is replaced by the means of selecting parameters based on the previous data (Bayesian optimization) for parameter selection. Once the number of parameters generated by Bayesian optimization reaches the number of configurations required for iteration, the standard consecutive halving process is started using these configurations. 
+The BOHB depends on the Hyperband (HB) to determine the number of groups of parameters and the amount of resources allocated to each group of parameters. The improvement is that the method of randomly selecting parameters at the beginning of each iteration is replaced by the means of selecting parameters based on the previous data (Bayesian optimization) for parameter selection. Once the number of parameters generated by Bayesian optimization reaches the number of configurations required for iteration, the standard consecutive halving process is started using these configurations.
 The performance of these parameters under different resource configurations (budget), g(x, b), is used as the reference data for selecting parameters in next iterations.
 
 ### 5.4 BOSS Algorithms
@@ -318,6 +317,7 @@ Bayesian Optimization via Sub-Sampling (BOSS) is a general hyperparameter optimi
 3. For these hyperparameter combinations, the Sub-Sampling algorithm is used to allocate computing resources (the number of iterations of the training neural network or the number of samples of the Monte Carlo method) to obtain the corresponding performance indicators of each combination.
 4. The Bayesian model (TPE model) is updated based on the newly added combinations, and the next batch of combinations are extracted from the updated  TPE model.
 5. Repeat steps 3-4 until the max iterations are reached or predefined performance is achieved.
+
 ### 5.5 TPE Algorithm
 
-TPE is based on Bayesian ideas. Different from GP, TPE simulates p(x|y) instead of p(y|x) in the modeling loss function. See the reference https://papers.nips.cc/paper/4443-algorithms-for-hyper-parameter-optimization.pdf for detailed algorithm description.
+TPE is based on Bayesian ideas. Different from GP, TPE simulates p(x|y) instead of p(y|x) in the modeling loss function. See the reference <https://papers.nips.cc/paper/4443-algorithms-for-hyper-parameter-optimization.pdf> for detailed algorithm description.

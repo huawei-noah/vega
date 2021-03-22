@@ -70,7 +70,7 @@ class BackboneNas(SearchAlgorithm):
         logging.info(sample)
         sample_desc = self.codec.decode(sample)
         print(sample_desc)
-        return dict(worker_id=self.sample_count, desc=sample_desc)
+        return dict(worker_id=self.sample_count, encoded_desc=sample_desc)
 
     def random_sample(self):
         """Random sample from search_space."""
@@ -98,7 +98,7 @@ class BackboneNas(SearchAlgorithm):
 
         :param performance: performance value from trainer or evaluator
         """
-        perf = record.get("rewards")
+        perf = record.get("original_rewards")
         worker_id = record.get("worker_id")
         logging.info("update performance={}".format(perf))
         self.pareto_front.add_pareto_score(worker_id, perf)

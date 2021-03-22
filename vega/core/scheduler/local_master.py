@@ -10,6 +10,7 @@
 
 """The LocalMaster's method is same as Master, and the class is used on single node."""
 import os
+import time
 
 from zeus.trainer.utils import WorkerTypes
 from zeus.common.general import General
@@ -42,19 +43,16 @@ class LocalMaster(object):
         if worker.worker_type == WorkerTypes.EVALUATOR:
             for sub_worker in worker.sub_worker_list:
                 sub_worker.train_process()
-        elif worker.worker_type == WorkerTypes.HAVA_D_EVALUATOR:
-            pass
         else:
             worker.train_process()
         if evaluator:
-            if evaluator.worker_type == WorkerTypes.EVALUATOR:
-                for sub_worker in evaluator.sub_worker_list:
-                    sub_worker.train_process()
-            elif evaluator.worker_type == WorkerTypes.HAVA_D_EVALUATOR:
-                pass
+            for sub_worker in evaluator.sub_worker_list:
+                sub_worker.train_process()
         self._update(self.step_name, self.worker_id)
 
     def _update(self, step_name, worker_id):
+        # Waiting report thread update all record
+        time.sleep(0.5)
         if not self.update_func:
             return
         if self.update_func.__code__.co_varnames.index("step_name") == 1:

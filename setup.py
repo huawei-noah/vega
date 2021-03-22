@@ -23,7 +23,7 @@ with open("RELEASE.md", "r") as fh:
 
 setuptools.setup(
     name="noah-vega",
-    version="1.2.0",
+    version="1.3.0.20210321", 
     packages=["vega", "zeus"],
     include_package_data=True,
     python_requires=">=3.6",
@@ -41,13 +41,29 @@ setuptools.setup(
         "Operating System :: POSIX :: Linux",
     ],
     install_requires=[
-        "PyYAML==5.1.2",
+        "py-dag",
+        "pareto",
+        "thop",
+        "psutil",
+        "pillow",
         "pandas==0.25.2",
-        "pareto==1.1.1.post3",
-        "scipy==1.3.3",
-        "matplotlib==3.3.0",
-        "py-dag==3.0.1",
-        "psutil==5.6.6",
         "distributed==2.18.0",
+        "PyYAML==5.1.2",
+        "numpy==1.18.5",
+        "scipy==1.5.3",
+        "scikit-learn==0.21.3",
+        "opencv-python-headless==4.3.0.38",
+        "tensorboardX==1.9",
+        "tf-models-official==0.0.3.dev1",
+        "torch==1.3.0",
+        "torchvision==0.4.1",
+        "tensorflow-gpu>=1.14.0,<2.0",
     ],
+    entry_points="""
+        [console_scripts]
+        vega=vega.tools.run_pipeline:run_pipeline
+        vega-kill=vega.tools.kill:_kill
+        vega-verify-cluster=vega.tools.verify_cluster:_verify_cluster
+        vega-fine-tune=vega.tools.fine_tune:_fine_tune
+      """,
 )

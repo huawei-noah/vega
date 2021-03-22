@@ -28,23 +28,55 @@ class ClassificationDatasetCommonConfig(ConfigSerializable):
     distributed = False
     pin_memory = False
 
+    @classmethod
+    def rules(cls):
+        """Return rules for checking."""
+        rules_ClassificationDatasetCommon = {"data_path": {"type": str},
+                                             "batch_size": {"type": int},
+                                             "shuffle": {"type": bool},
+                                             "drop_last": {"type": bool},
+                                             "n_class": {"type": int},
+                                             "train_portion": {"type": (int, float)},
+                                             "n_images": {"type": (int, None)},
+                                             "cached": {"type": bool},
+                                             "transforms": {"type": list},
+                                             "num_workers": {"type": int},
+                                             "distributed": {"type": bool},
+                                             "pin_memory": {"type": bool}
+                                             }
+        return rules_ClassificationDatasetCommon
+
 
 class ClassificationDatasetTraineConfig(ClassificationDatasetCommonConfig):
     """Default Cifar10 config."""
 
     shuffle = True
+    transforms = [
+        dict(type='Resize', size=[256, 256]),
+        dict(type='RandomCrop', size=[224, 224]),
+        dict(type='RandomHorizontalFlip'),
+        dict(type='ToTensor'),
+        dict(type='Normalize', mean=[0.50, 0.5, 0.5], std=[0.50, 0.5, 0.5])]
 
 
 class ClassificationDatasetValConfig(ClassificationDatasetCommonConfig):
     """Default Cifar10 config."""
 
     shuffle = False
+    transforms = [
+        dict(type='Resize', size=[224, 224]),
+        dict(type='ToTensor'),
+        dict(type='Normalize', mean=[0.50, 0.5, 0.5], std=[0.50, 0.5, 0.5])]
 
 
 class ClassificationDatasetTestConfig(ClassificationDatasetCommonConfig):
     """Default Cifar10 config."""
 
     shuffle = False
+    transforms = [
+        dict(type='Resize', size=[224, 224]),
+        dict(type='ToTensor'),
+        dict(type='Normalize', mean=[0.50, 0.5, 0.5], std=[0.50, 0.5, 0.5])]
 
 
 class ClassificationDatasetConfig(ConfigSerializable):
@@ -54,3 +86,22 @@ class ClassificationDatasetConfig(ConfigSerializable):
     train = ClassificationDatasetTraineConfig
     val = ClassificationDatasetValConfig
     test = ClassificationDatasetTestConfig
+
+    @classmethod
+    def rules(cls):
+        """Return rules for checking."""
+        rules_ClassificationDataset = {"common": {"type": dict},
+                                       "train": {"type": dict},
+                                       "val": {"type": dict},
+                                       "test": {"type": dict}
+                                       }
+        return rules_ClassificationDataset
+
+    @classmethod
+    def get_config(cls):
+        """Get sub config."""
+        return {'common': cls.common,
+                'train': cls.train,
+                'val': cls.val,
+                'test': cls.test
+                }

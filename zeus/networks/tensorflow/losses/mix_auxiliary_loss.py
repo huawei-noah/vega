@@ -8,7 +8,6 @@
 
 """Mix Auxiliary Loss."""
 import importlib
-import tensorflow as tf
 from zeus.common import ClassFactory, ClassType
 
 

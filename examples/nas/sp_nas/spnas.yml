@@ -1,98 +1,115 @@
-general:
-    parallel_search: False
-    parallel_fully_train: False
+pipeline: [serial, parallel, fullytrain]
 
-pipeline: [nas1]
-# pipeline: [nas1, nas2, fullytrain]
-
-nas1:
+serial:
     pipe_step:
-        type: SpNasPipeStep
+        type: SearchPipeStep
 
     search_algorithm:
-        type: SpNas
-        codec: SpNasCodec
-        total_list: "{local_base_path}/output/total_list_s.csv"
-        sample_level: 'serial'
-        max_sample: 10
-        max_optimal: 5
-        serial_settings:
-            num_mutate: 3
-            addstage_ratio: 0.05
-            expend_ratio: 0.3
-            max_stages: 6
-        regnition: False
-#        last_search_result:
+        type: SpNasS
+        max_sample: 20
+        objective_keys: mAP
 
     search_space:
         type: SearchSpace
-        config_template_file: "./nas/sp_nas/faster_rcnn_r50_fpn_1x.py"
-        epoch: 1
+        hyperparameters:
+            -   key: network.backbone.code
+                type: CATEGORY
+                range: ['111-2111-211111-211']
+
+    model:
+        model_desc:
+            type: FasterRCNN
+            weight_file: /cache/models/torch_rpn.pth
+            backbone:
+                type: SerialBackbone
+                weight_file:  /cache/models/fasterrcnn_serialnet_backbone.pth
+            neck:
+                type: TorchFPN
+                weight_file:  /cache/models/torch_fpn.pth
+            num_classes: 91
 
     trainer:
         type: Trainer
-        callbacks: SpNasTrainerCallback
-        lazy_built: True
-        gpus: 8
-        debug: False
-        config_template_file: "./nas/sp_nas/faster_rcnn_r50_fpn_1x.py"
+        epochs: 6
+        get_train_metric_after_epoch: False
+        model_statistics: False
+        load_checkpoint: False
+        is_detection_trainer: True
+        optimizer:
+            type: SGD
+            params:
+                lr: 0.002
+                momentum: 0.9
+                weight_decay: !!float 1e-4
+        lr_scheduler:
+            type: WarmupScheduler
+            by_epoch: False
+            params:
+                warmup_type: linear
+                warmup_iters: 5000
+                warmup_ratio: 0.001
+                after_scheduler_config:
+                    type: MultiStepLR
+                    by_epoch: True
+                    params:
+                        milestones: [3]
+                        gamma: 0.1
+        loss:
+            type: SumLoss
+        metric:
+            type: coco
+            params:
+                anno_path: /cache/datasets/COCO2017/annotations/instances_val2017.json
 
-nas2:
+    dataset:
+        type: CocoDataset
+        common:
+            batch_size: 1
+            data_root: /cache/datasets/COCO2017
+            img_prefix: "2017"
+            ann_prefix: instances
+            transforms:
+                -   type: PolysToMaskTransform
+                -   type: PILToTensor
+
+parallel:
     pipe_step:
-        type: SpNasPipeStep
+        type: SearchPipeStep
 
     search_algorithm:
-        type: SpNas
-        codec: SpNasCodec
-        total_list: "{local_base_path}/output/total_list_p.csv"
-        sample_level: 'parallel'
-        max_sample: 10
-        max_optimal: 1
-        serial_settings:
-        last_search_result: "{local_base_path}/output/total_list_s.csv"
-        regnition: False
+        type: SpNasP
 
     search_space:
         type: SearchSpace
-        config_template_file: "./nas/sp_nas/faster_rcnn_r50_fpn_1x.py"
-        epoch: 1
+        hyperparameters:
+            -   key: network.neck.code
+                type: CATEGORY
+                range: [[0, 1, 2, 3]]
+
+    model:
+        model_desc:
+            type: FasterRCNN
+            backbone:
+                type: SerialBackbone
+            neck:
+                type: ParallelFPN
+            num_classes: 91
 
     trainer:
-        type: Trainer
-        callbacks: SpNasTrainerCallback
-        lazy_built: True
-        gpus: 8
-        debug: False
+        ref: serial.trainer
+
+    dataset:
+        ref: serial.dataset
 
 fullytrain:
     pipe_step:
-        type: SpNasFullyTrain
+        type: TrainPipeStep
+        models_folder: "{local_base_path}/output/parallel/"
+        pretrained_folder: "{local_base_path}/output/parallel/"
 
     trainer:
-        type: Trainer
-        callbacks: SpNasTrainerCallback
-        lazy_built: True
-        gpus: 8
-        debug: False
-        model_desc_file: "{local_base_path}/output/total_list_p.csv"
-#        model_desc: 'r_111-2111-211111-211_0-0-0-0'
-        config_template: "./nas/sp_nas/faster_rcnn_r50_fpn_1x.py"
-        regnition: False
-        epoch: 1
+        ref: serial.trainer
+        epochs: 20
 
-benchmark:
-    pipeline: [nas1, nas2, fullytrain]
-    nas1:
-        search_space:
-            config_template_file: ./nas/sp_nas/faster_rcnn_r50_fpn_1x.py
-        trainer:
-            config_template_file: ./nas/sp_nas/faster_rcnn_r50_fpn_1x.py
-    nas2:
-        search_space:
-            ref: nas1.search_space
-    fully_train:
-        trainer:
-            config_template_file: ./nas/sp_nas/faster_rcnn_r50_fpn_1x.py
-            regnition: True
-            epoch: 26
-    
+    dataset:
+        ref: serial.dataset

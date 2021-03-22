@@ -28,8 +28,8 @@ Get vision by tensorboard.
 import os
 from datetime import datetime
 from time import sleep
+import numpy as np
 import shutil
-
 from absl import logging
 from tensorboardX import SummaryWriter
 
@@ -76,7 +76,7 @@ class SummaryBoard(object):
         """Insert records."""
         for record in records:
             name, value, index = record
-            if not value:
+            if np.isnan(value) or not value:
                 continue
             self.writer.add_scalar(name, value, index)
         self.writer.flush()

@@ -9,7 +9,7 @@
 
 ### 2.1 搜索空间设计
 
-![](./images/nago_WiringNAS.png)
+![](../../images/nago_WiringNAS.png)
 
 我们的搜索空间是一个三阶层的图结构：结构的最顶层是一张由中层模块组成的图，每个中层模块本身是一张底层模块组成的图， 而每个底层模块也是一张由基础运算单位（例如`conv3x3`, `conv5x5`等等）构成的图。这三个阶层的图结构分别由三个随机图生成器来独立生成， 且每个生成器都由一组对应的超参来定义：`X_{top}, X_{mid}, X_{bottom}` 。在生成器的选择上，我们使用Watts-Strogatz (WS) 图模型作为顶层和底层图的生成器，它们对应的超参是 `X_{top}=[N_{t}, K_{t}, P_{t}]` 和 `X_{bottom}=[N_{b}, K_{b}, P_{b}]` ；我们选择Erdos-Renyi (ER) 图模型作为中层图的生成器从而允许单节点图的生成，它对应的超参是 `X_{mid}=[N_{m}, P_{m}]` 。
 
@@ -17,7 +17,7 @@
 
 ### 2.2 生成的神经网络样本
 
-![](./images/nago_arch_samples.png)
+![](../../images/nago_arch_samples.png)
 
 ### 2.3 搜索策略
 
@@ -61,11 +61,11 @@ search_space:
 ```
 
 注意虽然NAGO使用了VEGA中的NAS pipeline, 我们设定其搜索空间时，遵从的却是HPO pipeline的模板。因为我们使用了HPO中的BOHB方法来执行搜索。
-根据 `nago.yaml` 文件中的设置，我们通过 `example/nago/nago.py` 中的代码来生成有效的神经网络结构（即可以用PyTorch训练的神经网络模型）。
+根据 `nago.yml` 文件中的设置，我们通过 `zeus/networks/pytorch/customs/nago.py` 中的代码来生成有效的神经网络结构（即可以用PyTorch训练的神经网络模型）。
 
 ### 4.2 搜索策略设置
 
-NAGO的搜索空间适用于任何贝叶斯优化算法。在VEGA中我们采用了BOHB, 所以我们需要在 `nago.yaml` 文件中也设置BOHB算法的基本参数。
+NAGO的搜索空间适用于任何贝叶斯优化算法。在VEGA中我们采用了BOHB, 所以我们需要在 `nago.yml` 文件中也设置BOHB算法的基本参数。
 例如，下面的设置会跑50个搜索循环的BOHB，并用最少30 epochs和最多120 epochs来训练和评估所生成的神经网络结构。
 
 ```yaml
@@ -83,12 +83,12 @@ search_algorithm:
 ### 4.3 在VEGA中运行NAGO
 
 - 按照[说明](../user/install.md) 安装 vega
-- 按照以上描述通过 `nago.yaml` 定义NAGO的运行设置，并把任务数据集放到 `nago.yaml` 中 `data_path` 指定的位置
-- 运行命令 `python run_pipeline.py ./nago/nago.yaml pytorch`
+- 按照以上描述通过 `nago.yml` 定义NAGO的运行设置，并把任务数据集放到 `nago.yml` 中 `data_path` 指定的位置
+- 运行命令 `vega ./nas/nago/nago.yml`
 
 ### 5. 算法输出
 
-以下两个输出文件会在指定的输出目录中生成（默认输出目录是 `./example/tasks/task_id/output/nas/` ):
+以下两个输出文件会在指定的输出目录中生成（默认输出目录是 `./example/tasks/<task id>/output/nas/` ):
 
 - `output.csv` 文件包含了BOHB推荐的最优网络结构生成器的超参数值。
 - `reports.csv` 文件包含了BOHB搜索过程中评估过的所有超参组合的数据。

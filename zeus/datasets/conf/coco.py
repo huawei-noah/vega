@@ -22,6 +22,17 @@ class CocoCommonConfig(BaseConfig):
     ann_prefix = 'instances'
     transforms = [dict(type='PolysToMaskTransform'), dict(type='PILToTensor')]
 
+    @classmethod
+    def rules(cls):
+        """Return rules for checking."""
+        rules_CocoCommon = {"data_root": {"type": str},
+                            "num_classes": {"type": int},
+                            "img_prefix": {"type": (int, str)},
+                            "ann_prefix": {"type": str},
+                            "transforms": {"type": list}
+                            }
+        return rules_CocoCommon
+
 
 class CocoTrainConfig(CocoCommonConfig):
     """Default Dataset config for Coco train."""
@@ -48,3 +59,22 @@ class CocoConfig(ConfigSerializable):
     train = CocoTrainConfig
     val = CocoValConfig
     test = CocoTestConfig
+
+    @classmethod
+    def rules(cls):
+        """Return rules for checking."""
+        rules_Coco = {"common": {"type": dict},
+                      "train": {"type": dict},
+                      "val": {"type": dict},
+                      "test": {"type": dict}
+                      }
+        return rules_Coco
+
+    @classmethod
+    def get_config(cls):
+        """Get sub config."""
+        return {'common': cls.common,
+                'train': cls.train,
+                'val': cls.val,
+                'test': cls.test
+                }

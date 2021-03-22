@@ -1,15 +1,22 @@
+<div align="center">
+  <img src="./docs/images/pipeline.png"/>
+</div>
+
 # Vega
 
-[中文](./README.cn.md)
+**English | [中文](./README.cn.md)**
 
 **Vega ver1.2.0 released:**
 
 - Feature enhancement:
-  - Fine-grained network search space: The network search space can be freely defined, and rich network architecture parameters are provided for use in the search space. The network architecture parameters and model training hyperparameters can be searched at the same time, and the search space can be applied to Pytorch, TensorFlow and MindSpore.
+  - Ascend platform, search and training on the Ascend 910 (TensorFlow and MindSpore), and model evaluation on the Ascend 310.
+  - Model evaluation is supported on the Kirin 990.
+  - Allows user datasets to be FineTune on DNet pretrained models and surpass SOTA on Ascend 910/310.
+  - Support the pruning capability of user datasets and ResNet models. For the Cifar100 data set, the precision changes slightly (+– 0.5), the latency decreases by 15%, and the model size decreases by 30%.
 - New algorithm:
-  - [NAGO: Neural Architecture Generator Optimization](https://arxiv.org/abs/2004.01395): An Hierarchical Graph-based Neural Architecture Search Space
-
-- Community Contributors: [Chen Bo](https://github.com/chenboability), [cndylan](https://github.com/cndylan), [hasanirtiza](https://github.com/hasanirtiza), [IlyaTrofimov](https://github.com/IlyaTrofimov), [Lzc06](https://github.com/Lzc06), [marsggbo](https://github.com/marsggbo), [mengzhibin](https://github.com/mengzhibin), [qixiuai](https://github.com/qixiuai), [SHUHarold](https://github.com/SHUHarold), [sptj](https://github.com/sptj).
+  - ModularNAS: Towards Modularized and Reusable Neural Architecture Search, A code library for various neural architecture search methods including weight sharing and network morphism.
+  - DNet: Network architecture search algorithms and Model Zoo that are affinity with Davinci chips.
+  - MF-ASC: Multi-Fidelity neural Architecture Search with Co-kriging.
 
 ## Introduction
 
@@ -19,13 +26,16 @@ Vega is an AutoML algorithm tool chain developed by Noah's Ark Laboratory, the m
 2. Industry-leading AutoML algorithms: provides Noah's Ark Laboratory's self-developed **[industry-leading algorithm(Benchmark)](./docs/benchmark.md)** and  **[Model Zoo](./docs/model_zoo.md)** to download the State-of-the-art (SOTA) model.
 3. Fine-grained network search space: The network search space can be freely defined, and rich network architecture parameters are provided for use in the search space. The network architecture parameters and model training hyperparameters can be searched at the same time, and the search space can be applied to Pytorch, TensorFlow and MindSpore.
 4. High-concurrency neural network training capability: Provides high-performance trainers to accelerate model training and evaluation.
-5. Multi-Backend: PyTorch, TensorFlow, MindSpore(trial)
+5. Multi-Backend: PyTorch(GPU), TensorFlow(GPU, Ascend 910), MindSpore(Ascend 910).
+6. Ascend platform: Search and training on the Ascend 910 and model evaluation on the Ascend 310.
 
 ## Algorithm list
 
 | Category | Algorithm | Description | reference |
 | :--: | :-- | :-- | :-- |
 | NAS | [CARS: Continuous Evolution for Efficient Neural Architecture Search](https://arxiv.org/abs/1909.04977) | Structure Search Method of Multi-objective Efficient Neural Network Based on Continuous Evolution | [ref](./docs/en/algorithms/cars.md) |
+| NAS | ModularNAS: Towards Modularized and Reusable Neural Architecture Search | A code library for various  neural architecture search methods including weight sharing and network morphism | [ref](./docs/en/algorithms/modnas.md) |
+| NAS | [MF-ASC](https://dl.acm.org/doi/10.1145/3292500.3330893) | Multi-Fidelity neural Architecture Search with Co-kriging | [ref](./docs/en/algorithms/mfasc.md) |
 | NAS | [NAGO: Neural Architecture Generator Optimization](https://arxiv.org/abs/2004.01395) | An Hierarchical Graph-based Neural Architecture Search Space | [ref](./docs/cn/algorithms/nago.md) |
 | NAS | SR-EA | An Automatic Network Architecture Search Method for Super Resolution | [ref](./docs/en/algorithms/sr_ea.md) |
 | NAS | [ESR-EA: Efficient Residual Dense Block Search for Image Super-resolution](https://arxiv.org/abs/1909.11409) | Multi-objective image super-resolution based on network architecture search | [ref](./docs/en/algorithms/esr_ea.md) |
@@ -48,53 +58,22 @@ Vega is an AutoML algorithm tool chain developed by Noah's Ark Laboratory, the m
 | Fully Train | [Beyond Dropout: Feature Map Distortion to Regularize Deep Neural Networks](https://arxiv.org/abs/2002.11022) | Neural network training (regularization) based on disturbance of feature map | [ref](./docs/en/algorithms/fmd.md) |
 | Fully Train | [Circumventing Outliers of AutoAugment with Knowledge Distillation](https://arxiv.org/abs/2003.11342v1) | Joint knowledge distillation and data augmentation for high performance classication model training, achieved 85.8% Top-1 accuracy on ImageNet 1k | Coming soon |
 
-## Obtaining and Installing
+## install
 
-Install Vega and the open source softwares that Vega depends on:
-
-```bash
-pip3 install --user noah-vega
-python3 -m vega.tools.install_pkgs
-```
-
-For more detail, please refer **[installation guide](./docs/en/user/install.md)**. If you want to deploy Vega in local cluster, see the **[deployment guide](./docs/en/user/deployment.md)** .
-
-## Usage Guide
-
-The Vega is highly modularized. You can configure the search space, search algorithm in a pipeline way. To run the Vega application is to load the configuration file and complete the AutoML process based on the configuration.
-Vega provides detailed operation examples for your reference. For details, see the **[examples](./docs/en/user/examples.md)** . Example of running CARS algorithm:
+Run the following commands to install Vega and related open-source software:
 
 ```bash
-cd examples
-python3 ./run_pipeline.py ./nas/cars/cars.yml -b pytorch
+pip3 install --user --upgrade noah-vega
 ```
 
-Therefore, before using the Vega, you need to fully understand the meaning of the configuration items. For details, see the **[Configuration Guide](./docs/en/user/config_reference.md)**.
-
-**Note:**
-
-Before running an example, you need to configure the directory where the dataset and pre-trained models are located in the algorithm configuration file. Please refer to **[Example Reference](./docs/en/user/examples.md)** .
-
-## Developer Guide
-
-The Vega framework components are decoupled, and each functional component is combined using the registration mechanism to facilitate function and algorithm extension. For details about the Vega architecture and main mechanisms, see the **[Developer Guide](./docs/en/developer/developer_guide.md)** .
-
-In addition, you can refer to the **[Quick Start Guide](./docs/en/developer/quick_start.md)** to implement a simple network search function and quickly enter the Vega application development through practice.
-
-During the development of the Vega application, the first problem is how to introduce the service data set to the Vega application. For details, see the **[Dataset Guide](./docs/en/developer/datasets.md)** .
-
-For different algorithms, you can refer doc **[Algorithm Development Guide](./docs/en/developer/new_algorithm.md)** . You can add the new algorithm to Vega step by step based on the example provided in this document.
-
-In most Automl algorithms, the search space is closely related to the network. We try to unify the definition of the search space so that the same search space can adapt to different search algorithms. This is called the **[Fine-Grained Search Space Guide](./docs/en/developer/fine_grained_space.md)** . Welcome to try it.
-
-Of course, this document cannot solve all the problems. If you have any questions, please feel free to provide feedback through the issue. We will reply to you and solve your problems in a timely manner.
+If you need to install the Ascend 910 training environment, please contact us.
 
 ## Reference List
 
 | object | refrence |
 | :--: | :-- |
-| User | [Install Guide](./docs/en/user/install.md), [Deployment Guide](./docs/en/user/deployment.md), [Configuration Guide](./docs/en/user/config_reference.md), [Examples](./docs/en/user/examples.md), [Evaluate Service](./docs/en/user/evaluate_service.md) |
-| Developer | [Developer Guide](./docs/en/developer/developer_guide.md), [Quick Start Guide](./docs/en/developer/quick_start.md), [Dataset Guide](./docs/en/developer/datasets.md), [Algorithm Development Guide](./docs/en/developer/new_algorithm.md), [Fine-Grained Search Space Guide](./docs/en/developer/fine_grained_space.md) |
+| [**User**<br>(User Guide)](./docs/en/user/README.md) | [Install Guide](./docs/en/user/install.md), [Deployment Guide](./docs/en/user/deployment.md), [Configuration Guide](./docs/en/user/config_reference.md), [Examples](./docs/en/user/examples.md), [Evaluate Service](./docs/en/user/evaluate_service.md) |
+| [**Developer**<br>(Developer Guide)](./docs/en/developer/README.md) | [Development Reference](./docs/en/developer/developer_guide.md), [Quick Start Guide](./docs/en/developer/quick_start.md), [Dataset Guide](./docs/en/developer/datasets.md), [Algorithm Development Guide](./docs/en/developer/new_algorithm.md), [Fine-Grained Search Space Guide](./docs/en/developer/fine_grained_space.md) |
 
 ## FAQ
 
@@ -112,11 +91,6 @@ For common problems and exception handling, please refer to [FAQ](./docs/en/user
       primaryClass={cs.CV}
 }
 ```
-
-## Video
-
-[video](https://box.saas.huaweicloud.com/p/fe9dfbd8b61a37280b371f73a90132c2)
-[Youtube](https://www.youtube.com/watch?v=Le5SGaW29TQ)
 
 ## Cooperation and contribution
 

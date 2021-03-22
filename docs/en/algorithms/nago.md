@@ -8,7 +8,7 @@
 
 ### 2.1 Search Space
 
-![](./images/nago_WiringNAS.png)
+![](../../images/nago_WiringNAS.png)
 
 Our network search space is modelled as a hierarchical graph with three levels. At the top-level, we have a graph of cells. Each cell is itself represented by a mid-level graph. Similarly, each node in a cell is a graph of basic operations (`conv3x3`, `conv5x5`, etc.). This results in 3 sets of graph hyperparameters:
 `X_{top}, X_{mid}, X_{bottom}`, each of which independently defines the graph generation model in each level.
@@ -18,7 +18,7 @@ By varying the graph generator hyperparameters and thus the connectivity propert
 
 ### 2.2 Sample Architectures
 
-![](./images/nago_arch_samples.png)
+![](../../images/nago_arch_samples.png)
 
 ### 2.3 Search Algorithm
 
@@ -29,7 +29,7 @@ Our proposed hierarchical graph-based search space allows us to represent a wide
 
 ### 4.1 Search Space Configuration
 
-The search space of NAGO described above can be specified in the configuration file `nago.yaml` as follows.
+The search space of NAGO described above can be specified in the configuration file `nago.yml` as follows.
 
 ```yaml
 search_space:
@@ -62,11 +62,11 @@ search_space:
 ```
 
 Note despite we are using the NAS pipeline, we define the search space following HPO pipeline format as we use BOHB to perform the search.
-The exact code for the architecture generator (return a trainable PyTorch network model given a generator hyperparameter value) is `example/nago/nago.py`.
+The exact code for the architecture generator (return a trainable PyTorch network model given a generator hyperparameter value) is `zeus/networks/pytorch/customs/nago.py`.
 
 ### 4.2 Search Strategy
 
-Our NAGO search space is amenable to any Bayesian optimisation search strategies. In this code package, we use BOHB to perform the optimisation and the configuration of BOHB needs to be specified in `nago.yaml`. The example below defines a BOHB run with `eta=2` and `t=50` search iterations. The minimum and maxmimum training epochs used for evaluating a recommended configuration is 30 and 120 respectively.  
+Our NAGO search space is amenable to any Bayesian optimisation search strategies. In this code package, we use BOHB to perform the optimisation and the configuration of BOHB needs to be specified in `nago.yml`. The example below defines a BOHB run with `eta=2` and `t=50` search iterations. The minimum and maxmimum training epochs used for evaluating a recommended configuration is 30 and 120 respectively.  
 
 ```yaml
 search_algorithm:
@@ -83,12 +83,12 @@ search_algorithm:
 ### 4.3 Run NAGO in VEGA
 
 - Install and set-up vega following the [instruction](../user/install.md)
-- Define the NAGO configuration file `nago.yaml` as suggested above and put dataset at the `data_path` specified in `nago.yaml`
-- Run the command `python run_pipeline.py ./nago/nago.yaml pytorch`
+- Define the NAGO configuration file `nago.yml` as suggested above and put dataset at the `data_path` specified in `nago.yml`
+- Run the command `vega ./nas/nago/nago.yml`
 
 ### 5. Output
 
-The following two files are generated in the specified output directory (the default directory is `./example/tasks/task_id/output/nas/`):
+The following two files are generated in the specified output directory (the default directory is `./example/tasks/<task id>/output/nas/`):
 
 - The `output.csv` file contains the best architecture generator hyperparameters found by BOHB
 - The `reports.csv` file contains all the architecture generator hyperparameters queried by BOHB at different epoch.

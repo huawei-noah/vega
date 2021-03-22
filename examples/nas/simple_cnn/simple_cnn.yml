@@ -1,16 +1,15 @@
 general:
-    backend: pytorch   #pytorch, tensorflow or mindspore
+    backend: pytorch   #pytorch | tensorflow | mindspore
 
 pipeline: [nas]
 
 nas:
     pipe_step:
-        type: NasPipeStep
+        type: SearchPipeStep
     search_algorithm:
         type: RandomSearch
         policy:
             num_sample: 50
-
     search_space:
         hyperparameters:
             -   key: network.backbone.blocks
@@ -19,7 +18,6 @@ nas:
             -   key: network.backbone.channels
                 type: CATEGORY
                 range:  [32, 48, 56, 64]
-
     model:
         model_desc:
             modules: [backbone]
@@ -27,35 +25,10 @@ nas:
                 type: SimpleCnn
                 num_class: 10
                 fp16: False
-
     trainer:
         type: Trainer
-        optimizer:
-            type: SGD
-            params:
-                lr: 0.01
-                momentum: 0.9
-        lr_scheduler:
-            type: MultiStepLR
-            params:
-                warmup: False
-                milestones: [30]
-                gamma: 0.5
-        loss:
-            type: CrossEntropyLoss
-            params:
-                is_grad: False
-                sparse: True
-        metric:
-            type: accuracy
         epochs: 3
-        save_steps: 250
-        distributed: False
-        num_class: 10
     dataset:
         type: Cifar10
         common:
             data_path: /cache/datasets/cifar10/
-            batch_size: 64
-            num_parallel_batches: 64
-            fp16: False

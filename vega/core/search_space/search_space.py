@@ -21,7 +21,7 @@ from zeus.common.class_factory import ClassFactory, ClassType
 from vega.core.pipeline.conf import SearchSpaceConfig
 
 
-@ClassFactory.register(ClassType.NETWORK)
+@ClassFactory.register(ClassType.SEARCHSPACE)
 class SearchSpace(dict):
     """A search space for HyperParameter.
 
@@ -33,7 +33,9 @@ class SearchSpace(dict):
         """Init SearchSpace."""
         super(SearchSpace, self).__init__()
         if desc is None:
-            desc = SearchSpaceConfig().to_json()
+            desc = SearchSpaceConfig().to_dict()
+            if desc.type is not None:
+                desc = ClassFactory.get_cls(ClassType.SEARCHSPACE, desc.type).get_space(desc)
         for name, item in desc.items():
             self.__setattr__(name, item)
             self.__setitem__(name, item)
@@ -44,6 +46,11 @@ class SearchSpace(dict):
         self._dag = DAG()
         if desc is not None:
             self.form_desc(desc)
+
+    @classmethod
+    def get_space(self, desc):
+        """Get Space."""
+        return desc
 
     def form_desc(self, desc):
         """Create SearchSpace base on hyper-parameters object."""
@@ -239,7 +246,10 @@ class SearchSpace(dict):
         parameters_array = np.zeros((n, self._hp_count))
         i = 0
         for _, hp in self._params.items():
-            low, high = hp.range
+            if len(hp.range) == 1:
+                low, high = 0, hp.range[0]
+            else:
+                low, high = hp.range
             if hp.is_integer:
                 column = np.random.randint(low, high + 1, size=n)
             else:
@@ -309,8 +319,7 @@ class SearchSpace(dict):
                         forbidden_value.append(
                             forbidden_conjunction._forbidden_dict.get(name))
 
-            inversed_param_dict[name] = \
-                hp.decode(param_value, forbidden_value)
+            inversed_param_dict[name] = hp.decode(param_value, forbidden_value)
             if forbidden_flag:
                 assigned_forbidden_dict[name] = inversed_param_dict[name]
 

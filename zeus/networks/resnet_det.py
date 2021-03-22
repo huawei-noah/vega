@@ -11,7 +11,7 @@
 """This is SearchSpace for network."""
 from zeus.common import ClassFactory, ClassType
 from zeus.modules.connections import OutlistSequential
-from zeus.networks.necks import make_res_layer_from_code, BasicBlock, Bottleneck
+from zeus.networks.necks import make_res_layer_from_code, BasicBlock
 from zeus.modules.operators import ops
 from zeus.modules.module import Module
 
@@ -36,7 +36,6 @@ class ResNetDet(Module):
                  style="pytorch", frozen_stages=-1, norm_eval=True, zero_init_residual=False, code=None):
         """Init ResNet."""
         super(ResNetDet, self).__init__()
-        code = "111-1112-11111211-112"
         self.out_indices = out_indices
         self.style = style
         self.frozen_stages = frozen_stages

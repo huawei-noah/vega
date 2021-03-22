@@ -1,5 +1,4 @@
 #dispatch files to site-packages
-recursive-include deploy *
 recursive-include docs *
 recursive-include evaluate_service *
 recursive-include examples *

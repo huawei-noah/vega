@@ -181,8 +181,8 @@ def trans_to_lane_with_type(gt_lanes_list):
             c_y = 0
             start_pos = 0
             end_pos = 0
-            l = Lane(prob, start_pos, end_pos, c_x, c_y, type, new_lane)
-            lane_set.append(l)
+            _lane = Lane(prob, start_pos, end_pos, c_x, c_y, type, new_lane)
+            lane_set.append(_lane)
             cnt += 1
     return lane_set
 

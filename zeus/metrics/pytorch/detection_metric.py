@@ -25,7 +25,7 @@ class CocoMetric(MetricBase):
 
     def __init__(self, anno_path=None, category=None):
         self.anno_path = anno_path
-        self.category = category
+        self.category = category or []
         self.result_record = []
 
     def __call__(self, output, targets, *args, **kwargs):
@@ -65,14 +65,18 @@ class CocoMetric(MetricBase):
         with open(det_json_file, 'w') as f:
             json.dump(self.result_record, f)
         eval_result = self.print_scores(det_json_file, self.anno_path)
-        eval_result = eval_result['AP(bbox)']
-        eval_result = list(eval_result)
-        return {
-            "mAP": eval_result[1] * 100,
-            "AP_small": eval_result[3] * 100,
-            "AP_medium": eval_result[4] * 100,
-            "AP_large": eval_result[5] * 100
+        ap_result = eval_result.pop('AP(bbox)')
+        ap_result = list(ap_result)
+        ap_result = {
+            "mAP": ap_result[0] * 100,
+            "AP50": ap_result[1] * 100,
+            "AP_small": ap_result[3] * 100,
+            "AP_medium": ap_result[4] * 100,
+            "AP_large": ap_result[5] * 100
         }
+        if eval_result:
+            ap_result.update(eval_result)
+        return ap_result
 
     def print_scores(self, det_json_file, json_file):
         """Print scores.
@@ -89,6 +93,15 @@ class CocoMetric(MetricBase):
         cocoEval.accumulate()
         cocoEval.summarize()
         ret['AP(bbox)'] = cocoEval.stats
+        for id, item in enumerate(self.category):
+            cocoEval = COCOeval(coco, cocoDt, 'bbox')
+            cocoEval.params.catIds = [id + 1]
+            # cocoEval.params.iouThrs = [0.5]
+            cocoEval.evaluate()
+            cocoEval.accumulate()
+            cocoEval.summarize()
+            if len(cocoEval.stats) > 0:
+                ret[item] = cocoEval.stats[1] * 100
         return ret
 
 

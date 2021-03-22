@@ -1,10 +1,13 @@
-# my.yml
+general:
+    backend: pytorch
+
 
 pipeline: [nas]
 
+
 nas:
     pipe_step:
-        type: NasPipeStep
+        type: SearchPipeStep
 
     dataset:
         type: Cifar10
@@ -19,7 +22,7 @@ nas:
         type: SearchSpace
         modules: ['custom']
         custom:
-            type: SimpleCnn
+            type: SimpleCnnMFKD
             conv_layer_0:
                 kernel_size: [1, 3, 5]
                 bn: [False, True]

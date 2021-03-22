@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 """The tools to compare the output file with the benchmark."""
 import struct
-import sys
 import numpy as np
 import logging
 
@@ -50,9 +49,9 @@ def data_compare(real_out, expect_out, atol=0.001, rtol=0.001):
         raise ValueError("The size of real_out and expect_out must be equal.")
     for n in range(len(real_out)):
         if abs(real_out[n] - expect_out[n]) > atol or abs(real_out[n] - expect_out[n]) / abs(expect_out[n]) > rtol:
-                logging.warning("pos: {}, real_out: {}, expect_out: {}, diff: {} "
-                                .format([n], real_out[n], expect_out[n], real_out[n] - expect_out[n]))
-                error_count += 1
+            logging.warning("pos: {}, real_out: {}, expect_out: {}, diff: {} ".format(
+                [n], real_out[n], expect_out[n], real_out[n] - expect_out[n]))
+            error_count += 1
     return error_count, error_count / len(real_out)
 
 

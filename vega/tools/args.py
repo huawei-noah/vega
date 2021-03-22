@@ -41,7 +41,7 @@ def _parse_args(sections, desc):
         parser.add_argument("-num_classes", "--trainer.num_classes", type=int)
     parser.add_argument("-evaluator", "--evaluator", default=[],
                         action='store', dest='evaluator', type=str, nargs='*',
-                        help="evaluator list, eg. -evaluator GpuEvaluator DavinciMobileEvaluator")
+                        help="evaluator list, eg. -evaluator HostEvaluator DeviceEvaluator")
     args = vars(parser.parse_args())
     args = {key: value for key, value in args.items() if args[key]}
     tree = Config(build_tree(args))
@@ -53,7 +53,7 @@ def _set_config(args, step_name, step_type):
     # general
     General.step_name = step_name
     if hasattr(args, "general"):
-        General.from_json(args.general)
+        General.from_dict(args.general)
     # pipeline
     PipelineConfig.steps = [step_name]
     # pipestep
@@ -62,19 +62,19 @@ def _set_config(args, step_name, step_type):
     if hasattr(args, "model"):
         if hasattr(args.model, "model_desc"):
             args.model.model_desc = Config(args.model.model_desc)
-        PipeStepConfig.model.from_json(args.model)
+        PipeStepConfig.model.from_dict(args.model)
     # dataset
     if hasattr(args, "dataset"):
-        PipeStepConfig.dataset.from_json(args.dataset)
+        PipeStepConfig.dataset.from_dict(args.dataset)
     # trainer
     if hasattr(args, "trainer"):
-        TrainerConfig.from_json(args.trainer)
+        TrainerConfig.from_dict(args.trainer)
     # evaluator
     if hasattr(args, "evaluator"):
         # PipeStepConfig.evaluator._type_name = args.evaluator
-        if "GpuEvaluator" in args.evaluator:
+        if "HostEvaluator" in args.evaluator:
             PipeStepConfig.evaluator_enable = True
-            PipeStepConfig.evaluator.gpu_evaluator_enable = True
-        if "DavinciMobileEvaluator" in args.evaluator:
+            PipeStepConfig.evaluator.host_evaluator_enable = True
+        if "DeviceEvaluator" in args.evaluator:
             PipeStepConfig.evaluator_enable = True
-            PipeStepConfig.evaluator.davinci_mobile_evaluator_enable = True
+            PipeStepConfig.evaluator.device_evaluator_enable = True

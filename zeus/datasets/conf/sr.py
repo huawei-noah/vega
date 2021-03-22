@@ -27,6 +27,22 @@ class SRCommonConfig(BaseConfig):
     rot90 = False
     save_in_memory = False
 
+    @classmethod
+    def rules(cls):
+        """Return rules for checking."""
+        rules_SRCommon = {"root_HR": {"type": str},
+                          "root_LR": {"type": str},
+                          "num_workers": {"type": int},
+                          "upscale": {"type": int},
+                          "subfile": {"type": (str, None)},
+                          "crop": {"type": int},
+                          "hflip": {"type": bool},
+                          "vflip": {"type": bool},
+                          "rot90": {"type": bool},
+                          "save_in_memory": {"type": bool}
+                          }
+        return rules_SRCommon
+
 
 class SRTestConfig(SRCommonConfig):
     """Default Dataset config for SR."""
@@ -39,3 +55,18 @@ class SRConfig(ConfigSerializable):
 
     common = SRCommonConfig
     test = SRTestConfig
+
+    @classmethod
+    def rules(cls):
+        """Return rules for checking."""
+        rules_SR = {"common": {"type": dict},
+                    "test": {"type": dict}
+                    }
+        return rules_SR
+
+    @classmethod
+    def get_config(cls):
+        """Get sub config."""
+        return {'common': cls.common,
+                'test': cls.test
+                }

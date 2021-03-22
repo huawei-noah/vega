@@ -23,6 +23,20 @@ class ImagenetCommonConfig(BaseConfig):
     num_parallel_calls = 64
     fp16 = False
     image_size = 224
+    train_portion = 1.0
+
+    @classmethod
+    def rules(cls):
+        """Return rules for checking."""
+        rules_ImagenetCommon = {"n_class": {"type": int},
+                                "num_workers": {"type": int},
+                                "batch_size": {"type": int},
+                                "num_parallel_batches": {"type": int},
+                                "num_parallel_calls": {"type": int},
+                                "fp16": {"type": int},
+                                "image_size": {"type": int}
+                                }
+        return rules_ImagenetCommon
 
 
 class ImagenetTrainConfig(ImagenetCommonConfig):
@@ -36,6 +50,15 @@ class ImagenetTrainConfig(ImagenetCommonConfig):
                   dict(type='Normalize', mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])]
     num_images = 1281167
 
+    @classmethod
+    def rules(cls):
+        """Return rules for checking."""
+        rules_ImagenetTrain = {"shuffle": {"type": bool},
+                               "transforms": {"type": list},
+                               "num_images": {"type": int}
+                               }
+        return rules_ImagenetTrain
+
 
 class ImagenetValConfig(ImagenetCommonConfig):
     """Default Dataset config for Imagenet."""
@@ -45,6 +68,14 @@ class ImagenetValConfig(ImagenetCommonConfig):
                   dict(type='ToTensor'),
                   dict(type='Normalize', mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])]
     num_images = 50000
+
+    @classmethod
+    def rules(cls):
+        """Return rules for checking."""
+        rules_ImagenetVal = {"transforms": {"type": list},
+                             "num_images": {"type": int}
+                             }
+        return rules_ImagenetVal
 
 
 class ImagenetTestConfig(ImagenetCommonConfig):
@@ -56,6 +87,14 @@ class ImagenetTestConfig(ImagenetCommonConfig):
                   dict(type='Normalize', mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])]
     num_images = 50000
 
+    @classmethod
+    def rules(cls):
+        """Return rules for checking."""
+        rules_ImagenetTest = {"transforms": {"type": list},
+                              "num_images": {"type": int}
+                              }
+        return rules_ImagenetTest
+
 
 class ImagenetConfig(ConfigSerializable):
     """Default Dataset config for Imagenet."""
@@ -64,3 +103,22 @@ class ImagenetConfig(ConfigSerializable):
     train = ImagenetTrainConfig
     val = ImagenetValConfig
     test = ImagenetTestConfig
+
+    @classmethod
+    def rules(cls):
+        """Return rules for checking."""
+        rules_Imagenet = {"common": {"type": dict},
+                          "train": {"type": dict},
+                          "val": {"type": dict},
+                          "test": {"type": dict}
+                          }
+        return rules_Imagenet
+
+    @classmethod
+    def get_config(cls):
+        """Get sub config."""
+        return {'common': cls.common,
+                'train': cls.train,
+                'val': cls.val,
+                'test': cls.test
+                }

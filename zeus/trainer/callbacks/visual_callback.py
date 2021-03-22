@@ -133,6 +133,6 @@ def _fetch_tf_graph(model, input):
         out = model(dummy_input)
         sess.run(tf.global_variables_initializer())
 
-        o = sess.run(out, feed_dict={dummy_input: np.ones(input.shape.as_list())})
+        sess.run(out, feed_dict={dummy_input: np.ones(input.shape.as_list())})
         # print(np.shape(o), o)
     return graph

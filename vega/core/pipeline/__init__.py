@@ -1,9 +1,11 @@
 # -*- coding:utf-8 -*-
 from .pipe_step import PipeStep
-from .nas_pipe_step import NasPipeStep
 from .pipeline import Pipeline
-from .generator import Generator
-from .fully_train_pipe_step import FullyTrainPipeStep
-from .benchmark_pipe_step import BenchmarkPipeStep
-from .nas_pipe_step_mf import NasPipeStepMF
-from .generator_mf import GeneratorMF
+from zeus.common.class_factory import ClassFactory
+
+
+ClassFactory.lazy_register("vega.core.pipeline", {
+    "search_pipe_step": ["SearchPipeStep"],
+    "train_pipe_step": ["TrainPipeStep"],
+    "benchmark_pipe_step": ["BenchmarkPipeStep"],
+})

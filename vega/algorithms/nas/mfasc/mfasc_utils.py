@@ -7,6 +7,7 @@
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 # MIT License for more details.
+
 """Utilities (predictors) for multi-fidelity active search."""
 
 import numpy as np
@@ -15,7 +16,7 @@ from sklearn.ensemble import GradientBoostingRegressor
 import copy
 from scipy.stats import linregress
 from sklearn.gaussian_process.kernels import RBF, ConstantKernel, WhiteKernel
-import vega.algorithms.nas.mfasc.mfgpr as mfgpr
+from . import mfgpr
 from .conf import MFASCConfig
 
 

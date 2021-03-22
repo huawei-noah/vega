@@ -97,6 +97,8 @@ class ChannelIncreaseBlock(Module):
             self.layers.append(NAME_BLOCKS[block_name](
                 base_channel=base_channel))
         self.layers = Sequential(*self.layers)
+        self.blocks = self.layers.children() if isinstance(self.layers.children(), list) else list(
+            self.layers.children())
 
     def call(self, inputs):
         """Calculate the output of the model.
@@ -104,13 +106,13 @@ class ChannelIncreaseBlock(Module):
         :param x: input tensor
         :return: output tensor of the model
         """
-        out = []
+        out = ()
         x = inputs
-        for block in self.layers.children():
+        for block in self.blocks:
             x = block(x)
-            out.append(x)
+            out += (x,)
 
-        return ops.concat(tuple(out))
+        return ops.concat(out)
 
 
 @ClassFactory.register(ClassType.NETWORK)

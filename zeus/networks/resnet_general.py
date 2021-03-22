@@ -27,7 +27,7 @@ class ResNetGeneral(Module):
         34: ('BasicBlock', 16),
         50: ('BottleneckBlock', 16),
         101: ('BottleneckBlock', 33),
-        152: ('BottleneckBlokc', 50),
+        152: ('BottleneckBlock', 50),
     }
 
     _default_blocks = {
@@ -45,9 +45,9 @@ class ResNetGeneral(Module):
         super(ResNetGeneral, self).__init__()
         self.base_channel = base_channel
         self.base_depth = base_depth
-        self.stage = stage
+        self.stages = stage
         self.block_type = self._block_setting[self.base_depth][0]
-        self.block_stage = self._default_blocks[self.base_depth][:self.stage]
+        self.block_stage = self._default_blocks[self.base_depth][:self.stages]
 
         node_channels = self.prune_setting()
         self.block_cls = get_module_class(self.block_type)

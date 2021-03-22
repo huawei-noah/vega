@@ -13,7 +13,7 @@ According to the description in the previous chapter, we can divide the applicat
 1. Scenario A: For ordinary semantic segmentation tasks, users want to provide a semantic segmentation training data set and a test data set to get a suitable semantic segmentation model.
 2. Scenario B: For advanced users, search the semantic segmentation network backbone, and then construct the semantic network to get the final semantic segmentation model.
 
-At the same time, the above three may need to deploy models for specific hardware devices, such as the Atlas 310 chip.
+At the same time, the above three may need to deploy models for specific hardware devices, such as the Ascend 310 chip.
 
 ### 2.1 Scenario A: Ordinary semantic segmentation task
 

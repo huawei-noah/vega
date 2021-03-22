@@ -1,147 +1,147 @@
 {
-  "modules": [
-    "super_network"
-  ],
-  "super_network": {
-    "type": "DartsNetwork",
-    "input_size": 224,
-    "init_channels": 48,
-    "num_classes": 1000,
-    "auxiliary": true,
-    "aux_size": 7,
-    "auxiliary_layer": 9,
-    "drop_path_prob": 0.2,
-    "search": false,
-    "stem": {
-      "type": "PreOneStem",
-      "init_channels": 16,
-      "stem_multi": 3
-    },
-    "head": {
-      "type": "LinearClassificationHead"
-    },
-    "cells": {
-      "modules": [
-        "PreTwoStem",
-        "normal",
-        "normal",
-        "normal",
-        "normal",
-        "reduce",
-        "normal",
-        "normal",
-        "normal",
-        "normal",
-        "reduce",
-        "normal",
-        "normal",
-        "normal",
-        "normal"
-      ],
-      "normal": {
-        "type": "NormalCell",
-        "steps": 4,
-        "genotype": [
-          [
-            "skip_connect",
-            2,
-            0
-          ],
-          [
-            "skip_connect",
-            2,
-            1
-          ],
-          [
-            "sep_conv_3x3",
-            3,
-            0
-          ],
-          [
-            "sep_conv_3x3",
-            3,
-            1
-          ],
-          [
-            "sep_conv_3x3",
-            4,
-            1
-          ],
-          [
-            "sep_conv_3x3",
-            4,
-            0
-          ],
-          [
-            "sep_conv_3x3",
-            5,
-            0
-          ],
-          [
-            "sep_conv_3x3",
-            5,
-            1
-          ]
-        ],
-        "concat": [
-          2,
-          3,
-          4,
-          5
-        ]
-      },
-      "reduce": {
-        "type": "ReduceCell",
-        "steps": 4,
-        "genotype": [
-          [
-            "sep_conv_3x3",
-            2,
-            0
-          ],
-          [
-            "sep_conv_3x3",
-            2,
-            1
-          ],
-          [
-            "sep_conv_3x3",
-            3,
-            0
-          ],
-          [
-            "sep_conv_3x3",
-            3,
-            1
-          ],
-          [
-            "sep_conv_3x3",
-            4,
-            0
-          ],
-          [
-            "sep_conv_3x3",
-            4,
-            1
-          ],
-          [
-            "sep_conv_3x3",
-            5,
-            0
-          ],
-          [
-            "sep_conv_3x3",
-            5,
-            1
-          ]
-        ],
-        "concat": [
-          2,
-          3,
-          4,
-          5
-        ]
-      }
+    "modules": [
+        "super_network"
+    ],
+    "super_network": {
+        "type": "DartsNetwork",
+        "input_size": 224,
+        "init_channels": 48,
+        "num_classes": 1000,
+        "auxiliary": true,
+        "aux_size": 7,
+        "auxiliary_layer": 9,
+        "drop_path_prob": 0.2,
+        "search": false,
+        "stem": {
+            "type": "PreOneStem",
+            "init_channels": 16,
+            "stem_multi": 3
+        },
+        "head": {
+            "type": "LinearClassificationHead"
+        },
+        "cells": {
+            "modules": [
+                "PreTwoStem",
+                "normal",
+                "normal",
+                "normal",
+                "normal",
+                "reduce",
+                "normal",
+                "normal",
+                "normal",
+                "normal",
+                "reduce",
+                "normal",
+                "normal",
+                "normal",
+                "normal"
+            ],
+            "normal": {
+                "type": "NormalCell",
+                "steps": 4,
+                "genotype": [
+                    [
+                        "skip_connect",
+                        2,
+                        0
+                    ],
+                    [
+                        "skip_connect",
+                        2,
+                        1
+                    ],
+                    [
+                        "sep_conv_3x3",
+                        3,
+                        0
+                    ],
+                    [
+                        "sep_conv_3x3",
+                        3,
+                        1
+                    ],
+                    [
+                        "sep_conv_3x3",
+                        4,
+                        1
+                    ],
+                    [
+                        "sep_conv_3x3",
+                        4,
+                        0
+                    ],
+                    [
+                        "sep_conv_3x3",
+                        5,
+                        0
+                    ],
+                    [
+                        "sep_conv_3x3",
+                        5,
+                        1
+                    ]
+                ],
+                "concat": [
+                    2,
+                    3,
+                    4,
+                    5
+                ]
+            },
+            "reduce": {
+                "type": "ReduceCell",
+                "steps": 4,
+                "genotype": [
+                    [
+                        "sep_conv_3x3",
+                        2,
+                        0
+                    ],
+                    [
+                        "sep_conv_3x3",
+                        2,
+                        1
+                    ],
+                    [
+                        "sep_conv_3x3",
+                        3,
+                        0
+                    ],
+                    [
+                        "sep_conv_3x3",
+                        3,
+                        1
+                    ],
+                    [
+                        "sep_conv_3x3",
+                        4,
+                        0
+                    ],
+                    [
+                        "sep_conv_3x3",
+                        4,
+                        1
+                    ],
+                    [
+                        "sep_conv_3x3",
+                        5,
+                        0
+                    ],
+                    [
+                        "sep_conv_3x3",
+                        5,
+                        1
+                    ]
+                ],
+                "concat": [
+                    2,
+                    3,
+                    4,
+                    5
+                ]
+            }
+        }
     }
-  }
 }

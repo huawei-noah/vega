@@ -190,6 +190,9 @@ class ClusterDaskDistributor(DistributorBaseClass):
         """Wait all process in process_queue to finish."""
         while not self.process_queue_empty():
             time.sleep(0.1)
+        time.sleep(5)
+        while not self.process_queue_empty():
+            time.sleep(0.1)
         return
 
 

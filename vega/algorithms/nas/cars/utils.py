@@ -43,7 +43,7 @@ def eval_model_parameters(model):
     """
     if vega.is_torch_backend():
         return np.sum(v.numel() for name, v in model.named_parameters() if "auxiliary" not in name) / 1e6
-    else:
+    elif vega.is_tf_backend():
         import tensorflow as tf
         tf.compat.v1.reset_default_graph()
         dummy_input = tf.compat.v1.placeholder(
@@ -54,3 +54,5 @@ def eval_model_parameters(model):
         all_weight = tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.TRAINABLE_VARIABLES)
         weight_op = [t for t in all_weight if "auxiliary" not in t.name]
         return np.sum([np.prod(t.get_shape().as_list()) for t in weight_op]) * 1e-6
+    elif vega.is_ms_backend():
+        return 0

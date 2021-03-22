@@ -9,10 +9,10 @@
 # MIT License for more details.
 
 """Defined faster rcnn detector."""
+
 from object_detection.predictors.heads import box_head
 from object_detection.predictors import mask_rcnn_box_predictor
 from object_detection.predictors.heads import class_head
-
 from zeus.common import ClassType, ClassFactory
 from zeus.networks.tensorflow.utils.hyperparams import scope_generator
 

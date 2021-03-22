@@ -30,7 +30,7 @@ class CosineAnnealingLR(object):
     :type warmup_epochs: int
     """
 
-    def __init__(self, optimizer, T_max, eta_min=0, last_epoch=-1, warmup=True, warmup_epochs=5):
+    def __init__(self, optimizer, T_max, eta_min=0, last_epoch=-1, warmup=False, warmup_epochs=5):
         """Init CosineAnnealingLR."""
         self.T_max = T_max
         self.eta_min = eta_min

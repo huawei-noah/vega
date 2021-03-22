@@ -57,7 +57,7 @@ def calc_model_flops_params(model, input, custom_hooks=None, verbose=False):
         from thop import profile
         try:
             _model = deepcopy(model)
-        except Exception as e:
+        except Exception:
             _model = model
         if custom_hooks is None:
             custom_hooks = {}

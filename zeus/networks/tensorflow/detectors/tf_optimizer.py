@@ -11,7 +11,6 @@
 """Defined faster rcnn detector."""
 import tensorflow as tf
 from tensorflow.contrib import opt as tf_opt
-
 from object_detection.utils import learning_schedules
 
 

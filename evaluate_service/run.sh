@@ -1,0 +1,1 @@
+python3 evaluate_service.py

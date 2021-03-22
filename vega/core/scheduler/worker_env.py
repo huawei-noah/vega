@@ -18,8 +18,8 @@ import json
 import psutil
 import subprocess
 import traceback
-import logging
 import fcntl
+from copy import deepcopy
 from distributed.diagnostics.plugin import WorkerPlugin
 
 
@@ -38,27 +38,33 @@ class WorkerEnv(WorkerPlugin):
         self.workers_each_node = workers_each_node
         self.device_quota = device_quota
         self.master_host_name = master_host_name
-        self.local_host_name = None
         self.master_pid = master_pid
         self.device_list = []
+        self._backend_type = os.environ["BACKEND_TYPE"]
         self.device_category = os.environ['DEVICE_CATEGORY']
-        self.__worker_number_file__ = os.path.join(temp_path, '.vega_worker_env_gpu')
+        self.temp_path = temp_path
         self.__worker_null_file__ = os.path.join(temp_path, '.vega_null')
         self.__worker_device_folder__ = os.path.join(temp_path, '.vega_device')
+        self._cuda_devices = deepcopy(os.environ.get("ORIGIN_CUDA_VISIBLE_DEVICES", None))
+        self._ori_rank_table_file = deepcopy(os.environ.get("ORIGIN_RANK_TABLE_FILE", None))
+        if self._cuda_devices:
+            _value = self._cuda_devices.replace("'", "").replace("\"", "").replace(" ", "").split(",")
+            self._cuda_devices = [str(x) for x in _value]
         return
 
-    def _set_device_env(self):
+    def _init_worker_number_file(self, ip):
         """Use a local file to save a label to mark gpu id used for different workers on a same slave node."""
-        if not os.path.isfile(self.__worker_number_file__):
-            os.makedirs(os.path.dirname(self.__worker_number_file__), exist_ok=True)
-            fp = open(self.__worker_number_file__, 'w')
+        _worker_number_file = os.path.join(self.temp_path, '.{}.worker_number'.format(ip))
+        if not os.path.isfile(_worker_number_file):
+            os.makedirs(os.path.dirname(_worker_number_file), exist_ok=True)
+            fp = open(_worker_number_file, 'w')
             fcntl.flock(fp, fcntl.LOCK_EX)
             fp.write('{}'.format(0))
             fcntl.flock(fp, fcntl.LOCK_UN)
             fp.close()
-        return
+        return _worker_number_file
 
-    def _get_device_list(self):
+    def _get_device_list(self, worker_number_file):
         """Get the cuda devices id list that are visible to current workers.
 
         :return: the current worker visible gpu id list.
@@ -66,14 +72,15 @@ class WorkerEnv(WorkerPlugin):
 
         """
         current_count = 0
-        with open(self.__worker_number_file__, 'r+') as fp:
+        with open(worker_number_file, 'r+') as fp:
             fcntl.flock(fp, fcntl.LOCK_EX)
             f_str = fp.readline()
             try:
-                current_count = int(f_str.strip()) % self.workers_each_node
+                # current_count = int(f_str.strip()) % self.workers_each_node
+                current_count = int(f_str.strip())
             except Exception:
                 pass
-            with open(self.__worker_number_file__, 'w') as fn:
+            with open(worker_number_file, 'w') as fn:
                 fn.write('{}'.format(current_count + 1))
             fcntl.flock(fp, fcntl.LOCK_UN)
         device_list = []
@@ -83,12 +90,18 @@ class WorkerEnv(WorkerPlugin):
 
     def _set_visible_devices(self):
         """Set visible devices to each worker env."""
+        os.environ["BACKEND_TYPE"] = self._backend_type
+        os.environ['DEVICE_CATEGORY'] = self.device_category
         if self.device_category == 'GPU':
-            cuda_device_list_str = ",".join(self.device_list)
+            _device_list = self.device_list
+            if self._cuda_devices:
+                _device_list = [self._cuda_devices[int(i)] for i in _device_list]
+            cuda_device_list_str = ",".join(_device_list)
             os.environ['CUDA_VISIBLE_DEVICES'] = cuda_device_list_str
-            logging.info("CUDA_VISIBLE_DEVICES:" + cuda_device_list_str)
+            # print("CUDA_VISIBLE_DEVICES: {}".format(cuda_device_list_str))
         elif self.device_category == 'NPU':
-            origin_rank_file = os.environ.get('ORIGIN_RANK_TABLE_FILE')
+            self._fit_npu_device_list()
+            origin_rank_file = self._ori_rank_table_file
             with open(origin_rank_file, 'r') as f:
                 rank_table_json = json.loads(f.read())
             rank_table_json['server_count'] = 1
@@ -103,9 +116,9 @@ class WorkerEnv(WorkerPlugin):
                 raise Exception('No matching devices info.')
             rank_table_json['server_list'] = [instance_info]
             rank_table_json['server_list'][0]['device'] = devices_info
-
+            server_id = rank_table_json['server_list'][0]['server_id']
             new_rank_table_file = os.path.join(self.__worker_device_folder__,
-                                               'rank_table_{}.json'.format(self.device_list[0]))
+                                               'rank_table_{0}_{1}.json'.format(server_id, self.device_list[0]))
             if not os.path.exists(self.__worker_device_folder__):
                 os.makedirs(self.__worker_device_folder__, exist_ok=True)
             with open(new_rank_table_file, 'w') as f:
@@ -114,10 +127,19 @@ class WorkerEnv(WorkerPlugin):
             os.environ['RANK_TABLE_FILE'] = new_rank_table_file
             os.environ['RANK_SIZE'] = str(len(self.device_list))
             os.environ['DEVICE_ID'] = self.device_list[0]
+            os.environ['ASCEND_DEVICE_ID'] = self.device_list[0]
             os.environ['RANK_ID'] = rank_table_json['server_list'][0]['device'][0]['rank_id']
-            logging.info("RANK_TABLE_FILE:" + new_rank_table_file)
+            # print("RANK_TABLE_FILE: {}".format(new_rank_table_file))
         else:
             raise Exception('device category must be GPU or NPU.')
+
+    def _fit_npu_device_list(self):
+        """Fit npu device list to actual visible devices."""
+        visible_list = os.environ['NPU_VISIBLE_DEVICES'].split(',')
+        new_device_list = list()
+        for device_id in self.device_list:
+            new_device_list.append(visible_list[int(device_id)])
+        self.device_list = new_device_list
 
     def setup(self, worker):
         """Call back function for worker setup.
@@ -126,12 +148,8 @@ class WorkerEnv(WorkerPlugin):
         CUDA_VISIBLE_DEVICES.
 
         """
-        if "BATCH_CURRENT_HOST" in os.environ:
-            self.local_host_name = os.environ["BATCH_CURRENT_HOST"]
-        elif "BATCH_CUSTOM0_HOSTS" in os.environ:
-            self.local_host_name = os.environ["BATCH_CUSTOM0_HOSTS"]
-        self._set_device_env()
-        self.device_list = self._get_device_list()
+        number_file = self._init_worker_number_file(worker.ip)
+        self.device_list = self._get_device_list(number_file)
         self._set_visible_devices()
         return
 
@@ -139,7 +157,7 @@ class WorkerEnv(WorkerPlugin):
         """Call back function for worker teardown."""
         return
 
-    def transition(self, key, start, finish, *args, **kwargs):
+    def transition_discard(self, key, start, finish, *args, **kwargs):
         """Call back function for worker status transition.
 
         here to clean the gpu memory whe worker status turn to `ready`,
@@ -154,7 +172,7 @@ class WorkerEnv(WorkerPlugin):
         :param type ** kwargs: Description of parameter `**kwargs`.
 
         """
-        logging.info(" Plugin transition ")
+        print(" Plugin transition ")
         #
         if finish == 'ready' and len(self.device_list) > 0:
             try:
@@ -168,7 +186,7 @@ class WorkerEnv(WorkerPlugin):
                     for p in parent.children(recursive=False):
                         protect_pid_set.add(int(p.pid))
                 except Exception:
-                    logging.debug("In slave node, master pid is not existed, process does not need to protect.")
+                    print("In slave node, master pid is not existed, process does not need to protect.")
                 if self.device_category == 'GPU':
                     cuda_pid_set = set()
                     for id in self.device_list:
@@ -186,9 +204,9 @@ class WorkerEnv(WorkerPlugin):
                     # for spid in cuda_pid_set:
                     #     subprocess.call(["kill", "-9", "{}".format(spid)])
                     if cuda_pid_set:
-                        logging.info("Non-Vega process is using GPU, pids={}".format(cuda_pid_set))
+                        print("Non-Vega process is using GPU, pids={}".format(cuda_pid_set))
             except Exception:
-                logging.error("Worker Plugin Error.")
-                logging.error(traceback.format_exc())
-        logging.info("cleaned the cuda memory...")
+                print("Worker Plugin Error.")
+                print(traceback.format_exc())
+        print("cleaned the cuda memory...")
         return

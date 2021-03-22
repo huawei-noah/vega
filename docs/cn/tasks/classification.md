@@ -25,7 +25,7 @@ Vega当前支持这两类约束，通过网络架构搜索等手段，生成多�
 
 针对图像分类的使用场景，可分为如下几种种使用场景：
 
-![](./images/classification.png)
+![](../../images/classification.png)
 
 以下分别介绍这几种场景下，如何使用Vega来搜索和训练模型：
 

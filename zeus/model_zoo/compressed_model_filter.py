@@ -9,7 +9,7 @@
 # MIT License for more details.
 
 """Compressed model filter."""
-import os
+
 import pandas as pd
 
 
@@ -28,8 +28,8 @@ class CompressedModelFilter(object):
 
     def _parse_standard(self, standard):
         """Parse quota standard to target and restrict."""
-        restrict = standard.restrict().to_json()
-        target = standard.target().to_json()
+        restrict = standard.restrict().to_dict()
+        target = standard.target().to_dict()
         return target, restrict
 
     def _filtrate(self, restrict):

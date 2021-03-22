@@ -1,20 +1,16 @@
 # FAQ
 
-## 1. 常见运行异常汇总
+## 1. 常见异常汇总
 
 ### 1.1 异常 `ModuleNotFoundError: No module named 'mmdet'`
 
-运行SM-NAS、SP-NAS等算法时，需要单独安装开源软件mmdetection，具体安装步骤请参考该软件的安装指导。
+运行SP-NAS等算法时，需要单独安装开源软件mmdetection，具体安装步骤请参考该软件的安装指导。
 
 ### 1.2 异常 `ModuleNotFoundError: No module named 'nasbench'`
 
 运行Benchmark时，需要单独安装开源软件NASBench，具体安装步骤请参考该软件的安装指导。
 
-### 1.3 异常 `ModuleNotFoundError: No module named '<module name>'`
-
-通过`pip3 install noah-vega --user`安装Vega后，并未安装Vega所依赖的第三方开源软件，需要使用命令`python3 -m vega.tools.install_pkgs`来安装所依赖的第三方开源软件。可通过`python3 -m vega.tools.install_pkgs -h`来查看安装选项，同时会在当前目录下生成`install_dependencies.sh`文件，方便安装过程中出现问题排查和调测。
-
-### 1.4 异常 `Exception: Failed to create model, model desc={<model desc>}`
+### 1.3 异常 `Exception: Failed to create model, model desc={<model desc>}`
 
 出现该类问题的原因有两类：
 
@@ -29,12 +25,24 @@
 sudo apt install libglib2.0-0
 ```
 
-### 1.6 异常 `PermissionError: [Errno 13] Permission denied: 'dask-scheduler'`
+### 1.6 安装过程中出现异常 `ModuleNotFoundError: No module named 'skbuild'`，或者在安装过程中卡在`Running setup.py bdist_wheel for opencv-python-headless ...`
+
+该异常可能是pip的版本过低，可尝试使用如下命令解决：
+
+```bash
+pip3 install --user --upgrade pip
+```
+
+### 1.7 异常 `PermissionError: [Errno 13] Permission denied: 'dask-scheduler'`, 或者 `FileNotFoundError: [Errno 2] No such file or directory: 'dask-scheduler': 'dask-scheduler'`
 
 这类异常一般是因为在 `PATH` 路径中未找到 `dask-scheduler` ，一般该文件会安装在 `/<user home path>/.local/bin` 路径下。
-在安装完 Vega ，并执行 `python3 -m vega.tools.install_pkgs` 后，会自动添加 `/<user home path>/.local/bin/` 到 `PATH` 环境变量中，但不会即时生效，需要该用户再次登录服务器后才会生效。
-若再次登录服务器，还是出现同样的问题，可先检查在 `/<user home path>/.local/bin` 路径下是否存在 `dask-scheduler` 文件，若不存在，请再次执行 `python3 -m vega.tools.install_pkgs` ，并确认安装过程没有出现异常。
+在安装完 Vega ，会自动添加 `/<user home path>/.local/bin/` 到 `PATH` 环境变量中，但不会即时生效，需要该用户执行`source ~/.profile`，或者再次登录服务器后才会生效。
+若问题还未解决，可先检查在 `/<user home path>/.local/bin` 路径下是否存在 `dask-scheduler` 文件。
 若该文件已存在，则需要手动添加 `/<user home path>/.local/bin` 到环境变量 `PATH` 中。
+
+### 1.8 Pytorch模型评估时，出现异常 `FileNotFoundError: [Errno 2] No such file or directory: '<path>/torch2caffe.prototxt'`
+
+请参考文档 [Evaluate Service](./evaluate_service.md) 6.1 章节。
 
 ## 2. 常见配置问题汇总
 
@@ -64,13 +72,13 @@ general:
 使用单个GPU：
 
 ```bash
-CUDA_VISIBLE_DEVICES=1 python3 ./run_pipeline.py ./nas/backbone_nas/backbone_nas.yml
+CUDA_VISIBLE_DEVICES=1 python3 -m vega.pipeline ./nas/backbone_nas/backbone_nas.yml
 ```
 
 使用多个GPU：
 
 ```bash
-CUDA_VISIBLE_DEVICES=2,3 python3 ./run_pipeline.py ./nas/backbone_nas/backbone_nas.yml
+CUDA_VISIBLE_DEVICES=2,3 python3 -m vega.pipeline ./nas/backbone_nas/backbone_nas.yml
 ```
 
 ### 2.3 如何通过修改配置项加载预训练模型
@@ -108,13 +116,11 @@ general:
 
 Vega提供了模型搜索过程可视化进展，用户只需在`USER.yml` 中配置`VisualCallBack`， 如下所示
 
-```
+```yaml
     trainer:
         type: Trainer
         callbacks: [VisualCallBack, ]
 ```
-
-
 
 可视化信息输出目录为：
 
@@ -123,3 +129,20 @@ Vega提供了模型搜索过程可视化进展，用户只需在`USER.yml` 中�
 ```
 
 在主机上执行`tensorboard --logdir PATH`如下启动服务，在浏览器上查看进展。具体可参考tensorboard的相关命令和指导。
+
+### 2.6 如何终止后台运行的vega程序
+
+Vega在多个GPU/NPU场景中，会启动dask scheduler、dask worker及训练器，若仅仅杀死Vega主进程会造成部分进程不会及时的关闭，其占用的资源一直不会被释放。
+
+可使用如下命令终止Vega应用程序：
+
+```bash
+# 查询运行中的Vega主程序的进程ID
+vega-kill -l
+# 终止一个Vega主程序及相关进程
+vega-kill -p <pid>
+# 或者一次性的终止所有Vega相关进程
+vega-kill -a
+# 若主程序被非常正常关闭，还存在遗留的相关进程，可使用强制清理
+vega-kill -f
+```

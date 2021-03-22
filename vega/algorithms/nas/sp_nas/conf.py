@@ -15,11 +15,24 @@ from zeus.common import ConfigSerializable
 class SpNasConfig(ConfigSerializable):
     """Sp NasConfig."""
 
-    codec = 'SpNasCodec'
-    total_list = "{local_base_path}/output/total_list_s.csv"
-    sample_level = 'serial'
-    max_sample = 10
+    max_sample = 20
     max_optimal = 5
-    serial_settings = dict(num_mutate=3, addstage_ratio=0.05, expend_ratio=0.3, max_stages=6)
-    regnition = False
-    last_search_result = None
+    num_mutate = 3
+    objective_keys = 'mAP'
+    addstage_ratio = 0.05
+    expend_ratio = 0.3
+    max_stages = 6
+    retain_original_code = False
+    reignite = True
+    reignite_desc = dict()
+
+    @classmethod
+    def rules(cls):
+        """Return rules for checking."""
+        rules_SpNasConfig = {
+            "max_sample": {"type": int},
+            "max_optimal": {"type": int},
+            "serial_settings": {"type": dict},
+            "regnition": {"type": bool},
+        }
+        return rules_SpNasConfig

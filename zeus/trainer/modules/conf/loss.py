@@ -18,12 +18,12 @@ class LossConfig(ConfigSerializable):
     _exclude_keys = ['type']
     _update_all_attrs = True
     type = 'CrossEntropyLoss'
-    params = {}
+    params = {'sparse': True}
 
     @classmethod
-    def from_json(cls, data, skip_check=True):
+    def from_dict(cls, data, skip_check=True):
         """Restore config from a dictionary or a file."""
-        cls = super(LossConfig, cls).from_json(data, skip_check)
+        cls = super(LossConfig, cls).from_dict(data, skip_check)
         if "params" not in data:
             cls.params = {}
         return cls
@@ -42,7 +42,7 @@ class LossMappingDict(object):
     type_mapping_dict = dict(
         CrossEntropyLoss=dict(torch='CrossEntropyLoss', tf='CrossEntropyLoss',
                               ms='SoftmaxCrossEntropyWithLogits'),
-        MixAuxiliaryLoss=dict(torch='MixAuxiliaryLoss', tf='MixAuxiliaryLoss', ms=None),
+        MixAuxiliaryLoss=dict(torch='MixAuxiliaryLoss', tf='MixAuxiliaryLoss', ms='MixAuxiliaryLoss'),
         L1Loss=dict(torch='L1Loss', tf='absolute_difference', ms="L1Loss"),
     )
 
@@ -53,7 +53,7 @@ class LossMappingDict(object):
             sparse=dict(torch=None, tf=None, ms='sparse'),
         ),
         MixAuxiliaryLoss=dict(
-            loss_base=dict(torch='loss_base', tf='loss_base'),
-            aux_weight=dict(torch='aux_weight', tf='aux_weight'),
+            loss_base=dict(torch='loss_base', tf='loss_base', ms='loss_base'),
+            aux_weight=dict(torch='aux_weight', tf='aux_weight', ms='aux_weight'),
         )
     )

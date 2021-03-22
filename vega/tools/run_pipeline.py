@@ -17,7 +17,8 @@ import vega
 from copy import deepcopy
 from zeus.common.general import General
 from zeus.common.config import Config
-from zeus.common import update_dict
+from zeus.common.utils import update_dict
+from zeus.common.utils import verify_requires
 
 
 def _append_env():
@@ -117,6 +118,15 @@ def _resume(args):
         General.backup_original_value(force=True)
 
 
+def _backup_config(args):
+    _file = args.config_file
+    from zeus.common.task_ops import TaskOps
+    from zeus.common.file_ops import FileOps
+    dest_file = FileOps.join_path(TaskOps().local_output_path, os.path.basename(_file))
+    FileOps.make_base_dir(dest_file)
+    FileOps.copy_file(_file, dest_file)
+
+
 def run_pipeline(load_special_lib_func=None):
     """Run pipeline."""
     args = _parse_args()
@@ -126,9 +136,15 @@ def run_pipeline(load_special_lib_func=None):
     if load_special_lib_func:
         load_special_lib_func(args.config_file)
     config = _set_startup(args)
-    args = vars(args)
-    args = _check_parse(args)
-    config = _modify_config(args, config)
+    # load general
+    if config.get("general"):
+        General.from_dict(config.get("general"), skip_check=False)
+    if General.requires and not verify_requires(General.requires):
+        return
+    dict_args = vars(args)
+    dict_args = _check_parse(dict_args)
+    config = _modify_config(dict_args, config)
+    _backup_config(args)
     vega.run(config)
 
 

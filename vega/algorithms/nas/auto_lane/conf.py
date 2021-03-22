@@ -16,7 +16,19 @@ class AutoLaneConfig(ConfigSerializable):
     """AutoLaneConfig Config."""
 
     codec = 'AutoLaneNasCodec'
-    random_ratio: 0.5
-    num_mutate: 10
-    max_sample: 100
-    min_sample: 10
+    random_ratio = 0.5
+    num_mutate = 10
+    max_sample = 100
+    min_sample = 10
+    objective_keys = "LaneMetric"
+
+    @classmethod
+    def rules(cls):
+        """Return rules for checking."""
+        rules_AutoLaneConfig = {"codec": {"type": str},
+                                "random_ratio": {"type": float},
+                                "num_mutate": {"type": int},
+                                "max_sample": {"type": int},
+                                "min_sample": {"type": int}
+                                }
+        return rules_AutoLaneConfig

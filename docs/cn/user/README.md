@@ -32,6 +32,6 @@ Vega针对以上每个算法提供了示例，通过尝试运行示例，可快�
 
 ## 3. 模型端侧评估
 
-Vega还提供了端侧模型评估的能力，支持的端侧硬件有Davinci推理芯片（Atalas200 DK、ATLAS300产品和开发板环境Evb)和手机，支持在 [Bolt](https://github.com/huawei-noah/bolt) 部署评估。
+Vega还提供了端侧模型评估的能力，支持的端侧硬件有Davinci推理芯片（ATLAS 200 DK、ATLAS 300产品和开发板环境Evb)和手机，支持在 [Bolt](https://github.com/huawei-noah/bolt) 部署评估。
 
 用户可参考 [评估服务安装和配置指导](./evaluate_service.md) 安装和配置评估服务，用以在架构搜索过程中实时评估搜索到的模型，得到适用于该终端设备的模型。

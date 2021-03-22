@@ -55,7 +55,7 @@ pipeline: [hpo]
 
 hpo:
     pipe_step:
-        type: NasPipeStep
+        type: SearchPipeStep
 
     search_algorithm:
         type: RandomSearch
@@ -110,8 +110,10 @@ To facilitate the reuse of network modules, fine-grained modules are grouped bas
 - **Connections**: defines the connection relationships between modules, including Sequential and Add, and the implementation statements of some condition branches, such as Repeat.
 - **Operators:** Defines underlying operators, such as conv and batch_normal. Each operator is adapted to multiple platforms to unify external input, output, and interface invoking.
 For example, the composition of a ResNet18 is as follows:
-![resnet](./images/resnet.png)
+![resnet](../../images/resnet.png)
+
 ## 4. Definition of Search Space
+
 The search space consists of **hyper_parameters** and **condition**.
 **hyper_parameters**
 Specifies the definition of a hyperparameter, including key, type, and value. key indicates the name of a hyperparameter, and type indicates the type of a hyperparameter, that is, ParamType. The system selects a sampling mode based on ParamType. range: specifies the sampling range.
@@ -138,8 +140,10 @@ We encapsulate the underlying architecture and unify upper-layer interfaces to a
 - **Module**: base class to be inherited for implementing customized modules, which unifies the implementation of internal module operations on each platform.
 - **ops**: upper-layer operator invoking interface, which unifies the names, input, and output of the same functional operator on different platforms.
 - **Serializable:** Extracts and parses hyperparameters and hierarchies in the module, and serializes them into a JSON dictionary.
-![fine_grained_space](./images/fine_grained_space.png)
+![fine_grained_space](../../images/fine_grained_space.png)
+
 ## 6. How to Develop Fine-Grained Networks
+
 For algorithm developers, we want them to focus on the development of search algorithms for network structure and hyperparameters rather than the construction of the network itself. Currently, some modules and networks have been preconfigured that can provide the hyperparameter definition and architecture definition description of this type of network. Algorithm developers only need to assemble new networks using search algorithms based on the description.
 ### 6.1 Defining a Module
 To facilitate your use, we inherit the development habits of pytorch. Only a few lines of changes are required to become a module of fine granularity.

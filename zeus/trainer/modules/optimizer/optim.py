@@ -14,7 +14,7 @@ import zeus
 from zeus.common import ClassFactory, ClassType
 from ..config_bakcend_map import ConfigBackendMapping
 from ..conf.optim import OptimConfig, OptimMappingDict
-
+from zeus.common.config import Config
 
 if zeus.is_gpu_device():
     try:
@@ -36,17 +36,26 @@ class Optimizer(object):
 
     config = OptimConfig()
 
-    def __init__(self):
+    def __new__(cls, *args, **kwargs):
+        """Create optimizer or multi-optimizer class."""
+        if isinstance(cls.config.to_dict, list):
+            t_cls = ClassFactory.get_cls(ClassType.OPTIMIZER, 'MultiOptimizers')
+            return super().__new__(t_cls)
+        return super().__new__(cls)
+
+    def __init__(self, config=None):
         """Initialize."""
-        # register pytorch/tensorflow optim as default
-        raw_config = self.config.to_json()
+        self.is_multi_opt = False
+        if config is not None:
+            self.config = Config(config)
+        raw_config = self.config.to_dict()
         raw_config.type = self.config.type
         map_dict = OptimMappingDict
         self.map_config = ConfigBackendMapping(
             map_dict.type_mapping_dict, map_dict.params_mapping_dict).backend_mapping(raw_config)
         self.optim_cls = ClassFactory.get_cls(ClassType.OPTIMIZER, self.map_config.type)
 
-    def __call__(self, model=None, distributed=False):
+    def __call__(self, model=None, distributed=False, **kwargs):
         """Call Optimizer class.
 
         :param model: model, used in torch case
@@ -65,6 +74,8 @@ class Optimizer(object):
             elif zeus.is_tf_backend():
                 optimizer = dynamic_optimizer(self.optim_cls, **params)
             elif zeus.is_ms_backend():
+                if "dynamic_lr" in kwargs:
+                    params.update({"learning_rate": kwargs["dynamic_lr"]})
                 learnable_params = [param for param in model.trainable_params() if param.requires_grad]
                 optimizer = self.optim_cls(learnable_params, **params)
             return optimizer

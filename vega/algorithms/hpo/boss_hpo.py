@@ -18,7 +18,7 @@ from .boss_conf import BossConfig
 
 @ClassFactory.register(ClassType.SEARCH_ALGORITHM)
 class BossHpo(HPOBase):
-    """An Hpo of BOSS, inherit from HpoGenerator."""
+    """An Hpo of BOSS."""
 
     config = BossConfig()
 

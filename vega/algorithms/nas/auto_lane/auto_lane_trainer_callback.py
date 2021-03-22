@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 class AutoLaneTrainerCallback(Callback):
     """Construct the trainer of Auto Lane."""
 
-    disable_callbacks = ['ProgressLogger', 'MetricsEvaluator']
+    disable_callbacks = ['ProgressLogger', 'MetricsEvaluator', "ModelStatistics"]
 
     def logger_patch(self):
         """Patch the default logger."""
@@ -82,9 +82,9 @@ class AutoLaneTrainerCallback(Callback):
                 'loc_loss': loss_loc.item(),
                 'train_batch_output': None}
 
-    def before_valid(self, logs=None):
-        """Be called before a batch validation."""
-        epochs = self.params['epochs']
+    # def before_valid(self, logs=None):
+    #     """Be called before a batch validation."""
+    #     epochs = self.params['epochs']
 
     def valid_step(self, batch):
         """Be called on each batch validing."""

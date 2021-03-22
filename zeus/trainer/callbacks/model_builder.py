@@ -11,17 +11,14 @@
 """ModelCheckpoint callback defination."""
 import os
 import glob
-import pickle
 import logging
 import zeus
 from .callback import Callback
 from zeus.common import FileOps, Config
-from zeus.networks.network_desc import NetworkDesc
 from zeus.common import ClassFactory, ClassType
 from zeus.networks.model_config import ModelConfig
 from zeus.common.general import General
 from zeus.model_zoo import ModelZoo
-
 
 logger = logging.getLogger(__name__)
 
@@ -43,32 +40,27 @@ class ModelBuilder(Callback):
         """Load model desc from save path and parse to model."""
         model = self.trainer.model
         if self.trainer.config.is_detection_trainer:
-            model_desc = self.trainer.model_desc
+            model_desc = self.trainer.model_desc or self._get_model_desc()
         else:
             model_desc = self._get_model_desc()
-        if model_desc:
-            ModelConfig.model_desc = model_desc
         pretrained_model_file = self._get_pretrained_model_file()
         if not model:
             if not model_desc:
                 raise Exception("Failed to Init model, can not get model description.")
-            model = ModelZoo.get_model(model_desc, pretrained_model_file)
+            model = ModelZoo.get_model(model_desc, pretrained_model_file, ModelConfig.head)
         if model:
+            self.trainer.model_desc = model.desc
             if zeus.is_torch_backend():
                 import torch
                 if self.trainer.use_cuda:
                     model = model.cuda()
                 if General._parallel and General.devices_per_trainer > 1:
-                    model = torch.nn.DataParallel(self.trainer.model)
-            if zeus.is_tf_backend():
-                if pretrained_model_file:
-                    model_folder = os.path.dirname(pretrained_model_file)
-                    FileOps.copy_folder(model_folder, self.trainer.get_local_worker_path())
+                    model = torch.nn.DataParallel(model)
         return model
 
     def _get_model_desc(self):
         model_desc = self.trainer.model_desc
-        if not model_desc or 'modules' not in model_desc:
+        if not model_desc:
             if ModelConfig.model_desc_file is not None:
                 desc_file = ModelConfig.model_desc_file
                 desc_file = desc_file.replace("{local_base_path}", self.trainer.local_base_path)
@@ -88,14 +80,16 @@ class ModelBuilder(Callback):
                 pattern = FileOps.join_path(folder, "desc_*.json")
                 desc_file = glob.glob(pattern)[0]
                 model_desc = Config(desc_file)
-            else:
-                return None
         return model_desc
 
     def _get_pretrained_model_file(self):
+        model_file = self.trainer.config.kwargs.get("pretrained_model_file")
+        if model_file:
+            return model_file
         if ModelConfig.pretrained_model_file:
             model_file = ModelConfig.pretrained_model_file
             model_file = model_file.replace("{local_base_path}", self.trainer.local_base_path)
+            model_file = model_file.replace("{worker_id}", str(self.trainer.worker_id))
             if ":" not in model_file:
                 model_file = os.path.abspath(model_file)
             if ":" in model_file:

@@ -9,13 +9,13 @@
 # MIT License for more details.
 
 """Basic layers."""
-import functools
+
 import logging
 from collections import OrderedDict
 import torch
 import torch.nn as nn
 from torch.nn import init
-from torch.optim import lr_scheduler
+
 
 try:
     import horovod.torch as hvd

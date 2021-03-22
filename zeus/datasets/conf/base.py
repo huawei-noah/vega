@@ -24,3 +24,39 @@ class BaseConfig(ConfigSerializable):
     pin_memory = True
     drop_last = True
     transforms = []
+    buffer_size = 128
+
+    @classmethod
+    def rules(cls):
+        """Return rules for checking."""
+        rules_Base = {"data_path": {"type": (str, None)},
+                      "batch_size": {"type": int},
+                      "num_workers": {"type": int},
+                      "shuffle": {"type": bool},
+                      "distributed": {"type": bool},
+                      "download": {"type": bool},
+                      "pin_memory": {"type": bool},
+                      "drop_last": {"type": bool},
+                      "transforms": {"type": list},
+                      }
+        return rules_Base
+
+
+class DummyConfig(BaseConfig):
+    """Dummy config."""
+
+    def __getattr__(self, item):
+        """Override getattr function."""
+        if hasattr(self, item):
+            return super().__getattribute__(item)
+        else:
+            return None
+
+
+class DummyDatasetConfig(ConfigSerializable):
+    """Dummy dataset config."""
+
+    common = DummyConfig
+    train = DummyConfig
+    val = DummyConfig
+    test = DummyConfig

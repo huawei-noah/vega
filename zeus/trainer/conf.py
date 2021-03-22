@@ -23,9 +23,9 @@ class MetricsConfig(ConfigSerializable):
     params = {}
 
     @classmethod
-    def from_json(cls, data, skip_check=True):
+    def from_dict(cls, data, skip_check=True):
         """Restore config from a dictionary or a file."""
-        cls = super(MetricsConfig, cls).from_json(data, skip_check)
+        cls = super(MetricsConfig, cls).from_dict(data, skip_check)
         if "params" not in data:
             cls.params = {}
         return cls
@@ -42,9 +42,13 @@ class TrainerConfig(ConfigSerializable):
     """Default Trainer Config."""
 
     type = 'Trainer'
+    actions_list = None
     with_valid = True
+    with_train = True
+    max_train_steps = None
     cuda = True
     is_detection_trainer = False
+    is_gan_trainer = False
     distributed = False
     save_model_desc = False
     report_freq = 10
@@ -69,27 +73,20 @@ class TrainerConfig(ConfigSerializable):
     init_model_file = None
     pareto_front_file = None
     unrolled = True
-    save_best_model = False
-    model_arch = None
     model_desc_file = None
     codec = None
     model_desc = None
     hps_file = None
     hps_folder = None
-    save_model_descs = None
-    random_file = None
     loss_scale = 1.
     save_steps = 500
     report_on_valid = False
     perfs_cmp_mode = None
     perfs_cmp_key = None
     call_metrics_on_train = True
-    lr_adjustment_position = 'after_epoch'
     report_on_epoch = False
     calc_params_each_epoch = False
     model_path = None
-    checkpoint_file = None
-    weights_file = None
     get_train_metric_after_epoch = True
     kwargs = None
     train_verbose = 2
@@ -97,16 +94,66 @@ class TrainerConfig(ConfigSerializable):
     train_report_steps = 10
     valid_report_steps = 10
     load_checkpoint = True
+    save_checkpoint = True
+    use_unsupervised_pretrain = False
+    calc_latency = False
+    train_in_once = False
+    mixup = False
 
     @classmethod
     def rules(cls):
         """Return rules for checking."""
         check_rules_trainer = {"type": {"type": str},
+                               "with_valid": {"type": bool},
+                               "cuda": {"type": bool},
+                               "is_detection_trainer": {"type": bool},
+                               "distributed": {"type": bool},
+                               "save_model_desc": {"type": bool},
+                               "report_freq": {"type": int},
+                               "seed": {"type": int},
                                "epochs": {"type": int},
-                               "optimizer": {"type": dict},
+                               "valid_interval": {"type": int},
+                               "syncbn": {"type": bool},
+                               "amp": {"type": bool},
+                               "lazy_built": {"type": bool},
+                               "callbacks": {"type": (list, str, None)},
+                               "grad_clip": {"type": (int, float, None)},
+                               "pretrained_model_file": {"type": (str, None)},
+                               "model_statistics": {"type": bool},
+                               "optimizer": {"type": (dict, list)},
                                "lr_scheduler": {"type": dict},
                                "loss": {"type": dict},
                                "metric": {"type": dict},
-                               "calc_params_each_epoch": {"type": bool}
+                               "limits": {"type": (dict, None)},
+                               "init_model_file": {"type": (str, None)},
+                               "pareto_front_file": {"type": (str, None)},
+                               "unrolled": {"type": bool},
+                               "model_desc_file": {"type": (str, None)},
+                               "codec": {"type": (str, dict, None)},
+                               "model_desc": {"type": (str, dict, None)},
+                               "hps_file": {"type": (str, None)},
+                               "hps_folder": {"type": (str, None)},
+                               "loss_scale": {"type": (int, float)},
+                               "save_steps": {"type": int},
+                               "report_on_valid": {"type": bool},
+                               "call_metrics_on_train": {"type": bool},
+                               "get_train_metric_after_epoch": {"type": bool},
+                               "train_verbose": {"type": int},
+                               "valid_verbose": {"type": int},
+                               "train_report_steps": {"type": int},
+                               "valid_report_steps": {"type": int},
+                               "calc_params_each_epoch": {"type": bool},
+                               "load_checkpoint": {"type": bool},
+                               "mixup": {"type": bool}
                                }
         return check_rules_trainer
+
+    @classmethod
+    def get_config(cls):
+        """Get sub config."""
+        return {
+            "optimizer": cls.optimizer,
+            "lr_scheduler": cls.lr_scheduler,
+            "metric": cls.metric,
+            "loss": cls.loss
+        }

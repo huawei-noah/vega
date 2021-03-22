@@ -23,6 +23,15 @@ class FashionMnistCommonConfig(BaseConfig):
                   dict(type='ToTensor'),
                   dict(type='Normalize', mean=[0.28604063146254594], std=[0.35302426207299326])]
 
+    @classmethod
+    def rules(cls):
+        """Return rules for checking."""
+        rules_FashionMnistCommon = {"num_workers": {"type": int},
+                                    "shuffle": {"type": int},
+                                    "transforms": {"type": int}
+                                    }
+        return rules_FashionMnistCommon
+
 
 class FashionMnistTrainConfig(FashionMnistCommonConfig):
     """Default Dataset config for Fashion Mnist."""
@@ -49,3 +58,22 @@ class FashionMnistConfig(ConfigSerializable):
     train = FashionMnistTrainConfig
     val = FashionMnistValConfig
     test = FashionMnistTestConfig
+
+    @classmethod
+    def rules(cls):
+        """Return rules for checking."""
+        rules_FashionMnist = {"common": {"type": dict},
+                              "train": {"type": dict},
+                              "val": {"type": dict},
+                              "test": {"type": dict}
+                              }
+        return rules_FashionMnist
+
+    @classmethod
+    def get_config(cls):
+        """Get sub config."""
+        return {'common': cls.common,
+                'train': cls.train,
+                'val': cls.val,
+                'test': cls.test
+                }

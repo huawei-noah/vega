@@ -1,5 +1,5 @@
-import os
-if os.environ['BACKEND_TYPE'] == 'PYTORCH':
+import vega
+if vega.is_torch_backend():
     from .ctr_trainer_callback import CtrTrainerCallback
     from .autogroup_trainer_callback import AutoGroupTrainerCallback
     from .autogate_s1_trainer_callback import AutoGateS1TrainerCallback

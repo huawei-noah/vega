@@ -10,6 +10,7 @@
 
 """This is a base class of the dataset."""
 import tensorflow as tf
+import zeus
 from zeus.common.general import General
 
 
@@ -23,6 +24,7 @@ class TfAdapter(object):
                  "float32": tf.float32,
                  "torch.float16": tf.float32,
                  "float16": tf.float32,
+                 "float64": tf.double,
                  "torch.int32": tf.int32,
                  "int32": tf.int32,
                  "torch.int64": tf.int64,
@@ -33,13 +35,25 @@ class TfAdapter(object):
         self.dataset = dataset
         self.args = dataset.args
         self._num_examples = len(self.dataset) if hasattr(self.dataset, "__len__") else self.args.get('num_images')
+        self.data_index = list(range(self._num_examples))
+        if self.args.get('train_portion', 1.0) < 1:
+            split = int(self.args.train_portion * self._num_examples)
+            if self.dataset.mode == 'train':
+                self.data_index = self.data_index[:split]
+                self._num_examples = split
+            elif self.dataset.mode == 'val':
+                self.data_index = self.data_index[split:]
+                self._num_examples = self._num_examples - split
         self.is_detection = self.args.get("is_detection", False)
+        self.is_spatiotemporal = self.args.get('is_spatiotemporal')
 
     def _get_dateset_info(self):
         """Get the data shape."""
         if self.is_detection:
             return
         item = self.dataset[0]
+        if self.is_spatiotemporal:
+            self.feature_shape = [v.shape if v is not None else v for v in item]
         if isinstance(item, (list, tuple)):
             self.image_pos, self.label_pos = 0, 1
         elif isinstance(item, dict):
@@ -72,6 +86,8 @@ class TfAdapter(object):
     def _get_item(self, images_index, label_index):
         """Get one item of the dataset."""
         item = self.dataset[images_index]
+        if self.is_spatiotemporal:
+            return item[0], item[1], item[2], item[3], item[4], item[5]
         if not self.is_detection:
             image = item[self.image_pos]
             label = item[self.label_pos]
@@ -79,17 +95,11 @@ class TfAdapter(object):
         else:
             image = item[0]
             img_meta = image.get("img_meta")
-            return image.get("img"), \
-                image.get("gt_bboxes"), \
-                image.get("gt_bboxes_ignore"), \
-                image.get("gt_labels_ignore"), \
-                image.get("gt_labels"), \
-                img_meta.get("ori_shape"), \
-                img_meta.get("img_shape"), \
-                img_meta.get("pad_shape"), \
-                img_meta.get("scale_factor"), \
-                img_meta.get("flip"), \
-                item[1]
+            return image.get("img"), image.get("gt_bboxes"), image.get("gt_bboxes_ignore"), \
+                image.get("gt_labels_ignore"), image.get("gt_labels"), \
+                img_meta.get("ori_shape"), img_meta.get("img_shape"), \
+                img_meta.get("pad_shape"), img_meta.get("scale_factor"), \
+                img_meta.get("flip"), item[1]
 
     def _resize_image_label(self, image, label):
         """Resize the image and label."""
@@ -115,6 +125,15 @@ class TfAdapter(object):
 
     def data_map_func(self, images_index, label_index):
         """Apply data map function from raw data."""
+        if self.is_spatiotemporal:
+            feature, spatial_mx, temporal_mx, mean, std, label = tf.numpy_function(
+                self._get_item, [images_index, label_index],
+                [tf.float64, tf.float64, tf.float64, tf.float64, tf.float64, tf.float64])
+            feature.set_shape(self.feature_shape[0])
+            spatial_mx.set_shape(self.feature_shape[1])
+            temporal_mx.set_shape(self.feature_shape[2])
+            label.set_shape(self.feature_shape[-1])
+            return (feature, spatial_mx, temporal_mx), (mean, std, label)
         if not self.is_detection:
             image, label = tf.numpy_function(self._get_item,
                                              [images_index, label_index],
@@ -139,11 +158,11 @@ class TfAdapter(object):
                     pass
         else:
             img, gt_bboxes, gt_bboxes_ignore, gt_labels_ignore, gt_labels, \
-                ori_shape, img_shape, pad_shape, scale_factor, flip, target = \
-                tf.numpy_function(self._get_item,
-                                  [images_index, label_index],
-                                  [tf.float32, tf.float32, tf.float32, tf.float32, tf.int64,
-                                   tf.int64, tf.int64, tf.int64, tf.float64, tf.bool, tf.int64])
+                ori_shape, img_shape, pad_shape, scale_factor, flip, target = tf.numpy_function(
+                    self._get_item,
+                    [images_index, label_index],
+                    [tf.float32, tf.float32, tf.float32, tf.float32, tf.int64,
+                        tf.int64, tf.int64, tf.int64, tf.float64, tf.bool, tf.int64])
             image = dict()
             img_meta = dict()
             img_meta["ori_shape"] = ori_shape
@@ -176,10 +195,8 @@ class TfAdapter(object):
         if hasattr(self.dataset, "input_fn"):
             return self.dataset.input_fn()
         self._get_dateset_info()
-        images_index = list(range(self._num_examples))
-        label_index = images_index
         dataset = tf.data.Dataset.from_tensor_slices(
-            (images_index, label_index))
+            (self.data_index, self.data_index))
         if self.dataset.world_size > 1:
             dataset = dataset.shard(self.dataset.world_size, self.dataset.rank)
         if self.dataset.mode == 'train':
@@ -187,10 +204,16 @@ class TfAdapter(object):
         if self.args.shuffle:
             dataset = dataset.shuffle(buffer_size=self._num_examples)
 
-        dataset = dataset.map(self.data_map_func)
-        dataset = dataset.batch(
-            batch_size=self.args.batch_size, drop_remainder=self.args.drop_last)
-        # dataset = dataset.prefetch(tf.contrib.data.AUTOTUNE)
+        if zeus.is_npu_device():
+            # esr cannot adapt to num_parallel_calls on NPU
+            dataset = dataset.map(self.data_map_func)
+            dataset = dataset.batch(
+                batch_size=self.args.batch_size, drop_remainder=self.args.drop_last)
+        else:
+            dataset = dataset.map(self.data_map_func, num_parallel_calls=tf.data.experimental.AUTOTUNE)
+            dataset = dataset.batch(
+                batch_size=self.args.batch_size, drop_remainder=self.args.drop_last)
+            dataset = dataset.prefetch(tf.contrib.data.AUTOTUNE)
         return dataset
 
     @property
