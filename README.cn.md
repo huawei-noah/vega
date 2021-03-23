@@ -30,6 +30,16 @@ Vega是诺亚方舟实验室自研的AutoML算法工具链，有主要特点：
 5. 多Backend支持：支持PyTorch(GPU), TensorFlow(GPU, Ascend 910), MindSpore(Ascend 910).。
 6. 支持昇腾平台：支持在Ascend 910搜索和训练，支持在Ascend 310上模型评估。
 
+## AutoML工具特性
+
+|  | 平台 | HPO算法 | NAS算法 | 端侧评估 | 模型过滤 | 统一网络 |
+| :--: | :-- | :-- | :-- | :-- | :-- | :-- |
+| **AutoGluon** | mxnet, PyTorch | Random Search, Bayesian, Hyper-Band | Random Search, RL | × | × | × |
+| **AutoKeras** | Keras | No Restrictions | Network Morphism | × | × | × |
+| **Model Search** | TensorFlow | No Restrictions | Random Search, Beam Search | × | × | × |
+| **NNI** | No Restrictions | Random Search and Grid Search, Bayesian, Annealing, Hyper-Band, Evolution, RL | Random Search, Gradient-Based,  One-Shot | × | × | × |
+| **Vega** | PyTorch, TensorFlow, MindSpore | Random Search, Grid Search, Bayesian, Hyper-Band, Evolution | Random Search, Gradient-Based, Evalution, One-Shot | Ascend 310, Kirin 980/990 | Quota (在NAS搜索中根据parameters, flops, latency过滤模型) | 提供同时用于PyTorch、TensorFlow和MindSpore的网络 |
+
 ## 算法列表
 
 | 分类 | 算法 | 说明 | 参考 |
