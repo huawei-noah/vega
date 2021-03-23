@@ -6,7 +6,7 @@
 
 **English | [中文](./README.cn.md)**
 
-**Vega ver1.2.0 released:**
+**Vega ver1.3.0 released:**
 
 - Feature enhancement:
   - Ascend platform, search and training on the Ascend 910 (TensorFlow and MindSpore), and model evaluation on the Ascend 310.
