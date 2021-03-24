@@ -29,6 +29,16 @@ Vega is an AutoML algorithm tool chain developed by Noah's Ark Laboratory, the m
 5. Multi-Backend: PyTorch (GPU), TensorFlow (GPU and Ascend 910), MindSpore (Ascend 910).
 6. Ascend platform: Search and training on the Ascend 910 and model evaluation on the Ascend 310.
 
+## AutoML Tools Features
+
+|  | Supported Frameworks | HPO Algorithms | NAS Algorithms | Device-Side Evaluation | Model Filter | Universal Network |
+| :--: | :-- | :-- | :-- | :-- | :-- | :-- |
+| **AutoGluon** | mxnet, PyTorch | Random Search, Bayesian, Hyper-Band | Random Search, RL | × | × | × |
+| **AutoKeras** | Keras | No Restrictions | Network Morphism | × | × | × |
+| **Model Search** | TensorFlow | No Restrictions | Random Search, Beam Search | × | × | × |
+| **NNI** | No Restrictions | Random Search and Grid Search, Bayesian, Annealing, Hyper-Band, Evolution, RL | Random Search, Gradient-Based,  One-Shot | × | × | × |
+| **Vega** | PyTorch, TensorFlow, MindSpore | Random Search, Grid Search, Bayesian, Hyper-Band, Evolution | Random Search, Gradient-Based, Evalution, One-Shot | Ascend 310, Kirin 980/990 | Quota (filter model based on parameters, flops, latency) | provides networks compatibility with PyTorch, TensorFlow, and MindSpore |
+
 ## Algorithm List
 
 | Category | Algorithm | Description | reference |

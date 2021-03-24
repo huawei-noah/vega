@@ -379,7 +379,7 @@ BOHB 依赖 HB（Hyperband）来决定每次跑多少组参数和每组参数分
 
 按照 Hyperband 的方式来选择每次跑的参数个数与分配多少资源（budget），并继续使用“连续减半（SuccessiveHalving）”策略：
 
-<img src="./images/hb1.png" alt="sha.png" style="zoom:40%;" />
+<img src="../../images/hb1.png" alt="sha.png" style="zoom:40%;" />
 
 #### BO(贝叶斯优化)
 
@@ -387,11 +387,11 @@ BOHB 的 BO 与 TPE 非常相似, 它们的主要区别是: BOHB 中使用一个
 
 树形超参评估器 (TPE): 使用 KDE (核密度估计) 来对密度进行建模。
 
-<img src="./images/bo_1.png" alt="sha.png" style="zoom:50%;" />
+<img src="../../images/bo_1.png" alt="sha.png" style="zoom:50%;" />
 
 为了建模有效的核密度估计（KDE），设置了一个建立模型所需的最小观察点数（Nmin），在 Experiment 中它的默认值为 d+1（d是搜索空间的维度），其中 d 也是一个可以设置的超参数。 因为希望尽早地建立模型，所以当 Nb = |Db|，即当已经观察到的计算资源（budget）为 b 的点数满足 q · Nb ≥ Nmin 时，立即建立模型来指导之后参数的选择。所以，在使用了刚开始Nmin + 2 个随机选择的参数之后，会按照下式将观察到的点进行分类
 
-<img src="./images/bo_2.png" alt="sha.png" style="zoom:50%;" />
+<img src="../../images/bo_2.png" alt="sha.png" style="zoom:50%;" />
 
 #### BOHB流程
 
@@ -401,7 +401,7 @@ BOHB 的 BO 与 TPE 非常相似, 它们的主要区别是: BOHB 中使用一个
 
 有关如何使用多维的KDE模型来指导参数选择的采样规程，用以下伪代码来描述。
 
-<img src="./images/bohb_4.png" alt="sha.png" style="zoom:60%;" />
+<img src="../../images/bohb_4.png" alt="sha.png" style="zoom:60%;" />
 
 ### 6.4 BOSS算法介绍
 
