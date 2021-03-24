@@ -14,7 +14,7 @@
   - Allows user datasets to be FineTune on DNet pretrained models and surpass SOTA on Ascend 910/310.
   - Support the pruning capability of user datasets and ResNet models. For the Cifar100 data set, the precision changes slightly (+– 0.5), the latency decreases by 15%, and the model size decreases by 30%.
 - New algorithm:
-  - ModularNAS: Towards Modularized and Reusable Neural Architecture Search, A code library for various neural architecture search methods including weight sharing and network morphism.
+  - ModularNAS: Towards Modularized and Reusable Neural Architecture Search, a code library for various neural architecture search methods including weight sharing and network morphism.
   - DNet: Network architecture search algorithms and Model Zoo that are affinity with Davinci chips.
   - MF-ASC: Multi-Fidelity neural Architecture Search with Co-kriging.
 
@@ -23,10 +23,10 @@
 Vega is an AutoML algorithm tool chain developed by Noah's Ark Laboratory, the main features are as follows:
 
 1. Full pipeline capailities: The AutoML capabilities cover key functions such as Hyperparameter Optimization, Data Augmentation, Network Architecture Search (NAS), Model Compression, and Fully Train. These functions are highly decoupled and can be configured as required, construct a complete pipeline.
-2. Industry-leading AutoML algorithms: provides Noah's Ark Laboratory's self-developed **[industry-leading algorithm(Benchmark)](./docs/benchmark.md)** and  **[Model Zoo](./docs/model_zoo.md)** to download the State-of-the-art (SOTA) model.
+2. Industry-leading AutoML algorithms: Provides Noah's Ark Laboratory's self-developed **[industry-leading algorithm (Benchmark)](./docs/benchmark.md)** and **[Model Zoo](./docs/model_zoo.md)** to download the state-of-the-art (SOTA) models.
 3. Fine-grained network search space: The network search space can be freely defined, and rich network architecture parameters are provided for use in the search space. The network architecture parameters and model training hyperparameters can be searched at the same time, and the search space can be applied to Pytorch, TensorFlow and MindSpore.
 4. High-concurrency neural network training capability: Provides high-performance trainers to accelerate model training and evaluation.
-5. Multi-Backend: PyTorch(GPU), TensorFlow(GPU, Ascend 910), MindSpore(Ascend 910).
+5. Multi-Backend: PyTorch (GPU), TensorFlow (GPU and Ascend 910), MindSpore (Ascend 910).
 6. Ascend platform: Search and training on the Ascend 910 and model evaluation on the Ascend 310.
 
 ## AutoML Tools Features
@@ -39,7 +39,7 @@ Vega is an AutoML algorithm tool chain developed by Noah's Ark Laboratory, the m
 | **NNI** | No Restrictions | Random Search and Grid Search, Bayesian, Annealing, Hyper-Band, Evolution, RL | Random Search, Gradient-Based,  One-Shot | × | × | × |
 | **Vega** | PyTorch, TensorFlow, MindSpore | Random Search, Grid Search, Bayesian, Hyper-Band, Evolution | Random Search, Gradient-Based, Evalution, One-Shot | Ascend 310, Kirin 980/990 | Quota (filter model based on parameters, flops, latency) | provides networks compatibility with PyTorch, TensorFlow, and MindSpore |
 
-## Algorithm list
+## Algorithm List
 
 | Category | Algorithm | Description | reference |
 | :--: | :-- | :-- | :-- |
@@ -68,7 +68,7 @@ Vega is an AutoML algorithm tool chain developed by Noah's Ark Laboratory, the m
 | Fully Train | [Beyond Dropout: Feature Map Distortion to Regularize Deep Neural Networks](https://arxiv.org/abs/2002.11022) | Neural network training (regularization) based on disturbance of feature map | [ref](./docs/en/algorithms/fmd.md) |
 | Fully Train | [Circumventing Outliers of AutoAugment with Knowledge Distillation](https://arxiv.org/abs/2003.11342v1) | Joint knowledge distillation and data augmentation for high performance classication model training, achieved 85.8% Top-1 accuracy on ImageNet 1k | Coming soon |
 
-## install
+## Installation
 
 Run the following commands to install Vega and related open-source software:
 
@@ -102,7 +102,7 @@ For common problems and exception handling, please refer to [FAQ](./docs/en/user
 }
 ```
 
-## Cooperation and contribution
+## Cooperation and Contribution
 
-Welcome to use Vega. If you have any questions, ask for help, fix bugs, contribute algorithms, or improve documents, submit the issue in the community. We will reply to and communicate with you in a timely manner.
+Welcome to use Vega. If you have any questions or suggestions, need help, fix bugs, contribute new algorithms, or improve the documentation, submit an issue in the community. We will reply to and communicate with you in a timely manner.  
 Welcome to join our QQ chatroom (Chinese): **833345709**.
