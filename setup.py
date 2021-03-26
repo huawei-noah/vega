@@ -48,7 +48,7 @@ setuptools.setup(
         "pillow",
         "pandas==0.25.2",
         "distributed==2.18.0",
-        "PyYAML==5.1.2",
+        "PyYAML==5.4",
         "numpy==1.18.5",
         "scipy==1.5.3",
         "scikit-learn==0.21.3",
