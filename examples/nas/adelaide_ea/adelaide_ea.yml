@@ -113,12 +113,9 @@ fully_train:
         ref: random.dataset
         train:
             batch_size: 24
-    search_space:
-        ref: random.search_space
-        custom:
-            sep_repeats: 2
     trainer:
         ref: random.trainer
         callbacks: AdelaideEATrainerCallback
+        load_checkpoint: False
         model_statistics: True
         epochs: 100
