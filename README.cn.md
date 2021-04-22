@@ -1,6 +1,6 @@
 
 <div align="center">
-  <img src="./docs/images/pipeline.png"/>
+  <img src="./docs/images/pipeline.jpg"/>
 </div>
 
 # Vega
