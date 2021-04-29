@@ -2,54 +2,26 @@
 
 ## 1. Introduction to hyperparameter optimization Functions
 
-### 1.1 Algorithms
+Hyperparameter optimization refers to using automated algorithms to optimize hyperparameters that cannot be optimized through training in original machine learning or deep learning algorithm, such as learning rates, activation functions, and optimizers. When training neural networks, it is necessary to adjust the hyperparameters. This process can more scientifically train more efficient machine learning models. The current model training requires experienced researchers/engineers to determine the hyperparameters to be modified based on the available information, but for most people, this is a time-consuming and laborious process.
 
-The hyperparameter optimization functions provided in vega.algorithms.hpo module: 
+With the automatic hyperparameter optimization capability, users can quickly and efficiently test and select the optimal hyperparameter combination in the hyperparameter space, saving a lot of manpower and time. For advanced research users, a more accurate small-scale hyperparametric search space can be defined based on experience and fast hyperparametric search can be performed automatically, thereby further improving the model training effect.
 
-1. Single-objective hyperparameter optimization 
+The Vega HPO algorithms are suitable for deep neural network hyperparameter optimization, including single-objective optimization and random Pareto multi-objective hyperparameter selection. The single-objective optimization algorithm is suitable for the situation where the evaluation criteria of the model are unique or the performance of the model can be represented by a single index. The multi-objective Pareto optimization algorithm is suitable for the situation where the model needs to be represented by multi-indicator synthesis.The algorithm finally gives a series of hyperparameter combinations satisfying the Pareto frontier.
+
+Currently, Vega provides the following hyperparameter optimization algorithms:
+
+1. Single-objective hyperparameter optimization
 
 - [x] Random
-- [x] BO (Note: Currently supports SMAC and GPEI.)
+- [x] BO
 - [x] ASHA
-- [x] BOHB (Note: Asynchronous parallelism is not included in the current implementation. The BO model is GP+EI.)
-- [x] BOSS (Note: Asynchronous parallelism is not included in the current implementation. The BO model is GP+EI.)
+- [x] BOHB
+- [x] BOSS
 - [x] TPE
 
 2. Multi-objective hyperparameter optimization
 
 - [x] RandomPareto
-
-### 1.2 Hyperparameter Search Space
-
-Vega provides a genernalized search space that can be composed of independent discrete or continuous variables, and allows users to set the conditional constraint relationship between variables. The search space is defined in  vega.algorithms.hpo.hpyperparameter_space. Current search space supports the following variable types and constraints between variables:
-
-1. **Variable Type**
-
-Continuous variables:
-
-- [x] INT
-- [x] INT_EXP
-- [x] FLOAT
-- [x] FLOAT_EXP
-
-Discrete variables:
-
-- [x] INT_CAT
-- [x] FLOAT_CAT
-- [x] STRING
-- [x] BOOL
-
-2. **Condition Constraint Type**
-
-- [x] EQUAL
-- [x] NOT_EQUAL
-- [x] IN
-
-A general design of the search space can be find in Chapter 3.
-
-### 1.3 HPO Module
-
-Vega provides an general pipeline and generators for multiple hyperparameter optimization algorithms. Users can assign the hyperparameter search space and hyperparameter search algorithm in the configuration file, provide the related trainer and evaluator. By invoking the hpo_pipestep, users can use the HPO function conveniently. For details, see chapter 4.
 
 ## 2. Introduction to Hyperparameter Optimization Algorithms
 
@@ -80,11 +52,31 @@ Stochastic gradient descent is a well-known optimization method for neural netwo
 
 ## 3. Introduction to HyperparameterSpace
 
-Currently, Vega Pipeline provides a general search space that can contains independent discrete or continuous variables, and allows to set the conditional constraint relationship between variables (vega.algorithms.hpo.hyperparameter_space). This chapter describes the architecture design of the Hyperparameter Space. For details about how to use the HyperparameterSpace, see chapter "."
+Currently, Vega provides a general search space that can contains independent discrete or continuous variables, and allows to set the conditional constraint relationship between variables.
 
-Overall architecture of HyperparameterSpace:
+The search space supports the following variable types and inter-variable conditional constraints:
 
-![sha.png](../../images/hyperparameter_space_1.png)
+1. **Variable Type**
+
+Continuous variables:
+
+- [x] INT
+- [x] INT_EXP
+- [x] FLOAT
+- [x] FLOAT_EXP
+
+Discrete variables:
+
+- [x] INT_CAT
+- [x] FLOAT_CAT
+- [x] STRING
+- [x] BOOL
+
+2. **Condition Constraint Type**
+
+- [x] EQUAL
+- [x] NOT_EQUAL
+- [x] IN
 
 ### 3.1 HyperparameterSpace
 
@@ -99,7 +91,7 @@ Overall architecture:
 
 ![sha.png](../../images/hyperparameter_space_2.png)
 
-Hyperparameter stores the name, type, and range of each hyperparameter and maps the hyperparameter range to a uniform value range that can be calculated. The hyperparameter types mainly used here are EXP and CAT. The EXP parameters are mapped to [0,1] after the log operation. The CAT parameters are mapped to [0,1] with a catogrized discretation. 
+Hyperparameter stores the name, type, and range of each hyperparameter and maps the hyperparameter range to a uniform value range that can be calculated. The hyperparameter types mainly used here are EXP and CAT. The EXP parameters are mapped to [0,1] after the log operation. The CAT parameters are mapped to [0,1] with a catogrized discretation.
 
 ### 3.3 Condition
 
@@ -119,29 +111,11 @@ Currently, the following conditions are provided: EQUAL, NOT_EQUAL, and IN.  A c
 
 Asha_hpo is an example to show how to use the HPO module. The example contains the configure file: asha.yaml .
 
-#### Run Pipeline
-
-The main function is to add an HPO pipestep in the following statement:
-
-```bash
-vega ./hpo/asha/asha.yml
-```
-
-The function is to start the VEGA pipeline for HPO and load the asha.yml configuration file.
-
 #### Configuration file asha.yaml
-
-（1）The example configuration contains the general setting for task and worker to start the pipeline.
 
 ```yaml
 pipeline: [hpo]
-```
 
-This current pipeline contains only one hpo pipestep named hpo.
-
-(2) In the pipestep of hpo,  an HPO configuration part is required to set the HPO algorithm configuration, including total_epochs, config_count, and search space hyperparameter_space.
-
-```yaml
 hpo:
     search_algorithm:
         type: AshaHpo
@@ -173,7 +147,7 @@ hpo:
 
 config_count indicates the total number of hyperparameter combinations for sampling. In the ASHA algorithm, total_epochs indicates the maximum number of epochs for training one model, hyperparameter_space indicates the current hyperparameter search space, the condition part contains the sub-hyperparameters : "sgd_momentum" is selected only when "parent": "optimizer" is set to "SGD".
 
-(3) The following information needs to be configured for the trainer:
+The following information needs to be configured for the trainer:
 
 ```yaml
 hpo:
@@ -200,33 +174,19 @@ hpo:
             type: CrossEntropyLoss
 ```
 
-In addition to the basic configuration of a trainer, the model_desc of a current neural network is also provided, indicating that the neural network is described by the search_space setting in the vega pipeline. Specifically, an image classification network composed of a customized ResNetVariant and LinearClassificationHead is included.
+### 4.2 Output
 
-(4) Configure the evaluator.
+#### Run Example
 
-```yaml
-hpo:
-    evaluator:
-        type: Evaluator
-        host_evaluator:
-            type: HostEvaluator
-            metric:
-                type: accuracy
+Run the following command:
+
+```bash
+vega ./hpo/asha/asha.yml
 ```
 
-Host_evaluator is used to evaluate model performance based on GPU platform and return evaluation results with performance sorting.
+#### Score Board
 
-#### Running Example
-
-After configuring the customized configuration file, run main.py for the final output.
-
-### 4.2 Module Output
-
-By default, the HPO module generates the score_board.csv, hps.csv, and best_config.json files in the output directory. The output is stored in the corresponding id directory in the worker subdirectory.
-
-#### Scoreboard score_board.csv
-
-The following table lists the values of rung_id for different algorithms, config_id for hyperparameters, running status of the training task corresponding to the ID, and performance score of single-objective optimization.
+Logs record different sampling rung_id, hyperparameter config_id, running status of the training task corresponding to the ID, and performance score of single-objective optimization, as shown in the following table.
 
 | rung_id | config_id | status              | score    |
 | ------- | --------- | ------------------- | -------- |
@@ -236,28 +196,25 @@ The following table lists the values of rung_id for different algorithms, config
 | 0       | 3         | StatusType.FINISHED | 3.198976 |
 | 0       | 4         | StatusType.FINISHED | 12.78772 |
 
-#### ID and hyperparameter combination mapping table hps.csv
+#### hps.json
 
-Mapping between config_id and hyperparameter combinations. The scoreboard table is as following:
-
-| id   | hps                                                          | performance |
-| ---- | ------------------------------------------------------------ | ----------- |
-| 0    | {'config_id': 0, 'rung_id': 0, 'configs': {'dataset.batch_size': 64,  'trainer.optim.lr': 0.00014621326777998478, 'trainer.optim.type': 'SGD'},  'epoch': 1} | [1.6]       |
-| 1    | {'config_id': 1, 'rung_id': 0, 'configs': {'dataset.batch_size': 256,  'trainer.optim.lr': 2.3729688374364102e-05, 'trainer.optim.type': 'Adam'},  'epoch': 1} | [12.78261]  |
-| 2    | {'config_id': 2, 'rung_id': 0, 'configs': {'dataset.batch_size': 16,  'trainer.optim.lr': 0.0006774382480238358, 'trainer.optim.type': 'Adam'},  'epoch': 1} | [1.2208]    |
-| 3    | {'config_id': 3, 'rung_id': 0, 'configs': {'dataset.batch_size': 64,  'trainer.optim.lr': 0.009376375563255613, 'trainer.optim.type': 'Adam'},  'epoch': 1} | [3.198976]  |
-| 4    | {'config_id': 4, 'rung_id': 0, 'configs': {'dataset.batch_size': 256,  'trainer.optim.lr': 0.016475469254323555, 'trainer.optim.type': 'SGD'},  'epoch': 1} | [12.78772]  |
-
-#### best_config.json
-
-The best hyperparameter selection: parameter combination with the highest score and the current config_id and score are selected as following:
+As shown in the following figure, the hyperparameter combination with the highest score is selected under single-objective optimization:
 
 ```json
-{"config_id": 4,
- "score": 12.78772,
- "configs": {'dataset.batch_size': 256,
-             'trainer.optim.lr': 0.016475469254323555,
-             'trainer.optim.type': 'SGD'}
+{
+    "trainer": {
+        "epochs": 1,
+        "optimizer": {
+            "params": {
+                "momentum": 0.8254907348201684,
+                "lr": 0.07
+            },
+            "type": "SGD"
+        }
+    },
+    "dataset": {
+        "batch_size": 256
+    }
 }
 ```
 

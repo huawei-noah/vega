@@ -5,7 +5,7 @@
 ModularNAS is a neural architecture search (NAS) code library that breaks down state-of-the-art efficient NAS methods into modularized and reusable components, such as search algorithms, evaluation strategies, architecture search space and candidates, and network transformations, while unifies the interactions between components in search procedure.
 It also supports automatic search space generation for customized use cases while reusing predefined search strategies, allowing user-friendly NAS deployment with little extra work needed.
 
-<center><img src="./images/modnas_formulation.png" style="zoom:30%;" /></center>
+<center><img src="../../images/modnas_formulation.png" style="zoom:30%;" /></center>
 
 Supported NAS methods (on VEGA):
 
@@ -35,7 +35,7 @@ We then decompose the operators of a NAS process into four components that funct
 
 The unified formulation of the architecture search process is summarized in the following figure.
 
-<center><img src="./images/modnas_alg.png" style="zoom:40%;" /></center>
+<center><img src="../../images/modnas_alg.png" style="zoom:40%;" /></center>
 
 Following the unified formulation, we design and implement ModularNAS with simplicity, modularity, and reusability in mind.
 Specifically, we introduce a new programming paradigm for defining the architecture search space, enabling the automatic generation and reuse of the search space.
