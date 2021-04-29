@@ -2,60 +2,30 @@
 
 ## 1. 超参优化功能介绍
 
-### 1.1 算法提供
+超参数优化，是指用自动化的算法来优化原机器学习/深度学习算法中无法通过训练来优化的超参数，如学习率、激活函数、优化器等。在训练神经网络的时候，调节超参数是必不可少的，这个过程可以更科学地训练出更高效的机器学习模型。现阶段的模型训练需要有经验的研究员/工程师根据现有的信息来判断出所要修改的超参数，但是对于大部分人而言，这是个十分费时费力的过程。
 
-当前在Vega Pipeline中提供的超参优化能力，代码模块位置：`vega.algorithms.hpo`，当前已经提供的超参数优化功能包括以下单目标和多目标算法，更多的算法会不断增加合入，已有算法也会不断进行优化。
+使用自动超参数优化能力，对于普通用户，可以快速高效地在超参数空间中测试选择最佳的超参数组合，节省大量人力和时间；对于高级研究用户，可以根据经验定义出更准确的小范围超参数搜索空间，并自动进行快速超参数搜索，从而能够在现有基础上进一步提升模型训练效果。
+
+当前已有的算法适用于常见的深度神经网络的超参数优化，包括单目标优化，和随机帕累托的多目标超参选择。单目标优化算法适用于模型评估标准唯一，或可以用单一指标综合表述模型性能的优劣的情况。多目标帕累托优化算法适用于需要用多指标综合表示模型的优劣情况，算法最终会给出满足帕累托前沿的一系列超参数组合。
+
+当前Vega已提供如下超参优化算法：
 
 1. 单目标超参数优化算法
 
 - [x] Random
-- [x] BO (注：贝叶斯优化当前支持SMAC、GPEI等)
+- [x] BO
 - [x] ASHA
-- [x] BOHB （注：当前实现中不包含异步并行，BO模型为GP+EI）
-- [x] BOSS （注：当前实现中不包含异步并行，BO模型为GP+EI）
+- [x] BOHB
+- [x] BOSS
 - [x] TPE
 
 2. 多目标超参数优化算法
 
 - [x] RandomPareto
 
-超参优化算法详细介绍见第二章。
+## 2. 超参数优化算法简介
 
-### 1.2 超参搜索空间
-
-当前在Vega Pipeline中提供了一种通用的、可由独立离散或连续变量构成的搜索空间，并可以设置变量之间的条件约束关系等。该搜索空间代码模块位置：`vega.algorithms.hpo.hyperparameter_space`。当前搜索空间支持的变量类型和变量间条件约束包括：
-
-1. **变量类型**
-
-连续变量：
-
-- [x] INT
-- [x] INT_EXP
-- [x] FLOAT
-- [x] FLOAT_EXP
-
-离散变量：
-
-- [x] INT_CAT
-- [x] FLOAT_CAT
-- [x] STRING
-- [x] BOOL
-
-2. **条件约束类型**
-
-- [x] EQUAL
-- [x] NOT_EQUAL
-- [x] IN
-
-搜索空间的通用设计可以见第三章中的详细介绍。
-
-### 1.3 HPO模块
-
-当前`vega.algorithms.hpo`模块中提供了通用的`hpo_pipestep`，以及多种超参优化算法对应的`generator`，用户可以直接以在配置文件中设计超参搜索空间，超参搜索算法，然后提供`trainer`和`evaluator`并直接调用通用`hpo_pipestep`的形式，即可以方便地使用HPO功能，具体的使用方法见第四章中的详细介绍。
-
-## 2. 超参数优化算法介绍
-
-### 2.1 深度神经网络的超参数优化介绍
+### 2.1 深度神经网络的超参数优化简介
 
 **有效地学习深层神经网络的参数是一个具有挑战性的问题：**
 
@@ -95,15 +65,33 @@
 - Hyperband with Bayesian Optimization (BOHB).
 - Population Based Training (PBT).
 
-**关于ASHA、HyperBand、BOHB等动态资源分配类的算法详情介绍可见附录。HPO模块会持续迭代，丰富更多算法，并逐步优化算法效率。**
+## 3. 搜索空间介绍
 
-## 3. 搜索空间（HyperparameterSpace）介绍
+当前在Vega Pipeline中提供了一种通用的、可由独立离散或连续变量构成的搜索空间，并可以设置变量之间的条件约束关系等。
 
-当前在Vega Pipeline中提供了一种通用的、可由独立离散或连续变量构成的搜索空间，并可以设置变量之间的条件约束关系等。该搜索空间代码模块位置：`vega.algorithms.hpo.hyperparameter_space`。本章中主要介绍HyperparameterSpace的架构设计，具体的HyperparameterSpace使用请见第四章中的使用介绍。
+当前搜索空间支持的变量类型和变量间条件约束包括：
 
-HyperparameterSpace的整体架构：
+1. **变量类型**
 
-![sha.png](../../images/hyperparameter_space_1.png)
+连续变量：
+
+- [x] INT
+- [x] INT_EXP
+- [x] FLOAT
+- [x] FLOAT_EXP
+
+离散变量：
+
+- [x] INT_CAT
+- [x] FLOAT_CAT
+- [x] STRING
+- [x] BOOL
+
+2. **条件约束类型**
+
+- [x] EQUAL
+- [x] NOT_EQUAL
+- [x] IN
 
 ### 3.1 HyperparameterSpace
 
@@ -125,7 +113,7 @@ Hyperparameter主要提供对每种超参数的名称、类型和具体超参范
 
 Hyperparameter还提供对每个超参数的反向映射，即接收到搜索算法返回的param_list对于每个超参的一个数值时，从该数值映射回真实的超参值。主要是用于CAT和EXP类型的超参数。
 
-在参数映射中，Hyperparameter会采用动态的参数映射方法。具体的映射算法详情可向开发人员了解。
+在参数映射中，Hyperparameter会采用动态的参数映射方法。
 
 ### 3.3 Condition
 
@@ -149,29 +137,11 @@ Condition主要提供对超参数之间的关联关系的管理功能。具体�
 
 我们结合example中的asha_hpo示例来介绍如何使用HPO模块。该example主要包含配置文件：asha.yaml 。
 
-#### 启动程序
-
-用户可以参考完整代码。与所有Vega pipeline的启动文件相同，当前的example中的启动文件结构与其他示例相同。主要的功能在以下这一语句中，即添加了一个hpo的pipestep。
-
-```bash
-vega ./hpo/asha/asha.yml
-```
-
-功能主要是启动vega pipeline，并加载配置文件asha.yml。
-
 #### 配置文件asha.yaml
-
-（1）当前example配置文件中包含标准任务的配置general项之下的task和worker，以及设置pipeline:
 
 ```yaml
 pipeline: [hpo]
-```
 
-用于说明当前pipeline里只包含一个名为hpo的pipestep，并在下面给出该pipestep的具体配置。
-
-（2）在`hpo`这个pipestep下，除了设置pipe_step的类型以及设置数据集配置外，需要提供一个hpo配置部分主要用于设置hpo的算法配置，包括`total_epochs`，`config_count`和搜索空间`hyperparameters`：
-
-```yaml
 hpo:
     search_algorithm:
         type: AshaHpo
@@ -203,7 +173,7 @@ hpo:
 
 `config_count`表示总共会采样的超参数组合的个数，在ASHA算法中`total_epochs`表示每个模型最多会训练多少epochs，`hyperparameters`为设置当前的超参搜索空间，其中的`"condition"`部分表示当前子超参`"child": "sgd_momentum"`只有在`"parent": "optimizer"`等于`"SGD"`的时候才会被选中。
 
-（3）下面需要配置trainer的部分：
+下面需要配置trainer的部分：
 
 ```yaml
 hpo:
@@ -230,35 +200,19 @@ hpo:
             type: CrossEntropyLoss
 ```
 
-其中除了标准的trainer的基本配置外，还有描述当前训练的网络的model_desc，说明当前的网络是用vega pipeline里的search_space来描述生成的网络，具体包含一个自定义的ResNetVariant和LinearClassificationHead拼接成的图像分类网络。
-
-（4）配置evaluator的部分：
-
-```yaml
-hpo:
-    evaluator:
-        type: Evaluator
-        host_evaluator:
-            type: HostEvaluator
-            metric:
-                type: accuracy
-```
-
-当前系统支持host_evaluator，用于在valid dataset上根据metric配置评估模型性能，并返回评估结果，用于hpo算法进行更新和排序。
+### 4.2 输出
 
 #### 运行Example
 
-用户配置好自定义的配置文件后，设置输出目录，直接运行main.py即可。
+执行如下命令：
 
-关于超参优化部分的输出见 4.3 中的模块输出介绍。
+```bash
+vega ./hpo/asha/asha.yml
+```
 
-### 4.2 模块输出
+#### 计分板 score_board
 
-当前HPO模块默认会在输出目录下的output子目录中输出以下三个文件：score_board.csv， hps.csv，best_config.json。其他的用户自定义输出会有每个trainer的输出，具体位于输出目录下的worker子目录中对应的id目录下。
-
-#### 计分板 score_board.csv
-
-包含不同算法的rung_id，超参数的config_id，以及当前该id对应的训练任务的运行状态，还有单目标优化的performance的score，具体如下表所示
+在日志中会打印不同采样的rung_id，超参数的config_id，以及当前该id对应的训练任务的运行状态，还有单目标优化的performance的score，具体如下表所示:
 
 | rung_id | config_id | status              | score    |
 | ------- | --------- | ------------------- | -------- |
@@ -268,50 +222,29 @@ hpo:
 | 0       | 3         | StatusType.FINISHED | 3.198976 |
 | 0       | 4         | StatusType.FINISHED | 12.78772 |
 
-#### ID与超参组合映射表 hps.csv
+#### hps.json
 
-与计分板表格对应，为不同config_id与超参组合的映射表。
-
-| id   | hps                                                          | performance |
-| ---- | ------------------------------------------------------------ | ----------- |
-| 0    | {'config_id': 0, 'rung_id': 0, 'configs': {'dataset.batch_size': 64,  'trainer.optim.lr': 0.00014621326777998478, 'trainer.optim.type': 'SGD'},  'epoch': 1} | [1.6]       |
-| 1    | {'config_id': 1, 'rung_id': 0, 'configs': {'dataset.batch_size': 256,  'trainer.optim.lr': 2.3729688374364102e-05, 'trainer.optim.type': 'Adam'},  'epoch': 1} | [12.78261]  |
-| 2    | {'config_id': 2, 'rung_id': 0, 'configs': {'dataset.batch_size': 16,  'trainer.optim.lr': 0.0006774382480238358, 'trainer.optim.type': 'Adam'},  'epoch': 1} | [1.2208]    |
-| 3    | {'config_id': 3, 'rung_id': 0, 'configs': {'dataset.batch_size': 64,  'trainer.optim.lr': 0.009376375563255613, 'trainer.optim.type': 'Adam'},  'epoch': 1} | [3.198976]  |
-| 4    | {'config_id': 4, 'rung_id': 0, 'configs': {'dataset.batch_size': 256,  'trainer.optim.lr': 0.016475469254323555, 'trainer.optim.type': 'SGD'},  'epoch': 1} | [12.78772]  |
-
-#### best_config.json
-
-如下所示，在单目标优化下，即选择当前最高score的超参数组合，以及当前的config_id和得分。
+如下所示，在单目标优化下，即选择当前最高score的超参数组合:
 
 ```json
-{"config_id": 4, 
- "score": 12.78772,
- "configs": {'dataset.batch_size': 256,
-             'trainer.optim.lr': 0.016475469254323555,
-             'trainer.optim.type': 'SGD'}
+{
+    "trainer": {
+        "epochs": 1,
+        "optimizer": {
+            "params": {
+                "momentum": 0.8254907348201684,
+                "lr": 0.07
+            },
+            "type": "SGD"
+        }
+    },
+    "dataset": {
+        "batch_size": 256
+    }
 }
 ```
 
-### 4.3 适用场景
-
-超参数优化，是指用自动化的算法来优化原机器学习/深度学习算法中无法通过训练来优化的超参数，如学习率、激活函数、优化器等。在训练神经网络的时候，调节超参数是必不可少的，这个过程可以更科学地训练出更高效的机器学习模型。现阶段的模型训练需要有经验的研究员/工程师根据现有的信息来判断出所要修改的超参数，但是对于大部分人而言，这是个十分费时费力的过程。
-
-使用HPO模块提供的自动超参数优化能力，对于普通用户，可以快速高效地在超参数空间中测试选择最佳的超参数组合，节省大量人力和时间；对于高级研究用户，可以根据经验定义出更准确的小范围超参数搜索空间，并自动进行快速超参数搜索，从而能够在现有基础上进一步提升模型训练效果。
-
-当前HPO模块中提供的超参数优化算法还在不断扩展和优化中，目前已有的算法适用于常见的深度神经网络的超参数优化，包括单目标优化，和随机帕累托的多目标超参选择。
-
-单目标优化算法适用于模型评估标准唯一，或可以用单一指标综合表述模型性能的优劣的情况。多目标帕累托优化算法适用于需要用多指标综合表示模型的优劣情况，算法最终会给出满足帕累托前沿的一系列超参数组合。
-
-当前提供的优化算法中，随机算法为在搜索空间中均匀随机采样，然后分别进行评估，效率较低，适用于搜索空间较小、模型评估耗时小的超参优化任务。
-
-ASHA算法为高效的异步连续减半算法，其初始搜索为在超参空间中均匀随机采样。适用于搜索空间较大、模型评估耗时长的超参数优化任务。
-
-BOHB算法的当前实现中没有异步并行，效率低于ASHA算法，但其在多轮迭代中会从随机采样的空间中，利用贝叶斯优化探索更多可能有效的超参数。其适用于搜索空间较大、模型评估耗时在可以接受范围内的超参数优化任务。
-
-## 5. Q & A
-
-## 6. 附录
+## 5. 附录
 
 ### 6.1 ASHA算法介绍
 
@@ -319,7 +252,7 @@ BOHB算法的当前实现中没有异步并行，效率低于ASHA算法，但其
 
 <https://blog.ml.cmu.edu/2018/12/12/massively-parallel-hyperparameter-optimization/>
 
-基于动态资源分配的超参优化算法最早以SHA算法出现，即连续减半算法()。基础思想为：由于深度神经网络训练迭代次数多，每次的训练时间很长，所以对多组超参数，每轮训练少量步数，然后对所有超参进行一轮评估和排序，将排在后半部分的超参数对应的训练全部早停终止，然后再对剩余的超参进行下一轮评估（从上一轮暂存的checkpoint 加载上一轮的模型继续训练），然后再评估再减半，直到达到优化目标。
+基于动态资源分配的超参优化算法最早以SHA算法出现，即连续减半算法。基础思想为：由于深度神经网络训练迭代次数多，每次的训练时间很长，所以对多组超参数，每轮训练少量步数，然后对所有超参进行一轮评估和排序，将排在后半部分的超参数对应的训练全部早停终止，然后再对剩余的超参进行下一轮评估（从上一轮暂存的checkpoint 加载上一轮的模型继续训练），然后再评估再减半，直到达到优化目标。
 
 具体操作：
 
@@ -392,16 +325,6 @@ BOHB 的 BO 与 TPE 非常相似, 它们的主要区别是: BOHB 中使用一个
 为了建模有效的核密度估计（KDE），设置了一个建立模型所需的最小观察点数（Nmin），在 Experiment 中它的默认值为 d+1（d是搜索空间的维度），其中 d 也是一个可以设置的超参数。 因为希望尽早地建立模型，所以当 Nb = |Db|，即当已经观察到的计算资源（budget）为 b 的点数满足 q · Nb ≥ Nmin 时，立即建立模型来指导之后参数的选择。所以，在使用了刚开始Nmin + 2 个随机选择的参数之后，会按照下式将观察到的点进行分类
 
 <img src="../../images/bo_2.png" alt="sha.png" style="zoom:50%;" />
-
-#### BOHB流程
-
-![sha.png](../../images/bohb_3.jpg)
-
-以上这张图展示了 BOHB 的工作流程。 将每次训练的最大资源配置（max_budget）设为 9，最小资源配置设为（min_budget）1，逐次减半比例（eta）设为 3，其他的超参数为默认值。 那么在这个例子中，s_max 计算的值为 2, 所以会持续地进行 {s=2, s=1, s=0, s=2, s=1, s=0, ...} 的循环。 在“逐次减半”（SuccessiveHalving）算法的每一个阶段，即图中橙色框，都将选取表现最好的前 1/eta 个参数，并在赋予更多计算资源（budget）的情况下运行。不断重复“逐次减半” （SuccessiveHalving）过程，直到这个循环结束。 同时，收集这些试验的超参数组合，使用了计算资源（budget）和其表现（metrics），使用这些数据来建立一个以使用了多少计算资源（budget）为维度的多维核密度估计（KDE）模型。 这个多维的核密度估计（KDE）模型将用于指导下一个循环的参数选择。
-
-有关如何使用多维的KDE模型来指导参数选择的采样规程，用以下伪代码来描述。
-
-<img src="../../images/bohb_4.png" alt="sha.png" style="zoom:60%;" />
 
 ### 6.4 BOSS算法介绍
 

@@ -35,7 +35,7 @@ ModularNAS是一个神经架构搜索代码库，它把最先进的高效的NAS�
 
 架构搜索流程的统一表述总结如下图所示。
 
-<center><img src="../../en/algorithms/images/modnas_alg.png" style="zoom:40%;" /></center>
+<center><img src="../../images/modnas_alg.png" style="zoom:40%;" /></center>
 
 遵循统一表述，我们设计并实现了ModularNAS，并考虑了简单、模块化和可重用性。
 具体来说，我们引入了一个新的编程范式来定义架构搜索空间，使搜索空间的自动生成和重用得以实现。
