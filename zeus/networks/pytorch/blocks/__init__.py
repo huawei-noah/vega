@@ -16,4 +16,5 @@ from zeus.common.class_factory import ClassFactory
 ClassFactory.lazy_register("zeus.networks.pytorch.blocks", {
     "block": ["Block"],
     "conv_ws": ["ConvWS2d"],
+    "stem": ['PreTwoStem'],
 })

@@ -13,16 +13,14 @@
         "drop_path_prob": 0.2,
         "search": false,
         "stem": {
-            "type": "PreOneStem",
-            "init_channels": 16,
-            "stem_multi": 3
+            "type": "PreTwoStem",
+            "init_channels": 48
         },
         "head": {
             "type": "LinearClassificationHead"
         },
         "cells": {
             "modules": [
-                "PreTwoStem",
                 "normal",
                 "normal",
                 "normal",
