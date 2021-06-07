@@ -10,26 +10,23 @@
 
 """Check and Define Prune Model SearchSpace."""
 import logging
-import random
 from zeus.common import ClassFactory, ClassType
-from zeus.model_zoo import ModelZoo
 from vega.core.search_space import SearchSpace
 from vega.core.pipeline.conf import PipeStepConfig
+from zeus.networks.network_desc import NetworkDesc
+from zeus.modules.operators import ops
 
 
 @ClassFactory.register(ClassType.SEARCHSPACE)
 class BackboneNasSearchSpace(SearchSpace):
-    """Restrict and Terminate Base Calss."""
+    """BackboneNasSearchSpace."""
 
     @classmethod
     def get_space(self, desc):
         """Get model and input."""
-        model_desc = PipeStepConfig.model.model_desc
-        model = ModelZoo().get_model(dict(type='BackboneDeformation', desc=model_desc))
-        search_space = model.search_space
-        times = random.randint(3, 5)
-        params = [dict(key="network.props.doublechannel", type="BINARY_CODE", range=[len(search_space), times]),
-                  dict(key="network.props.downsample", type="BINARY_CODE", range=[len(search_space), times])]
-        params.append(dict(key='network.deformation', type="CATEGORY", range=['BackboneDeformation']))
-        logging.info("Backbone Search Space: {}".format(params))
-        return {"hyperparameters": params}
+        model = NetworkDesc(PipeStepConfig.model.model_desc).to_model()
+        arch_params_key = 'network._arch_params.double_channels.{}.out_channels'
+        search_space = [dict(key=arch_params_key.format(module.name), type="CATEGORY", range=[0, 1, 2])
+                        for name, module in model.named_modules() if isinstance(module, ops.Conv2d)]
+        logging.info("Backbone Nas Search Space: {}".format(search_space))
+        return {"hyperparameters": search_space}

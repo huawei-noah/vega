@@ -9,7 +9,7 @@
 # MIT License for more details.
 
 """System const variable."""
-from enum import IntEnum, unique
+from enum import IntEnum, unique, Enum
 
 
 @unique
@@ -20,3 +20,19 @@ class WorkerTypes(IntEnum):
     EVALUATOR = 2
     HOST_EVALUATOR = 3
     DeviceEvaluator = 5
+
+
+@unique
+class Status(Enum):
+    """Status type."""
+
+    unstarted = "unstarted"
+    initializing = "initializing"
+    running = "running"
+    finished = "finished"
+    unknown = "unknown"
+    error = "error"
+    stopped = "stopped"
+
+
+DatatimeFormatString = "%Y-%m-%d %H:%M:%S"

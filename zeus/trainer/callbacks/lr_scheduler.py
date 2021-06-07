@@ -19,7 +19,7 @@ class LearningRateScheduler(Callback):
 
     def __init__(self):
         """Initialize LearningRateScheduler callback."""
-        super(Callback, self).__init__()
+        super(LearningRateScheduler, self).__init__()
         self.priority = 260
 
     def before_train(self, logs=None):

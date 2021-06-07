@@ -212,7 +212,7 @@ class DeviceEvaluator(Evaluator):
                     repeat_times = 10
                     data = data[0:1]
                     target = target[0:1]
-                data_num += data.shape[0]
+
                 if not self.calculate_metric and global_step >= 1:
                     break
                 data = data.asnumpy()
@@ -223,6 +223,7 @@ class DeviceEvaluator(Evaluator):
                                    reuse_model=reuse_model, job_id=job_id, repeat_times=repeat_times)
                 latency = np.float(results.get("latency"))
                 latency_sum += latency
+                data_num += data.shape[0]
 
                 if global_step == 0:
                     real_output = self.model(mindspore.Tensor(data))
@@ -262,16 +263,5 @@ class DeviceEvaluator(Evaluator):
         self.load_model()
         self.valid_loader = self._init_dataloader(mode='test')
         performance = self.valid()
-        logging.info("Evaluator result in Davinci/bolt: {}".format(performance))
-        self._broadcast(performance)
-        logging.info("finished Davinci or mobile evaluate for id {}".format(self.worker_id))
-
-    def _broadcast(self, pfms):
-        """Boadcase pfrm to record."""
-        record = ReportClient.get_record(self.step_name, self.worker_id)
-        if record.performance:
-            record.performance.update(pfms)
-        else:
-            record.performance = pfms
-        ReportClient.broadcast(record)
-        logging.debug("valid record: {}".format(record))
+        ReportClient().update(self.step_name, self.worker_id, performance=performance)
+        logging.info(f"finished device evaluation, id: {self.worker_id}, performance: {performance}")

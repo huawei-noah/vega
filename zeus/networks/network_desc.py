@@ -18,10 +18,9 @@ from zeus.common.class_factory import ClassFactory, ClassType
 class NetworkDesc(object):
     """NetworkDesc."""
 
-    def __init__(self, desc, is_deformation=False):
+    def __init__(self, desc):
         """Init NetworkDesc."""
         self._desc = Config(deepcopy(desc))
-        self.is_deformation = is_deformation
 
     def to_model(self):
         """Transform a NetworkDesc to a special model."""
@@ -30,6 +29,7 @@ class NetworkDesc(object):
         model = module.from_desc(self._desc)
         if not model:
             raise Exception("Failed to create model, model desc={}".format(self._desc))
-        if not self.is_deformation:
-            model.desc = self._desc
+        model.desc = self._desc
+        if hasattr(model, '_apply_names'):
+            model._apply_names()
         return model

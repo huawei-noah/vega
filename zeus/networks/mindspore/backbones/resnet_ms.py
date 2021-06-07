@@ -14,19 +14,23 @@ from zeus.common import ClassType, ClassFactory
 
 _block_size = {
     50: [3, 4, 6, 3],
-    101: [3, 4, 23, 3]
+    101: [3, 4, 23, 3],
+    152: [3, 8, 36, 3]
 }
 in_channels = {
     50: [64, 256, 512, 1024],
-    101: [64, 256, 512, 1024]
+    101: [64, 256, 512, 1024],
+    152: [64, 256, 512, 1024]
 }
 out_channels = {
     50: [256, 512, 1024, 2048],
-    101: [256, 512, 1024, 2048]
+    101: [256, 512, 1024, 2048],
+    152: [256, 512, 1024, 2048]
 }
 strides = {
     50: [1, 2, 2, 2],
-    101: [1, 2, 2, 2]
+    101: [1, 2, 2, 2],
+    152: [1, 2, 2, 2]
 }
 
 
@@ -35,6 +39,7 @@ class ResNetMs(ResNet):
     """Resnet Model form mindspore modelzoo."""
 
     def __init__(self, resnet_size, num_classes):
+        #
         super(ResNetMs, self).__init__(ResidualBlock,
                                        _block_size[resnet_size],
                                        in_channels[resnet_size],

@@ -9,7 +9,6 @@
 # MIT License for more details.
 
 """Elastic spatial (width) transformations."""
-
 import torch
 import torch.nn as nn
 from .modifier import modify_param, modify_buffer, modify_attr,\

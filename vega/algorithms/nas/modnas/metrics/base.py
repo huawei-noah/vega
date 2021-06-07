@@ -9,7 +9,6 @@
 # MIT License for more details.
 
 """Implementation of Metrics interface."""
-
 from modnas.utils.logging import get_logger
 
 

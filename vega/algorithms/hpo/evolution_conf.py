@@ -17,7 +17,7 @@ class EvolutionPolicyConfig(ConfigSerializable):
 
     num_individual = 8
     num_generation = 4
-    random_models = 32
+    random_samples = 32
 
     @classmethod
     def rules(cls):
@@ -25,7 +25,7 @@ class EvolutionPolicyConfig(ConfigSerializable):
         return {
             "num_individual": {"type": int},
             "num_generation": {"type": int},
-            "random_models": {"type": int}
+            "random_samples": {"type": int}
         }
 
 

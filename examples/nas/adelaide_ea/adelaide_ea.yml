@@ -13,7 +13,7 @@ random:
     dataset:
         type: Cityscapes
         common:
-            root_dir: /cache/datasets/VOC2012
+            data_path: /cache/datasets/VOC2012
         train:
             list_file: train.txt
             batch_size: 16
@@ -65,6 +65,7 @@ random:
         callbacks: AdelaideEATrainerCallback
         cuda: true
         distributed: False
+        execute_mode: PYNATIVE_MODE   # for mindspore
         seed: 0
         epochs: 6
         optimizer:
@@ -80,8 +81,7 @@ random:
             type: CrossEntropyLoss
             params:
                 ignore_index: 255
-                is_grad: False
-                sparse: True
+
         metric:
             type: IoUMetric
             params:
@@ -115,7 +115,7 @@ fully_train:
             batch_size: 24
     trainer:
         ref: random.trainer
-        callbacks: AdelaideEATrainerCallback
         load_checkpoint: False
+        callbacks: AdelaideEATrainerCallback
         model_statistics: True
         epochs: 100

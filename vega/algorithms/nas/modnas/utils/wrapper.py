@@ -9,11 +9,9 @@
 # MIT License for more details.
 
 """Wrapper for routine initialization and execution."""
-
 import argparse
 from collections import OrderedDict
 from functools import partial
-from modnas.registry.runner import build, register_as
 from .exp_manager import ExpManager
 from .config import Config
 from modnas.core.event import EventManager
@@ -37,7 +35,6 @@ _default_arg_specs = [
     {
         'flags': ['-c', '--config'],
         'type': str,
-        'required': True,
         'action': 'append',
         'help': 'yaml config file'
     },
@@ -56,7 +53,7 @@ _default_arg_specs = [
     {
         'flags': ['-b', '--backend'],
         'type': str,
-        'default': 'torch',
+        'default': None,
         'help': 'backend type'
     },
     {
@@ -68,7 +65,7 @@ _default_arg_specs = [
     {
         'flags': ['-d', '--device_ids'],
         'type': str,
-        'default': 'all',
+        'default': None,
         'help': 'override device ids'
     },
     {
@@ -90,6 +87,7 @@ _default_arg_specs = [
 DEFAULT_CALLBACK_CONF = {
     'eta': 'ETAReporter',
     'estim': 'EstimReporter',
+    'estim_export': 'EstimResultsExporter',
     'trainer': 'TrainerReporter',
     'opt': 'OptimumReporter',
 }
@@ -97,11 +95,13 @@ DEFAULT_CALLBACK_CONF = {
 
 def parse_routine_args(name='default', arg_specs=None):
     """Return default arguments."""
-    parser = argparse.ArgumentParser(description='ModularNAS {} routine'.format(name))
-    arg_specs = arg_specs or _default_arg_specs
+    parser = argparse.ArgumentParser(prog='modnas', description='ModularNAS {} routine'.format(name))
+    arg_specs = arg_specs or _default_arg_specs.copy()
     for spec in arg_specs:
         parser.add_argument(*spec.pop('flags'), **spec)
-    return vars(parser.parse_args())
+    args = vars(parser.parse_args())
+    args = {k: v for k, v in args.items() if v is not None}
+    return args
 
 
 def load_config(conf):
@@ -176,7 +176,10 @@ def build_exporter_all(config):
     if config is None:
         return None
     if len(config) == 0:
-        config = {'default': {'type': 'DefaultSlotTraversalExporter'}}
+        if be.is_backend(None):
+            config = {'default': {'type': 'DefaultParamsExporter'}}
+        else:
+            config = {'default': {'type': 'DefaultSlotTraversalExporter'}}
     if len(config) > 1:
         return build_exp('MergeExporter', config)
     if len(config) == 1:
@@ -225,7 +228,6 @@ def estims_routine(optim, estims):
         ret = estim.run(optim)
         results[estim_name] = ret
     logger.info('All results: {{\n{}\n}}'.format('\n'.join(['{}: {}'.format(k, v) for k, v in results.items()])))
-    results['final'] = ret
     reset_all()
     return results
 
@@ -271,15 +273,55 @@ def get_default_constructors(config):
     return constructor
 
 
-def init_all(config, construct_fn=None, model=None, **kwargs):
+def default_apply_config(config):
+    """Apply routine config by default."""
+    Config.apply(config, config.pop(config['routine'], {}))
+
+
+def apply_hptune_config(config):
+    """Apply hptune routine config."""
+    Config.apply(config, config.pop('hptune', {}))
+    # hpspace
+    config['export'] = None
+    if not config.get('construct', {}):
+        config['construct'] = {
+            'hparams': {
+                'type': 'DefaultHParamSpaceConstructor',
+                'args': {
+                    'params': config.get('hp_space', {})
+                }
+            }
+        }
+    hptune_config = list(config.estim.values())[0]
+    hptune_args = hptune_config.get('args', {})
+    hptune_args['measure_fn'] = config.pop('measure_fn')
+    hptune_config['args'] = hptune_args
+
+
+def apply_pipeline_config(config):
+    """Apply pipeline routine config."""
+    override = {'estim': {'pipeline': {'type': 'PipelineEstim', 'pipeline': config.pop('pipeline', {})}}}
+    Config.apply(config, override)
+
+
+_default_apply_config_fn = {
+    'pipeline': apply_pipeline_config,
+    'hptune': apply_hptune_config,
+}
+
+
+def init_all(**kwargs):
     """Initialize all components from config."""
-    config = load_config(config)
-    config.update(kwargs)
+    config = load_config(kwargs.pop('config', {}))
+    Config.apply(config, kwargs)
     Config.apply(config, config.get('override') or {})
     routine = config.get('routine')
     if routine:
-        Config.apply(config, config.pop(routine, {}))
-    utils.check_config(config)
+        apply_config_fn = config.pop('apply_config_fn', None)
+        if apply_config_fn is None:
+            apply_config_fn = _default_apply_config_fn.get(routine, default_apply_config)
+        apply_config_fn(config)
+    utils.check_config(config, config.get('defaults'))
     # dir
     name = config.get('name') or utils.get_exp_name(config)
     expman = ExpManager(name, **config.get('expman', {}))
@@ -288,7 +330,9 @@ def init_all(config, construct_fn=None, model=None, **kwargs):
     logger.info('Name: {} Routine: {} Config:\n{}'.format(name, routine, config))
     logger.info(utils.env_info())
     # imports
-    imports = config.get('imports', [])
+    imports = config.get('import', [])
+    if not isinstance(imports, list):
+        imports = [imports]
     if config.get('predefined') is not False:
         imports.insert(0, 'modnas.utils.predefined')
     utils.import_modules(imports)
@@ -296,6 +340,8 @@ def init_all(config, construct_fn=None, model=None, **kwargs):
     # data
     data_provider_conf = get_data_provider_config(config)
     # construct
+    construct_fn = config.pop('construct_fn', None)
+    model = config.pop('base_model', None)
     if construct_fn is not False:
         constructor = construct_fn or get_default_constructors(config)
         model = constructor(model)
@@ -308,6 +354,8 @@ def init_all(config, construct_fn=None, model=None, **kwargs):
     cb_user_conf = config.get('callback', {})
     if isinstance(cb_user_conf, list):
         cb_user_conf = {i: v for i, v in enumerate(cb_user_conf)}
+    if cb_user_conf.pop('default', None) is False:
+        cb_user_conf.update({k: None for k in cb_config})
     cb_config.update(cb_user_conf)
     for cb in cb_config.values():
         if cb is not None:
@@ -335,70 +383,36 @@ def init_all(config, construct_fn=None, model=None, **kwargs):
     return {'optim': optim, 'estims': estims}
 
 
-def init_all_hptune(config, *args, config_override=None, measure_fn=None, **kwargs):
-    """Initialize all components from hptune config."""
-    config = load_config(config)
-    Config.apply(config, config_override or {})
-    Config.apply(config, config.pop('hptune', {}))
-    # hpspace
-    config['export'] = None
-    if not config.get('construct', {}):
-        config['construct'] = {
-            'hparams': {
-                'type': 'DefaultHParamSpaceConstructor',
-                'args': {
-                    'params': config.get('hp_space', {})
-                }
-            }
-        }
-    hptune_config = list(config.estim.values())[0]
-    hptune_args = hptune_config.get('args', {})
-    hptune_args['measure_fn'] = measure_fn
-    hptune_config['args'] = hptune_args
-    return init_all(config, *args, **kwargs)
-
-
-def init_all_pipeline(config, *args, config_override=None, **kwargs):
-    """Initialize all components from pipeline config."""
-    config = load_config(config)
-    Config.apply(config, config_override or {})
-    config_override = {'estim': {'pipeline': {'type': 'PipelineEstim', 'pipeline': config.get('pipeline', {})}}}
-    return init_all(config, *args, config_override=config_override, **kwargs)
-
-
-@register_as('default')
 def run_default(*args, **kwargs):
-    """Run search routines."""
+    """Run default routines."""
     return estims_routine(**init_all(*args, **kwargs))
 
 
-@register_as('search')
 def run_search(*args, **kwargs):
     """Run search routines."""
     return estims_routine(**init_all(*args, routine='search', **kwargs))
 
 
-@register_as('augment')
 def run_augment(*args, **kwargs):
     """Run augment routines."""
     return estims_routine(**init_all(*args, routine='augment', **kwargs))
 
 
-@register_as('hptune')
 def run_hptune(*args, **kwargs):
     """Run hptune routines."""
-    return estims_routine(**init_all_hptune(*args, **kwargs))
+    return estims_routine(**init_all(*args, routine='hptune', **kwargs))
 
 
-@register_as('pipeline')
 def run_pipeline(*args, **kwargs):
     """Run pipeline routines."""
-    return estims_routine(**init_all_pipeline(*args, **kwargs))
+    return estims_routine(**init_all(*args, routine='pipeline', **kwargs))
 
 
-def run(*args, routine=None, **kwargs):
+def run(*args, parse=False, **kwargs):
     """Run routine."""
-    if not args and not kwargs:
-        kwargs = parse_routine_args()
-    routine_parsed = kwargs.pop('routine', None) or 'default'
-    return build(routine or routine_parsed, *args, **kwargs)
+    if parse or (not args and not kwargs):
+        parsed_kwargs = parse_routine_args()
+        parsed_kwargs = utils.merge_config(parsed_kwargs, kwargs)
+    else:
+        parsed_kwargs = kwargs
+    return run_default(*args, **parsed_kwargs)

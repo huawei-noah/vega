@@ -20,6 +20,7 @@ class CocoCommonConfig(BaseConfig):
     num_classes = 81
     img_prefix = '2017'
     ann_prefix = 'instances'
+    test_size = 50
     transforms = [dict(type='PolysToMaskTransform'), dict(type='PILToTensor')]
 
     @classmethod

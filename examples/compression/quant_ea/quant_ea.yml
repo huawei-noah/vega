@@ -24,7 +24,7 @@ nas:
             length: 40
             num_generation: 50
             num_individual: 16
-            random_models: 32
+            random_samples: 32
     search_space:
         type: SearchSpace
         modules: ['backbone', 'head']

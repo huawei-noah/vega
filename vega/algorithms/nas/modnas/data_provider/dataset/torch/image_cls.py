@@ -9,7 +9,6 @@
 # MIT License for more details.
 
 """Datasets for image classification."""
-
 import os
 import numpy as np
 import torch

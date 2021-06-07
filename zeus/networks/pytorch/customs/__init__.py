@@ -21,4 +21,5 @@ ClassFactory.lazy_register("zeus.networks.pytorch.customs", {
     "bisenet": ["network:BiSeNet"],
     "modnas": ["network:ModNasArchSpace"],
     "mobilenetv2": ["network:MobileNetV2"],
+    "gcn_regressor": ["network:GCNRegressor"],
 })

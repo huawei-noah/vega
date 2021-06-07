@@ -33,7 +33,7 @@ class SimpleCnn(Module):
         self.blocks = self._blocks(self.channels, desc.blocks)
         self.pool2 = ops.MaxPool2d(2, stride=2)
         self.conv2 = ops.Conv2d(self.channels, 64, padding=1, kernel_size=3)
-        self.global_conv = ops.Conv2d(64, 64, kernel_size=8)
+        self.global_conv = ops.Conv2d(64, 64, kernel_size=8, padding=0)
         self.view = ops.View()
         self.fc = ops.Linear(64, self.num_class)
 
@@ -48,12 +48,3 @@ class SimpleCnn(Module):
             ))
             in_channels = out_channels
         return blocks
-
-    def call(self, x):
-        """Call."""
-        x = self.pool1(self.conv1(x))
-        for block in self.blocks:
-            x = block(x)
-        x = self.global_conv(self.conv2(self.pool2(x)))
-        x = self.fc(self.view(x))
-        return x

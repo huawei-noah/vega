@@ -9,7 +9,6 @@
 # MIT License for more details.
 
 """StacNAS Constructors & Exporters."""
-
 from modnas.registry.arch_space import build
 from modnas.registry.construct import register
 from modnas.registry.construct import DefaultMixedOpConstructor, DefaultRecursiveArchDescConstructor

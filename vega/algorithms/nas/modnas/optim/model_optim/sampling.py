@@ -1,4 +1,3 @@
-
 # -*- coding:utf-8 -*-
 
 # Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
@@ -10,7 +9,6 @@
 # MIT License for more details.
 
 """Random sampling model optimum finder."""
-
 from .base import ModelOptim
 from modnas.registry.model_optim import register
 

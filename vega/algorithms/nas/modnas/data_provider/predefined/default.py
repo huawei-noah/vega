@@ -9,7 +9,6 @@
 # MIT License for more details.
 
 """Default DataProvider with dataloader."""
-
 from ..base import DataProviderBase
 from modnas.registry.data_provider import register
 

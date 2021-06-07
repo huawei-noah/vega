@@ -26,10 +26,6 @@ class SerialClassificationNet(Module):
         self.backbone = SerialBackbone(code, block, in_channels, weight_file, out_layers=-1)
         self.head = LinearClassificationHead(self.out_channels, num_classes)
 
-    def load_state_dict(self, state_dict=None, strict=None):
-        """Load State backbone."""
-        super().load_state_dict(state_dict, strict or False)
-
 
 @ClassFactory.register(ClassType.NETWORK)
 class SerialBackbone(Module):
@@ -55,9 +51,17 @@ class SerialBackbone(Module):
         return self.layers.out_channels
 
     def load_state_dict(self, state_dict=None, strict=None):
-        """Remove backbone."""
+        """Load and freeze backbone state."""
+        if isinstance(self.layers, Sequential):
+            return super().load_state_dict(state_dict, strict or False)
         state_dict = {k.replace('backbone.', ''): v for k, v in state_dict.items()}
-        super().load_state_dict(state_dict, strict or False)
+        state_dict = {k.replace('body.', ''): v for k, v in state_dict.items()}
+        not_swap_keys = super().load_state_dict(state_dict, strict or False)
+        if not_swap_keys:
+            need_freeze_layers = [name for name, parameter in self.named_parameters() if name not in not_swap_keys]
+            self.freeze(need_freeze_layers)
+        else:
+            self.freeze(['layers'])
 
     def _make_stem_layer(self):
         """Make stem layer."""

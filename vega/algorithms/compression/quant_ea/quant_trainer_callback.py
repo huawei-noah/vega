@@ -12,7 +12,7 @@
 import logging
 import copy
 import vega
-from zeus.common import ClassFactory, ClassType
+from zeus.common import ClassFactory, ClassType, General
 from zeus.trainer.callbacks import Callback
 from zeus.metrics import calc_model_flops_params, calc_forward_latency
 from zeus.networks.quant import Quantizer
@@ -47,6 +47,8 @@ class QuantTrainerCallback(Callback):
         model = quantizer()
         self.trainer.model = model
         count_input = [1, 3, 32, 32]
+        if General.data_format == 'channels_last':
+            count_input = [1, 32, 32, 3]
         sess_config = None
         if vega.is_torch_backend():
             model = model.cuda()

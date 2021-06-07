@@ -11,6 +11,7 @@
 """Base CTR model TrainerCallback."""
 
 import logging
+import zeus
 from zeus.common import ClassFactory, ClassType
 from zeus.trainer.callbacks import Callback
 
@@ -37,6 +38,8 @@ class CtrTrainerCallback(Callback):
         :return: batch data, seperate input and target
         """
         input, target = batch
-        if self.config.cuda:
+        if zeus.is_gpu_device():
             input, target = input.cuda(), target.cuda()
+        elif zeus.is_npu_device():
+            input, target = input.npu(), target.npu()
         return (input, target)

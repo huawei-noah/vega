@@ -9,7 +9,6 @@
 # MIT License for more details.
 
 """Base parameter."""
-
 from collections import OrderedDict
 from modnas.core.event import event_emit, event_on
 from modnas.core.param_space import ParamSpace

@@ -19,6 +19,7 @@ from zeus.networks.network_desc import NetworkDesc
 from zeus.common.general import General
 from zeus.modules.graph_utils import graph2desc
 from zeus.modules.module import Module
+from zeus.modules.arch import transform_architecture
 
 
 class ModelZoo(object):
@@ -51,13 +52,7 @@ class ModelZoo(object):
         model = None
         if model_desc is not None:
             try:
-                is_deformation = False
-                if 'deformation' in model_desc:
-                    model_desc = {"type": model_desc.pop('deformation'), 'desc': model_desc,
-                                  'weight_file': pretrained_model_file}
-                    pretrained_model_file = None
-                    is_deformation = True
-                network = NetworkDesc(model_desc, is_deformation)
+                network = NetworkDesc(model_desc)
                 model = network.to_model()
             except Exception as e:
                 logging.error("Failed to get model, model_desc={}, msg={}".format(model_desc, str(e)))
@@ -69,6 +64,7 @@ class ModelZoo(object):
             if exclude_weight_prefix:
                 model.exclude_weight_prefix = exclude_weight_prefix
             model = cls._load_pretrained_model(model, pretrained_model_file)
+        model = transform_architecture(model, pretrained_model_file)
         if model is None:
             raise ValueError("Failed to get mode, model is None.")
         return model
@@ -76,12 +72,16 @@ class ModelZoo(object):
     @classmethod
     def to_module(cls, model):
         """Build model desc before get model."""
-        try:
-            model_desc = cls.parse_desc_from_pretrained_model(model)
-        except Exception as ex:
-            logging.debug("Parse model desc failed: {}".format(ex))
-            return model
-        return ModelZoo.get_model(model_desc)
+        if zeus.is_ms_backend():
+            from zeus.networks.mindspore.backbones.ms2vega import transform_model
+            return transform_model(model)
+        else:
+            try:
+                model_desc = cls.parse_desc_from_pretrained_model(model)
+            except Exception as ex:
+                logging.warn("Parse model desc failed: {}".format(ex))
+                return model
+            return ModelZoo.get_model(model_desc)
 
     @classmethod
     def parse_desc_from_pretrained_model(cls, src_model, pb_file=None):
@@ -115,10 +115,12 @@ class ModelZoo(object):
         logging.info("load model weights from file, weights file={}".format(pretrained_model_file))
         if zeus.is_torch_backend():
             if not os.path.isfile(pretrained_model_file):
-                raise "Pretrained model is not existed, model={}".format(pretrained_model_file)
+                raise Exception(f"Pretrained model is not existed, model={pretrained_model_file}")
             import torch
             checkpoint = torch.load(pretrained_model_file)
             model.load_state_dict(checkpoint)
+
+            del checkpoint
         if zeus.is_tf_backend():
             if pretrained_model_file.endswith('.pth'):
                 checkpoint = convert_checkpoint_from_pytorch(pretrained_model_file, model)
@@ -139,6 +141,7 @@ class ModelZoo(object):
                             pretrained_weight = os.path.join(pretrained_model_file, file)
                             break
             load_checkpoint(pretrained_weight, net=model)
+            os.remove(pretrained_weight)
         return model
 
     @classmethod

@@ -10,10 +10,10 @@
 
 """Fine tune vega model."""
 
-import argparse
 import pandas as pd
 import logging
 import json
+from zeus.common import argment_parser
 from zeus.common.general import General
 from zeus.common.task_ops import TaskOps
 from zeus.common.file_ops import FileOps
@@ -25,12 +25,14 @@ from vega.tools.run_pipeline import _set_backend
 
 
 def _parse_args():
-    parser = argparse.ArgumentParser(description="Fine tune DNet model or ResNet model.")
+    parser = argment_parser("Fine tune DNet model or ResNet model.")
     group_backend = parser.add_argument_group(title="Set backend and device, default is pytorch and GPU")
     group_backend.add_argument("-b", "--backend", default="pytorch", type=str,
-                               choices=["pytorch", "p", "tensorflow", "t", "mindspore", "m"])
+                               choices=["pytorch", "p", "tensorflow", "t", "mindspore", "m"],
+                               help="set training platform")
     group_backend.add_argument("-d", "--device", default="GPU", type=str,
-                               choices=["GPU", "NPU"])
+                               choices=["GPU", "NPU"],
+                               help="set training device")
     group_dataset = parser.add_argument_group(title="Dataset setting")
     group_dataset.add_argument("-ds", "--dataset", default=None, type=str, required=True,
                                help="dataset type, eg. Cifar10, ClassificationDataset.")

@@ -9,6 +9,7 @@
 # MIT License for more details.
 
 """Import all torch operators."""
+import zeus
 from zeus.common import ClassType, ClassFactory
 from zeus.modules.operators import ops
 from zeus.modules.operators.mix_ops import MixedOp, OPS
@@ -44,6 +45,7 @@ class Cell(ops.Module):
         op_names, indices_out, indices_inp = zip(*self.genotype)
         self.build_ops(self.C, op_names, indices_out, indices_inp, self.concat, self.reduction)
         self.concat_size = len(self.concat)
+        self.torch_flag = zeus.is_torch_backend()
 
     def build_ops(self, C, op_names, indices_out, indices_inp, concat, reduction):
         """Compile the cell.
@@ -124,10 +126,12 @@ class Cell(ops.Module):
                 else:
                     h = self.oplist[idx + j](states[inp], None, selected_idxs[idx + j])
                     hlist.append(h)
-            # s = sum(hlist)
-            s = hlist[0]
-            for ii in range(1, len(hlist)):
-                s += hlist[ii]
+            if self.torch_flag:
+                s = sum(hlist)
+            else:
+                s = hlist[0]
+                for ii in range(1, len(hlist)):
+                    s += hlist[ii]
             states.append(s)
             idx += len(self.out_inp_list[i])
         states_list = ()

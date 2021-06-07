@@ -177,7 +177,7 @@ search_algorithm:
         length: 464
         num_generation: 31
         num_individual: 32
-        random_models: 64
+        random_samples: 64
 ```
 
 配置文件中，需要定义搜索算法的类型，以及该类型搜索算法的参数。
@@ -200,7 +200,7 @@ def do(self):
     self.master.join()
     self._after_train(wait_until_finish=True)
     ReportServer().output_pareto_front(General.step_name)
-    self.master.close_client()
+    self.master.close()
 ```
 
 在每一次循环中，`Generator`首先判断搜索是否停止，如果停止了就结束搜索，更新`Generator`并返回。
@@ -355,8 +355,8 @@ class Generator(object):
             if isinstance(sample, tuple):
                 sample = dict(worker_id=sample[0], desc=sample[1])
             record = self.record.load_dict(sample)
-            logging.debug("Broadcast Record=%s", str(record))
-            ReportClient.broadcast(record)
+            logging.debug("update record=%s", str(record))
+            ReportClient().update(**record.to_dict())
             desc = self._decode_hps(record.desc)
             out.append((record.worker_id, desc))
         return out
@@ -730,7 +730,7 @@ nas:
             length: 464
             num_generation: 31
             num_individual: 32
-            random_models: 64
+            random_samples: 64
 
     search_space:
         type: SearchSpace
@@ -795,7 +795,7 @@ fullytrain:
 
 一个Pipeline中包含了多个步骤，这些步骤之间的数据传递，可以通过Report来完成。Report实时收集各个Step的训练过程数据和评估结果，供本步骤和随后的步骤查询，同时Report的数据也会实时的保存到文件中。
 
-Report提供的主要接口如下，在模型训练时，需要调用`broadcast()`接口保存训练结果。搜索算法可调用`pareto_front()`接口来获取评估结果，这两个接口是最常用的接口。
+Report提供的主要接口如下，在模型训练时，需要调用`update()`接口保存训练结果。搜索算法可调用`pareto_front()`接口来获取评估结果，这两个接口是最常用的接口。
 Trainer已集成了Report的调动，在完成训练和评估后，Trainer会将结果数据自动的调用Report接口收集数据，供搜索算法使用。
 
 ```python
@@ -817,7 +817,7 @@ class ReportClient(object):
     def get_record(cls, step_name, worker_id):
 
     @classmethod
-    def broadcast(cls, record):
+    def update(cls, record):
 ```
 
 ### 7.2 扩展`pipestep`

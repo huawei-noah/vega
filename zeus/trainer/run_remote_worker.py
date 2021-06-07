@@ -21,37 +21,37 @@ import signal
 import zeus
 
 
-def run_remote_worker(worker_id, worker_path, id):
+def run_remote_worker(worker_id, worker_path, id, num_workers):
     """Run worker on remote mochine."""
     from zeus.common.utils import init_log
     init_log(level="info",
              log_file=".temp_{}.log".format(worker_id),
              log_path=worker_path)
+    for index in range(num_workers):
+        config = _load_config(worker_id, worker_path, id, index)
+        os.environ["LD_LIBRARY_PATH"] = config["env"]["LD_LIBRARY_PATH"]
+        os.environ["PWD"] = config["env"]["PWD"]
+        os.chdir(os.environ["PWD"])
+        zeus.register_zeus(os.environ['BACKEND_TYPE'].lower())
 
-    config = _load_config(worker_id, worker_path, id)
-    os.environ["LD_LIBRARY_PATH"] = config["env"]["LD_LIBRARY_PATH"]
-    os.environ["PWD"] = config["env"]["PWD"]
-    os.chdir(os.environ["PWD"])
-    zeus.register_zeus(os.environ['BACKEND_TYPE'].lower())
-
-    if zeus.is_gpu_device():
-        sub_pid_list = call_in_gpu(config, id, worker_id, worker_path)
-    elif zeus.is_npu_device():
-        os.environ["PYTHONPATH"] = config["env"]["PYTHONPATH"]
-        os.environ["PATH"] = config["env"]["PATH"]
-        os.environ["ASCEND_OPP_PATH"] = config["env"]["ASCEND_OPP_PATH"]
-        sub_pid_list = call_in_npu(config, id, worker_id, worker_path)
-    logging.info("DistributedWorker finished!")
-    for sub_pid in sub_pid_list:
-        kill_proc_tree(pid=sub_pid)
-    logging.info("DistributedWorker subprocess cleaned!")
+        if zeus.is_gpu_device():
+            sub_pid_list = call_in_gpu(config, id, worker_id, worker_path, index)
+        elif zeus.is_npu_device():
+            os.environ["PYTHONPATH"] = config["env"]["PYTHONPATH"]
+            os.environ["PATH"] = config["env"]["PATH"]
+            os.environ["ASCEND_OPP_PATH"] = config["env"]["ASCEND_OPP_PATH"]
+            sub_pid_list = call_in_npu(config, id, worker_id, worker_path, index)
+        logging.info("DistributedWorker finished!")
+        for sub_pid in sub_pid_list:
+            kill_proc_tree(pid=sub_pid)
+        logging.info("DistributedWorker subprocess cleaned!")
     return 0
 
 
-def _load_config(worker_id, worker_path, id):
+def _load_config(worker_id, worker_path, id, index):
     _config_file = os.path.join(
         worker_path,
-        '.{0}.c.pkl'.format(id))
+        f".{str(id)}.{str(index)}.config.pkl")
     with open(_config_file, 'rb') as f:
         config = pickle.load(f)
     return config
@@ -83,7 +83,7 @@ def kill_proc_tree(pid, sig=signal.SIGKILL, include_parent=True,
     return (gone, alive)
 
 
-def call_in_gpu(config, id, worker_id, worker_path):
+def call_in_gpu(config, id, worker_id, worker_path, index):
     """Call function based on GPU devices."""
     env = os.environ.copy()
     sub_pid_list = []
@@ -101,13 +101,14 @@ def call_in_gpu(config, id, worker_id, worker_path):
     elif worker_id is not None and worker_path is not None:
         env['PYTHONPATH'] = "{}:{}".format(
             worker_path, os.path.abspath(os.curdir))
-    sub_pid = _subprocess(config, id, worker_id, worker_path, rank=0, world_size=world_size,
-                          env=env, is_backend=False)
+    sub_pid = _subprocess(
+        config, id, worker_id, worker_path, rank=0, world_size=world_size,
+        env=env, is_backend=False, index=index)
     sub_pid_list.append(sub_pid)
     return sub_pid_list
 
 
-def call_in_npu(config, id, worker_id, worker_path):
+def call_in_npu(config, id, worker_id, worker_path, index):
     """Call function based on NPU devices."""
     env = os.environ.copy()
     sub_pid_list = []
@@ -130,12 +131,14 @@ def call_in_npu(config, id, worker_id, worker_path):
         env.pop('RANK_TABLE_FILE', None)
     from zeus.common import switch_directory
     with switch_directory(worker_path):
-        sub_pid = _subprocess(config, id, worker_id, worker_path, rank=0, world_size=1, env=env, is_backend=False)
+        sub_pid = _subprocess(
+            config, id, worker_id, worker_path, rank=0, world_size=1,
+            env=env, is_backend=False, index=index)
     sub_pid_list.append(sub_pid)
     return sub_pid_list
 
 
-def _subprocess(config, id, worker_id, worker_path, rank, world_size, env, is_backend=False):
+def _subprocess(config, id, worker_id, worker_path, rank, world_size, env, is_backend, index):
     """Subprocess on each rank.
 
     Load pickle file into worker class, and use subprocess to run the
@@ -153,14 +156,14 @@ def _subprocess(config, id, worker_id, worker_path, rank, world_size, env, is_ba
     env['RANK'] = "{}".format(rank)
     env['WORLD_SIZE'] = "{}".format(world_size)
 
-    _refresh_config_file(config, id, worker_id, worker_path, env)
+    _refresh_config_file(config, id, worker_id, worker_path, env, index)
 
     config_file = os.path.join(
         worker_path,
-        '.{0}.c.pkl'.format(id))
+        f".{str(id)}.{str(index)}.config.pkl")
     worker_file = os.path.join(
         worker_path,
-        '.{0}.w.pkl'.format(id))
+        f".{str(id)}.{str(index)}.worker.pkl")
 
     cmd = "from zeus.trainer.deserialize import load_config;"
     cmd += "load_config('{}');".format(config_file)
@@ -186,7 +189,7 @@ def _subprocess(config, id, worker_id, worker_path, rank, world_size, env, is_ba
     return pid
 
 
-def _refresh_config_file(config, id, worker_id, worker_path, env):
+def _refresh_config_file(config, id, worker_id, worker_path, env, index):
     config["env"]["RANK"] = env.get("RANK", None)
     config["env"]["WORLD_SIZE"] = env.get("WORLD_SIZE", None)
     config["env"]["PYTHONPATH"] = env.get("PYTHONPATH", None)
@@ -197,6 +200,6 @@ def _refresh_config_file(config, id, worker_id, worker_path, env):
 
     config_file = os.path.join(
         worker_path,
-        '.{0}.c.pkl'.format(id))
+        f".{str(id)}.{str(index)}.config.pkl")
     with open(config_file, "wb") as f:
         pickle.dump(config, f)

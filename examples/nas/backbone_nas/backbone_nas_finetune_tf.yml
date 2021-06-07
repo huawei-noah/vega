@@ -9,11 +9,11 @@ fine_tune:
     pipe_step:
         type: TrainPipeStep
     model:
-        head: 'resnet_model/dense/'
-        pretrained_model_file: /cache/models/resnet_imagenet_v1_fp32_20181001
+        pretrained_model_file: "/cache/models/resnet_v1_50.ckpt"
+        head: "resnet_v1_50/logits"
         model_desc:
-            type: ResNetTF
-            resnet_size: 50
+            type: ResNetSlim
+            depth: 50
             num_classes: 10
     trainer:
         type: Trainer
@@ -38,8 +38,7 @@ fine_tune:
                         gamma: 0.1
         loss:
             type: CrossEntropyLoss
-            params:
-                sparse: True
+
     evaluator:
         type: Evaluator
         host_evaluator:
@@ -89,7 +88,7 @@ nas:
         policy:
             num_individual: 10
             num_generation: 10
-            random_models: 50
+            random_samples: 50
     search_space:
         type: BackboneNasSearchSpace
     model:

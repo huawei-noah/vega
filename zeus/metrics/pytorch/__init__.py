@@ -1,7 +1,6 @@
 from .metrics import Metrics
 from zeus.common.class_factory import ClassFactory
 
-
 ClassFactory.lazy_register("zeus.metrics.pytorch", {
     "lane_metric": ["trainer.metric:LaneMetric"],
     "regression": ["trainer.metric:MSE", "trainer.metric:mse"],
@@ -11,4 +10,6 @@ ClassFactory.lazy_register("zeus.metrics.pytorch", {
     "auc_metrics": ["trainer.metric:AUC", "trainer.metric:auc"],
     "segmentation_metric": ["trainer.metric:IoUMetric"],
     "sr_metric": ["trainer.metric:PSNR", "trainer.metric:SSIM"],
+    "r2score": ["trainer.metric:r2score", "trainer.metric:R2Score"],
+    "nlp_metric": ["trainer.metric:accuracy_score", "trainer.metric:f1_score", "trainer.metric:NlpMetrics"],
 })

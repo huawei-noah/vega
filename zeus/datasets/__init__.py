@@ -31,13 +31,11 @@ def register_datasets(backend):
     """Import and register datasets automatically."""
     if backend == "pytorch":
         from . import pytorch
-        ClassFactory.lazy_register("zeus.datasets.common", {"imagenet": ["Imagenet"]})
     elif backend == "tensorflow":
         from . import tensorflow
-        ClassFactory.lazy_register("zeus.datasets.tensorflow", {"imagenet": ["Imagenet"]})
     elif backend == "mindspore":
         import mindspore.dataset
         from . import mindspore
-        ClassFactory.lazy_register("zeus.datasets.common", {"imagenet": ["Imagenet"]})
+    ClassFactory.lazy_register("zeus.datasets.common", {"imagenet": ["Imagenet"]})
     from . import common
     from . import transforms

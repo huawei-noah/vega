@@ -65,7 +65,7 @@ model:
     model_desc:
         modules: ["custom"]
             custom:
-	        type: AutoGateModel            # 模型名称
+            type: AutoGateModel            # 模型名称
                 input_dim: 645195              # 整个训练集的特征数目，即`x`向量的维度。
                 input_dim4lookup: 24           # 单个样本中非零特征的个数，即`feature_id`向量的维度
                 embed_dim: 40

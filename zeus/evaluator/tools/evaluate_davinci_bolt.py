@@ -12,7 +12,6 @@
 import os
 import requests
 import logging
-from .pytorch2onnx import pytorch2onnx
 import subprocess
 import pickle
 import numpy as np
@@ -119,6 +118,7 @@ def preprocessing_model(backend, hardware, model, weight, input_shape, base_save
     """
     if backend == "pytorch":
         if hardware == "Bolt":
+            from .pytorch2onnx import pytorch2onnx
             model = pytorch2onnx(model, input_shape)
         else:
             model_file = os.path.join(base_save_dir, "torch_model.pkl")

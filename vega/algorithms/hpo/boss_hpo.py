@@ -10,7 +10,7 @@
 
 """Defined BohbHpo class."""
 from math import log, pow, sqrt
-from vega.algorithms.hpo.common import BOSS
+from vega.algorithms.hpo.sha_base import BOSS
 from zeus.common import ClassFactory, ClassType
 from vega.algorithms.hpo.hpo_base import HPOBase
 from .boss_conf import BossConfig
@@ -33,6 +33,7 @@ class BossHpo(HPOBase):
         if self.config.policy.total_epochs != -1:
             total_epochs = self.config.policy.total_epochs
             num_samples, max_epochs = self.design_parameter(total_epochs, repeat_times)
+        self._max_samples = num_samples
         self.hpo = BOSS(self.search_space, num_samples, max_epochs, repeat_times)
 
     def design_parameter(self, total_epochs, repeat_times):
@@ -119,3 +120,8 @@ class BossHpo(HPOBase):
                 it_list.append(iter_list_hl[i][j])
                 ep_list.append(min_ep_list_hl[i][j])
         return it_list, ep_list
+
+    @property
+    def max_samples(self):
+        """Get max samples number."""
+        return self._max_samples

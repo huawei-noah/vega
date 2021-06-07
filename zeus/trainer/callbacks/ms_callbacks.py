@@ -12,6 +12,7 @@
 
 import logging
 from mindspore.train.callback import Callback
+from zeus.report import ReportClient
 
 
 class EvalCallBack(Callback):
@@ -24,11 +25,12 @@ class EvalCallBack(Callback):
     :type eval_dataset: MindDataset
     """
 
-    def __init__(self, model, eval_dataset, dataset_sink_mode):
+    def __init__(self, model, eval_dataset, dataset_sink_mode, trainer):
         super(EvalCallBack, self).__init__()
         self.model = model
         self.eval_dataset = eval_dataset
         self.dataset_sink_mode = dataset_sink_mode
+        self.trainer = trainer
 
     def epoch_end(self, run_context):
         """Be called after each epoch."""
@@ -36,3 +38,11 @@ class EvalCallBack(Callback):
         metric = self.model.eval(self.eval_dataset, dataset_sink_mode=self.dataset_sink_mode)
         logging.info("Current epoch : [{}/{}], current valid metric {}.".format(
             cb_params.cur_epoch_num, cb_params.epoch_num, metric))
+
+        self.trainer.performance.update(metric)
+        ReportClient().update(
+            self.trainer.step_name,
+            self.trainer.worker_id,
+            num_epochs=cb_params.epoch_num,
+            current_epoch=cb_params.cur_epoch_num,
+            performance=self.trainer.performance)

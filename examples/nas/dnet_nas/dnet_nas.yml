@@ -1,0 +1,130 @@
+general:
+    backend: pytorch  # pytorch | tensorflow | mindspore
+    quota:
+        restrict:
+            model_valid: True
+        filter_rules: "model_valid"
+
+
+pipeline: [block_nas, net_nas]
+
+
+block_nas:
+    pipe_step:
+        type: SearchPipeStep
+
+    search_algorithm:
+        type: DblockNas
+        codec: DblockNasCodec
+        range:
+            max_sample: 100
+            min_sample: 10
+
+    search_space:
+        hyperparameters:
+            -   key: network.backbone.op_num
+                type: CATEGORY
+                range: [2, 3]
+            -   key: network.backbone.skip_num
+                type: CATEGORY
+                range: [0, 1,]
+            -   key: network.backbone.base_channel
+                type: CATEGORY
+                range:  [16, 32, 64]
+                #range:  [16, 32, 48, 56, 64]
+            -   key: network.backbone.doublechannel
+                type: CATEGORY
+                range: [3, 4]
+            -   key: network.backbone.downsample
+                type: CATEGORY
+                range: [3, 4]
+    model:
+        model_desc:
+            modules: ['backbone']
+            backbone:
+                type: DNet
+                n_class: 1000
+
+    trainer:
+        type: Trainer
+        epochs: 1
+        loss:
+            type: CrossEntropyLoss
+
+    dataset:
+        type: Imagenet
+        common:
+            data_path: "/cache/datasets/ILSVRC/Data/CLS-LOC"
+            batch_size: 64
+            n_class: 1000
+
+net_nas:
+    pipe_step:
+        type: SearchPipeStep
+
+    search_algorithm:
+        type: DnetNas
+        codec: DnetNasCodec
+        policy:
+            num_mutate: 10
+            random_ratio: 0.5
+        range:
+            max_sample: 100
+            min_sample: 10
+
+    search_space:
+        hyperparameters:
+            -   key: network.backbone.code_length
+                type: INT
+                range: [12,50]
+            -   key: network.backbone.base_channel
+                type: CATEGORY
+                range:  [32, 64, 128]
+            -   key: network.backbone.final_channel
+                type: CATEGORY
+                range:  [512, 1024, 2048]
+            -   key: network.backbone.downsample
+                type: CATEGORY
+                range: [2, 3]
+    model:
+        models_folder: "{local_base_path}/output/block_nas/"
+        model_desc:
+            modules: ['backbone']
+            backbone:
+                type: DNet
+                n_class: 1000
+
+    trainer:
+        type: Trainer
+        epochs: 2
+        loss:
+            type: CrossEntropyLoss
+
+    dataset:
+        type: Imagenet
+        common:
+            data_path: "/cache/datasets/ILSVRC/Data/CLS-LOC"
+            batch_size: 64
+            n_class: 1000
+
+fullytrain:
+    pipe_step:
+        type: TrainPipeStep
+        models_folder: "{local_base_path}/output/net_nas/"
+
+    trainer:
+        ref: block_nas.trainer
+        epochs: 160
+        optimizer:
+            type: SGD
+            params:
+                lr: 0.1  # 0.001 for mindspore
+                momentum: 0.9
+                weight_decay: 0.0001  # 0.01 for mindspore
+        lr_scheduler:
+            type: MultiStepLR
+            params:
+                milestones: [60, 120]
+                gamma: 0.5
+    dataset:
+        ref: block_nas.dataset

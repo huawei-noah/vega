@@ -9,7 +9,6 @@
 # MIT License for more details.
 
 """Dataflow defining components in Layers."""
-
 import itertools
 import torch
 from modnas.registry.layer_def import register

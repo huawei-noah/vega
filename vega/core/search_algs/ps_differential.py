@@ -53,7 +53,6 @@ class DifferentialConfig(ConfigSerializable):
     history_size = 5
     warmup_dec_epoch = 9
     decision_freq = 5
-    _remove_watched_var = False
 
 
 @ClassFactory.register(ClassType.SEARCH_ALGORITHM)
@@ -75,7 +74,6 @@ class DifferentialAlgorithm(SearchAlgorithm):
         self.parallel = self.config.parallel
         self.criterion = self.config.criterion
         self.sample_num = self.config.sample_num
-        self._remove_watched_var = self.config._remove_watched_var
         self.sample_idx = 0
         # sgas config
         self.use_history = self.config.use_history

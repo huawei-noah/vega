@@ -14,14 +14,14 @@
 
 | 算法 | 模型 | Atlas 200 DK |Atlas 300 | Bolt |
 | :--: | :--: | :--: | :--: | :--: |
-| Prune-EA | ResNetGeneral | 支持 | 支持 | 支持|
-| ESR-EA | ESRN | | 支持| 支持 |
-| SR-EA | MtMSR | | 支持 | 支持|
-| Backbone-nas | ResNet | 支持| 支持| |
-| CARS | CARSDartsNetwork | | 支持 | |
-| Quant-EA | ResNetGeneral | 支持 | 支持 | 支持|
+| Prune-EA | ResNetGeneral | √ | √ | √|
+| ESR-EA | ESRN | | √ | √ |
+| SR-EA | MtMSR | | √ | √ |
+| Backbone-nas | ResNet | √ | √ | |
+| CARS | CARSDartsNetwork | | √ | |
+| Quant-EA | ResNetGeneral | √ | √ | √ |
 | CycleSR | CycleSRModel | | | |
-| Adlaide-EA | AdelaideFastNAS | | 支持 | |
+| Adlaide-EA | AdelaideFastNAS | | √ | |
 | Auto-Lane | ResNetVariantDet | | |
 | Auto-Lane | ResNeXtVariantDet | | |
 
@@ -206,13 +206,10 @@ chmod +x /data/local/tmp/data_proc_tool
 
 ### 3.2 安装和启动评估服务
 
-下载评估服务的代码[evaluate_service](https://github.com/huawei-noah/vega/tree/master/evaluate_service)， 拷贝到评估服务器的任意路径下。( 注：该路径下`sample`代码是在华为海思公开样例代码基础上进行开发的。)
-
-- 根据实际环境修改配置文件`config.py`：
-  - `davinci_environment_type` 为Davinci 环境类型， 当前支持`ATLAS200DK`, `ATLAS300` 以及开发板`Evb`环境， 请根据实际环境配置。
-  - `ddk_host_ip`为评估服务器的ip地址， 请根据实际情况配置, `listen_port`为监听端口号， 可以任意设置， 注意不要与已有端口号冲突。
-  - 如果环境类型是`ATLAS200DK`, 还需要配置如下字段， 如果环境类型不是`ATLAS200DK`， 可忽略如下配置。`ddk_user_name`为登录评估服务器的用户名， `atlas_host_ip`为`ATLAS200DK`硬件的实际IP地址。
-- 运行`install_dependencies.sh`脚本可完成`Python`依赖环境的安装， 运行`run.sh`启动评估服务。
+1 安装：在评估服务器上安装vega, 安装时加上`--no-dependencies`参数， 不安装依赖项；   
+2 启动：运行命令`vega-evaluate_service-service -i {your_ip_adress} -w {your_work_path}`, 其中`-i`参数指定当前使用的服务器的ip地址， 
+`-w`参数指定工作路径， 程序运行时的中间文件将存储在该目录下，请使用绝对路径。
+其他可选参数的设置可查看该命令的帮助信息， 一般情况下建议采用默认值。 
 
 ## 4. 使用评估服务
 

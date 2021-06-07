@@ -12,13 +12,12 @@
 
 import os
 import sys
-import argparse
 import vega
 from copy import deepcopy
 from zeus.common.general import General
 from zeus.common.config import Config
-from zeus.common.utils import update_dict
 from zeus.common.utils import verify_requires
+from zeus.common import argment_parser
 
 
 def _append_env():
@@ -31,47 +30,36 @@ def _append_env():
 
 
 def _parse_args():
-    parser = argparse.ArgumentParser(description="Run Vega")
+    parser = argment_parser("Run Vega")
     parser.add_argument("config_file", default=None, type=str,
                         help="Pipeline config file name")
-    group_backend = parser.add_argument_group(title="Set backend and device, default is pytorch and GPU")
-    group_backend.add_argument("-b", "--backend", default="pytorch", type=str,
-                               choices=["pytorch", "p", "tensorflow", "t", "mindspore", "m"])
-    group_backend.add_argument("-d", "--device", default="GPU", type=str,
-                               choices=["GPU", "NPU"])
+    group_backend = parser.add_argument_group(
+        title="set backend and device, priority: specified in the command line > "
+        "specified in the configuration file > default settings(pytorch and GPU)")
+    group_backend.add_argument("-b", "--backend", default=None, type=str,
+                               choices=["pytorch", "p", "tensorflow", "t", "mindspore", "m"],
+                               help="set training platform")
+    group_backend.add_argument("-d", "--device", default=None, type=str,
+                               choices=["GPU", "NPU"],
+                               help="set training device")
     group_resume = parser.add_argument_group(title="Resume not finished task")
     group_resume.add_argument("-r", "--resume", action='store_true',
-                              help="Resume not finished task.")
+                              help="resume not finished task")
     group_resume.add_argument("-t", "--task_id", default=None, type=str,
-                              help="Specify the ID of the task to be resumed.")
-    group_type = parser.add_argument_group(title='Choose startup method')
-    group_type.add_argument("-s", "--startup", default='example', type=str,
-                            choices=['example', 'e', 'benchmark', 'b'])
+                              help="specify the ID of the task to be resumed")
     group_config = parser.add_argument_group(title='Modify config for yml')
     group_config.add_argument("-m", "--modify", action='store_true',
-                              help="Modify some config")
+                              help="modify some config")
     group_config.add_argument("-dt", "--dataset", default=None, type=str,
-                              help='Modify dataset for all pipe_step')
+                              help='modify dataset for all pipe_step')
     group_config.add_argument("-dp", "--data_path", default=None, type=str,
-                              help="Modify data_path for all pipe_step")
+                              help="modify data_path for all pipe_step")
     group_config.add_argument("-bs", "--batch_size", default=None, type=str,
-                              help='Modify batch_size of dataset for all pipe_step')
+                              help='modify batch_size of dataset for all pipe_step')
     group_config.add_argument("-es", "--epochs", default=None, type=str,
-                              help='Modify fully_train epochs')
+                              help='modify fully_train epochs')
     args = parser.parse_args()
     return args
-
-
-def _set_startup(args):
-    if args.startup in ['benchmark', 'b']:
-        cfg = Config(args.config_file)
-        config = deepcopy(cfg)
-        if 'benchmark' in cfg.keys():
-            benchmark_config = cfg.pop('benchmark')
-            config = update_dict(benchmark_config, cfg)
-    else:
-        config = Config(args.config_file)
-    return config
 
 
 def _modify_config(args, cfg):
@@ -98,13 +86,28 @@ def _check_parse(args):
 
 
 def _set_backend(args):
-    if args.backend in ["pytorch", "p"]:
-        vega.set_backend("pytorch", args.device)
-    elif args.backend in ["tensorflow", "t"]:
-        os.environ['TF_CPP_MIN_LOG_LEVEL'] = "1"
-        vega.set_backend("tensorflow", args.device)
-    elif args.backend in ["mindspore", "m"]:
-        vega.set_backend("mindspore", args.device)
+    backend = args.backend
+    device = args.device
+    if backend:
+        if args.backend in ["pytorch", "p"]:
+            backend = "pytorch"
+        elif args.backend in ["tensorflow", "t"]:
+            backend = "tensorflow"
+        elif args.backend in ["mindspore", "m"]:
+            backend = "mindspore"
+    else:
+        config = Config(args.config_file)
+        if "general" in config and "backend" in config["general"]:
+            backend = config["general"]["backend"]
+    if not device:
+        config = Config(args.config_file)
+        if "general" in config and "device_category" in config["general"]:
+            device = config["general"]["device_category"]
+    if backend:
+        General.backend = backend
+    if device:
+        General.device_category = device
+    vega.set_backend(General.backend, General.device_category)
 
 
 def _resume(args):
@@ -127,6 +130,13 @@ def _backup_config(args):
     FileOps.copy_file(_file, dest_file)
 
 
+def _change_process_name():
+    from ctypes import cdll, byref, create_string_buffer
+    libc = cdll.LoadLibrary('libc.so.6')
+    buff = create_string_buffer(bytes("vega-main", "utf-8"))
+    libc.prctl(15, byref(buff), 0, 0, 0)
+
+
 def run_pipeline(load_special_lib_func=None):
     """Run pipeline."""
     args = _parse_args()
@@ -135,16 +145,18 @@ def run_pipeline(load_special_lib_func=None):
     _append_env()
     if load_special_lib_func:
         load_special_lib_func(args.config_file)
-    config = _set_startup(args)
+    config = Config(args.config_file)
     # load general
     if config.get("general"):
         General.from_dict(config.get("general"), skip_check=False)
+    os.environ['TF_CPP_MIN_LOG_LEVEL'] = str(General.TF_CPP_MIN_LOG_LEVEL)
     if General.requires and not verify_requires(General.requires):
         return
     dict_args = vars(args)
     dict_args = _check_parse(dict_args)
     config = _modify_config(dict_args, config)
     _backup_config(args)
+    _change_process_name()
     vega.run(config)
 
 

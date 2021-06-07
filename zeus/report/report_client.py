@@ -11,42 +11,66 @@
 """Report."""
 import json
 import logging
+from datetime import datetime
 from zeus.common.file_ops import FileOps
 from zeus.common.task_ops import TaskOps
-from zeus.report.share_memory import ShareMemory
 from zeus.common.utils import remove_np_value
 from .record import ReportRecord
+from zeus.common import MessageClient
+from zeus.common import General, Status, JsonEncoder
+
+
+logger = logging.getLogger(__name__)
 
 
 class ReportClient(object):
-    """Report class to save all records and broadcast records to share memory."""
+    """Report class to save all records and update records to share memory."""
 
-    @classmethod
-    def broadcast(cls, record):
-        """Broadcast one record to Shared Memory."""
-        if not record:
-            logging.warning("Broadcast Record is None.")
-            return
-        ShareMemory("{}.{}".format(record.step_name, record.worker_id)).put(record.serialize())
-        cls._save_worker_record(record.serialize())
+    def __init__(self):
+        self.client = MessageClient(ip=General.cluster.master_ip, port=General.message_port)
 
-    @classmethod
-    def get_record(cls, step_name, worker_id):
-        """Get value from Shared Memory."""
-        value = ShareMemory("{}.{}".format(step_name, worker_id)).get()
-        if value:
-            record = ReportRecord().from_dict(value)
-        else:
-            record = ReportRecord(step_name, worker_id)
+    def update(self, step_name, worker_id, **kwargs):
+        """Update record."""
+        if not isinstance(kwargs, dict):
+            kwargs = {}
+        kwargs["step_name"] = step_name
+        kwargs["worker_id"] = worker_id
+        kwargs = json.loads(json.dumps(kwargs, cls=JsonEncoder))
+        result = self.client.send(action="update_record", data=kwargs)
+        if not isinstance(result, dict) or "result" not in result or result["result"] != "success":
+            raise Exception(f"Failed to update record: {result}")
+        record = ReportRecord().load_dict(result["data"])
+        self._save_worker_record(record.to_dict())
         return record
 
-    @classmethod
-    def close(cls, step_name, worker_id):
-        """Clear Shared Memory."""
-        ShareMemory("{}.{}".format(step_name, worker_id)).close()
+    def set_finished(self, step_name, worker_id):
+        """Set record finished."""
+        kwargs = {}
+        kwargs["step_name"] = step_name
+        kwargs["worker_id"] = worker_id
+        kwargs["end_time"] = datetime.now()
+        kwargs["status"] = Status.finished
+        kwargs = json.loads(json.dumps(kwargs, cls=JsonEncoder))
+        result = self.client.send(action="update_record", data=kwargs)
+        if not isinstance(result, dict) or "result" not in result or result["result"] != "success":
+            raise Exception(f"Failed to set finished: {result}")
+        record = ReportRecord().load_dict(result["data"])
+        self._save_worker_record(record.to_dict())
+        return record
 
-    @classmethod
-    def _save_worker_record(cls, record):
+    def request(self, action, **kwargs):
+        """Set record finished."""
+        kwargs = json.loads(json.dumps(kwargs, cls=JsonEncoder))
+        return self.client.send(action=action, data=kwargs)
+
+    def get_record(self, step_name, worker_id):
+        """Get value from Shared Memory."""
+        result = self.client.send(action="get_record", data={"step_name": step_name, "worker_id": worker_id})
+        if not isinstance(result, dict) or "result" not in result or result["result"] != "success":
+            raise Exception(f"Failed to get record: {result}")
+        return ReportRecord().load_dict(result["data"])
+
+    def _save_worker_record(self, record):
         step_name = record.get('step_name')
         worker_id = record.get('worker_id')
         _path = TaskOps().get_local_worker_path(step_name, worker_id)
@@ -54,8 +78,11 @@ class ReportClient(object):
             _file_name = None
             _file = None
             record_value = remove_np_value(record.get(record_name))
-            if not record_value:
-                continue
+            if record_value is None:
+                if record_name == "desc":
+                    record_value = {}
+                else:
+                    continue
             _file = None
             try:
                 # for cars/darts save multi-desc
@@ -66,6 +93,8 @@ class ReportClient(object):
                         with open(_file, "w") as f:
                             json.dump(value, f)
                 else:
+                    if 'multi_task' in record:
+                        worker_id = record.get('multi_task') if record.get('multi_task') is not None else worker_id
                     _file_name = None
                     if record_name == "desc":
                         _file_name = "desc_{}.json".format(worker_id)
@@ -77,5 +106,5 @@ class ReportClient(object):
                     with open(_file, "w") as f:
                         json.dump(record_value, f)
             except Exception as ex:
-                logging.error("Failed to save {}, file={}, desc={}, msg={}".format(
+                logger.error("Failed to save {}, file={}, desc={}, msg={}".format(
                     record_name, _file, record_value, str(ex)))

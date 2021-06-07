@@ -252,8 +252,8 @@ class ESRSearch(SearchAlgorithm):
         :param local_worker_path: the local path that saved `performance.txt`.
         :type local_worker_path: str
         """
-        worker_id = record.get("worker_id")
-        performance = record.get("rewards")
+        worker_id = int(record.get("worker_id"))
+        performance = float(record.get("rewards"))
         self.fitness_pop[(worker_id - 1) % self.individual_num] = performance
         self.fit_state[(worker_id - 1) % self.individual_num] = 1
 

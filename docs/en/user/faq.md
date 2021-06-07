@@ -33,7 +33,7 @@ The possible cause is that the PIP version is too early. Run the following comma
 pip3 install --user --upgrade pip
 ```
 
-### 1.7 Exception `PermissionError: [Errno 13] Permission denied: 'dask-scheduler'` or `FileNotFoundError: [Errno 2] No such file or directory: 'dask-scheduler': 'dask-scheduler'`
+### 1.7 Exception `PermissionError: [Errno 13] Permission denied: 'dask-scheduler'`, `FileNotFoundError: [Errno 2] No such file or directory: 'dask-scheduler': 'dask-scheduler'`, or `vega: command not found`
 
 This type of exception is usually caused by the failure to find `dask-scheduler` in `PATH`. Generally, the file is installed in `/<user home path>/.local/bin`.
 After the Vega is installed , `/<user home path>/.local/bin/` is automatically added to the `PATH` environment variable. The setting does not take effect immediately. You can run the ls command `source ~/.profile` or log in again to make the setting take effect.
@@ -130,20 +130,22 @@ The output directory of the visualized information is as follows:
 
 Run the `tensorboard --logdir PATH` command on the active node to start the service and view the progress in the browser. For details, see TensorBoard commands and instructions.
 
-### 2.6 如何终止后台运行的vega程序
+### 2.6 How Do I Stop the VEGA Program Running in the Background
 
-Vega在多个GPU/NPU场景中，会启动dask scheduler、dask worker及训练器，若仅仅杀死Vega主进程会造成部分进程不会及时的关闭，其占用的资源一直不会被释放。
+If only the main Vega process is killed, some processes will not be stopped in time, and the resources occupied by the processes will not be released.
 
-可使用如下命令终止Vega应用程序：
+The Vega application can be terminated using the following command:
 
 ```bash
-# 查询运行中的Vega主程序的进程ID
-vega-kill -l
-# 终止一个Vega主程序及相关进程
+# Query the process ID of the running Vega main program.
+vega-process
+# Terminate a Vega main program and related processes.
 vega-kill -p <pid>
-# 或者一次性的终止所有Vega相关进程
+# Terminate a Vega main program and related processes.
+vega-kill -t <task id>
+# Or stop all Vega-related processes at a time.
 vega-kill -a
-# 若主程序被非常正常关闭，还存在遗留的相关进程，可使用强制清理
+# If the main program is shut down normally and there are remaining related processes, you can forcibly clear the process.
 vega-kill -f
 ```
 

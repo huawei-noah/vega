@@ -38,8 +38,9 @@ class Module(object):
         self.weight_file = None
         self.from_weight_type = None
         self._is_load_pretrained = False
-        self._is_adaptive_weight = False
         self.exclude_weight_prefix = None
+        self._pre_hooks = OrderedDict()
+        self._call_hooks = OrderedDict()
 
     def add_module(self, name, model):
         """Add models into self._models."""
@@ -48,6 +49,14 @@ class Module(object):
     def build(self):
         """Build model or params."""
         pass
+
+    def register_forward_pre_hook(self, hook):
+        """Register pre hook."""
+        self._pre_hooks[hook.__name__] = hook
+
+    def register_forward_hook(self, hook):
+        """Register call hook."""
+        self._call_hooks[hook.__name__] = hook
 
     def named_modules(self):
         """Return names spaces."""
@@ -110,18 +119,6 @@ class Module(object):
         for module in self.children():
             module.training = value
 
-    @property
-    def is_adaptive_weight(self):
-        """Get _is_adaptive_weight flag."""
-        return self._is_adaptive_weight
-
-    @is_adaptive_weight.setter
-    def is_adaptive_weight(self, value):
-        """Set _is_adaptive_weight flag."""
-        self._is_adaptive_weight = value
-        for module in self.children():
-            module.is_adaptive_weight = value
-
     def freeze(self):
         """Set training flag."""
         self._trainable = False
@@ -142,9 +139,10 @@ class Module(object):
 
     def get_weights(self, name=None):
         """Get weights by name."""
-        if self._weights_buffer:
+        if name is None:
             return self._weights_buffer
-        return tf.get_default_graph().get_tensor_by_name('{}:0'.format(name))
+        else:
+            return tf.get_default_graph().get_tensor_by_name('{}:0'.format(name))
 
     def get_all_weights(self):
         """Get all weights."""
@@ -168,10 +166,6 @@ class Module(object):
             output = model(output)
         return output
 
-    def adaptive_weight(self, inputs):
-        """Adaptive weight."""
-        return {}
-
     def _apply_names(self, parent_name=''):
         """Apply names spaces."""
         for scope_name, module in self._modules.items():
@@ -191,16 +185,22 @@ class Module(object):
         self._apply_names()
         for module in self.children():
             module._is_load_pretrained = True
+        if self.training:
+            for hook_name, hook in self._pre_hooks.items():
+                inputs = hook(self, inputs) or inputs
         out = self.call(inputs, *args, **kwargs)
-        self._apply_weights(inputs)
+        if self.training:
+            for hook_name, hook in self._call_hooks.items():
+                out = hook(self, inputs, out) or out
+        self._apply_weights()
         return out
 
-    def _apply_weights(self, inputs):
+    def _apply_weights(self):
         if not self._weights_buffer:
             return
         variables = tf.get_collection(tf.GraphKeys.VARIABLES)
-        if self.is_adaptive_weight:
-            self._weights_buffer.update(self.adaptive_weight(inputs))
+        if isinstance(self, Conv2d):
+            self._weights_buffer = {k.replace('/weights', '/kernel'): v for k, v in self._weights_buffer.items()}
         values = [(var, self._weights_buffer.get(var.name.replace(':0', ''))) for var in variables if
                   var.name.replace(':0', '') in self._weights_buffer]
         for v, weight in values:
@@ -261,7 +261,7 @@ class Conv2d(Module, OperatorSerializable):
     """Fuse and unified conv2d args."""
 
     def __init__(self, in_channels, out_channels, kernel_size=3, stride=1, padding=0, bias=True, groups=1,
-                 dilation=1, separable=False, depthwise=False, padding_mode='same'):
+                 dilation=1, separable=False, depthwise=False, padding_mode='same', bn=False):
         super(Conv2d, self).__init__()
         self.in_channels = in_channels
         self.out_channels = out_channels
@@ -277,7 +277,8 @@ class Conv2d(Module, OperatorSerializable):
         self.reuse = None
         self.separable = separable
         self.depthwise = depthwise
-        self.padding_mode = padding_mode
+        self.padding_mode = padding if isinstance(padding, str) and stride != 2 else padding_mode
+        self.bn = bn
 
     def call(self, inputs, **kwargs):
         """Call separable_conv2d function."""
@@ -304,32 +305,15 @@ class Conv2d(Module, OperatorSerializable):
                                             use_bias=self.bias,
                                             name=self.name, trainable=self._trainable)
         x = conv2d(inputs=inputs)
+        if self.bn:
+            bn = BatchNorm2d(name=self.name + '/BatchNorm')
+            x = bn(x)
         return x
 
     def initial(self, kernel_mode='he', bias_mode='zero', kernel_scale=1., bias_scale=1.):
         """Initialize weight and bias."""
         if kernel_mode == 'he':
             self._initializer = HeInitial(kernel_scale)
-
-    def adaptive_weight(self, inputs):
-        """Adaptive weight."""
-        res = OrderedDict()
-        for name, weight in self._weights_buffer.items():
-            in_channels = inputs.shape.as_list()[1]
-            w_in_shape = weight.shape[2]
-            if w_in_shape < in_channels:
-                weight = np.tile(weight, (2, 1))
-            elif w_in_shape > in_channels:
-                cut = list(range(w_in_shape)[:in_channels])
-                weight = weight[:, :, cut, :]
-            w_out_shape = weight.shape[3]
-            if w_out_shape < self.out_channels:
-                weight = np.tile(weight, (1, 2))
-            elif w_out_shape > self.out_channels:
-                cut = list(range(w_out_shape)[:self.out_channels])
-                weight = weight[:, :, :, cut]
-            res[name] = weight
-        return res
 
 
 @ClassFactory.register(ClassType.NETWORK)
@@ -366,7 +350,7 @@ class SeparableConv2d(Module, OperatorSerializable):
 class MaxPool2d(Module, OperatorSerializable):
     """Fuse and unified MaxPool2d args."""
 
-    def __init__(self, kernel_size, stride, padding=0):
+    def __init__(self, kernel_size, stride, padding='SAME'):
         super(MaxPool2d, self).__init__()
         self.kernel_size = kernel_size
         self.stride = stride
@@ -375,7 +359,7 @@ class MaxPool2d(Module, OperatorSerializable):
     def call(self, input, **kwargs):
         """Call MaxPooling2D function."""
         model = tf.layers.MaxPooling2D(pool_size=self.kernel_size, strides=self.stride,
-                                       data_format=self.data_format, padding='SAME', name=self.name,
+                                       data_format=self.data_format, padding=self.padding, name=self.name,
                                        trainable=self._trainable)
         x = model(inputs=input)
         return x
@@ -499,34 +483,12 @@ class Linear(Module, OperatorSerializable):
 
     def call(self, input, **kwargs):
         """Call dense function."""
+        if len(input.shape) == 4:
+            input = tf.squeeze(input, axis=[2, 3])
         fc = tf.keras.layers.Dense(units=self.out_features, use_bias=self.use_bias, name=self.name,
                                    activation=self.activation)
         out = fc(inputs=input)
         return out
-
-    def adaptive_weight(self, inputs):
-        """Adaptive weight."""
-        self.in_features = inputs.shape.as_list()[1]
-        res = OrderedDict()
-        for name, weight in self.get_weights().items():
-            if 'kernel' in name:
-                if weight.shape[0] < self.in_features:
-                    res[name] = np.tile(weight, (2, 1))
-                elif weight.shape[0] > self.in_features:
-                    idx = list(range(weight.shape[0])[:self.in_features])
-                    res[name] = weight[idx, :]
-                if weight.shape[1] < self.out_features:
-                    res[name] = np.tile(weight, (1, 2))
-                elif weight.shape[1] > self.out_features:
-                    idx = list(range(weight.shape[1])[:self.out_features])
-                    res[name] = weight[:, idx]
-            elif 'bias' in name:
-                if weight.shape[0] < self.out_features:
-                    res[name] = np.tile(weight, 2)
-                elif weight.shape[0] > self.out_features:
-                    idx = list(range(weight.shape[0])[:self.out_features])
-                    res[name] = weight[idx]
-        return res
 
 
 @ClassFactory.register(ClassType.NETWORK)
@@ -555,13 +517,14 @@ class AvgPool2d(Module, OperatorSerializable):
 class BatchNorm2d(Module, OperatorSerializable):
     """Call batch_normalization."""
 
-    def __init__(self, num_features=None, eps=1e-05, momentum=0.997, affine=None):
+    def __init__(self, num_features=None, eps=1e-05, momentum=0.997, affine=None, name=None):
         super(BatchNorm2d, self).__init__()
         self.num_features = num_features
         self.eps = eps
         self.momentum = momentum
         self.training = affine if affine is not None else self.training
         self.affine = affine
+        self.name = name
 
     def call(self, input, **kwargs):
         """Call batch_normalization function."""
@@ -578,18 +541,6 @@ class BatchNorm2d(Module, OperatorSerializable):
             for item in bn.updates:
                 tf.add_to_collections(tf.GraphKeys.UPDATE_OPS, item)
         return out
-
-    def adaptive_weight(self, input):
-        """Adaptive weight."""
-        self.num_features = input.shape.as_list()[1]
-        res = OrderedDict()
-        for name, weight in self.get_weights().items():
-            if weight.shape[0] < self.num_features:
-                res[name] = np.tile(weight, 2)
-            elif weight.shape[0] > self.num_features:
-                idx = list(range(weight.shape[0])[:self.num_features])
-                res[name] = weight[idx]
-        return res
 
 
 @ClassFactory.register(ClassType.NETWORK)
@@ -611,7 +562,7 @@ class Dropout(Module, OperatorSerializable):
 
     def __init__(self, prob=0.5, inplace=False):
         """Construct Dropout class."""
-        super(Dropout, self).__init__(prob, inplace)
+        super(Dropout, self).__init__()
         self.dropout = tf.keras.layers.Dropout(prob)
 
     def call(self, x, **kwargs):
@@ -765,9 +716,14 @@ class InterpolateScale(Module, OperatorSerializable):
                 self.size = (self.size, self.size)
             output = tf.image.resize(inputs, size=self.size, method=self.mode, align_corners=self.align_corners)
         else:
-            output = tf.image.resize_images(inputs, [inputs.shape[1] * self.scale_factor,
-                                                     inputs.shape[2] * self.scale_factor], method=self.mode,
-                                            align_corners=self.align_corners)
+            if self.scale_factor is not None:
+                output = tf.image.resize_images(inputs, [inputs.shape[1] * self.scale_factor,
+                                                         inputs.shape[2] * self.scale_factor], method=self.mode,
+                                                align_corners=self.align_corners)
+            else:
+                output = tf.image.resize_images(inputs, (tf.cast(inputs.shape[1], tf.int32),
+                                                         tf.cast(inputs.shape[2], tf.int32)), method=self.mode,
+                                                align_corners=self.align_corners)
         return tf.transpose(output, [0, 3, 1, 2])
 
 
@@ -897,14 +853,26 @@ def mean(input):
 
 def pad(inputs, position):
     """Apply pad function."""
-    len_dim = len(get_shape(inputs))
+    len_dim = len(list(inputs.shape))
     pos = [[0, 0] for i in range(len_dim)]
-    for i in range(len(position)):
-        if i % 2 == 0:
-            pos[(-(i // 2) - 1)][0] = position[i]
-        else:
-            pos[(-(i // 2) - 1)][1] = position[i]
-    return tf.pad(inputs, pos)
+    if isinstance(inputs, tf.Tensor):
+        for i in range(len(position)):
+            if i % 2 == 0:
+                pos[(-(i // 2) - 1)][0] = position[i]
+            else:
+                pos[(-(i // 2) - 1)][1] = position[i]
+            return tf.pad(inputs, pos)
+    else:
+        for i in range(len(position)):
+            if i % 2 == 0:
+                pos[((i // 2))][0] = position[i]
+            else:
+                pos[((i // 2))][1] = position[i]
+    for i, v in enumerate(pos):
+        if v[1] < 0:
+            inputs = np.delete(inputs, list(range(-v[1])), axis=i)
+            pos[i] = (0, 0)
+    return np.pad(inputs, pos)
 
 
 def tensor_abs(inputs):
@@ -1063,9 +1031,9 @@ def pow(input, exponent, out=None):
     return tf.pow(input)
 
 
-def ones(input_size, out):
+def ones(input_size):
     """Return a tensor with all 1s. The shape is defined by the variable parameter size."""
-    return tf.ones(input_size, out)
+    return tf.ones(input_size)
 
 
 def one_hot(inputs, num_classes):
@@ -1139,3 +1107,44 @@ class LayerNorm(Module, OperatorSerializable):
         s = (x - u).pow(2).mean(-1, keepdim=True)
         x = (x - u) / sqrt(s + self.variance_epsilon)
         return self.weight * x + self.bias
+
+
+@ClassFactory.register(ClassType.NETWORK)
+class Flatten(Module, OperatorSerializable):
+    """Flatten Module."""
+
+    def __init__(self, start_dim=0):
+        super(Flatten, self).__init__()
+        self.start_dim = start_dim
+
+    def call(self, x):
+        """Apply flatten."""
+        old_shape = x.shape
+        flatten_dim = old_shape[self.start_dim:]
+        flatten_size = 1
+        for i in range(len(flatten_dim)):
+            flatten_size = flatten_size * flatten_dim[i]
+        new_shape = old_shape[0:self.start_dim] + (flatten_size,)
+        return tf.reshape(x, new_shape)
+
+
+class Tensor():
+    """Wrapper of Tensor."""
+
+    pass
+
+
+class Parameter():
+    """Wrapper of Parameter."""
+
+    pass
+
+
+def expand(x, expand_shape):
+    """Expand function."""
+    pass
+
+
+def MSELoss():
+    """MSE Loss."""
+    pass

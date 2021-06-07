@@ -12,9 +12,9 @@
 
 from zeus.common.class_factory import ClassFactory
 
-
 ClassFactory.lazy_register("zeus.datasets.transforms", {
     # common
+    "AutoAugment": ["AutoAugment"],
     "AutoContrast": ["AutoContrast"],
     "BboxTransform": ["BboxTransform"],
     "Brightness": ["Brightness"],
@@ -48,13 +48,18 @@ ClassFactory.lazy_register("zeus.datasets.transforms", {
     "Translate_Y": ["Translate_Y"],
     "RandomGaussianBlur_pair": ["RandomGaussianBlur_pair"],
     "RandomHorizontalFlipWithBoxes": ["RandomHorizontalFlipWithBoxes"],
+    "Resize": ["Resize"],
+    "RandomCrop": ["RandomCrop"],
+    "RandomHorizontalFlip": ["RandomHorizontalFlip"],
+    "Normalize": ["Normalize"],
+    "ToTensor": ["ToTensor"],
 })
 
 ClassFactory.lazy_register("zeus.datasets.transforms.pytorch", {
     "Numpy2Tensor": ["Numpy2Tensor"],
     "PBATransformer": ["PBATransformer"],
     "ToPILImage_pair": ["ToPILImage_pair"],
-    "ToTensor_pair": ["ToTensor_pair", "PILToTensor"],
+    "ToTensor_pair": ["ToTensor_pair", "PILToTensor", "ToTensorAll"],
 })
 
 ClassFactory.lazy_register("mmdet.datasets", {

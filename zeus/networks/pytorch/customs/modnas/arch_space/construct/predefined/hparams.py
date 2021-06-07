@@ -9,7 +9,6 @@
 # MIT License for more details.
 
 """Hyperparameter constructor."""
-
 from modnas.registry.construct import register
 from modnas.core.params import Numeric, Categorical
 

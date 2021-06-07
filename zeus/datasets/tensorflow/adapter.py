@@ -44,6 +44,7 @@ class TfAdapter(object):
             elif self.dataset.mode == 'val':
                 self.data_index = self.data_index[split:]
                 self._num_examples = self._num_examples - split
+        self.repeat_ratio = self.args.get('repeat_ratio', 1.)
         self.is_detection = self.args.get("is_detection", False)
         self.is_spatiotemporal = self.args.get('is_spatiotemporal')
 
@@ -186,6 +187,7 @@ class TfAdapter(object):
             len = self._num_examples // self.args.batch_size
             if self.dataset.world_size > 1:
                 len = len // self.dataset.world_size
+            len = int(len * self.repeat_ratio)
         else:
             len = self._num_examples // self.args.batch_size
         return len
@@ -197,7 +199,7 @@ class TfAdapter(object):
         self._get_dateset_info()
         dataset = tf.data.Dataset.from_tensor_slices(
             (self.data_index, self.data_index))
-        if self.dataset.world_size > 1:
+        if self.dataset.mode == 'train' and self.dataset.world_size > 1:
             dataset = dataset.shard(self.dataset.world_size, self.dataset.rank)
         if self.dataset.mode == 'train':
             dataset = dataset.repeat()

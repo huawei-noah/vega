@@ -9,7 +9,6 @@
 # MIT License for more details.
 
 """Torch utils."""
-
 import numpy as np
 import torch
 from modnas.utils import format_value

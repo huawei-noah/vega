@@ -12,7 +12,6 @@
 
 from zeus.common.class_factory import ClassFactory
 
-
 ClassFactory.lazy_register("zeus.datasets.common", {
     "avazu": ["AvazuDataset"],
     "cifar10": ["Cifar10"],
@@ -26,7 +25,9 @@ ClassFactory.lazy_register("zeus.datasets.common", {
     "mnist": ["Mnist"],
     "sr_datasets": ["Set5", "Set14", "BSDS100"],
     "auto_lane_datasets": ["AutoLaneDataset"],
-    "coco": ["CocoDataset"],
-    "mrpc": ["MrpcDataset"],
-    "spatiotemporal": ["SpatiotemporalDataset"]
+    "coco": ["CocoDataset", "DetectionDataset"],
+    "glue": ["GlueDataset"],
+    "spatiotemporal": ["SpatiotemporalDataset"],
+    "reds": ["REDS"],
+    "nasbench": ["Nasbench"],
 })

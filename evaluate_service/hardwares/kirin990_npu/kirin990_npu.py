@@ -12,7 +12,7 @@
 import subprocess
 import logging
 import os
-from class_factory import ClassFactory
+from evaluate_service.class_factory import ClassFactory
 import datetime
 import csv
 

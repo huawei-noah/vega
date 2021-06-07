@@ -13,68 +13,44 @@ import json
 import logging
 import os
 import glob
-import traceback
 import pickle
+import time
+import random
 from copy import deepcopy
 import numpy as np
 import pandas as pd
-import pareto
-import time
-from threading import Thread
+from threading import Lock
 from collections import OrderedDict
+from threading import Thread
+
 import zeus
 from zeus.common import FileOps, TaskOps
 from zeus.common.general import General
-from zeus.report.share_memory import ShareMemory, ShareMemoryClient
-from .nsga_iii import SortAndSelectPopulation
 from .record import ReportRecord
+from .report_persistence import ReportPersistence
+from zeus.common import MessageServer
+from zeus.common.utils import singleton
+from zeus.common.pareto_front import get_pareto_index
+
+__all__ = ["ReportServer"]
+logger = logging.getLogger(__name__)
+_records_lock = Lock()
+_modified = False
 
 
+@singleton
 class ReportServer(object):
-    """Report class to save all records and broadcast records to share memory."""
+    """Report server."""
 
-    _hist_records = OrderedDict()
-    __instances__ = None
-    __variables__ = set()
+    def __init__(self):
+        self._hist_records = OrderedDict()
+        self.persistence = ReportPersistence()
+        self._start_save_report_thread()
 
-    def __new__(cls, *args, **kwargs):
-        """Override new method, singleton."""
-        if not cls.__instances__:
-            cls.__instances__ = super().__new__(cls, *args, **kwargs)
-            cls._thread_runing = True
-            cls._thread = cls._run_monitor_thread()
-        return cls.__instances__
-
-    def add(self, record):
-        """Add one record into set."""
-        self._hist_records[record.uid] = record
-
-    @classmethod
-    def add_watched_var(cls, step_name, worker_id):
-        """Add variable to ReportServer."""
-        cls.__variables__.add("{}.{}".format(step_name, worker_id))
-
-    @classmethod
-    def remove_watched_var(cls, step_name, worker_id):
-        """Remove variable from ReportServer."""
-        key = "{}.{}".format(step_name, worker_id)
-        if key in cls.__variables__:
-            cls.__variables__.remove(key)
-
-    @classmethod
-    def stop(cls):
-        """Stop report server."""
-        if hasattr(ReportServer, "_thread_runing") and ReportServer._thread_runing:
-            ReportServer._thread_runing = False
-            ReportServer._thread.join()
-            ShareMemoryClient().close()
-
-    @classmethod
-    def renew(cls):
-        """Renew report server."""
-        if not hasattr(ReportServer, "_thread_runing") or not ReportServer._thread_runing:
-            ReportServer._thread_runing = True
-            ReportServer._thread = ReportServer._run_monitor_thread()
+    def run(self):
+        """Run report server."""
+        MessageServer().register_handler("update_record", update_record)
+        MessageServer().register_handler("get_record", get_record)
 
     @property
     def all_records(self):
@@ -84,30 +60,23 @@ class ReportServer(object):
     def print_best(self, step_name):
         """Print best performance and desc."""
         records = self.get_pareto_front_records(step_name)
-        return [dict(worker_id=record.worker_id, performance=record._performance, desc=record.desc) for record in
-                records]
+        return [dict(worker_id=record.worker_id, performance=record._performance) for record in records]
 
     def pareto_front(self, step_name=None, nums=None, records=None):
         """Get parent front. pareto."""
         if records is None:
             records = self.all_records
             records = list(filter(lambda x: x.step_name == step_name and x.performance is not None, records))
-        in_pareto = [record.rewards if isinstance(record.rewards, list) else [record.rewards] for record in records]
-        in_pareto = [item for item in in_pareto if None not in item]
-        if not in_pareto:
+        records = [record for record in records if record.rewards_compeleted]
+        if not records:
             return None, None
         try:
-            fitness = np.array(in_pareto)
-            if fitness.shape[1] != 1 and nums is not None and len(in_pareto) > nums:
-                # len must larger than nums, otherwise dead loop
-                _, res, selected = SortAndSelectPopulation(fitness.T, nums)
-            else:
-                outs = pareto.eps_sort(fitness, maximize_all=True, attribution=True)
-                res, selected = np.array(outs)[:, :-2], np.array(outs)[:, -1].astype(np.int32)
-            return res.tolist(), selected.tolist()
+            rewards = [record.rewards if isinstance(record.rewards, list) else [record.rewards] for record in records]
+            indexes = get_pareto_index(np.array(rewards)).tolist()
+            return [record for i, record in enumerate(records) if indexes[i]]
         except Exception as ex:
             logging.error('No pareto_front_records found, ex=%s', ex)
-            return [], []
+            return []
 
     def get_step_records(self, step_name=None):
         """Get step records."""
@@ -146,33 +115,34 @@ class ReportServer(object):
         filter_steps = [step_name] if not isinstance(step_name, list) else step_name
         records = list(filter(lambda x: x.step_name in filter_steps and x.performance is not None, records))
         if records:
-            if isinstance(records[0].rewards, list):
-                not_finished = [x.worker_id for x in records if None in x.rewards]
-                records = [x for x in records if None not in x.rewards]
-            else:
-                not_finished = [x.worker_id for x in records if x.rewards is None]
-                records = [x for x in records if x.rewards is not None]
+            not_finished = [x.worker_id for x in records if not x.rewards_compeleted]
+            records = [x for x in records if x.rewards_compeleted]
             if not_finished:
-                logging.warning("Workers not finished: {}".format(not_finished))
-        outs, selected = self.pareto_front(step_name, nums, records=records)
-        if not outs:
+                logging.info(f"waiting for the workers {str(not_finished)} to finish")
+        if not records:
+            return []
+        pareto = self.pareto_front(step_name, nums, records=records)
+        if not pareto:
             return []
         if choice is not None:
-            selected = self._select_one_record(outs, choice)
-        return [records[idx] for idx in selected]
+            return [random.choice(pareto)]
+        else:
+            return pareto
 
-    def _select_one_record(self, outs, choice='normal'):
-        """Select one record."""
-        if choice == 'normal':
-            outs = np.array(outs).reshape(-1, 1).tolist()
-            prob = [round(np.log(i + 1e-2), 2) for i in range(1, len(outs[0]) + 1)]
-            prob_temp = prob
-            for idx, out in enumerate(outs):
-                sorted_ind = np.argsort(out)
-                for idx, ind in enumerate(sorted_ind):
-                    prob[ind] += prob_temp[idx]
-            normalization = [float(i) / float(sum(prob)) for i in prob]
-            return [np.random.choice(len(outs[0]), p=normalization)]
+    # def _select_one_record(self, outs, choice='normal'):
+    #     """Select one record."""
+    #     if outs.size == 1:
+    #         return outs.astype(int).tolist()
+    #     if choice == 'normal':
+    #         data = outs[:, 1:].reshape(-1, 1).tolist()
+    #         prob = [round(np.log(i + 1e-2), 2) for i in range(1, len(data[0]) + 1)]
+    #         prob_temp = prob
+    #         for idx, out in enumerate(data):
+    #             sorted_ind = np.argsort(out)
+    #             for idx, ind in enumerate(sorted_ind):
+    #                 prob[ind] += prob_temp[idx]
+    #         normalization = [float(i) / float(sum(prob)) for i in prob]
+    #         return [np.random.choice(len(data[0]), p=normalization)]
 
     @classmethod
     def restore(cls):
@@ -245,28 +215,19 @@ class ReportServer(object):
                 elif os.path.isdir(_file):
                     FileOps.copy_folder(_file, FileOps.join_path(step_path, os.path.basename(_file)))
 
-    def dump(self):
-        """Dump report to file."""
-        try:
-            _file = FileOps.join_path(TaskOps().step_path, "reports.json")
-            FileOps.make_base_dir(_file)
-            data = {}
-            for record in self.all_records:
-                if record.step_name in data:
-                    data[record.step_name].append(record.to_dict())
-                else:
-                    data[record.step_name] = [record.to_dict()]
-            with open(_file, "w") as f:
-                json.dump(data, f, indent=4)
+    def set_step_names(self, step_names):
+        """Add step information."""
+        global _records_lock, _modified
+        with _records_lock:
+            _modified = True
+            self.persistence.set_step_names(step_names)
 
-            _file = os.path.join(TaskOps().step_path, ".reports")
-            _dump_data = [ReportServer._hist_records, ReportServer.__instances__]
-            with open(_file, "wb") as f:
-                pickle.dump(_dump_data, f, protocol=pickle.HIGHEST_PROTOCOL)
-
-            self.backup_output_path()
-        except Exception:
-            logging.warning(traceback.format_exc())
+    def update_step_info(self, **kwargs):
+        """Update step information."""
+        global _records_lock, _modified
+        with _records_lock:
+            _modified = True
+            self.persistence.update_step_info(**kwargs)
 
     def __repr__(self):
         """Override repr function."""
@@ -300,43 +261,60 @@ class ReportServer(object):
                 logging.info('Can not read records from json because {}'.format(ex))
         return records
 
-    @classmethod
-    def _run_monitor_thread(cls):
-        try:
-            logging.debug("Start report monitor thread.")
-            monitor_thread = Thread(target=ReportServer._monitor_thread, args=(cls.__instances__,))
-            monitor_thread.daemon = True
-            monitor_thread.start()
-            return monitor_thread
-        except Exception as e:
-            logging.error("Failed to run report monitor thread.")
-            raise e
+    def _start_save_report_thread(self):
+        _thread = Thread(target=_dump_report, args=(self, self.persistence,))
+        _thread.daemon = True
+        _thread.start()
 
-    @staticmethod
-    def _monitor_thread(report_server):
-        while report_server and report_server._thread_runing:
-            watched_vars = deepcopy(ReportServer.__variables__)
-            saved_records = report_server.all_records
-            for var in watched_vars:
-                step_name, worker_id = var.split(".")
-                if step_name != General.step_name:
-                    continue
-                record_dict = None
-                try:
-                    record_dict = ShareMemory(var).get()
-                except Exception:
-                    logging.warning("Failed to get record, step name: {}, worker id: {}.".format(step_name, worker_id))
-                if record_dict:
-                    record = ReportRecord().from_dict(record_dict)
-                    saved_record = list(filter(
-                        lambda x: x.step_name == step_name and str(x.worker_id) == str(worker_id), saved_records))
-                    if not saved_record:
-                        report_server.add(record)
-                        ReportServer().dump()
-                    else:
-                        _ = record.code
-                        if record.code != saved_record[0].code:
-                            report_server.add(record)
-                            ReportServer().dump()
-                    ShareMemory(var).close()
-            time.sleep(0.2)
+
+def update_record(step_name=None, worker_id=None, **kwargs):
+    """Update record."""
+    if step_name is None or worker_id is None:
+        return {"result": "failed", "message": "request message missing step_name or worker id."}
+    if kwargs:
+        kwargs["step_name"] = step_name
+        kwargs["worker_id"] = worker_id
+        uid = "{}_{}".format(step_name, worker_id)
+        global _records_lock, _modified
+        with _records_lock:
+            _modified = True
+            records = ReportServer()._hist_records
+            if uid in records:
+                records[uid].load_dict(kwargs)
+                logging.debug("update record: {}".format(records[uid].to_dict()))
+            else:
+                records[uid] = ReportRecord().load_dict(kwargs)
+                logging.debug("new record: {}".format(records[uid].to_dict()))
+    return {"result": "success", "data": records[uid].to_dict()}
+
+
+def get_record(step_name=None, worker_id=None, **kwargs):
+    """Get record."""
+    if step_name is None or worker_id is None:
+        return {"result": "failed", "message": "require message missing step_name or worker id."}
+    uid = "{}_{}".format(step_name, worker_id)
+    records = ReportServer()._hist_records
+    if uid in records:
+        data = records[uid].to_dict()
+    else:
+        data = ReportRecord().to_dict()
+    return {"result": "success", "data": data}
+
+
+def _dump_report(report_server, persistence):
+    while True:
+        time.sleep(1)
+        global _records_lock, _modified
+        with _records_lock:
+            if not _modified:
+                continue
+            all_records = deepcopy(report_server.all_records)
+            _modified = False
+
+        try:
+            persistence.save_report(all_records)
+            # TODO
+            # persistence.pickle_report(report_server._hist_records, report_server.__instances__)
+            report_server.backup_output_path()
+        except Exception as e:
+            logging.warning(f"Failed to dump reports, message={str(e)}")

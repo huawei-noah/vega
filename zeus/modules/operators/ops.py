@@ -100,6 +100,21 @@ sqrt = fn.sqrt
 ones_like = fn.ones_like
 zeros_like = fn.zeros_like
 LayerNorm = fn.LayerNorm
+Tensor = fn.Tensor
+Parameter = fn.Parameter
+Flatten = fn.Flatten
+expand = fn.expand
+MSELoss = fn.MSELoss
+
+
+def from_module(module):
+    """From Model."""
+    name = module.__class__.__name__
+    if ClassFactory.is_exists(ClassType.NETWORK, name):
+        module_cls = ClassFactory.get_cls(ClassType.NETWORK, name)
+        if hasattr(module_cls, "from_module"):
+            return module_cls.from_module(module)
+    return module
 
 
 @ClassFactory.register(ClassType.NETWORK)

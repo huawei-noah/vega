@@ -10,14 +10,15 @@
 
 """This is SearchSpace for network."""
 from zeus.common import ClassFactory, ClassType
-from zeus.modules.connections import OutlistSequential, Sequential
+from zeus.modules.connections import OutDictSequential, Sequential
 from zeus.modules.operators import ops
+from zeus.modules.module import Module
 
 base_arch_code = {50: '111-2111-211111-211',
                   101: '111-2111-21111111111111111111111-211'}
 
 
-class BN_Conv2d(ops.Module):
+class BN_Conv2d(Module):
     """Base conv2D."""
 
     def __init__(self, in_channels, out_channels, kernel_size, stride, padding, dilation=1, groups=1, bias=False):
@@ -30,7 +31,7 @@ class BN_Conv2d(ops.Module):
         )
 
 
-class ResNeXt_Block(ops.Module):
+class ResNeXt_Block(Module):
     """ResNeXt block with group convolutions."""
 
     expansion = 4
@@ -60,7 +61,7 @@ class ResNeXt_Block(ops.Module):
 
 
 @ClassFactory.register(ClassType.NETWORK)
-class ResNeXtDet(ops.Module):
+class ResNeXtDet(Module):
     """ResNet for detection."""
 
     arch_settings = {
@@ -73,7 +74,6 @@ class ResNeXtDet(ops.Module):
         """Init ResNet."""
         super(ResNeXtDet, self).__init__()
         self.out_indices = out_indices
-
         self.zero_init_residual = zero_init_residual
         self.block, stage_blocks = self.arch_settings[depth]
         self.stage_blocks = stage_blocks[:num_stages]
@@ -89,13 +89,10 @@ class ResNeXtDet(ops.Module):
             self.code = code.split('-')
         for i, num_blocks in enumerate(self.stage_blocks):
             stride = strides[i]
-            res_layer, inplanes = self._make_layers(inplanes, planes,
-                                                    num_blocks, stride=stride,
-                                                    code=self.code[i])
+            res_layer, inplanes = self._make_layers(inplanes, planes, num_blocks, stride=stride, code=self.code[i])
             planes = planes * 2
             self.res_layers.append(res_layer)
-        self.res_layers_seq = OutlistSequential(
-            *self.res_layers, out_list=self.out_indices)
+        self.res_layers_seq = OutDictSequential(*self.res_layers, out_list=self.out_indices)
 
     def _make_layers(self, inplanes, d, blocks, stride, code):
         """Make layer."""
@@ -107,15 +104,18 @@ class ResNeXtDet(ops.Module):
             inplanes = self.cardinality * d * 2
         return Sequential(*layers), inplanes
 
+    @property
+    def out_channels(self):
+        """Output Channel for Module."""
+        return self.res_layers_seq.out_channels
+
     def _make_stem_layer(self):
         """Make stem layer."""
-        self.conv1 = BN_Conv2d(
-            3, self.inplanes, kernel_size=7, stride=2, padding=3, bias=False)
+        self.conv1 = BN_Conv2d(3, self.inplanes, kernel_size=7, stride=2, padding=3, bias=False)
         self.maxpool = ops.MaxPool2d(kernel_size=3, stride=2, padding=1)
 
     def call(self, x, **kwargs):
         """Forward compute of resnet for detection."""
         x = self.conv1(x)
         x = self.maxpool(x)
-        outs = self.res_layers_seq(x)
-        return tuple(outs)
+        return self.res_layers_seq(x)

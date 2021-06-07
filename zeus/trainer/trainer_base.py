@@ -28,21 +28,17 @@ class TrainerBase(DistributedWorker):
     """Trainer base class."""
 
     def __init__(self, model=None, id=None, hps=None, load_ckpt_flag=False,
-                 model_desc=None, lazy_build=True, **kwargs):
+                 model_desc=None, lazy_build=True, multi_task=None, **kwargs):
         super().__init__()
 
         self.config = TrainerConfig()
         self.worker_type = WorkerTypes.TRAINER
-        TrainerBase.__worker_id__ += 1
         if id is not None:
             self._worker_id = id
-        else:
-            self._worker_id = TrainerBase.__worker_id__
 
         self.actions_list = self.config.actions_list
         # Data Memeber list of Trainer
         self.is_chief = True
-        self.use_cuda = self.config.cuda
         self.epochs = self.config.epochs
         self.do_validation = True
         self.auto_save_ckpt = True
@@ -64,6 +60,7 @@ class TrainerBase(DistributedWorker):
         self.valid_verbose = self.config.valid_verbose
         self.train_report_steps = self.config.train_report_steps
         self.valid_report_steps = self.config.valid_report_steps
+        self.multi_task = multi_task
         self.train_loader = None
         self.valid_loader = None
         self.train_step = None
@@ -74,13 +71,16 @@ class TrainerBase(DistributedWorker):
         self.valid_input_fn = None
         self.callbacks = None
         self.performance = None
+        self.best_performance = None
         self.runtime = None
         self.load_checkpoint = False
         self._resume_training = False
         self._start_epoch = 0
         self.visual_data = {}
         self.load_ckpt_flag = load_ckpt_flag
-        self.distributed = not General._parallel and self.config.distributed
+        self.distributed = self.config.distributed
+        if zeus.is_gpu_device():
+            self.distributed = not General._parallel and self.distributed
         # Used by TimmTrainerCallbacks since it builds its trainer in
         # the before_train callback
         self.lazy_built = self.config.lazy_built
@@ -89,13 +89,17 @@ class TrainerBase(DistributedWorker):
         self._world_size = 1
         self._rank_id = 0
         self._local_rank_id = 0
+        self._next_rung = False
         self.config.kwargs = kwargs
         self.checkpoint_file_name = 'checkpoint.pth'
         self.model_pickle_file_name = 'model.pkl'
         worker_path = self.get_local_worker_path()
         self.model_path = FileOps.join_path(worker_path, self.model_pickle_file_name)
         self.checkpoint_file = FileOps.join_path(worker_path, self.checkpoint_file_name)
-        self.weights_file = FileOps.join_path(worker_path, "model_{}.pth".format(self.worker_id))
+        if self.multi_task:
+            self.weights_file = FileOps.join_path(worker_path, "model_{}.pth".format(self.multi_task))
+        else:
+            self.weights_file = FileOps.join_path(worker_path, "model_{}.pth".format(self.worker_id))
         self.loss_input = kwargs.get('loss_input', None)
         self.gpu_nums = kwargs.get('gpu_nums', 1)
         self.use_unsupervised_pretrain = self.config.use_unsupervised_pretrain
@@ -131,6 +135,7 @@ class TrainerBase(DistributedWorker):
         if not self.lazy_built:
             self.build()
         self._train_loop()
+        return self.model
 
     def build(self):
         """Build the trainer by assembling the necessary components."""
@@ -141,8 +146,10 @@ class TrainerBase(DistributedWorker):
         if self.use_syncbn and zeus.is_torch_backend():
             import apex
             self.model = apex.parallel.convert_syncbn_model(self.model)
-        self.train_loader = self._init_dataloader(mode='train')
-        self.valid_loader = self._init_dataloader(mode='val')
+        if not self.train_loader:
+            self.train_loader = self._init_dataloader(mode='train')
+        if not self.valid_loader:
+            self.valid_loader = self._init_dataloader(mode='val')
         self.batch_num_train = len(self.train_loader)
         self.batch_num_valid = len(self.valid_loader)
 
@@ -297,19 +304,23 @@ class TrainerBase(DistributedWorker):
             train_loader = self._init_dataloader(mode="train", transforms=TransformsSimCLR())
             self.model = simclr_train(self.model, train_loader)
 
-        repeat_time = 1 if zeus.is_ms_backend() else self.epochs
-        repeat_time = 1 if zeus.is_tf_backend() and self.config.train_in_once else repeat_time
-        for epoch in range(self._start_epoch, repeat_time):
-            epoch_logs = {'train_num_batches': self.batch_num_train}
-            if self.do_validation:
-                epoch_logs.update({'valid_num_batches': self.batch_num_valid})
-            self.callbacks.before_epoch(epoch, epoch_logs)
-            if self.config.with_train:
-                self._train_epoch()
-            if self.do_validation and self._should_run_validation(epoch):
-                self._valid_epoch()
-            self.callbacks.after_epoch(epoch)
-        self.callbacks.after_train()
+        while True:
+            repeat_time = 1 if zeus.is_ms_backend() else self.epochs
+            repeat_time = 1 if zeus.is_tf_backend() and self.config.train_in_once else repeat_time
+            for epoch in range(self._start_epoch, repeat_time):
+                epoch_logs = {'train_num_batches': self.batch_num_train}
+                if self.do_validation:
+                    epoch_logs.update({'valid_num_batches': self.batch_num_valid})
+                self.callbacks.before_epoch(epoch, epoch_logs)
+                if self.config.with_train:
+                    self._train_epoch()
+                if self.do_validation and self._should_run_validation(epoch):
+                    self._valid_epoch()
+                self.callbacks.after_epoch(epoch)
+            self.callbacks.after_train()
+            if not self._next_rung:
+                break
+
         if self.distributed:
             self._shutdown_distributed()
 

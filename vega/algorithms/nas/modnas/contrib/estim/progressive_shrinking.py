@@ -9,7 +9,6 @@
 # MIT License for more details.
 
 """Implementation of Progressive Shrinking in Once for All."""
-
 import itertools
 import time
 import random
@@ -175,9 +174,6 @@ class ProgressiveShrinkingEstim(EstimBase):
                 for name, res in results.items():
                     self.logger.info('Subnet {}: {:.4%}'.format(name, res))
                 self.update_results(results)
-            # save
-            if config.save_freq != 0 and epoch % config.save_freq == 0:
-                self.save_checkpoint(epoch)
 
     def update_results(self, results):
         """Merge subnet evaluation results."""

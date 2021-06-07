@@ -11,7 +11,7 @@ nas:
     dataset:
         type: Cityscapes
         common:
-            root_dir: /cache/datasets/Cityscapes
+            data_path: /cache/datasets/Cityscapes
         train:
             list_file: img_gt_train.txt
             batch_size: 2

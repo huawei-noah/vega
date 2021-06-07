@@ -13,7 +13,7 @@ import vega
 import numpy as np
 import cv2
 import torch
-import argparse
+from zeus.common import argment_parser
 
 
 def _predict_on_weights(feature_maps, weights):
@@ -90,7 +90,7 @@ def _cam(args):
 
 
 def _parse_args():
-    parser = argparse.ArgumentParser(description="Generate CAM(Class Activation Map) file.")
+    parser = argment_parser("Generate CAM(Class Activation Map) file.")
     parser.add_argument("-i", "--input_image_file", required=True, type=str, help="Input image file.")
     parser.add_argument("-o", "--output_image_file", required=True, type=str, help="Output image file.")
     parser.add_argument("-d", "--model_desc_file", required=True, type=str, help="Model description file.")

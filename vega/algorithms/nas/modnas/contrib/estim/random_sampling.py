@@ -9,7 +9,6 @@
 # MIT License for more details.
 
 """Uniformly samples and trains subnets."""
-
 import random
 from modnas.estim.predefined.default import DefaultEstim
 from modnas.registry.estim import register

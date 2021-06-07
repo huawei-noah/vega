@@ -1,4 +1,4 @@
-# auto_lane
+# Auto-Lane
 
 ## 1. 算法介绍
 
@@ -87,97 +87,97 @@ auto_lane分为backbone module，feature fusion module和 head三大组件。bac
 
      具体的在配置文件中由`search_space`和`model`配置子树确定：
 
-     ```yaml
+    ```yaml
         search_space:
-	        hyperparameters:
-	            -   key: network.backbone.base_depth
-	                type: CATEGORY
-	                range: [18, 34, 50, 101]                     # 表示使用18、34、50、101的基础block
-	            -   key: network.backbone.type
-	                type: CATEGORY
-	                range: [ResNetVariantDet, ResNeXtVariantDet]
-	            -   key: network.backbone.base_channel
-	                type: CATEGORY
-	                range:  [32, 48, 56, 64]                     # 设置基础的channel（2的倍数都可以）
-	            -   key: network.neck.arch_code
-	                type: CATEGORY
-	                range: ['012-022', '012-122', '122-022','-'] # feature fusion搜索空间
-	            -   key: network.neck.type
-	                type: CATEGORY
-	                range: [FeatureFusionModule]                 # 设置FeatureFusionModule系列
+            hyperparameters:
+            -   key: network.backbone.base_depth
+                    type: CATEGORY
+                    range: [18, 34, 50, 101]                     # 表示使用18、34、50、101的基础block
+                -   key: network.backbone.type
+                    type: CATEGORY
+                    range: [ResNetVariantDet, ResNeXtVariantDet]
+            -   key: network.backbone.base_channel
+                    type: CATEGORY
+                    range:  [32, 48, 56, 64]                     # 设置基础的channel（2的倍数都可以）
+            -   key: network.neck.arch_code
+                    type: CATEGORY
+                    range: ['012-022', '012-122', '122-022','-'] # feature fusion搜索空间
+            -   key: network.neck.type
+                    type: CATEGORY
+                    range: [FeatureFusionModule]                 # 设置FeatureFusionModule系列
 
         model:
-		model_desc:
-		    modules: ['backbone','neck']                     # 需要搜索的模块（请不要修改此项）
-		    backbone:
-		        type: [ResNetVariantDet, ResNeXtVariantDet]  # 设置ResNetVariantDet和ResNeXtVariantDet为主干系列，若不搜索可删除具体项
-		    neck:
-		        type: FeatureFusionModule
-     ```
+        model_desc:
+            modules: ['backbone','neck']                     # 需要搜索的模块（请不要修改此项）
+            backbone:
+                type: [ResNetVariantDet, ResNeXtVariantDet]  # 设置ResNetVariantDet和ResNeXtVariantDet为主干系列，若不搜索可删除具体项
+            neck:
+                type: FeatureFusionModule
+    ```
 
 4. trainer配置
 
-     trainer的配置项详情如下：
+    trainer的配置项详情如下：
 
-     ```yaml
-     trainer:
-         type: Trainer
-         save_model_desc: True           # 保存模型的详细信息
-         with_valid: True                # 是否在训练的时候valid
-         is_detection_trainer: True      # 算法为detecion的时候此项设置为True
-         callbacks: ['AutoLaneTrainerCallback','DetectionMetricsEvaluator','DetectionProgressLogger']
-         report_freq: 50                 # report的step间隔
-         valid_interval: 3               # valid的epoch间隔 
-         epochs: 40                      # 模型要训练多少个epoch
-         optim:
-             type: SGD                   # 设置优化器为SGD
-             lr: 0.02                    # 设置初始学习率
-             momentum: 0.9               # 设置momentum
-             weight_decay: 0.0001        # 设置weight_decay
-         lr_scheduler:
-             type: WarmupScheduler       # 设置WarmupScheduler
-             params:
-                warmup_type: linear      # 设置warmup_type
-                warmup_iters: 5000       # 设置warmup的step数
-                warmup_ratio: 0.1        # 设置warmup的ratio
-                after_scheduler_config:
-                    by_epoch: False      # 设置WarmupScheduler是随step而不是epoch而改变
-                    type: CosineAnnealingLR #设置lr的scheduler
-                    params:
-                        T_max: 120000 # int(10_0000/batch_size)*epoch-warmup_iters
-         metric:
-             type: LaneMetric            # 设置评价方式（车道线的评价方式比较特殊，请不要修改子树）
-	         params:
-	            method: f1_measure          # 设置评价的指标为f1_measure
-	            eval_width: 1640            # 设置评价的图像宽度
-	            eval_height: 590            # 设置评价的图像高度
-	            iou_thresh: 0.5             # 设置IoU大于0.5时认为是有效匹配
-	            lane_width: 30              # 设置计算bit-wise IoU的时候线的宽度
-	            thresh_list:  [0.50, 0.60, 0.70, 0.80, 0.90] #在评价的时候对线的预测概率做grid search
-     ```
+    ```yaml
+    trainer:
+        type: Trainer
+        save_model_desc: True           # 保存模型的详细信息
+        with_valid: True                # 是否在训练的时候valid
+        is_detection_trainer: True      # 算法为detecion的时候此项设置为True
+        callbacks: ['AutoLaneTrainerCallback','DetectionMetricsEvaluator','DetectionProgressLogger']
+        report_freq: 50                 # report的step间隔
+        valid_interval: 3               # valid的epoch间隔 
+        epochs: 40                      # 模型要训练多少个epoch
+        optim:
+            type: SGD                   # 设置优化器为SGD
+            lr: 0.02                    # 设置初始学习率
+            momentum: 0.9               # 设置momentum
+            weight_decay: 0.0001        # 设置weight_decay
+        lr_scheduler:
+            type: WarmupScheduler       # 设置WarmupScheduler
+            params:
+            warmup_type: linear      # 设置warmup_type
+            warmup_iters: 5000       # 设置warmup的step数
+            warmup_ratio: 0.1        # 设置warmup的ratio
+            after_scheduler_config:
+                by_epoch: False      # 设置WarmupScheduler是随step而不是epoch而改变
+                type: CosineAnnealingLR #设置lr的scheduler
+                params:
+                    T_max: 120000 # int(10_0000/batch_size)*epoch-warmup_iters
+        metric:
+            type: LaneMetric            # 设置评价方式（车道线的评价方式比较特殊，请不要修改子树）
+            params:
+            method: f1_measure          # 设置评价的指标为f1_measure
+            eval_width: 1640            # 设置评价的图像宽度
+            eval_height: 590            # 设置评价的图像高度
+            iou_thresh: 0.5             # 设置IoU大于0.5时认为是有效匹配
+            lane_width: 30              # 设置计算bit-wise IoU的时候线的宽度
+            thresh_list:  [0.50, 0.60, 0.70, 0.80, 0.90] #在评价的时候对线的预测概率做grid search
+    ```
 
 5. 数据集配置
    auto_lane的数据可以采用CULane数据集和CurveLanes数据集，目前已提供了这两种数据集的接口，用户可以直接配置使用。
 
    数据集的配置参数，如下。
 
-   ```yaml
-   dataset:
-       type: AutoLaneDataset
-       common:
-           batch_size: 32
-           num_workers: 12
-           dataset_path: "/cache/datasets/CULane/"
-           dataset_format: CULane
-       train:
-           with_aug: False                       # 请在fullytrain的时候将此项置为True
-           shuffle: True
-           random_sample: True
-       valid:
-           shuffle: False
-       test:
-           shuffle: False
-   ```
+    ```yaml
+    dataset:
+        type: AutoLaneDataset
+        common:
+            batch_size: 32
+            num_workers: 12
+            dataset_path: "/cache/datasets/CULane/"
+            dataset_format: CULane
+        train:
+            with_aug: False                       # 请在fullytrain的时候将此项置为True
+            shuffle: True
+            random_sample: True
+        valid:
+            shuffle: False
+        test:
+            shuffle: False
+    ```
 
 ## 5. Benchmark
 

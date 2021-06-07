@@ -7,17 +7,25 @@
 
 **[English](./README.md) | 中文**
 
-**Vega ver1.3.0 发布：**
+---
 
-- 特性增强：
-  - 支持昇腾平台，在Ascend 910搜索和训练（TensorFlow和MindSpore），在Ascend 310上模型评估。
-  - 支持在麒麟990上模型评估。
-  - 支持用户数据集在DNet预模型上FineTune，在Ascend 910/310上超越SOTA。
-  - 支持用户数据集和ResNet类模型的剪枝能力。Cifar100数据集，精度变化较小（+-0.5），时延降低15%，模型大小降低30%。
-- 新增算法：
-  - ModularNAS: Towards Modularized and Reusable Neural Architecture Search, 支持权重共享和网络变换等方法的神经网络架构搜索算法集。
-  - DNet：提供和Davinci芯片亲和的预训练模型，和网络搜索算法。并提供DNet Model Zoo。
-  - MF-ASC: Multi-Fidelity neural Architecture Search with Co-kriging.
+**Vega ver1.4.0 发布**
+
+- 特性增强
+
+  - 搜索阶段支持 TensorFlow 和 mindspore 分布式训练能力
+  - 提供分类和检测共用一个backend，联合训练能力
+  - 提供动态设置transformer的能力
+  - 增加 vega-process、vega-progress 等工具
+  - 增加 ScriptRunner 特性，在 HPO 过程中直接调用用户脚本
+  - BOHB算法的BO部分可使用[HEBO](https://github.com/huawei-noah/noah-research/tree/master/HEBO)
+
+- 新增算法
+
+  - [PBT](https://arxiv.org/abs/1711.09846)：Population Based Training of Neural Networks, 支持超参数动态优化
+  - [Ada-Segment](https://arxiv.org/abs/2012.03603): Automated Multi-loss Adaptation for Panoptic Segmentation， 支持多loss的自动权重优化
+
+---
 
 ## Vega简介
 
@@ -59,8 +67,6 @@ Vega是诺亚方舟实验室自研的AutoML算法工具链，有主要特点：
 | Model Compression | Quant-EA: Quantization based on Evolutionary Algorithm | 自动混合比特量化算法，使用进化策略对CNN网络结构每层量化位宽进行搜索 | [参考](./docs/cn/algorithms/quant_ea.md) |
 | Model Compression | Prune-EA | 使用进化策略对CNN网络结构进行自动剪枝压缩算法 | [参考](./docs/cn/algorithms/prune_ea.md) |
 | HPO | [ASHA: Asynchronous Successive Halving Algorithm](https://arxiv.org/abs/1810.05934) | 动态连续减半算法 | [参考](./docs/cn/algorithms/hpo.md) |
-| HPO | [TPE: Tree-structured Parzen Estimator Approach](https://papers.nips.cc/paper/4443-algorithms-for-hyper-parameter-optimization.pdf) | 一种基于树状结构Parzen估计方法的超参优化算法  | [参考](./docs/cn/algorithms/hpo.md) |
-| HPO | BO: Bayesian Optimization | 贝叶斯优化算法 | [参考](./docs/cn/algorithms/hpo.md) |
 | HPO | [BOHB: Hyperband with Bayesian Optimization](https://arxiv.org/abs/1807.01774) | 动态连续减半算法 | [参考](./docs/cn/algorithms/hpo.md) |
 | HPO | BOSS: Bayesian Optimization via Sub-Sampling | 基于贝叶斯优化框架下的一种针对计算资源受限，需要高效搜索的，具有普适性的超参优化算法 | [参考](./docs/cn/algorithms/hpo.md) |
 | Data Augmentation | [PBA: Population Based Augmentation: Efficient Learning of Augmentation Policy Schedules](https://arxiv.org/abs/1905.05393) | 基于PBT优化算法搜索数据增广策略时刻表的数据增广算法 | [参考](./docs/cn/algorithms/pba.md) |

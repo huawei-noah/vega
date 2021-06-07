@@ -9,7 +9,6 @@
 # MIT License for more details.
 
 """DropPath constructor."""
-
 import torch
 from modnas.arch_space.ops import DropPath, Identity
 from modnas.core.event import event_on

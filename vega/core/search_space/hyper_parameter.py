@@ -11,7 +11,6 @@
 
 """HyperParameter."""
 import numpy as np
-
 from .param_types import ParamTypes
 from .range_generator import RangeGenerator
 
@@ -100,11 +99,7 @@ class HyperParameter(object):
         :rtype: bool.
 
         """
-        if self.cast(value) >= self.range[0] and \
-                self.cast(value) <= self.range[-1]:
-            return True
-        else:
-            return False
+        return self.cast(value) >= self.range[0] and self.cast(value) <= self.range[-1]
 
     def compare(self, value_a, value_b):
         """Compare 2 values.
@@ -156,8 +151,19 @@ class HyperParameter(object):
         :rtype: bool
 
         """
-        if self.param_type != ParamTypes.BOOL \
-                and self.param_type != ParamTypes.STRING:
-            return True
+        return self.param_type != ParamTypes.BOOL and self.param_type != ParamTypes.CATEGORY
+
+    def sample(self, n=1, decode=True):
+        """Random sample one hyper-param."""
+        if len(self.range) == 1:
+            low, high = 0, self.range[0]
         else:
-            return False
+            low, high = self.range
+        if self.is_integer:
+            value = np.random.randint(low, high + 1, size=n)
+        else:
+            d = high - low
+            value = low + d * np.random.rand(n)
+        if decode:
+            value = self.decode(value)
+        return value

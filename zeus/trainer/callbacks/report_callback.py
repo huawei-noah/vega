@@ -13,6 +13,10 @@ import logging
 from .callback import Callback
 from zeus.report import ReportClient
 from zeus.common import ClassFactory, ClassType
+import zeus
+
+
+logger = logging.getLogger(__name__)
 
 
 @ClassFactory.register(ClassType.CALLBACK)
@@ -21,48 +25,85 @@ class ReportCallback(Callback):
 
     def __init__(self):
         """Initialize ReportCallback callback."""
-        super(Callback, self).__init__()
+        super(ReportCallback, self).__init__()
         self.epoch = 0
         self.priority = 280
+
+    def before_train(self, logs=None):
+        """Close the connection of report."""
+        self._update_report()
 
     def after_valid(self, logs=None):
         """Be called after each epoch."""
         if self.trainer.config.report_on_valid:
-            self._broadcast()
+            self._update_report()
 
     def after_epoch(self, epoch, logs=None):
         """Be called after each epoch."""
         self.epoch = epoch
-        self._broadcast(epoch)
+        self._update_report(epoch)
 
     def after_train(self, logs=None):
         """Close the connection of report."""
-        self._broadcast(self.epoch)
-        ReportClient.close(self.trainer.step_name, self.trainer.worker_id)
+        record = self._update_report(self.trainer.epochs - 1)
+        if hasattr(record, "rung_id"):
+            self._next_rung(record)
 
-    def _broadcast(self, epoch=None):
-        record = ReportClient.get_record(self.trainer.step_name, self.trainer.worker_id)
-        if self.trainer.config.report_on_epoch:
-            record.epoch = self.trainer.epochs
-        if hasattr(self.trainer.model, 'is_adaptive_weight') and self.trainer.model.is_adaptive_weight:
-            record.desc = self.trainer.model.to_desc()
+    def _update_report(self, epoch=0):
+        try:
+            record = ReportClient().get_record(self.trainer.step_name, self.trainer.worker_id)
+        except Exception as e:
+            logger.warn(f"failed to update record to report server, message: {e}")
+            return
+        if hasattr(self.trainer.model, '_arch_params_type') and self.trainer.model._arch_params_type:
+            if zeus.is_ms_backend():
+                record.desc = self.trainer.model_desc
+            else:
+                record.desc = self.trainer.model.to_desc()
         if not record.desc:
             record.desc = self.trainer.model_desc
         if not record.hps and self.trainer.hps:
             record.hps = self.trainer.hps
-        record.performance = self.trainer.performance
-        record.objectives = self.trainer.valid_metrics.objectives
-        if record.performance is not None:
-            for key in record.performance:
-                if key not in record.objectives:
-                    if (key == 'flops' or key == 'params' or key == 'latency'):
-                        record.objectives.update({key: 'MIN'})
-                    else:
-                        record.objectives.update({key: 'MAX'})
-        record.model_path = self.trainer.model_path
-        record.checkpoint_path = self.trainer.checkpoint_file
-        record.weights_file = self.trainer.weights_file
-        if self.trainer.runtime is not None:
-            record.runtime = self.trainer.runtime
-        ReportClient.broadcast(record)
-        logging.debug("report_callback record: {}".format(record))
+        try:
+            record = ReportClient().update(
+                self.trainer.step_name,
+                self.trainer.worker_id,
+                desc=record.desc,
+                hps=record.hps,
+                performance=self.trainer.best_performance or self.trainer.performance,
+                objectives=self.trainer.valid_metrics.objectives,
+                epoch=self.trainer.epochs,
+                current_epoch=epoch + 1,
+                num_epochs=self.trainer.epochs,
+                model_path=self.trainer.model_path,
+                checkpoint_path=self.trainer.checkpoint_file,
+                weights_file=self.trainer.weights_file,
+                runtime=self.trainer.runtime,
+                multi_task=self.trainer.multi_task,
+            )
+        except Exception as e:
+            logger.warn(f"failed to update record to report server, message: {e}")
+            return
+        logging.debug("report_callback record: {}".format(record.to_dict()))
+        return record
+
+    def _next_rung(self, record):
+        result = ReportClient().request(action="next_rung", **record.to_dict())
+        logging.debug(f"next rung result: {result}")
+
+        if not isinstance(result, dict) or "result" not in result or result["result"] != "success":
+            self.trainer._next_rung = False
+            return
+        if result["data"]["rung_id"] is None:
+            self.trainer._next_rung = False
+            return
+
+        self.trainer._next_rung = True
+        self.trainer._start_epoch = self.trainer.epochs
+        self.trainer.epochs += int(result["data"]["epochs"])
+        ReportClient().update(
+            step_name=record.step_name,
+            worker_id=record.worker_id,
+            rung_id=int(result["data"]["rung_id"]),
+            num_epochs=self.trainer.epochs,
+        )

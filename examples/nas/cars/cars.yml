@@ -116,8 +116,6 @@ nas:
         unrolled: True
         loss:
             type: CrossEntropyLoss
-            params:
-                sparse: True
 
 
 fully_train:

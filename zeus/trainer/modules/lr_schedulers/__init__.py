@@ -9,5 +9,6 @@ elif zeus.is_tf_backend():
     from .multistep import MultiStepLR
     from .cosine_annealing import CosineAnnealingLR
     from .step_lr import StepLR
+    from .ca_restart_tf import CosineAnnealingRestartLR
 elif zeus.is_ms_backend():
-    from .ms_lr_scheduler import MultiStepLR
+    from .ms_lr_scheduler import MultiStepLR, StepLR, CosineAnnealingLR

@@ -1,2 +1,1 @@
-from .create_master import create_master
-from .shutdown_cluster import shutdown_cluster
+from .master_ops import create_master, shutdown_cluster

@@ -9,7 +9,6 @@
 # MIT License for more details.
 
 """Scikit-learn score prediction model."""
-
 import importlib
 import numpy as np
 try:

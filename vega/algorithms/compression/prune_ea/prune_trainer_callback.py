@@ -13,6 +13,7 @@ import logging
 import copy
 import os
 import vega
+import zeus
 from zeus.common import ClassFactory, ClassType
 from zeus.common import FileOps
 from zeus.metrics import calc_model_flops_params, calc_forward_latency
@@ -47,7 +48,7 @@ class PruneTrainerCallback(Callback):
     def before_train(self, logs=None):
         """Be called before the train process."""
         self.config = self.trainer.config
-        self.device = self.trainer.config.device
+        self.device = zeus.is_gpu_device() if zeus.is_gpu_device() is not True else 0
         self.base_net_desc = self.trainer.model.desc
         sess_config = None
         if vega.is_torch_backend():

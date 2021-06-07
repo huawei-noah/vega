@@ -11,6 +11,10 @@
 """Import and register zeus modules automatically."""
 
 import os
+from zeus.evaluator import *
+from zeus.trainer import trainer_api
+
+__version__ = "1.4.0"
 
 
 def register_zeus(backend):
@@ -18,13 +22,9 @@ def register_zeus(backend):
     from zeus.datasets import register_datasets
     from zeus.modules import register_modules
     from zeus.networks import register_networks
-    from zeus.evaluator import register_evaluator
-    from zeus.trainer import register_trainer, trainer_api
     from zeus.metrics import register_metrics
     from zeus.model_zoo import register_modelzoo
     register_datasets(backend)
-    register_trainer(backend)
-    register_evaluator()
     register_metrics(backend)
     register_modules()
     register_networks(backend)
@@ -57,6 +57,11 @@ def set_backend(backend='pytorch', device_category='GPU'):
         os.environ['BACKEND_TYPE'] = 'MINDSPORE'
     else:
         raise Exception('backend must be pytorch, tensorflow or mindspore')
+
+
+def is_cpu_device():
+    """Return whether is cpu device or not."""
+    return os.environ.get('DEVICE_CATEGORY', None) == 'CPU'
 
 
 def is_gpu_device():

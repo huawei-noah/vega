@@ -250,7 +250,7 @@ class CatHyperParameter(HyperParameter):
 
         return np.vectorize(self.cat_transform.get)(x)
 
-    def decode(self, x, forbidden=''):
+    def decode(self, x, forbidden=[]):
         """Inverse transform.
 
         :param x: input `x`.
@@ -365,4 +365,41 @@ class BinaryCodeHyperParameter(HyperParameter):
                 times = self.range[1]
                 change_ids = random.sample(range(size), times)
                 individual = [1 if i in change_ids else 0 for i in range(size)]
+        return individual
+
+
+class HalfCodeHyperParameter(HyperParameter):
+    """Init HalfCode HyperParameter."""
+
+    param_type = ParamTypes.HALF
+
+    def __init__(self, param_name='param', param_slice=0, param_type=None, param_range=None, generator=None,
+                 sample_num=None):
+        super(HalfCodeHyperParameter, self).__init__(param_name, param_slice, param_type, param_range)
+
+    def cast(self, value):
+        """Cast value.
+
+        :param value: input `value`.
+        :return: casted `value`.
+        :rtype: float.
+
+        """
+        return value
+
+    def decode(self, x, forbidden=''):
+        """Inverse transform.
+
+        :param x: input `x`.
+        :param str forbidden: forbidden, default is empty.
+        :return: inverse transform to real `x`.
+        """
+        individual = []
+        size = self.range[0]
+        if random.uniform(0, 1) < 0.8:
+            return [1] * size
+        if len(self.range) == 1:
+            need_convert_code_size = size // 2
+            change_ids = random.sample(range(size), need_convert_code_size)
+            individual = [1 if i in change_ids else 0 for i in range(size)]
         return individual

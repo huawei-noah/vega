@@ -9,7 +9,6 @@
 # MIT License for more details.
 
 """Parameter Optimizer."""
-
 import torch
 from modnas.registry import parse_spec
 from modnas.registry.optimizer import register, build

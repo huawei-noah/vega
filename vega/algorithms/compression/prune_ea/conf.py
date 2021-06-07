@@ -20,7 +20,7 @@ class PrunePolicyConfig(EAConfig):
     length = 464
     num_generation = 31
     num_individual = 4
-    random_models = 32
+    random_samples = 32
 
     @classmethod
     def rules(cls):
@@ -28,7 +28,7 @@ class PrunePolicyConfig(EAConfig):
         rules_PrunePolicyConfig = {"length": {"type": int},
                                    "num_generation": {"type": int},
                                    "num_individual": {"type": int},
-                                   "random_models": {"type": int}
+                                   "random_samples": {"type": int}
                                    }
         return rules_PrunePolicyConfig
 

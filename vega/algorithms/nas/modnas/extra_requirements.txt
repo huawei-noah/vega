@@ -1,0 +1,22 @@
+# Plotting
+matplotlib
+
+# Tensorboard
+tensorboardX
+
+# RASP the hardware profiler
+git+git://github.com/creeperlin/rasp
+
+# Bayesian optimization
+scikit-optimize
+
+# Score model
+xgboost
+scikit-learn
+
+# Distributed
+rpyc
+
+# NASBench
+tensorflow
+git+git://github.com/creeperlin/nasbench

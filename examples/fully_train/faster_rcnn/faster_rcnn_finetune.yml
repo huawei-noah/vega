@@ -1,0 +1,47 @@
+pipeline: [finetune]
+
+finetune:
+    pipe_step:
+        type: TrainPipeStep
+
+    model:
+        pretrained_model_file: /cache/models/fasterrcnn_resnet50_fpn_coco-258fb6c6.pth
+        head: roi_heads
+        model_desc:
+            type: FasterRCNN
+            backbone:
+                type: ResNetBackbone
+            num_classes: 7
+
+    trainer:
+        type: Trainer
+        epochs: 12
+        get_train_metric_after_epoch: False
+        model_statistics: False
+        load_checkpoint: False
+        is_detection_trainer: True
+        perfs_cmp_key: AP50
+        optimizer:
+            type: SGD
+            params:
+                lr: 0.003
+                momentum: 0.9
+                weight_decay: !!float 1e-4
+        lr_scheduler:
+            type: MultiStepLR
+            params:
+                milestones: [10]
+                gamma: 0.1
+        loss:
+            type: SumLoss
+        metric:
+            type: coco
+            params:
+                anno_path: /cache/datasets/naie_coco/annotations/instances_val2017.json
+    dataset:
+        type: CocoDataset
+        common:
+            batch_size: 1
+            data_root: /cache/datasets/naie_coco
+            img_prefix: "2017"
+            ann_prefix: instances

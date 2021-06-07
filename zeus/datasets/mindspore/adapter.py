@@ -9,11 +9,31 @@
 # MIT License for more details.
 
 """This is a base class of the dataset."""
+import os
 from mindspore.dataset import GeneratorDataset, DistributedSampler, SubsetRandomSampler
 import mindspore.dataset.transforms.c_transforms as C2
 import mindspore.dataset.vision.c_transforms as vision
 import mindspore.common.dtype as mstype
 import numpy as np
+from mindspore.communication.management import get_rank, get_group_size
+import logging
+
+
+def _get_rank_info():
+    """Get rank size and rank id."""
+    rank_size = int(os.environ.get("RANK_SIZE", 1))
+
+    if rank_size > 1:
+        # rank_size = get_group_size()
+        # rank_id = get_rank()
+        rank_id = os.environ.get('ASCEND_DEVICE_ID', 0)
+        rank_id = int(rank_id) % rank_size
+        logging.info("rank_id is {}, rank_size is {}".format(rank_id, rank_size))
+    else:
+        rank_size = 1
+        rank_id = 0
+
+    return rank_size, rank_id
 
 
 class MsAdapter(object):
@@ -94,7 +114,11 @@ class MsAdapter(object):
         :return: a batch data
         :rtype: dict, list, optional
         """
-        ms_dataset = GeneratorDataset(self.dataset, ["image", "label"], sampler=self.sampler)
+        rank_size, rank_id = _get_rank_info()
+        if rank_size > 1:
+            self.sampler = None
+        ms_dataset = GeneratorDataset(self.dataset, ["image", "label"], sampler=self.sampler, num_shards=rank_size,
+                                      shard_id=rank_id)
         # ms_dataset.set_dataset_size(len(self.dataset))  # TODO delete, only mindspore 0.5 need
         ms_dataset = self.convert_dtype(ms_dataset)
         if self.args.shuffle:

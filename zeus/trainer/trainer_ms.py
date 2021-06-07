@@ -10,6 +10,7 @@
 
 """Mindspore Trainer."""
 
+import os
 from mindspore import context
 from mindspore.train import Model as MsModel
 from mindspore.train.callback import ModelCheckpoint, CheckpointConfig, LossMonitor
@@ -21,6 +22,8 @@ from zeus.trainer.modules.lr_schedulers import LrScheduler
 from zeus.modules.loss import Loss
 from zeus.common import ClassFactory, ClassType
 import logging
+from mindspore.communication.management import init as hccl_init
+from mindspore.context import ParallelMode
 
 
 @ClassFactory.register(ClassType.TRAINER)
@@ -49,15 +52,17 @@ class TrainerMs(TrainerBase):
         # Some trainer has different train batch size from valid batch
         self.train_metrics = None
         self.valid_metrics = self._init_metrics()
+        self.ms_metrics = self.valid_metrics() if isinstance(self.valid_metrics(), dict) else {
+            self.metric_name: self.valid_metrics()}
 
         self.ms_model = MsModel(network=self.model,
                                 loss_fn=self.loss,
                                 optimizer=self.optimizer,
-                                metrics={self.metric_name: self.valid_metrics()})
+                                metrics=self.ms_metrics)
 
     def _set_condition(self):
-        self._init_distributed_setting()
         self._init_ms_context()
+        self._init_distributed_setting()
 
     def _train_epoch(self):
         config_ck = CheckpointConfig(save_checkpoint_steps=self.config.save_steps, keep_checkpoint_max=1)
@@ -65,16 +70,15 @@ class TrainerMs(TrainerBase):
         save_path = self.get_local_worker_path(self.step_name, self.worker_id)
         ckpoint_cb = ModelCheckpoint(config=config_ck, directory=save_path)
         loss_cb = LossMonitor(per_print_times=1)
-        eval_cb = EvalCallBack(self.ms_model, self.valid_loader, self.dataset_sink_mode)
+        eval_cb = EvalCallBack(self.ms_model, self.valid_loader, self.dataset_sink_mode, self)
         callback_list = [ckpoint_cb, loss_cb] if self.config.mixup else [ckpoint_cb, loss_cb, eval_cb]
         try:
             self.ms_model.train(epoch=self.epochs,
                                 train_dataset=self.train_loader,
                                 callbacks=callback_list,
                                 dataset_sink_mode=self.dataset_sink_mode)
-        except RuntimeError as exc:
-            logging.warning("RuntimeError occurred when train the model. Skip train this model.")
-            logging.warning("The RuntimeError message is : {}.".format(exc))
+        except RuntimeError as e:
+            logging.warning(f"failed to train the model, skip it, message: {str(e)}")
 
     def _valid_epoch(self):
         if self.config.mixup and self.config.loss.type == 'CrossEntropyLoss':
@@ -83,7 +87,7 @@ class TrainerMs(TrainerBase):
             self.ms_model = MsModel(network=self.model,
                                     loss_fn=loss_fn,
                                     optimizer=self.optimizer,
-                                    metrics={self.metric_name: self.valid_metrics()})
+                                    metrics=self.ms_metrics)
         self.callbacks.before_valid()
 
         try:
@@ -101,10 +105,19 @@ class TrainerMs(TrainerBase):
     def _init_distributed_setting(self):
         if not self.distributed:
             return
+        else:
+            logging.info("init hccl ...")
+            context.set_auto_parallel_context(parallel_mode=ParallelMode.DATA_PARALLEL, gradients_mean=True)
+            hccl_init()
 
     def _init_ms_context(self):
-        if zeus.is_npu_device():
-            context.set_context(mode=context.GRAPH_MODE, device_target="Ascend")
+        if hasattr(self.config, "execute_mode"):
+            mode = context.PYNATIVE_MODE if self.config.execute_mode == "PYNATIVE_MODE" else context.GRAPH_MODE
         else:
-            context.set_context(mode=context.GRAPH_MODE, device_target="CPU")
+            mode = context.GRAPH_MODE
+        if zeus.is_npu_device():
+            context.set_context(mode=mode, device_target="Ascend", device_id=int(os.environ["DEVICE_ID"]))
+        else:
+            context.set_context(mode=mode, device_target="CPU")
+
         self.dataset_sink_mode = True if zeus.is_npu_device() else False

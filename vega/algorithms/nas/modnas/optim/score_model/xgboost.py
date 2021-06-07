@@ -9,7 +9,6 @@
 # MIT License for more details.
 
 """XGBoost score prediction model."""
-
 import numpy as np
 try:
     import xgboost as xgb

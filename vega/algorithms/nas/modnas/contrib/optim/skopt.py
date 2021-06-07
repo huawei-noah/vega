@@ -9,7 +9,6 @@
 # MIT License for more details.
 
 """Bayesian Optimizer based on scikit-optimize."""
-
 import time
 import numpy as np
 from collections import OrderedDict

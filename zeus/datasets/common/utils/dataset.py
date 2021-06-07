@@ -15,6 +15,8 @@ from .transforms import Transforms
 from zeus.common import ClassFactory, ClassType
 from zeus.common.config import Config
 from zeus.common import update_dict
+import zeus
+import logging
 
 
 class Dataset(TaskOps):
@@ -45,6 +47,8 @@ class Dataset(TaskOps):
         if kwargs:
             self.args = Config(kwargs)
         if hasattr(self, 'config'):
+            if hps is not None:
+                self.config.from_dict(hps)
             config = getattr(self.config, self.mode)
             config.from_dict(self.args)
             self.args = config().to_dict()
@@ -91,11 +95,12 @@ class Dataset(TaskOps):
             for i in range(len(self.args.transforms)):
                 transform_name = self.args.transforms[i].pop("type")
                 kwargs = self.args.transforms[i]
-                if ClassFactory.is_exists(ClassType.TRANSFORM, transform_name):
-                    transforms.append(ClassFactory.get_cls(ClassType.TRANSFORM, transform_name)(**kwargs))
-                else:
+                try:
                     transforms.append(getattr(importlib.import_module('torchvision.transforms'),
                                               transform_name)(**kwargs))
+                except Exception:
+                    transforms.append(ClassFactory.get_cls(ClassType.TRANSFORM, transform_name)(**kwargs))
+
             return transforms
         else:
             return list()

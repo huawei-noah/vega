@@ -9,7 +9,6 @@
 # MIT License for more details.
 
 """Model weight initializer."""
-
 import math
 import torch.nn as nn
 from modnas.registry.construct import register

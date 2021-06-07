@@ -9,10 +9,8 @@
 # MIT License for more details.
 
 """Mixed operator statistics reporter."""
-
 import numpy as np
 import pickle
-import matplotlib
 import torch.nn.functional as F
 from modnas.registry.callback import register
 from modnas.arch_space.mixed_ops import MixedOp

@@ -54,7 +54,6 @@ vega ./nas/cars/cars.yml
 | sp_nas | torch_fpn.pth | /cache/models/torch_fpn.pth | [download](https://box.saas.huaweicloud.com/p/0bb0b0cf5229368fac006b1d8955df5b) |
 | sp_nas | torch_rpn.pth | /cache/models/torch_rpn.pth | [download](https://box.saas.huaweicloud.com/p/a41b7ca75114a9b2488e4064ed6ba3fb) |
 
-
 在每个示例的配置文件中，在 `general/backend` 中有该示例适用的平台说明（PyTorch、TensorFlow、MindSpore）。
 
 比如以下配置说明该示例可以运行在三个平台中：
@@ -121,7 +120,7 @@ vega ./nas/backbone_nas/backbone_nas.yml -b m -d NPU
     | :--: | :--: | :-- |
     | nas | 输入 | 配置文件：compression/prune-ea/prune.yml <br> 预训练模型：/cache/models/resnet20.pth <br> 数据集：/cache/datasets/cifar10 |
     | nas | 输出 | 网络描述文件：tasks/\<task id\>/output/nas/model_desc_\<id\>.json |
-    | nas | 运行时间估算 | (random_models + num_generation * num_individual) * epochs / GPU数 * 1个epoch的训练时间 |
+    | nas | 运行时间估算 | (random_samples + num_generation * num_individual) * epochs / GPU数 * 1个epoch的训练时间 |
     | fully train | 输入 | 配置文件：compression/prune-ea/prune.yml <br> 网络描述文件：tasks/\<task id\>/output/nas/model_desc_\<id\>.json <br> 数据集：/cache/datasets/cifar10 |
     | fully train | 输出 | 模型：tasks/\<task id\>/output/fully_train/model_\<id\>.pth |
     | fully train | 运行时间估算 | epochs * 1个epoch的训练时间 |
@@ -132,7 +131,7 @@ vega ./nas/backbone_nas/backbone_nas.yml -b m -d NPU
     | :--: | :--: | :-- |
     | nas | 输入 | 配置文件：compression/quant-ea/quant.yml <br> 数据集：/cache/datasets/cifar10 |
     | nas | 输出 | 网络描述文件：tasks/\<task id\>/output/nas/model_desc_\<id\>.json |
-    | nas | 运行时间估算 | (random_models + num_generation * num_individual) * epochs / GPU数 * 1个epoch的训练时间 |
+    | nas | 运行时间估算 | (random_samples + num_generation * num_individual) * epochs / GPU数 * 1个epoch的训练时间 |
     | fully train | 输入 | 配置文件：compression/quant-ea/quant.yml <br> 网络描述文件：tasks/\<task id\>/output/nas/model_desc_\<id\>.json <br> 数据集：/cache/datasets/cifar10 |
     | fully train | 输出 | 模型：tasks/\<task id\>/output/fully_train/model_\<id\>.pth |
     | fully train | 运行时间估算 | epochs * 1个epoch的训练时间 |

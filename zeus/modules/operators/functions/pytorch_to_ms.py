@@ -94,23 +94,23 @@ def pytorch2mindspore_extend(pth_file, model):
         init_name = init_names_list[index]
         # if index < 1:
         #     continue
-        if name.endswith("weight") and "conv" in name and init_name.endswith("weight") and (
-                "conv" in init_name or "downsample" in init_name):
+        if name.endswith("weight") and ("conv" or "downsample" in name or "down_sample" in name) and init_name.endswith(
+                "weight") and ("conv" in init_name or "downsample" in init_name or "down_sample" in init_name):
             valid_names_list.append(name)
             vega_weights_list.append(init_weights_list[index])
-        elif name.endswith("moving_mean") and ("bn" in name or "batch" in name) and init_name.endswith("running_mean"):
+        elif name.endswith("moving_mean") and init_name.endswith("running_mean"):
             valid_names_list.append(name)
             vega_weights_list.append(init_weights_list[index])
-        elif name.endswith("moving_variance") and ("bn" in name or "batch" in name) and init_name.endswith(
+        elif name.endswith("moving_variance") and init_name.endswith(
                 "running_var"):
             valid_names_list.append(name)
             vega_weights_list.append(init_weights_list[index])
-        elif name.endswith("gamma") and ("bn" in name or "batch" in name) and init_name.endswith("weight") and (
-                "bn" in init_name or "downsample" in init_name):
+        elif name.endswith("gamma") and init_name.endswith("weight") and (
+                "bn" in init_name or "downsample" in init_name or "down_sample" in init_name):
             valid_names_list.append(name)
             vega_weights_list.append(init_weights_list[index])
-        elif name.endswith("beta") and ("bn" in name or "batch" in name) and init_name.endswith("bias") and (
-                "bn" in init_name or "downsample" in init_name):
+        elif name.endswith("beta") and init_name.endswith("bias") and (
+                "bn" in init_name or "downsample" in init_name or "down_sample" in init_name):
             valid_names_list.append(name)
             vega_weights_list.append(init_weights_list[index])
         else:
@@ -160,6 +160,8 @@ def adaptive_weight(ckpt_file, ms_model):
     save_path = os.path.dirname(ckpt_file)
     save_file_name = os.path.join(save_path, "adaptive_" + uuid.uuid1().hex[:8] + ".ckpt")
     save_checkpoint(new_ms_params_list, save_file_name)
+    if ckpt_file.startswith("torch2ms_"):
+        os.remove(ckpt_file)
     return save_file_name
 
 

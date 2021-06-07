@@ -153,7 +153,7 @@ class SegmentationMutate(object):
             elif op_idx == 2:
                 arc = self._swap(arc)
             else:
-                raise ('operation index out of range')
+                raise Exception('operation index out of range')
         return arc
 
     def search(self):

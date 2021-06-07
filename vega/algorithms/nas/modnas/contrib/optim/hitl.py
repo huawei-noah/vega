@@ -9,7 +9,6 @@
 # MIT License for more details.
 
 """Human-in-the-loop Optimizer, used for debugging."""
-
 from collections import OrderedDict
 from modnas.registry.optim import register
 from modnas.optim.base import OptimBase

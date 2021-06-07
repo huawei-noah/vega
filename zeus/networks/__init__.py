@@ -15,7 +15,7 @@ from .network_desc import NetworkDesc
 
 ClassFactory.lazy_register("zeus.networks", {
     "adelaide": ["AdelaideFastNAS"],
-    "bert": ["BertClassifier"],
+    "bert": ["BertClassification", "TinyBertForPreTraining", "BertClassificationHeader"],
     "dnet": ["DNet", "DNetBackbone"],
     "erdb_esr": ["ESRN"],
     "faster_backbone": ["FasterBackbone"],
@@ -34,6 +34,7 @@ ClassFactory.lazy_register("zeus.networks", {
     "super_network": ["DartsNetwork", "CARSDartsNetwork", "GDASDartsNetwork"],
     "text_cnn": ["TextCells", "TextCNN"],
     "gcn": ["GCN"],
+    "vit": ["VisionTransformer"],
     # xingtian
     "mtm_sr": ["MtMSR"],
     "xt_model": ["DqnMlpNet", "DqnCnnNet", "mse_loss"],

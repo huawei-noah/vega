@@ -18,7 +18,7 @@ from vega.core.search_space.search_space import SearchSpace
 from vega.core.pipeline.conf import PipeStepConfig
 from zeus.common.general import General
 from zeus.common.task_ops import TaskOps
-from zeus.report import ReportServer, ReportClient, ReportRecord
+from zeus.report import ReportServer, ReportClient
 from zeus.common.config import Config
 from zeus.common import update_dict
 from zeus.common.utils import remove_np_value
@@ -33,10 +33,8 @@ class Generator(object):
         self.step_name = General.step_name
         self.search_space = SearchSpace()
         self.search_alg = SearchAlgorithm(self.search_space)
-        self.record = ReportRecord()
-        self.record.step_name = self.step_name
         if hasattr(self.search_alg.config, 'objective_keys'):
-            self.record.objective_keys = self.search_alg.config.objective_keys
+            self.objective_keys = self.search_alg.config.objective_keys
         self.quota = QuotaCompare('restrict')
         self.affinity = None if General.quota.affinity.type is None else QuotaAffinity(General.quota.affinity)
 
@@ -47,46 +45,47 @@ class Generator(object):
 
     def sample(self):
         """Sample a work id and model from search algorithm."""
-        res = self.search_alg.search()
-        if not res:
-            return None
-        if not isinstance(res, list):
-            res = [res]
-        if len(res) == 0:
-            return None
-        out = []
-        for sample in res:
+        for _ in range(10):
+            res = self.search_alg.search()
+            if not res:
+                return None
+            if not isinstance(res, list):
+                res = [res]
+            if len(res) == 0:
+                return None
+            out = []
+            for sample in res:
+                if isinstance(sample, dict):
+                    id = sample["worker_id"]
+                    desc = self._decode_hps(sample["encoded_desc"])
+                    sample.pop("worker_id")
+                    sample.pop("encoded_desc")
+                    kwargs = sample
+                    sample = _split_sample((id, desc))
+                else:
+                    kwargs = {}
+                    sample = _split_sample(sample)
+                if hasattr(self, "objective_keys") and self.objective_keys:
+                    kwargs["objective_keys"] = self.objective_keys
+                (id, desc, hps) = sample
 
-            if isinstance(sample, dict):
-                id = sample["worker_id"]
-                desc = self._decode_hps(sample["encoded_desc"])
-                sample.pop("worker_id")
-                sample.pop("encoded_desc")
-                kwargs = sample
-                sample = _split_sample((id, desc))
-            else:
-                kwargs = {}
-                sample = _split_sample(sample)
-            (id, desc, hps) = sample
+                if "modules" in desc:
+                    PipeStepConfig.model.model_desc = deepcopy(desc)
+                elif "network" in desc:
+                    origin_desc = PipeStepConfig.model.model_desc
+                    model_desc = update_dict(desc["network"], origin_desc)
+                    PipeStepConfig.model.model_desc = model_desc
+                    desc.pop('network')
+                    desc.update(model_desc)
 
-            if "modules" in desc:
-                PipeStepConfig.model.model_desc = deepcopy(desc)
-            elif "network" in desc:
-                origin_desc = PipeStepConfig.model.model_desc
-                model_desc = update_dict(desc["network"], origin_desc)
-                PipeStepConfig.model.model_desc = model_desc
-                desc.pop('network')
-                desc.update(model_desc)
-
-            if self.quota.is_filtered(desc):
-                continue
-            if self.affinity and not self.affinity.is_affinity(desc):
-                continue
-
-            record = self.record.init(
-                step_name=General.step_name, worker_id=id, desc=desc, hps=hps, **kwargs)
-            ReportClient.broadcast(record)
-            out.append((id, desc, hps))
+                if self.quota.is_filtered(desc):
+                    continue
+                if self.affinity and not self.affinity.is_affinity(desc):
+                    continue
+                ReportClient().update(General.step_name, id, desc=desc, hps=hps, **kwargs)
+                out.append((id, desc, hps))
+            if out:
+                break
         return out
 
     def update(self, step_name, worker_id):
@@ -96,13 +95,14 @@ class Generator(object):
         :param worker_id: current worker id
         :return:
         """
-        record = ReportClient.get_record(step_name, worker_id)
+        record = ReportClient().get_record(step_name, worker_id)
         logging.debug("Get Record=%s", str(record))
         self.search_alg.update(record.serialize())
-        self.dump()
-        if not hasattr(self.search_alg, '_remove_watched_var') or self.search_alg._remove_watched_var:
-            ReportServer.remove_watched_var(step_name, worker_id)
-        logging.info("Update Success. step_name=%s, worker_id=%s, desc=%s", step_name, worker_id, record.desc)
+        try:
+            self.dump()
+        except TypeError:
+            logging.warning("The Generator contains object which can't be pickled.")
+        logging.info(f"Update Success. step_name={step_name}, worker_id={worker_id}")
         logging.info("Best values: %s", ReportServer().print_best(step_name=General.step_name))
 
     @staticmethod

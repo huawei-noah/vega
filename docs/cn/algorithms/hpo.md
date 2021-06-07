@@ -10,18 +10,13 @@
 
 当前Vega已提供如下超参优化算法：
 
-1. 单目标超参数优化算法
-
-- [x] Random
-- [x] BO
-- [x] ASHA
-- [x] BOHB
-- [x] BOSS
-- [x] TPE
-
-2. 多目标超参数优化算法
-
-- [x] RandomPareto
+| algorithm | Single-objective HPO | Multi-objective HPO |
+| :--: | :--: | :--: |
+| Random | √ | √ |
+| ASHA | √ | √ |
+| BOHB | √ | √ |
+| BOSS | √ | × |
+| PBT | √ | × |
 
 ## 2. 超参数优化算法简介
 
@@ -183,7 +178,7 @@ hpo:
             backbone:
                 type: ResNet
                 depth: 18
-		        num_class: 10
+                num_class: 10
     trainer:
         type: Trainer
         epochs: 1

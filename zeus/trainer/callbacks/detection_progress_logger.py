@@ -24,6 +24,7 @@ class DetectionProgressLogger(ProgressLogger):
 
     def after_train_step(self, batch_index, logs=None):
         """Be called before each batch training."""
+        self.epochs = self.trainer.epochs
         if self.train_verbose >= 2 and self.is_chief \
                 and batch_index % self.train_report_steps == 0:
             try:

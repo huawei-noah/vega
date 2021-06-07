@@ -51,8 +51,7 @@ nas:
         epochs: 1
         loss:
             type: CrossEntropyLoss
-            params:
-                sparse: True
+
 
     dataset:
         type: Cifar10

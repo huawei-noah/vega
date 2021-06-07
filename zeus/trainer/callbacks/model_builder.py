@@ -29,7 +29,7 @@ class ModelBuilder(Callback):
 
     def __init__(self):
         """Initialize ModelCheckpoint callback."""
-        super(Callback, self).__init__()
+        super(ModelBuilder, self).__init__()
         self.priority = 240
 
     def init_trainer(self, logs=None):
@@ -49,13 +49,16 @@ class ModelBuilder(Callback):
                 raise Exception("Failed to Init model, can not get model description.")
             model = ModelZoo.get_model(model_desc, pretrained_model_file, ModelConfig.head)
         if model:
-            self.trainer.model_desc = model.desc
+            if hasattr(model, "desc"):
+                self.trainer.model_desc = model.desc
             if zeus.is_torch_backend():
                 import torch
-                if self.trainer.use_cuda:
+                if zeus.is_gpu_device():
                     model = model.cuda()
-                if General._parallel and General.devices_per_trainer > 1:
-                    model = torch.nn.DataParallel(model)
+                    if General._parallel and General.devices_per_trainer > 1:
+                        model = torch.nn.DataParallel(model)
+                elif zeus.is_npu_device():
+                    model = model.npu()
         return model
 
     def _get_model_desc(self):

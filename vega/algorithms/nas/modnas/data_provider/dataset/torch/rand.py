@@ -9,7 +9,6 @@
 # MIT License for more details.
 
 """Random tensor dataset."""
-
 import torch
 from torch.utils.data import TensorDataset
 from modnas.registry.dataset import register

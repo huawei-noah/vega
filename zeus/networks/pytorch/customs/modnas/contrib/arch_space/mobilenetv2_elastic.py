@@ -9,7 +9,6 @@
 # MIT License for more details.
 
 """MobileNetV2 Elastic Constructors & Exporters."""
-
 from functools import partial
 from modnas.registry.construct import DefaultSlotTraversalConstructor
 from modnas.registry.construct import register as register_constructor

@@ -9,7 +9,6 @@
 # MIT License for more details.
 
 """Evaluation score prediction model."""
-
 import numpy as np
 
 

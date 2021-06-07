@@ -60,13 +60,12 @@ my_fully_train:
 | devices_per_trainer | 1..N (N为单节点最大GPU/NPU数) | 1 | 并行搜索和训练时，每个trainer分配的设备（GPU \| NPU)数目。当parallel_search或parallel_fully_train为True时生效。缺省为1，每个trainer分配1个（GPU \| NPU）。 |
 | logger / level | debug \| info \| warn \| error \| critical | info | 日志级别。 |
 | cluster / master_ip | - | ~ | 在集群场景下需要设置该参数，设置为master节点的IP地址。 |
-| cluster / listen_port | - | 8000 | 在集群场景下需要关注该参数，若出现8000端口被占用，需要调整该监控端口。 |
 | cluster / slaves | - | [] | 在集群场景下需要设置该参数，设置为除了master节点外的其他节点的IP地址。 |
-| quota / restrict / flops | - | ~ | 采样模型的浮点计算量最大值或范围，单位为M。 |
-| quota / restrict / params | - | ~ | 采样模型的参数量最大值或范围，单位为K。 |
-| quota / restrict / latency | - | ~ | 采样模型的时延最大值或范围，单位为ms。 |
-| quota / target / type | accuracy \| IoUMetric \| PSNR | ~ | 模型的训练metric目标类型。 |
-| quota / target / value | - | ~ | 模型的训练metric目标值。 |
+| quota / restrict / flops | - | ~ | 过滤模型。设置采样模型的浮点计算量最大值或范围，单位为M。 |
+| quota / restrict / params | - | ~ | 过滤模型。设置采样模型的参数量最大值或范围，单位为K。 |
+| quota / restrict / latency | - | ~ | 过滤模型。设置采样模型的时延最大值或范围，单位为ms。 |
+| quota / target / type | accuracy \| IoUMetric \| PSNR | ~ | 过滤模型。设置模型的训练metric目标类型。 |
+| quota / target / value | - | ~ | 过滤模型。设置模型的训练metric目标值。 |
 | quota / runtime | - | ~ | 用户设定的Pipeline最大运行时间估计值，单位为h。 |
 
 ```yaml
@@ -81,7 +80,6 @@ general:
         level: info
     cluster:
         master_ip: ~
-        listen_port: 8000
         slaves: []
     quota:
         restrict:
@@ -96,36 +94,67 @@ general:
 
 ## 2.1 并行和分布式
 
-涉及到分布式的配置项有：parallel_search, parallel_fully_train 和 trainer.distributed，若有多张GPU|NUP，可根据需要选择合适的并行和分布式设置。
+涉及到分布式的配置项有：general.parallel_search, general.parallel_fully_train 和 trainer.distributed，若有多张GPU|NUP，可根据需要选择合适的并行和分布式设置。
 
-1. 在搜索阶段可考虑如下设置：
+| general.parallel_search or<br>general.parallel_fully_train | general.devices_per_trainer | trainer.distributed | 分布式和并行方式 |
+| :--: | :--: | :--: | :-- |
+| False | 1 | False | (缺省设置)使用一张卡串行搜索和训练 |
+| False | >1 | False | 使用多张卡串行搜索和训练 |
+| False | 任意值 | True | 使用Horovod/HCCL进行训练 |
+| True | 1 | 任意值 | 并行搜索和训练，每个模型使用一张卡 |
+| True | >1 | 任意值 | 并行搜索和训练，每个模型使用多张卡 |
 
-    ```yaml
-    general:
-        parallel_search: True
-    ```
+如以下是搜索阶段使用2张卡训练一个模型，在完整训练阶段使用Horovod进行训练。
 
-2. 在fully train阶段，若需要训练较多模型，且数据量不大，可考虑一次同时训练多个模型：
+```yaml
+general:
+    parallel_search: True
+    parallel_fully_train: False
+    devices_per_trainer: 2
 
-    ```yaml
-    general:
-        parallel_fully_train: True
-    ```
+pipeline: [nas, fully_train]
 
-3. 在fully train阶段，若需要训练单个模型，且数据量较大，需要考虑多张卡同时训练一个模型：
+nas:
+    pipe_step:
+        type: SearchPipeStep
+    search_algorithm:
+        type: BackboneNas
+        codec: BackboneNasCodec
+    search_space:
+        hyperparameters:
+            -   key: network.backbone.depth
+                type: CATEGORY
+                range: [18, 34, 50]
+            -   key: network.backbone.base_channel
+                type: CATEGORY
+                range:  [32, 48, 56]
+            -   key: network.backbone.doublechannel
+                type: CATEGORY
+                range: [3, 4]
+            -   key: network.backbone.downsample
+                type: CATEGORY
+                range: [3, 4]
+    model:
+        model_desc:
+            modules: ['backbone']
+            backbone:
+                type: ResNet
+                num_class: 10
+    trainer:
+        type: Trainer
+    dataset:
+        type: Cifar10
 
-    ```yaml
-    general:
-        parallel_fully_train: False
-
-    pipeline: [fully_train]
-
-    fully_train:
-        pipe_step:
-            type: TrainPipeStep
-        trainer:
-            distributed: True
-    ```
+fully_train:
+    pipe_step:
+        type: TrainPipeStep
+        models_folder: "{local_base_path}/output/nas/"
+    trainer:
+        epochs: 160
+        distributed: True
+    dataset:
+        type: Cifar10
+```
 
 ## 3. NAS和HPO配置项
 
@@ -169,7 +198,7 @@ my_nas:
 
 | 配置项 | 说明 | 示例 |
 | :--: | :-- | :-- |
-| type | 搜索算法名称 | `type: BackboneNas` |
+| type | 搜索算法名称，可参考各个算法对应的示例文件中的配置项 | `type: BackboneNas` |
 | objective_keys | 优化目标 | 指定当前算法选取的优化目标，对应trainer配置的metrics，trainer默认metrics额外提供`flops`和`params`两个metrics<br/>如果配置了evaluator，额外增加`latency`作为metrics<br/>如果是单目标优化问题，指定优化目标名称：`objective_keys: 'accuracy'`，<br/>如果是多目标优化问题，采用数组形式表示：`objective_keys: ['accuracy', 'flops','latency']`，<br/>系统默认配置为`objective_keys:  'accuracy'` <br/>|
 | policy | 搜索策略，搜素算法自身参数 | 比如BackboneNas使用进化算法，其策略配置为： <br> `num_mutate: 10` <br> `random_ratio: 0.2` |
 | range | 搜索范围 | 比如BackboneNas的搜索范围可以确定为：<br> `min_sample: 10` <br> `max_sample: 300` |
@@ -193,7 +222,7 @@ search_algorithm:
 <table>
   <tr><th>任务</th><th>分类</th><th>参考算法</th></tr>
   <tr><td rowspan="3">图像分类</td><td>网络架构搜索</td><td><a href="../algorithms/cars.md">CARS</a>、DartsCNN、GDAS、BackboneNas、EfficientNet</td></tr>
-  <tr><td>超参优化</td><td><a href="../algorithms/hpo.md">ASHA、BOHB、BOSS、BO、TPE、Random、Random-Pareto</a></td></tr>
+  <tr><td>超参优化</td><td><a href="../algorithms/hpo.md">ASHA、BOHB、BOSS、BO、PBT、Random</a></td></tr>
   <tr><td>数据增广</td><td><a href="../algorithms/pba.md">PBA</a></td></tr>
   <tr><td rowspan="2">模型压缩</td><td>模型剪枝</td><td><a href="../algorithms/prune_ea.md">Prune-EA</a></td></tr>
   <tr><td>模型量化</td><td><a href="../algorithms/quant_ea.md">Quant-EA</a></td></tr>
@@ -205,6 +234,28 @@ search_algorithm:
   <tr><td rowspan="2">推荐搜索</td><td>特征选择</td><td><a href="../algorithms/autofis.md">AutoFIS</a></td></tr>
   <tr><td>特征交互建模</td><td><a href="../algorithms/autogroup.md">AutoGroup</a></td></tr>
 </table>
+
+### 3.1.1 HPO搜索算法设置
+
+针对Random、ASHA、BOHB、BOSS、PBT这几类搜索算法，通用的配置项为：
+
+| 配置项 | 说明 | 示例 |
+| :--: | :-- | :-- |
+| type | 搜索算法名称，包括RandomSearch、AshaHpo、BohbHpo、BossHpo、PBTHpo | `type: RandomSearch` |
+| objective_keys | 优化目标 | `objective_keys:  'accuracy'` |
+| policy.total_epochs | 搜索epoch配额。Vega简化了配置策略，只需要配置该参数。若需了解其他参数配置，可参考HPO和NAGO算法示例。 | `total_epochs: 2430` |
+| tuner | tuner类型，用于BOHB算法，包括gp（缺省）、rf、hebo | tuner: "gp" |
+
+注意：若参数tuner设置hebo，则需要安装"[HEBO](https://github.com/huawei-noah/noah-research/tree/master/HEBO)"，且需要注意gpytorch的版本为1.1.1，torch的版本设置为1.5.0，torchvision的版本为0.5.0。
+
+示例：
+
+```yaml
+    search_algorithm:
+        type: BohbHpo
+        policy:
+            total_epochs: 2430
+```
 
 ### 3.2 搜索空间
 
@@ -526,6 +577,15 @@ my_fullytrain:
         common:
             data_path: /cache/datasets/cifar10/
 ```
+
+同时Vega还提供了用于运行用户脚本的ScriptRunner：
+
+| 配置项 | 值 | 示例 |
+| :--: | :-- | :-- |
+| type | "ScriptRunner" | type: "ScriptRunner" |
+| script | 脚本文件名 | "./train.py" |
+
+可参考使用该trainer的[示例](https://github.com/huawei-noah/vega/blob/master/vega/examples/features/script_runner)。
 
 ## 8. 数据集参考
 

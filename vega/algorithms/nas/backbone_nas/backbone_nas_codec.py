@@ -46,16 +46,18 @@ class BackboneNasCodec(Codec):
                           34: (16, [0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0]),
                           50: (16, [0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0]),
                           101: (33, [0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0,
-                                     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0])}
+                                     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0]),
+                          152: (50, [0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                                     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0])}
         default_count = 3
         base_depth = sample_desc['network.backbone.depth']
-        double_channel = sample_desc['network.backbone.doublechannel']
-        down_sample = sample_desc['network.backbone.downsample']
-        if double_channel != down_sample:
-            return None
+        double_channel = sample_desc.get('network.backbone.doublechannel', None)
+        down_sample = sample_desc.get('network.backbone.downsample', None)
+        # if double_channel != down_sample:
+        #     return None
         code = [[], []]
         if base_depth in layer_to_block:
-            if is_random or double_channel != default_count:
+            if is_random or double_channel != default_count and double_channel is not None:
                 rand_index = random.sample(
                     range(0, layer_to_block[base_depth][0]), double_channel)
                 code[0] = [0] * layer_to_block[base_depth][0]
@@ -63,7 +65,7 @@ class BackboneNasCodec(Codec):
                     code[0][i] = 1
             else:
                 code[0] = copy.deepcopy(layer_to_block[base_depth][1])
-            if is_random or down_sample != default_count:
+            if is_random or down_sample != default_count and down_sample is not None:
                 rand_index = random.sample(
                     range(0, layer_to_block[base_depth][0]), down_sample)
                 code[1] = [0] * layer_to_block[base_depth][0]
@@ -92,7 +94,7 @@ class BackboneNasCodec(Codec):
             desc["network.backbone.doublechannel"] = code[0]
         if "network.backbone.downsample" in desc:
             desc["network.backbone.downsample"] = code[1]
-        if len(desc["network.backbone.downsample"]) != len(desc["network.backbone.doublechannel"]):
-            return None
+        # if len(desc["network.backbone.downsample"]) != len(desc["network.backbone.doublechannel"]):
+        #     return None
         logging.info("decode:{}".format(desc))
         return desc

@@ -145,19 +145,18 @@ nas:
         epochs: 500
         optim:
             type: SGD
-	    params:
-	        lr: 0.025
-	        momentum: 0.9
-	        weight_decay: !!float 3e-4
+        params:
+            lr: 0.025
+            momentum: 0.9
+            weight_decay: !!float 3e-4
         lr_scheduler:
             type: CosineAnnealingLR
-	        params:
+            params:
                 T_max: 500
                 eta_min: 0.001
         loss:
             type: CrossEntropyLoss
-	        params:
-	            sparse: True
+
         grad_clip: 5.0
         seed: 10
         unrolled: True
@@ -177,16 +176,15 @@ fully_train:
         epochs: 600
         lr_scheduler:
             type: CosineAnnealingLR
-	        params:
+            params:
                 T_max: 600.0
                 eta_min: 0
         loss:
             type: MixAuxiliaryLoss
-	        params:
+            params:
                 loss_base:
                     type: CrossEntropyLoss
-		            params:
-                        sparse: True
+
             aux_weight: 0.4
         seed: 100
         drop_path_prob: 0.2

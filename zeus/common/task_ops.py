@@ -76,7 +76,6 @@ class TaskOps(object):
         """Init TaskOps."""
         self.__task_id__ = self.task_cfg.task_id
         self._step_name = General.step_name
-        self.worker_id = General.worker_id
         if task_id:
             self.__task_id__ = task_id
         if step_name:
@@ -232,11 +231,6 @@ class TaskOps(object):
         :rtype: bool
         """
         return self.task_cfg.use_dloop
-
-    @property
-    def model_zoo_path(self):
-        """Return model zoo path."""
-        return General.model_zoo.model_zoo_path
 
     @property
     def temp_path(self):

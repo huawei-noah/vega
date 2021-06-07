@@ -67,6 +67,11 @@ class Add(ConnectionsDecorator):
                     output += model(x)
         return output
 
+    @property
+    def out_channels(self):
+        """Get out channels."""
+        return [k.out_channels for k in self.children() if hasattr(k, 'out_channels')]
+
 
 @ClassFactory.register(SearchSpaceType.CONNECTIONS)
 class Sequential(ConnectionsDecorator):
@@ -75,9 +80,10 @@ class Sequential(ConnectionsDecorator):
     def __init__(self, *models):
         super(Sequential, self).__init__(*models)
 
-    def append(self, module):
+    def append(self, module, name=None):
         """Append new module."""
-        self.add_module(str(len(self._modules)), module)
+        name = name or str(len(self._modules))
+        self.add_module(name, module)
         return self
 
     def call(self, inputs):
@@ -88,35 +94,13 @@ class Sequential(ConnectionsDecorator):
             output = model(output)
         return output
 
-
-@ClassFactory.register(SearchSpaceType.CONNECTIONS)
-class MultiOutputGetter(Module):
-    """Get output layer by layer names and connect into a OrderDict."""
-
-    def __init__(self, model, layer_names):
-        super(MultiOutputGetter, self).__init__(model)
-        if not layer_names or not set(layer_names).issubset([name for name, _ in model.named_children()]):
-            raise ValueError("layer_names are not present in model")
-        if isinstance(layer_names, list):
-            layer_names = {v: k for k, v in enumerate(layer_names)}
-        self.output_layers = OrderedDict()
-        for name, module in model.named_children():
-            if not layer_names:
-                break
-            self.add_module(name, module)
-            if name in layer_names:
-                layer_name = layer_names.pop(name)
-                self.output_layers[name] = layer_name
-
-    def call(self, inputs):
-        """Override call function, connect models into a OrderedDict."""
-        output = inputs
-        outs = OrderedDict()
-        for name, model in self.named_children():
-            output = model(output)
-            if name in self.output_layers:
-                outs[self.output_layers[name]] = output
-        return outs
+    @classmethod
+    def from_module(cls, module):
+        """Convert Sequential."""
+        model = cls()
+        for name, module in module.named_children():
+            model.append(module, name)
+        return model
 
 
 class ModuleList(Module):

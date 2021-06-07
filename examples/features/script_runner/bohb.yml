@@ -1,0 +1,52 @@
+general:
+    backend: pytorch
+    parallel_search: True
+    parallel_fully_train: True
+
+pipeline: [hpo, fullytrain]
+
+
+hpo:
+    pipe_step:
+        type: SearchPipeStep
+    search_algorithm:
+        type: BohbHpo
+        policy:
+            total_epochs: 5
+    search_space:
+        type: SearchSpace
+        hyperparameters:
+            -   key: dataset.batch_size
+                type: CATEGORY
+                range: [64, 128, 256]
+            -   key: trainer.optimizer.params.lr
+                type: CATEGORY
+                range: [0.001, 0.003, 0.007, 0.01, 0.03, 0.07, 0.1]
+            -   key: trainer.optimizer.type
+                type: CATEGORY
+                range: ['Adam', 'SGD']
+            -   key: trainer.optimizer.params.momentum
+                type: FLOAT
+                range: [0.8, 0.99]
+        condition:
+            -   key: condition_for_sgd_momentum
+                child: trainer.optimizer.params.momentum
+                parent: trainer.optimizer.type
+                type: EQUAL
+                range: ["SGD"]
+
+    trainer:
+        type: ScriptRunner
+        script: "./train.py"
+        # script: "./train_vega.py"
+
+
+fullytrain:
+    pipe_step:
+        type: TrainPipeStep
+    trainer:
+        type: ScriptRunner
+        epochs: 2
+        # script: "./train.py"
+        script: "./train_vega.py"
+        hps_folder: "{local_base_path}/output/hpo"

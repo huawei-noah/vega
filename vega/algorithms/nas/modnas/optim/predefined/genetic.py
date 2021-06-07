@@ -9,7 +9,6 @@
 # MIT License for more details.
 
 """Genetic search algorithms."""
-
 import numpy as np
 import random
 from ..base import CategoricalSpaceOptim

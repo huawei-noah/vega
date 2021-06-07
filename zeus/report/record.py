@@ -11,27 +11,38 @@
 """Report."""
 
 import json
+import logging
+from datetime import datetime
 from zeus.common.utils import remove_np_value
+from zeus.common import Status, JsonEncoder, DatatimeFormatString
+
+
+logger = logging.getLogger(__name__)
 
 
 class ReportRecord(object):
     """Record Class to record all data in one search loop."""
 
     def __init__(self, step_name=None, worker_id=None, **kwargs):
-        self._step_name = step_name
-        self._worker_id = worker_id
+        self.step_name = step_name
+        self.worker_id = worker_id
         self._desc = None
         self._hps = None
-        self._performance = None
-        self._checkpoint_path = None
-        self._model_path = None
-        self._weights_file = None
-        self._epoch = 0
+        self._performance = {}
+        self.checkpoint_path = None
+        self.model_path = None
+        self.weights_file = None
+        self.num_epochs = 1
+        self.current_epoch = 1
         self._objectives = {}
         self._objective_keys = None
-        self._rewards = None
-        self._runtime = {}
+        self._rewards = []
+        self.runtime = None
         self._original_rewards = None
+        self._start_time = datetime.now()
+        self._end_time = None
+        self._status = Status.running
+        self.message = None
         if kwargs:
             for key, value in kwargs.items():
                 setattr(self, key, value)
@@ -47,11 +58,25 @@ class ReportRecord(object):
 
     def __eq__(self, other):
         """Override eq func, step name and worker id is same."""
-        return self.uid == other.uid
+        if isinstance(other, ReportRecord):
+            return self.uid == other.uid
+        elif isinstance(other, dict):
+            data = json.loads(json.dumps(self.to_dict(), cls=JsonEncoder))
+            _other = json.loads(json.dumps(other, cls=JsonEncoder))
+            for item in _other:
+                if item not in data or data[item] != _other[item]:
+                    if data[item] in [None, [None]] and _other[item] in [None, [None]]:
+                        continue
+                    if item in ["original_rewards"]:
+                        continue
+                    return False
+            return True
+        else:
+            return False
 
     def __repr__(self):
         """Override repr, output all record attrs."""
-        return json.dumps(self.to_dict())
+        return json.dumps(self.to_dict(), cls=JsonEncoder)
 
     def to_dict(self):
         """Convert to dictionary."""
@@ -75,36 +100,6 @@ class ReportRecord(object):
     def uid(self):
         """Uid for record. ReadOnly."""
         return "{}_{}".format(self.step_name, self.worker_id)
-
-    @property
-    def epoch(self):
-        """Get epoch."""
-        return self._epoch
-
-    @epoch.setter
-    def epoch(self, value):
-        """Set epoch."""
-        self._epoch = value
-
-    @property
-    def step_name(self):
-        """Get Step name."""
-        return self._step_name
-
-    @step_name.setter
-    def step_name(self, value):
-        """Set Step name."""
-        self._step_name = value
-
-    @property
-    def worker_id(self):
-        """Get worker id."""
-        return self._worker_id
-
-    @worker_id.setter
-    def worker_id(self, value):
-        """Set worker id."""
-        self._worker_id = value
 
     @property
     def desc(self):
@@ -133,6 +128,45 @@ class ReportRecord(object):
         self._hps = value
 
     @property
+    def start_time(self):
+        """Start time."""
+        return self._start_time
+
+    @start_time.setter
+    def start_time(self, value):
+        """Start time."""
+        if isinstance(value, str):
+            self._start_time = datetime.strptime(value, DatatimeFormatString)
+        else:
+            self._start_time = value
+
+    @property
+    def end_time(self):
+        """End time."""
+        return self._end_time
+
+    @end_time.setter
+    def end_time(self, value):
+        """End time."""
+        if isinstance(value, str):
+            self._end_time = datetime.strptime(value, DatatimeFormatString)
+        else:
+            self._end_time = value
+
+    @property
+    def status(self):
+        """End time."""
+        return self._status
+
+    @status.setter
+    def status(self, value):
+        """End time."""
+        if isinstance(value, str):
+            self._status = Status(value)
+        else:
+            self._status = value
+
+    @property
     def performance(self):
         """Get performance."""
         return self._performance
@@ -142,49 +176,16 @@ class ReportRecord(object):
         """Set performance and parse value into dict."""
         if isinstance(value, str):
             value = json.loads(value)
-        value = remove_np_value(value)
-        self._performance = value
-        self._cal_rewards()
-
-    @property
-    def checkpoint_path(self):
-        """Get checkpoint_path."""
-        return self._checkpoint_path
-
-    @checkpoint_path.setter
-    def checkpoint_path(self, value):
-        """Set checkpoint_path and parse value into dict."""
-        self._checkpoint_path = value
-
-    @property
-    def model_path(self):
-        """Get model_path."""
-        return self._model_path
-
-    @model_path.setter
-    def model_path(self, value):
-        """Set model_path and parse value into dict."""
-        self._model_path = value
-
-    @property
-    def weights_file(self):
-        """Get weights file."""
-        return self._weights_file
-
-    @weights_file.setter
-    def weights_file(self, value):
-        """Set weights_file and parse value int dict."""
-        self._weights_file = value
-
-    @property
-    def objectives(self):
-        """Get objectives."""
-        return self._objectives
-
-    @objectives.setter
-    def objectives(self, value):
-        """Set objectives."""
-        self._objectives = value
+        if isinstance(value, dict):
+            self._performance.update(value)
+            for key in value:
+                if key not in self.objectives:
+                    if key in ["flops", "params", "latency"]:
+                        self.objectives[key] = "MIN"
+                    else:
+                        self.objectives[key] = 'MAX'
+        elif value is not None:
+            logger.warn(f"Invalid record performance value: {value}")
 
     @property
     def objective_keys(self):
@@ -195,6 +196,19 @@ class ReportRecord(object):
     def objective_keys(self, value):
         """Set objective_keys."""
         self._objective_keys = value if isinstance(value, list) else [value]
+
+    @property
+    def objectives(self):
+        """Get objective."""
+        return self._objectives
+
+    @objectives.setter
+    def objectives(self, value):
+        """Set objective_keys."""
+        if isinstance(value, dict):
+            self._objectives.update(value)
+        elif value is not None:
+            logger.warn(f"Invalid record objectives value: {value}")
 
     @property
     def rewards(self):
@@ -215,54 +229,34 @@ class ReportRecord(object):
                 obj = list(self.performance.keys())[obj]
             value = self.performance.get(obj)
             ori_value = value
-            # if value is None:
-            #     raise ValueError("objective_keys in search_algorithm should be the same in trainer.metrics.")
-            if self.objectives.get(obj) == "MIN":
+            if self.objectives and self.objectives.get(obj) == "MIN":
                 value = -value
             res.append(value)
             res_ori.append(ori_value)
         self._original_rewards = res_ori[0] if len(res_ori) == 1 else res_ori
         self._rewards = res[0] if len(res) == 1 else res
 
-    @rewards.setter
-    def rewards(self, value):
-        """Get rewards, ReadOnly property."""
-        self._rewards = value
-
     @property
-    def runtime(self):
-        """Get runtime."""
-        return self._runtime
-
-    @runtime.setter
-    def runtime(self, value):
-        """Set runtime."""
-        self._runtime = value
-
-    @classmethod
-    def from_dict(cls, src_dic):
-        """Create report class from dict."""
-        src_cls = cls()
-        if src_dic:
-            for key, value in src_dic.items():
-                setattr(src_cls, key, remove_np_value(value))
-        return src_cls
+    def rewards_compeleted(self):
+        """Get reward compeleted(ReadOnly)."""
+        if isinstance(self._rewards, list):
+            if len(self._rewards) == 0:
+                return False
+            for reward in self._rewards:
+                if reward is None:
+                    return False
+            return True
+        else:
+            return self._rewards is not None
 
     def load_dict(self, src_dic):
         """Load values from dict."""
         if src_dic:
             for key, value in src_dic.items():
+                if key in ["original_rewards", "rewards"]:
+                    continue
                 setattr(self, key, remove_np_value(value))
-        return self
-
-    def init(self, step_name, worker_id, desc=None, hps=None, **kwargs):
-        """Set reord initial values."""
-        self.step_name = step_name
-        self.worker_id = worker_id
-        self.desc = desc
-        self.hps = hps
-        for key in kwargs:
-            setattr(self, key, remove_np_value(kwargs[key]))
+        self._cal_rewards()
         return self
 
     def serialize(self):

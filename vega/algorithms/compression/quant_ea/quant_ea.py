@@ -33,7 +33,7 @@ class QuantEA(SearchAlgorithm):
         self.length = self.config.policy.length
         self.num_individual = self.config.policy.num_individual
         self.num_generation = self.config.policy.num_generation
-        self.random_models = self.config.policy.random_models
+        self.random_samples = self.config.policy.random_samples
         self.bit_candidates = self.search_space.bit_candidates
         self.random_count = 0
         self.ea_count = 0
@@ -80,7 +80,7 @@ class QuantEA(SearchAlgorithm):
         :return: search id, network desc
         :rtype: int, NetworkDesc
         """
-        if self.random_count < self.random_models:
+        if self.random_count < self.random_samples:
             desc = self._random_sample()
             return self.random_count, desc
         records = ReportServer().get_pareto_front_records(self.step_name, self.num_individual)
@@ -131,9 +131,9 @@ class QuantEA(SearchAlgorithm):
         :return: whether to complete algorithm
         :rtype: bool
         """
-        return self.random_count >= self.random_models and self.ea_epoch >= self.num_generation
+        return self.random_count >= self.random_samples and self.ea_epoch >= self.num_generation
 
     @property
     def max_samples(self):
         """Get max samples number."""
-        return self.num_individual * self.num_generation + self.random_models
+        return self.num_individual * self.num_generation + self.random_samples

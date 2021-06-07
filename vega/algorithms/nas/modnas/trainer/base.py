@@ -9,7 +9,6 @@
 # MIT License for more details.
 
 """Base Trainer."""
-
 from modnas.utils.logging import get_logger
 from modnas.utils import DummyWriter
 from modnas.core.event import event_hooked_subclass

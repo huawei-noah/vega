@@ -59,13 +59,12 @@ The following public configuration items can be configured:
 | devices_per_trainer | 1..N (Tthe maximum number of GPUs or NPUs on a single node) | 1 | In parallel search and training, the number of devices (GPU \| NPU) allocated by each trainer, when parallel_search or parallel_fully_train is true. The default is 1, and each trainer is assigned one (gpu \| npu). |
 | logger / level | debug \| info \| warn \| error \| critical | info | Log level |
 | cluster / master_ip | - | ~ | In the cluster scenario, this parameter needs to be set to the IP address of the master node. |
-| cluster / listen_port | - | 8000 | In the cluster scenario, you need to pay attention to this parameter. If port 8000 is occupied, you need to adjust the monitoring port. |
 | cluster / slaves | - | [] | In the cluster scenario, this parameter needs to be set to the IP address of other nodes except the master node. |
-| quota / restrict / flops | - | ~ | Maximum value or range of the floating-point calculation amount of the sampling model, in MB. |
-| quota / restrict / params | - | ~ | Maximum value or range of the parameter of the sampling model, in KB. |
-| quota / restrict / latency | - | ~ | Maximum value or range of the latency of the sampling model, in ms. |
-| quota / target / type | accuracy \| IoUMetric \| PSNR | ~ | Model training metric target type. |
-| quota / target / value | - | ~ | Target training metric of a model. |
+| quota / restrict / flops | - | ~ | Models filter. Set maximum value or range of the floating-point calculation amount of the sampling model, in MB. |
+| quota / restrict / params | - | ~ | Models filter. Set maximum value or range of the parameter of the sampling model, in KB. |
+| quota / restrict / latency | - | ~ | Models filter. Set maximum value or range of the latency of the sampling model, in ms. |
+| quota / target / type | accuracy \| IoUMetric \| PSNR | ~ | Models filter. set training metric target type. |
+| quota / target / value | - | ~ | Models filter. Set target training metric of a model. |
 | quota / runtime | - | ~ | Max pipeline estimated running time set by user, in h. |
 
 ```yaml
@@ -80,7 +79,6 @@ general:
         level: info
     cluster:
         master_ip: ~
-        listen_port: 8000
         slaves: []
     quota:
         restrict:
@@ -95,36 +93,67 @@ general:
 
 ## 2.1 Parallel and distributed
 
-If there are multiple GPU|NUPs in the running environment, select a proper parallel or distributed configuration as required. The configuration items related to distributed deployment are parallel_search, parallel_fully_train, and trainer.distributed.
+If there are multiple GPU|NUPs in the running environment, select a proper parallel or distributed configuration as required. The configuration items related to distributed deployment are general.parallel_search, general.parallel_fully_train, and trainer.distributed.
 
-1. During the search phase, consider the following settings:
+| general.parallel_search or<br>general.parallel_fully_train | general.devices_per_trainer | trainer.distributed | Distributed and parallel modes |
+| :--: | :--: | :--: | :-- |
+| False | 1 | False | (default) Serial search and training with one card |
+| False | >1 | False | Serial Search and Training Using Multiple Cards |
+| False | Any value | True | Training with Horovod/HCCL |
+| True | 1 | Any value | Parallel search and training with one card per model |
+| True | >1 | Any value | Parallel search and training with multiple cards per model |
 
-    ```yaml
-    general:
-        parallel_search: True
-    ```
+Here's how to train a model using 2 cards during the search phase and Horovod during the full training phase:
 
-2. In the fully train phase, if a large number of models need to be trained and the data volume is small, you can train multiple models at a time.
+```yaml
+general:
+    parallel_search: True
+    parallel_fully_train: False
+    devices_per_trainer: 2
 
-    ```yaml
-    general:
-        parallel_fully_train: True
-    ```
+pipeline: [nas, fully_train]
 
-3. In the fully train phase, if a single model needs to be trained and the data volume is large, you need to train a model by multiple cards at the same time.
+nas:
+    pipe_step:
+        type: SearchPipeStep
+    search_algorithm:
+        type: BackboneNas
+        codec: BackboneNasCodec
+    search_space:
+        hyperparameters:
+            -   key: network.backbone.depth
+                type: CATEGORY
+                range: [18, 34, 50]
+            -   key: network.backbone.base_channel
+                type: CATEGORY
+                range:  [32, 48, 56]
+            -   key: network.backbone.doublechannel
+                type: CATEGORY
+                range: [3, 4]
+            -   key: network.backbone.downsample
+                type: CATEGORY
+                range: [3, 4]
+    model:
+        model_desc:
+            modules: ['backbone']
+            backbone:
+                type: ResNet
+                num_class: 10
+    trainer:
+        type: Trainer
+    dataset:
+        type: Cifar10
 
-    ```yaml
-    general:
-        parallel_fully_train: False
-
-    pipeline: [fully_train]
-
-    fully_train:
-        pipe_step:
-            type: TrainPipeStep
-        trainer:
-            distributed: True
-    ```
+fully_train:
+    pipe_step:
+        type: TrainPipeStep
+        models_folder: "{local_base_path}/output/nas/"
+    trainer:
+        epochs: 160
+        distributed: True
+    dataset:
+        type: Cifar10
+```
 
 ## 3. NAS and HPO configuration items
 
@@ -168,7 +197,7 @@ Common search algorithms include the following configuration items:
 
 | Configuration item | Description | Example |
 | :--: | :-- | :-- |
-| type | Search algorithm name | `type: BackboneNas` |
+| type | Search algorithm name. For details, see the configuration item in the example file of each algorithm. | `type: BackboneNas` |
 | codec | Search algorithm encoder. Generally, an encoder is used with a search algorithm. | `codec: BackboneNasCodec` |
 | policy | Search policy, which is a search algorithm parameter. | For example, if the BackboneNas uses the evolution algorithm, the policy is set to <br> `num_mutate: 10` <br> `random_ratio: 0.2` |
 | range | Search range | For example, the search range of BackboneNas can be <br> `min_sample: 10` <br> `max_sample: 300` |
@@ -192,7 +221,7 @@ The search algorithm BackboneNas is used as an example. Configuration items vary
 <table>
   <tr><th>Task</th><th>categorize</th><th>Algorithms</th></tr>
   <tr><td rowspan="3">Image Classification</td><td>Network Architecture Search</td><td><a href="../algorithms/cars.md">CARS</a>, <a href="../algorithms/nago.md">NAGO</a>, BackboneNas, DartsCNN, GDAS, EfficientNet</td></tr>
-  <tr><td> Hyperparameter Optimization</td><td><a href="../algorithms/hpo.md">ASHA, BOHB, BOSS, BO, TPE, Random, Random-Pareto</a></td></tr>
+  <tr><td> Hyperparameter Optimization</td><td><a href="../algorithms/hpo.md">ASHA, BOHB, BOSS, PBT, Random</a></td></tr>
   <tr><td>Data Augmentation</td><td><a href="../algorithms/pba.md">PBA</a></td></tr>
   <tr><td rowspan="2">Model Compression</td><td>Model Pruning</td><td><a href="../algorithms/prune_ea.md">Prune-EA</a></td></tr>
   <tr><td>Model Quantization</td><td><a href="../algorithms/quant_ea.md">Quant-EA</a></td></tr>
@@ -204,6 +233,28 @@ The search algorithm BackboneNas is used as an example. Configuration items vary
   <tr><td rowspan="2">Recommender System</td><td>Feature Selection</td><td><a href="../algorithms/autofis.md">AutoFIS</a></td></tr>
   <tr><td>Feature Interactions Selection</td><td><a href="../algorithms/autogroup.md">AutoGroup</a></td></tr>
 </table>
+
+### 3.1.1 HPO Search Algorithm Settings
+
+Common configuration items for search algorithms such as Random, ASHA, BOHB, BOSS, and PBT are as follows:
+
+|Configuration Item|Description|Example|
+| :--: | :-- | :-- |
+| type | Search algorithm name, including RandomSearch, AshaHpo, BohbHpo, BossHpo, and PBTHpo | `type: RandomSearch` |
+| objective_keys | Optimization objective | `objective_keys:'accuracy'` |
+| policy.total_epochs | Quota of epochs. Vega simplifies the configuration policy, you only need to set this parameter. For details about other parameter settings, see the examples of the HPO and NAGO algorithms. | `total_epochs: 2430` |
+| tuner | Tuner type, used for the BOHB algorithm, including gp (default), rf, and hebo | tuner: "gp" |
+
+Note: If the tuner parameter is set to hebo, the "[HEBO](https://github.com/huawei-noah/noah-research/tree/master/HEBO)" needs to be installed. Note that the gpytorch version is 1.1.1, the torch version is 1.5.0, and the torch version is 0.5.0.
+
+Example:
+
+```yaml
+    search_algorithm:
+        type: BohbHpo
+        policy:
+            total_epochs: 2430
+```
 
 ### 3.2 Search Space
 
@@ -525,6 +576,15 @@ my_fullytrain:
         common:
             data_path: /cache/datasets/cifar10/
 ```
+
+In addition, Vega provides the ScriptRunner for running user scripts.
+
+| Configuration Item | Value | Example |
+| :--: | :-- | :-- |
+| type | "ScriptRunner" | type: "ScriptRunner" |
+| script | Script file name | "./train.py" |
+
+For details, see the [example](https://github.com/huawei-noah/vega/blob/master/vega/examples/features/script_runner) of the trainer.
 
 ## 8. Dataset Reference
 

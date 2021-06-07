@@ -22,6 +22,7 @@ from zeus.evaluator.conf import EvaluatorConfig
 from zeus.report import ReportClient, ReportRecord, ReportServer
 from .pipe_step import PipeStep
 from ..scheduler import create_master
+from zeus.common import Status
 
 logger = logging.getLogger(__name__)
 
@@ -30,8 +31,8 @@ logger = logging.getLogger(__name__)
 class BenchmarkPipeStep(PipeStep):
     """Run pipeStep which is the base components class that can be added in Pipeline."""
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
     def do(self):
         """Start to run benchmark evaluator."""
@@ -40,16 +41,16 @@ class BenchmarkPipeStep(PipeStep):
         if not records:
             logger.error("There is no model to evaluate.")
             return
+        self.update_status(Status.running)
         self.master = create_master()
         for record in records:
-            _record = ReportRecord(worker_id=record.worker_id, desc=record.desc, step_name=record.step_name)
-            ReportClient().broadcast(_record)
-            ReportServer().add_watched_var(record.step_name, record.worker_id)
+            ReportClient().update(record.step_name, record.worker_id, desc=record.desc)
             self._evaluate_single_model(record)
         self.master.join()
         ReportServer().output_step_all_records(step_name=General.step_name)
-        self.master.close_client()
+        self.master.close()
         ReportServer().backup_output_path()
+        self.update_status(Status.finished)
 
     def _get_current_step_records(self):
         step_name = General.step_name
@@ -97,8 +98,7 @@ class BenchmarkPipeStep(PipeStep):
         try:
             worker_info = {"step_name": record.step_name, "worker_id": record.worker_id}
             _record = dict(worker_id=record.worker_id, desc=record.desc, step_name=record.step_name)
-            _init_record = ReportRecord().load_dict(_record)
-            ReportClient().broadcast(_init_record)
+            ReportClient().update(**_record)
             if EvaluatorConfig.host_evaluator_enable:
                 cls_evaluator = ClassFactory.get_cls(ClassType.HOST_EVALUATOR, "HostEvaluator")
                 evaluator = cls_evaluator(

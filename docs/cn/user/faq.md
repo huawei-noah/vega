@@ -33,7 +33,7 @@ sudo apt install libglib2.0-0
 pip3 install --user --upgrade pip
 ```
 
-### 1.7 异常 `PermissionError: [Errno 13] Permission denied: 'dask-scheduler'`, 或者 `FileNotFoundError: [Errno 2] No such file or directory: 'dask-scheduler': 'dask-scheduler'`
+### 1.7 异常 `PermissionError: [Errno 13] Permission denied: 'dask-scheduler'`, `FileNotFoundError: [Errno 2] No such file or directory: 'dask-scheduler': 'dask-scheduler'`, 或者 `vega: command not found`
 
 这类异常一般是因为在 `PATH` 路径中未找到 `dask-scheduler` ，一般该文件会安装在 `/<user home path>/.local/bin` 路径下。
 在安装完 Vega ，会自动添加 `/<user home path>/.local/bin/` 到 `PATH` 环境变量中，但不会即时生效，需要该用户执行`source ~/.profile`，或者再次登录服务器后才会生效。

@@ -28,7 +28,3 @@ pip3 install --user --upgrade noah-vega
 2. After the installation is complete, if `~/.local/bin` is not in the `$PATH` environment variable, you need to log in again to make the environment variable take effect.
 
 If the training is performed on the Atlas 900, please contact us.
-
-## 3. Mixing precision and SyncBNN are supported
-
-To support mixed precision and SyncBN, install Apex, download the Apex source code `apex-master.zip`, and install the software according to the installation instructions on the home page of the software.

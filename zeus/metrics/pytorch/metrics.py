@@ -119,7 +119,14 @@ class Metrics(object):
     @property
     def objectives(self):
         """Return objectives results."""
-        return {name: self.mdict.get(name).objective for name in self.mdict}
+        _objs = {}
+        for name in self.mdict:
+            objective = self.mdict.get(name).objective
+            if isinstance(objective, dict):
+                _objs = dict(_objs, **objective)
+            else:
+                _objs[name] = objective
+        return _objs
 
     def __getattr__(self, key):
         """Get a metric by key name.

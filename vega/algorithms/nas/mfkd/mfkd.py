@@ -129,10 +129,12 @@ class MFKD1(SearchAlgorithm):
         return _completed
 
     def _save_best(self, desc):
-        record = ReportClient.get_record(self.step_name, self.sample_count + 1)
-        record.performance = {"accuracy": 100}
-        record.desc = desc
-        ReportClient.broadcast(record)
+        ReportClient().update(
+            self.step_name,
+            self.sample_count + 1,
+            performance={"accuracy": 100},
+            desc=desc
+        )
 
     @property
     def max_samples(self):

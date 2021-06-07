@@ -40,8 +40,7 @@ fine_tune:
                         gamma: 0.1
         loss:
             type: CrossEntropyLoss
-            params:
-                sparse: True
+
     dataset:
         type: Cifar10
         common:

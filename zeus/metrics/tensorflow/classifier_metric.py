@@ -20,7 +20,7 @@ class accuracy(MetricBase):
 
     __metric_name__ = 'accuracy'
 
-    def __init__(self, topk=(1,)):
+    def __init__(self, topk=(1, 5)):
         """Init accuracy metric."""
         self.topk = topk
 

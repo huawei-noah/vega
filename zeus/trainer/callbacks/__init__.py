@@ -2,7 +2,6 @@ from .callback import Callback
 from .callback_list import CallbackList
 from zeus.common.class_factory import ClassFactory
 
-
 ClassFactory.lazy_register("zeus.trainer.callbacks", {
     "metrics_evaluator": ["trainer.callback:MetricsEvaluator"],
     "progress_logger": ["trainer.callback:ProgressLogger"],

@@ -1,0 +1,76 @@
+pipeline: [fully_train]
+
+fully_train:
+    pipe_step:
+        type: TrainPipeStep
+    dataset:
+        type: GlueDataset
+        common:
+            batch_size: 32
+            vocab_file: /cache/nlp/bert-base-uncased/vocab.txt
+        train:
+            pregenerated: True
+            data_path: /cache/datasets/english_wiki_book/json/
+        val:
+            task_name: mrpc
+            data_path: /cache/datasets/MRPC/
+
+    trainer:
+        type: Trainer
+        epochs: 50
+        model_statistics: False
+        call_metrics_on_train: False
+        optimizer:
+            type: AdamW
+            params:
+                lr: 0.0005
+        loss:
+            type: SingleLoss
+        metric:
+            type: NlpMetrics
+    model:
+        pretrained_model_file:  /home/chenchen/workspace/nlp/bert-base-uncased/pytorch_model.bin
+        head: 'cls'
+        model_desc:
+            type: TinyBertDistil
+            header:
+                type: BertClassificationHeader
+                hidden_size: 312
+                num_labels: 2
+            student:
+                type: TinyBertForPreTraining
+                config: {
+                    "attention_probs_dropout_prob": 0.1,
+                    "hidden_act": "gelu",
+                    "hidden_dropout_prob": 0.1,
+                    "hidden_size": 312,
+                    "initializer_range": 0.02,
+                    "intermediate_size": 1200,
+                    "max_position_embeddings": 512,
+                    "num_attention_heads": 12,
+                    "num_hidden_layers": 4,
+                    "pre_trained": "",
+                    "type_vocab_size": 2,
+                    "vocab_size": 30522
+                }
+            teacher:
+                type: TinyBertForPreTraining
+                config: {
+                    "attention_probs_dropout_prob": 0.1,
+                    "hidden_act": "gelu",
+                    "hidden_dropout_prob": 0.1,
+                    "hidden_size": 768,
+                    "initializer_range": 0.02,
+                    "intermediate_size": 3072,
+                    "layer_norm_eps": !!float 1e-12,
+                    "max_position_embeddings": 512,
+                    "model_type": "bert",
+                    "num_attention_heads": 12,
+                    "num_hidden_layers": 12,
+                    "pad_token_id": 0,
+                    "type_vocab_size": 2,
+                    "vocab_size": 30522
+                }
+
+
+

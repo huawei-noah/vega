@@ -59,7 +59,7 @@ class ConfigBackendMapping(object):
             if key in mapping_params:
                 mapping_key = mapping_params[key][self.backend_type]
             else:
-                mapping_key = key
+                mapping_key = None
             if mapping_key is not None:
                 if isinstance(value, dict) and 'type' in value:
                     backend_config.params[mapping_key] = self.backend_mapping(value)

@@ -9,7 +9,6 @@
 # MIT License for more details.
 
 """Manage logging states and loggers."""
-
 import os
 import time
 import copy

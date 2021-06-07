@@ -1,0 +1,53 @@
+general:
+    backend: pytorch  #pytorch
+#    parallel_search: True
+#    parallel_fully_train: True
+
+pipeline: [auto_loss]
+
+auto_loss:
+    pipe_step:
+        type: SearchPipeStep
+
+    search_algorithm:
+        type: Autoloss
+        objective_keys: mAP
+        policy:
+            config_count: 8
+            total_rungs: 200
+            loss_num: 4
+
+    model:
+        model_desc:
+            type: torchvision_fasterrcnn_resnet50_fpn
+
+    trainer:
+        type: Trainer
+        get_train_metric_after_epoch: False
+        model_statistics: False
+        is_detection_trainer: True
+        adaptive_muti_loss: True
+        optimizer:
+            type: SGD
+            params:
+                lr: 0.003
+                momentum: 0.9
+                weight_decay: 0.0001
+        lr_scheduler:
+            type: CosineAnnealingLR
+            params:
+                T_max: 30000
+                eta_min: 0.0001
+        loss:
+            type: SumLoss
+        metric:
+            type: coco
+            params:
+                anno_path: /cache/datasets/COCO2017/annotations/instances_val2017.json
+
+    dataset:
+        type: CocoDataset
+        common:
+            data_root: /cache/datasets/COCO2017/
+            img_prefix: 2017
+            ann_prefix: instances

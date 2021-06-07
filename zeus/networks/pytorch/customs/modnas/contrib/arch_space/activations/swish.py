@@ -9,7 +9,6 @@
 # MIT License for more details.
 
 """Swish activation functions."""
-
 import torch.nn as nn
 import torch.nn.functional as F
 from modnas.registry.arch_space import register

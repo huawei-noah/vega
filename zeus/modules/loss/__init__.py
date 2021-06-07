@@ -2,7 +2,7 @@ from .loss import Loss
 from zeus.common.class_factory import ClassFactory
 
 ClassFactory.lazy_register("zeus.modules.loss", {
-    "multiloss": ["trainer.loss:MultiLoss"],
+    "multiloss": ["trainer.loss:MultiLoss", "trainer.loss:SingleLoss"],
     "focal_loss": ["trainer.loss:FocalLoss"],
     "f1_loss": ["trainer.loss:F1Loss"],
     "forecast_loss": ["trainer.loss:ForecastLoss"],

@@ -10,6 +10,7 @@
 
 """SearchSpace class."""
 import numpy as np
+import logging
 from collections import OrderedDict
 from queue import Queue
 from .param_types import PARAM_TYPE_MAP
@@ -19,6 +20,9 @@ from .forbidden import ForbiddenAndConjunction, ForbiddenEqualsClause
 from dag import DAG, DAGValidationError
 from zeus.common.class_factory import ClassFactory, ClassType
 from vega.core.pipeline.conf import SearchSpaceConfig
+
+
+logger = logging.getLogger(__name__)
 
 
 @ClassFactory.register(ClassType.SEARCHSPACE)
@@ -65,12 +69,12 @@ class SearchSpace(dict):
                 generator=space_dict.get("generator"),
                 sample_num=space_dict.get('sample_num')
             )
-            self.add_hyperparameter(param)
+            self.add_hp(param)
         if "condition" in desc:
             for condition in desc["condition"]:
                 _condition = ParamsFactory.create_condition(
-                    self.get_hyperparameter(condition.get("child")),
-                    self.get_hyperparameter(condition.get("parent")),
+                    self.get_hp(condition.get("child")),
+                    self.get_hp(condition.get("parent")),
                     CONDITION_TYPE_MAP[condition.get("type").upper()],
                     condition.get("range")
                 )
@@ -80,7 +84,7 @@ class SearchSpace(dict):
                 _forbiddens = []
                 for _name, _value in forbiddens.items():
                     _forbiddens.append(ForbiddenEqualsClause(
-                        param_name=self.get_hyperparameter(_name),
+                        param_name=self.get_hp(_name),
                         value=_value))
                 self.add_forbidden_clause(
                     ForbiddenAndConjunction(_forbiddens))
@@ -88,6 +92,28 @@ class SearchSpace(dict):
     def sample(self):
         """Get the Sample of SearchSpace."""
         return self.decode(self.get_sample_space(1)[0])
+
+    def verify_constraints(self, sample):
+        """Verify condition."""
+        for condition in self.get("condition", []):
+            _type = condition["type"]
+            child = condition["child"]      # eg. trainer.optimizer.params.momentum
+            parent = condition["parent"]    # eg. trainer.optimizer.type
+            _range = condition["range"]     # eg. range': ['SGD']
+            if _type == "EQUAL" or _type == "IN":
+                if parent in sample and sample[parent] in _range:
+                    if child not in sample:
+                        sample[child] = self.get_hp(child).sample()[0]
+                elif child in sample:
+                    del sample[child]
+            if _type == "NOT_EQUAL":
+                if parent in sample and sample[parent] in _range:
+                    if child in sample:
+                        del sample[child]
+                elif child not in sample:
+                    sample[child] = self.get_hp(child).sample()[0]
+            # TODO condition type: IN, parent type: range
+        return sample
 
     def size(self):
         """Get the size of SearchSpace, also the count of HyperParametera contained in this SearchSpace.
@@ -113,11 +139,11 @@ class SearchSpace(dict):
                                 "HyperParameter." % str(params))
 
         for param in params:
-            self._add_hyperparameter(param)
-        self._sort_hyperparameters()
+            self._add_hp(param)
+        self._sort_hps()
         return self
 
-    def add_hyperparameter(self, hyperparameter):
+    def add_hp(self, hyperparameter):
         """Add one hyperparameter to the hyperparameter space.
 
         :param HyperParameter hyperparameter: instance of `HyperParameter` to add.
@@ -126,14 +152,14 @@ class SearchSpace(dict):
 
         """
         if not ParamsFactory.is_params(hyperparameter):
-            raise TypeError("The method add_hyperparameter must be called "
+            raise TypeError("The method add_hp must be called "
                             "with an instance of SearchSpace."
                             "hyper_parameter.HyperParameter.")
 
-        self._add_hyperparameter(hyperparameter)
+        self._add_hp(hyperparameter)
         return self
 
-    def _add_hyperparameter(self, hyperparameter):
+    def _add_hp(self, hyperparameter):
         """Add one hyperparameter to the hyperparameter space.
 
         :param HyperParameter hyperparameter: instance of `HyperParameter` to add.
@@ -179,7 +205,7 @@ class SearchSpace(dict):
                 'Not a valid condition {}'.format(forbidden_conjunction))
         self._forbidden_list.append(forbidden_conjunction)
 
-    def _sort_hyperparameters(self):
+    def _sort_hps(self):
         """Sort the hyperparameter dictionary."""
         return
 
@@ -192,7 +218,7 @@ class SearchSpace(dict):
         """
         return list(self._params.values())
 
-    def get_hyperparameter_names(self):
+    def get_hp_names(self):
         """Return the list of name of all hyperparameters.
 
         :return: List[str]
@@ -201,7 +227,7 @@ class SearchSpace(dict):
         """
         return list(self._params.keys())
 
-    def get_hyperparameter(self, name):
+    def get_hp(self, name):
         """Get HyperParameter by its name.
 
         :param str name: The name of HyperParameter.
@@ -246,15 +272,7 @@ class SearchSpace(dict):
         parameters_array = np.zeros((n, self._hp_count))
         i = 0
         for _, hp in self._params.items():
-            if len(hp.range) == 1:
-                low, high = 0, hp.range[0]
-            else:
-                low, high = hp.range
-            if hp.is_integer:
-                column = np.random.randint(low, high + 1, size=n)
-            else:
-                d = high - low
-                column = low + d * np.random.rand(n)
+            column = hp.sample(n=n, decode=False)
             parameters_array[:, i] = column
             i = i + 1
         return parameters_array

@@ -42,6 +42,10 @@ class BohbConfig(ConfigSerializable):
 
     policy = BohbPolicyConfig
     objective_keys = 'accuracy'
+    random_samples = None    # 32
+    prob_crossover = 0.6
+    prob_mutatation = 0.2
+    tuner = "GP"    # TPE | GP | RF
 
     @classmethod
     def rules(cls):

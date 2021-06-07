@@ -9,7 +9,6 @@
 # MIT License for more details.
 
 """Layers of nested network modules."""
-
 import torch
 import torch.nn as nn
 from .slot import Slot

@@ -13,6 +13,7 @@ import logging
 import os
 from copy import deepcopy
 import vega
+import zeus
 from zeus.common import Config, FileOps
 from vega.algorithms.nas.darts_cnn import DartsNetworkTemplateConfig
 from zeus.common import ClassFactory, ClassType
@@ -39,7 +40,7 @@ class DartsTrainerCallback(Callback):
         """Be called before the training process."""
         self.config = self.trainer.config
         self.unrolled = self.trainer.config.unrolled
-        self.device = self.trainer.config.device
+        self.device = zeus.is_gpu_device() if zeus.is_gpu_device() is not True else 0
         self.model = self.trainer.model
         self.optimizer = self.trainer.optimizer
         self.lr_scheduler = self.trainer.lr_scheduler

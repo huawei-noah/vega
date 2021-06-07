@@ -20,7 +20,7 @@ class PerformanceSaver(Callback):
 
     def __init__(self, best=True, after_epoch=True, after_train=True):
         """Construct a Performance callback."""
-        super(Callback, self).__init__()
+        super(PerformanceSaver, self).__init__()
         self.save_best = best
         self.save_after_epoch = after_epoch
         self.save_after_train = after_train
@@ -30,19 +30,34 @@ class PerformanceSaver(Callback):
         """Be called before the training process."""
         self.is_chief = self.params['is_chief']
         self.do_validation = self.params['do_validation']
-        self.summary_perfs = None
+        self.summary_perfs = logs.get('summary_perfs', {})
         self.step_name = self.trainer.step_name
         self.worker_id = self.trainer.worker_id
+        pfm = {}
+        if not self.summary_perfs.get("flops") is None:
+            pfm.update({"flops": self.summary_perfs.get("flops")})
+        if not self.summary_perfs.get("params") is None:
+            pfm.update({"params": self.summary_perfs.get("params")})
+        self.trainer.performance = pfm
 
     def after_epoch(self, epoch, logs=None):
         """Be called after the training epoch."""
         logging.debug("train record: saver performance after epoch run successes.")
-        self.summary_perfs = logs.get('summary_perfs', {})
         if not (self.is_chief and self.save_after_epoch):
             return
+        self._update_pfm(logs)
+
+    def after_train(self, logs=None):
+        """Be called after training."""
+        self._update_pfm(logs)
+
+    def _update_pfm(self, logs):
+        self.summary_perfs = logs.get('summary_perfs', {})
+
         best_changed = self.summary_perfs.get('best_valid_perfs_changed', False)
         if self.save_best and best_changed:
             pfm = self._get_best_perf(self.summary_perfs)
+            self.trainer.best_performance = pfm
         else:
             pfm = self._get_cur_perf(self.summary_perfs)
         if pfm:
@@ -53,10 +68,6 @@ class PerformanceSaver(Callback):
             if not self.summary_perfs.get("latency") is None:
                 pfm.update({"latency": self.summary_perfs.get("latency")})
             self.trainer.performance = pfm
-
-    def after_train(self, logs=None):
-        """Be called after training."""
-        self.after_epoch(self.trainer.epochs, logs)
 
     def _get_cur_perf(self, summary_perfs):
         return summary_perfs.get('cur_valid_perfs', None)

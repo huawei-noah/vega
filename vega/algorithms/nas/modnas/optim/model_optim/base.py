@@ -9,7 +9,6 @@
 # MIT License for more details.
 
 """Score model optimum finder."""
-
 import random
 
 

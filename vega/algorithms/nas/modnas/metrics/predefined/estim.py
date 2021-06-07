@@ -9,7 +9,6 @@
 # MIT License for more details.
 
 """Estimator-based metrics."""
-
 from ..base import MetricsBase
 from modnas.registry.metrics import register
 

@@ -10,7 +10,7 @@
 
 """This is SearchSpace for network."""
 from zeus.common import ClassFactory, ClassType
-from zeus.modules.connections import OutlistSequential
+from zeus.modules.connections import OutDictSequential
 from zeus.networks.necks import make_res_layer_from_code, BasicBlock
 from zeus.modules.operators import ops
 from zeus.modules.module import Module
@@ -59,8 +59,7 @@ class ResNetDet(Module):
                                                  style=self.style, code=self.code[i])
             self.inplanes = planes * self.block.expansion
             self.res_layers.append(res_layer)
-        self.res_layers_seq = OutlistSequential(
-            *self.res_layers, out_list=self.out_indices)
+        self.res_layers_seq = OutDictSequential(*self.res_layers, out_list=self.out_indices)
         self.feat_dim = self.block.expansion * 64 * 2 ** (len(self.stage_blocks) - 1)
 
     def _make_stem_layer(self):
@@ -70,11 +69,15 @@ class ResNetDet(Module):
         self.relu = ops.Relu(inplace=True)
         self.maxpool = ops.MaxPool2d(kernel_size=3, stride=2, padding=1)
 
+    @property
+    def out_channels(self):
+        """Output Channel for Module."""
+        return self.res_layers_seq.out_channels
+
     def call(self, x, **kwargs):
         """Forward compute of resnet for detection."""
         x = self.conv1(x)
         x = self.norm1(x)
         x = self.relu(x)
         x = self.maxpool(x)
-        outs = self.res_layers_seq(x)
-        return tuple(outs)
+        return self.res_layers_seq(x)

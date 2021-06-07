@@ -25,7 +25,7 @@ class ModelStatistics(Callback):
 
     def __init__(self):
         """Initialize ModelStatistics callback."""
-        super(Callback, self).__init__()
+        super(ModelStatistics, self).__init__()
         self.priority = 220
 
     def before_train(self, logs=None):
@@ -43,15 +43,16 @@ class ModelStatistics(Callback):
             # data_iter = self.trainer.valid_input_fn().make_one_shot_iterator()
             input_data, _ = data_iter.get_next()
             self.input = input_data[:1]
-
-    def after_train_step(self, batch_index, logs=None):
-        """Be called after each batch of Training."""
-        try:
-            if self.input is None:
-                input, target = logs['train_batch']
-                self.input = torch.unsqueeze(input[0], 0)
-        except Exception as ex:
-            logging.warning("model statics failed, ex=%s", ex)
+        elif zeus.is_torch_backend():
+            for data, _ in self.trainer.valid_loader:
+                if zeus.is_gpu_device():
+                    self.input = data[:1].cuda()
+                elif zeus.is_npu_device():
+                    self.input = data[:1].npu()
+                else:
+                    self.input = data[:1]
+                break
+        self.update_flops_params(logs=logs)
 
     def after_epoch(self, epoch, logs=None):
         """Be called after each epoch."""

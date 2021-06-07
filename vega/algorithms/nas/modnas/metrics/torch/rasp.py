@@ -9,7 +9,6 @@
 # MIT License for more details.
 
 """RASP-based metrics."""
-
 from ..base import MetricsBase
 from modnas.registry.metrics import register, build
 from modnas.arch_space.mixed_ops import MixedOp

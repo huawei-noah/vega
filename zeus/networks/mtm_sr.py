@@ -42,7 +42,7 @@ def conv(in_channel, out_channel, kernel_size=3, padding=None, sep=False):
     if padding is None:
         padding = kernel_size // 2
 
-    return ops.Conv2d(in_channel, out_channel, kernel_size=kernel_size, padding=padding)
+    return ops.Conv2d(in_channel, out_channel, kernel_size=kernel_size, padding=padding, padding_mode="same")
 
 
 class ResidualBlock(Module):

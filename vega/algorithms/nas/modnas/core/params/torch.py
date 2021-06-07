@@ -9,7 +9,6 @@
 # MIT License for more details.
 
 """Torch tensor parameter."""
-
 import torch
 from .base import Param
 from modnas.registry.params import register

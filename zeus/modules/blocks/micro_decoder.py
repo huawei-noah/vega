@@ -143,6 +143,7 @@ class MicroDecoder_Upsample(Module):
         return out
 
 
+@ClassFactory.register(ClassType.NETWORK)
 class MicroDecoder(Module):
     """Parent class for MicroDecoders."""
 
@@ -203,3 +204,18 @@ class MicroDecoder(Module):
                                     C_out=agg_size, kernel_size=1, stride=1, padding=0)
         self.conv_clf = conv3x3(
             inchannel=agg_size, outchannel=num_classes, stride=1, bias=True)
+
+
+@ClassFactory.register(ClassType.NETWORK)
+class Seghead(Module):
+    """Class of seghead."""
+
+    def __init__(self, shape):
+        super(Seghead, self).__init__()
+        self.head = ops.InterpolateScale(mode='bilinear', align_corners=True)
+        self.shape = shape
+
+    def call(self, inputs):
+        """Forward x."""
+        self.head.size = (self.shape, self.shape)
+        return self.head(inputs)

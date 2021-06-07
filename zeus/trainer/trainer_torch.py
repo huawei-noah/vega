@@ -10,8 +10,10 @@
 
 """Torch Trainer."""
 
+import os
 import torch
 import numpy as np
+import zeus
 from zeus.trainer.trainer_base import TrainerBase
 from zeus.modules.loss import Loss
 from zeus.trainer.modules.lr_schedulers import LrScheduler
@@ -26,15 +28,19 @@ class TrainerTorch(TrainerBase):
     def build(self):
         """Build the trainer by assembling the necessary components."""
         super().build()
-
-        self.optimizer = Optimizer()(model=self.model, distributed=self.distributed)
+        if self.optimizer is None:
+            self.optimizer = Optimizer()(model=self.model, distributed=self.distributed)
         if hasattr(self.model, 'add_loss'):
             loss_cls = Loss()()
             self.model.add_loss(loss_cls)
             self.loss = self.model.overall_loss()
         else:
             self.loss = Loss()()
-        self.lr_scheduler = LrScheduler()(self.optimizer)
+        if self.config.adaptive_muti_loss and hasattr(self.loss, "adaptive_muti_loss"):
+            self.loss.adaptive_muti_loss(save_path=self.get_local_worker_path(self.step_name, self.worker_id),
+                                         weight=self.config.loss_weight)
+        if self.lr_scheduler is None:
+            self.lr_scheduler = LrScheduler()(self.optimizer)
         if self.actions_list is not None:
             self.total_optimizer = self.optimizer
             self.total_loss = self.loss
@@ -59,18 +65,26 @@ class TrainerTorch(TrainerBase):
     def _set_condition(self):
         self._init_distributed_setting()
         torch.manual_seed(self.config.seed)
-        self._init_cuda_setting()
+        self._init_setting()
 
-    def _init_cuda_setting(self):
+    def _init_setting(self):
         """Init CUDA setting."""
-        if not self.config.cuda:
+        if zeus.is_gpu_device():
+            import torch.cuda
+            self.config.device = zeus.is_gpu_device() if zeus.is_gpu_device() is not True else 0
+            if self.distributed:
+                torch.cuda.set_device(self._local_rank_id)
+            torch.cuda.manual_seed(self.config.seed)
+        elif zeus.is_npu_device():
+            import torch.npu
+            device = "npu:{}".format(os.environ.get('ASCEND_DEVICE_ID', 0))
+            torch.npu.set_device(device)
+            torch.npu.manual_seed(self.config.seed)
+        elif zeus.is_cpu_device():
             self.config.device = -1
             return
-        self.config.device = self.config.cuda if self.config.cuda is not True else 0
-        self.use_cuda = True
-        if self.distributed:
-            torch.cuda.set_device(self._local_rank_id)
-        torch.cuda.manual_seed(self.config.seed)
+        else:
+            raise ValueError('Set a correct device: cuda or npu.')
 
     def _init_distributed_setting(self):
         if self.distributed:
@@ -123,18 +137,21 @@ class TrainerTorch(TrainerBase):
     def _default_make_batch(self, batch):
         """Unpack batch to get input and target."""
         input, target = batch
-        if self.use_cuda:
-            input = self._cuda_from_dict(input)
-            target = self._cuda_from_dict(target)
+        if not zeus.is_cpu_device():
+            input = self._from_dict(input)
+            target = self._from_dict(target)
         return (input, target)
 
-    def _cuda_from_dict(self, data):
+    def _from_dict(self, data):
         if torch.is_tensor(data):
-            return data.cuda()
+            if zeus.is_gpu_device():
+                return data.cuda()
+            else:
+                return data.npu()
         if isinstance(data, dict):
-            return {k: self._cuda_from_dict(v) for k, v in data.items()}
+            return {k: self._from_dict(v) for k, v in data.items()}
         if isinstance(data, list) or isinstance(data, tuple):
-            return [self._cuda_from_dict(v) for v in data]
+            return [self._from_dict(v) for v in data]
         return data
 
     def _default_train_step(self, batch):
@@ -152,7 +169,7 @@ class TrainerTorch(TrainerBase):
                 mixed_x, y_a, y_b = self._mixup_batch(input, target, mixup_ratio)
                 output = self.model(mixed_x)
             else:
-                output = self.model(input)
+                output = self.model(input) if not isinstance(input, dict) else self.model(**input)
         # loss
         if self.config.mixup:
             loss = self._mixup_loss(self.loss, output, y_a, y_b, mixup_ratio)
@@ -189,7 +206,7 @@ class TrainerTorch(TrainerBase):
         if self.config.is_detection_trainer:
             output = self.model(input, target)
         else:
-            output = self.model(input)
+            output = self.model(input) if not isinstance(input, dict) else self.model(**input)
         return {'valid_batch_output': output}
 
     def _mixup_batch(self, x, y, ratio):

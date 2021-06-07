@@ -34,8 +34,6 @@ class Serializable(object):
         if kwargs:
             desc.update(kwargs)
         instance = super(Serializable, cls).__new__(cls)
-        instance._deep_level = 0
-        instance._target_level = None
         instance.desc = Config(desc) if desc else {}
         return instance
 
@@ -46,6 +44,11 @@ class Serializable(object):
     @classmethod
     def from_desc(cls, desc):
         """Create Model from desc."""
+        raise NotImplementedError
+
+    @classmethod
+    def from_module(cls, module):
+        """Create Model from module."""
         raise NotImplementedError
 
     @property
@@ -72,14 +75,39 @@ class Serializable(object):
         return self.__class__.__name__
 
     @property
-    def props(self):
-        """Get props."""
-        return Props._values
+    def _arch_params(self):
+        """Get Arch params."""
+        return ArchParams._values
 
-    def define_props(self, key, default_value, dtype=None, params=None):
+    def set_arch_params(self, value):
+        """Set Arch params."""
+        ArchParams._values = Config(value)
+
+    @property
+    def _arch_params_type(self):
+        """Get Arch params."""
+        return ArchParams._arch_type
+
+    def clear_arch_params(self):
+        """Clear Arch params."""
+        return ArchParams.clear()
+
+    @property
+    def module_arch_params(self):
+        """Get Arch params."""
+        return Config(
+            {k.split('.')[-1]: v for k, v in ArchParams._values.items() if '.'.join(k.split('.')[:-1]) == self.name})
+
+    @staticmethod
+    def clear_module_arch_params(module, fea_in, fea_out):
+        """Get Arch params."""
+        ArchParams._values = {k: v for k, v in ArchParams._values.items() if '.'.join(k.split('.')[:-1]) != module.name}
+        return None
+
+    def define_arch_params(self, key, default_value, dtype=None, params=None):
         """Define a prop and get value."""
         value = self.desc.get(key) or default_value
-        return Props(key, value, dtype, params).value
+        return ArchParams(key, value, dtype, params).value
 
 
 class OperatorSerializable(Serializable):
@@ -106,6 +134,11 @@ class OperatorSerializable(Serializable):
         """Create Operator class by desc."""
         return ClassFactory.get_instance(ClassType.NETWORK, desc)
 
+    @classmethod
+    def from_module(cls, module):
+        """Create Operator class by module."""
+        return module
+
 
 class ModuleSerializable(Serializable):
     """Seriablizable Module class."""
@@ -121,8 +154,8 @@ class ModuleSerializable(Serializable):
             else:
                 return dict(self.desc, **dict(type=self.model_name))
         desc = {}
-        if getattr(self, '_losses') and self._losses:
-            desc['loss'] = self._losses
+        if getattr(self, 'loss') and self.loss:
+            desc['loss'] = self.loss
         for name, module in self.named_children():
             if hasattr(module, 'to_desc'):
                 sub_desc = module.to_desc()
@@ -153,8 +186,11 @@ class ModuleSerializable(Serializable):
         module_groups = desc.get('modules', [])
         module_type = desc.get('type', 'Sequential')
         loss = desc.get('loss')
-        if 'props' in desc:
-            Props.update(desc.pop('props'))
+        if '_arch_params' in desc:
+            arch_params = desc.pop('_arch_params')
+            arch_type = list(arch_params.keys())[0]
+            ArchParams._arch_type = arch_type
+            ArchParams.update(arch_params.get(arch_type))
         modules = OrderedDict()
         for group_name in module_groups:
             module_desc = deepcopy(desc.get(group_name))
@@ -181,14 +217,25 @@ class ModuleSerializable(Serializable):
             model.add_loss(ClassFactory.get_cls(ClassType.LOSS, loss))
         return model
 
+    @classmethod
+    def from_module(cls, module):
+        """From Model."""
+        name = module.__class__.__name__
+        if ClassFactory.is_exists(ClassType.NETWORK, name):
+            module_cls = ClassFactory.get_cls(ClassType.NETWORK, name)
+            if hasattr(module_cls, "from_module"):
+                return module_cls.from_module(module)
+        return module
 
-class Props(object):
+
+class ArchParams(object):
     """Set proxy property in module.
 
     When a variable is changed by an external program, the value of the invoker can be changed synchronously.
     """
 
     _values = {}
+    _arch_type = None
 
     def __init__(self, key, default_value, d_type=None, params=None):
         self.key = key
@@ -216,26 +263,27 @@ class Props(object):
                     value = ClassFactory.get_instance(ClassType.NETWORK, value)
         return value
 
-    @classmethod
-    def update(cls, props):
-        """Update props."""
-        props = cls._flatten_props(props)
-        cls._values.update(props)
-
     def _check(self):
         if self.d_type is None:
             return
 
     @classmethod
-    def _flatten_props(cls, props, name=None):
-        dict_props = {}
-        if isinstance(props, dict):
-            for k, v in props.items():
-                dict_props.update(cls._flatten_props(v, "{}.{}".format(name, k) if name else k))
+    def _flatten(cls, value, name=None):
+        dict_values = {}
+        if isinstance(value, dict):
+            for k, v in value.items():
+                dict_values.update(cls._flatten(v, "{}.{}".format(name, k) if name else k))
         else:
-            dict_props[name] = props
-        return dict_props
+            dict_values[name] = value
+        return dict_values
 
-    def reset(self):
-        """Reset props."""
+    @classmethod
+    def update(cls, value):
+        """Update value."""
+        value = cls._flatten(value)
+        cls._values.update(value)
+
+    @classmethod
+    def clear(self):
+        """Reset arch desc."""
         self._values = {}
