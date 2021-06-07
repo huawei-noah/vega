@@ -9,7 +9,6 @@
 # MIT License for more details.
 
 """Model-based Optimizer."""
-
 from ..base import CategoricalSpaceOptim
 from modnas.registry.score_model import build as build_score_model
 from modnas.registry.model_optim import build as build_model_optim

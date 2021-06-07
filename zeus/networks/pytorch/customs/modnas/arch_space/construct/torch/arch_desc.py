@@ -9,7 +9,6 @@
 # MIT License for more details.
 
 """ArchDesc Constructors."""
-
 import os
 import yaml
 import json

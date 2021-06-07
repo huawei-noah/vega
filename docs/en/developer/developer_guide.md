@@ -178,7 +178,7 @@ search_algorithm:
         length: 464
         num_generation: 31
         num_individual: 32
-        random_models: 64
+        random_samples: 64
 ```
 
 In the configuration file, you need to define the type of the search algorithm and the parameters of the search algorithm.
@@ -201,7 +201,7 @@ def do(self):
     self.master.join()
     self._after_train(wait_until_finish=True)
     ReportServer().output_pareto_front(General.step_name)
-    self.master.close_client()
+    self.master.close()
 ```
 
 In each cycle, the generator first determines whether the search stops. If the search stops, the search ends, the generator is updated, and a value is returned.
@@ -359,8 +359,8 @@ class Generator(object):
             if isinstance(sample, tuple):
                 sample = dict(worker_id=sample[0], desc=sample[1])
             record = self.record.load_dict(sample)
-            logging.debug("Broadcast Record=%s", str(record))
-            ReportClient.broadcast(record)
+            logging.debug("update record=%s", str(record))
+            ReportClient().update(**record.to_dict())
             desc = self._decode_hps(record.desc)
             out.append((record.worker_id, desc))
         return out
@@ -734,7 +734,7 @@ nas:
             length: 464
             num_generation: 31
             num_individual: 32
-            random_models: 64
+            random_samples: 64
 
     search_space:
         type: SearchSpace
@@ -800,7 +800,7 @@ fullytrain:
 
 A pipeline contains multiple steps. Data can be transferred between these steps through the Report. The Report collects the training process data and evaluation results of each step in real time. In addition, the Report data is saved to files in real time.
 
-The Report provides the following interfaces. During model training, the `broadcast()` interface needs to be invoked to save the training result. The search algorithm can invoke the `pareto_front()` interface to obtain the evaluation result. These two interfaces are the most commonly used interfaces.
+The Report provides the following interfaces. During model training, the `update()` interface needs to be invoked to save the training result. The search algorithm can invoke the `pareto_front()` interface to obtain the evaluation result. These two interfaces are the most commonly used interfaces.
 The trainer has integrated the report scheduling function. After training and evaluation, the trainer automatically calls the report interface to collect the result data for the search algorithm.
 
 ```python
@@ -822,7 +822,7 @@ class ReportClient(object):
     def get_record(cls, step_name, worker_id):
 
     @classmethod
-    def broadcast(cls, record):
+    def update(cls, record):
 ```
 
 ### 7.2 Extend `pipestep`

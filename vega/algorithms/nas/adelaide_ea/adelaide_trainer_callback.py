@@ -12,7 +12,7 @@
 import logging
 import numpy as np
 import vega
-from zeus.common import ClassFactory, ClassType
+from zeus.common import ClassFactory, ClassType, General
 from zeus.metrics import calc_model_flops_params
 from zeus.trainer.callbacks import Callback
 
@@ -33,13 +33,14 @@ class AdelaideEATrainerCallback(Callback):
     def before_train(self, logs=None):
         """Be called before the training process."""
         self.config = self.trainer.config
+        input_shape = [1, 3, 192, 192] if General.data_format == 'channels_first' else [1, 192, 192, 3]
         if vega.is_torch_backend():
-            count_input = torch.FloatTensor(1, 3, 192, 192).cuda()
+            count_input = torch.FloatTensor(*input_shape).cuda()
         elif vega.is_tf_backend():
             tf.compat.v1.reset_default_graph()
-            count_input = tf.random.uniform([1, 192, 192, 3], dtype=tf.float32)
+            count_input = tf.random.uniform(input_shape, dtype=tf.float32)
         elif vega.is_ms_backend():
-            count_input = mindspore.Tensor(np.random.randn(1, 3, 192, 192).astype(np.float32))
+            count_input = mindspore.Tensor(np.random.randn(*input_shape).astype(np.float32))
         flops_count, params_count = calc_model_flops_params(self.trainer.model, count_input)
         self.flops_count, self.params_count = flops_count * 1e-9, params_count * 1e-3
         logger.info("Flops: {:.2f} G, Params: {:.1f} K".format(self.flops_count, self.params_count))

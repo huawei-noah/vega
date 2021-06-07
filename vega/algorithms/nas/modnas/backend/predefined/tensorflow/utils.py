@@ -9,5 +9,4 @@
 # MIT License for more details.
 
 """Tensorflow utils."""
-
 import tensorflow as tf

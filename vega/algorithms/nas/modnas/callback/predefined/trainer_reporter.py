@@ -9,10 +9,9 @@
 # MIT License for more details.
 
 """Trainer statistics reporter."""
-
 from functools import partial
 from modnas.registry.callback import register
-from modnas.utils import format_value, format_dict, AverageMeter
+from modnas.utils import format_dict, AverageMeter
 from ..base import CallbackBase
 
 
@@ -68,11 +67,12 @@ class TrainerReporter(CallbackBase):
             interval = int(interval * tot_steps)
         stats = ret.copy() if isinstance(ret, dict) else {}
         stats = {k: v for k, v in stats.items() if isinstance(v, (int, float))}
+        stats_len = stats.pop('N', self.last_batch_size)
         if self.stats is None and stats:
             self.init_stats(stats.keys())
         writer = trainer.writer
         for k, v in stats.items():
-            self.stats[k].update(v, n=self.last_batch_size)
+            self.stats[k].update(v, n=stats_len)
             if writer is not None:
                 writer.add_scalar('/'.join(['trainer', proc, k]), v, cur_step)
         if interval is None or (interval != 0 and (step + 1) % interval == 0) or step + 1 == tot_steps:

@@ -36,6 +36,8 @@ class ShortCut(Module):
             self.conv1 = ops.Conv2d(in_channels=inchannel, out_channels=outchannel * expansion, kernel_size=1,
                                     stride=stride, bias=False)
             self.batch = build_norm_layer(features=outchannel * expansion, **norm_layer)
+        else:
+            self.identity = ops.Identity()
 
 
 @ClassFactory.register(ClassType.NETWORK)

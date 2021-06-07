@@ -9,7 +9,6 @@
 # MIT License for more details.
 
 """Fake data estimator."""
-
 import numpy as np
 from modnas.core.param_space import ParamSpace
 from modnas.core.params import Categorical
@@ -81,8 +80,11 @@ class FakeDataEstim(RegressionEstim):
         """Run Estimator routine."""
         ret = super().run(optim)
         scores = self.predictor.scores
-        if scores and len(scores) == 1:
-            scores = np.array(list(list(scores.values())[0].values()))
-            self.logger.info('global optimum arch_desc: {}, score: {}'.format(scores.argmax(1),
-                                                                              sum(np.max(scores, 1)) / scores.shape[0]))
+        if scores:
+            for k, score in scores.items():
+                score = np.array(list(score.values()))
+                if len(score) <= 0:
+                    continue
+                opt_score = np.sum(np.max(score, 1)) / score.shape[0]
+                self.logger.info('global opt. dim: {} param: {}, score: {}'.format(k, score.argmax(1), opt_score))
         return ret

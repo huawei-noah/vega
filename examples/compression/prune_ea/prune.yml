@@ -21,7 +21,7 @@ nas:
             length: 464
             num_generation: 31
             num_individual: 32
-            random_models: 64
+            random_samples: 64
     search_space:
         type: SearchSpace
         modules: ['backbone', 'head']
@@ -52,8 +52,7 @@ nas:
                 gamma: 0.5
         loss:
             type: CrossEntropyLoss
-            params:
-                sparse: True
+
         seed: 10
 
 
@@ -61,6 +60,7 @@ fully_train:
     pipe_step:
         type: TrainPipeStep
         models_folder: "{local_base_path}/output/nas/"
+        load_weights: False
     dataset:
         ref: nas.dataset
         common:

@@ -16,12 +16,12 @@ import numpy as np
 import os
 import uuid
 from mindspore.ops import operations as P
+import mindspore.ops as ops
 from mindspore import Parameter, Tensor
 from mindspore.common import initializer as init
 from mindspore.common.initializer import initializer
 from .serializable import OperatorSerializable
 from zeus.common.class_factory import ClassType, ClassFactory
-from zeus.common.config import Config
 
 
 class Module(nn.Cell):
@@ -33,11 +33,13 @@ class Module(nn.Cell):
         super(Module, self).__init__()
         self.children_ms = []
         self._modules = self._cells
-        self.need_adjust = False
+        self.need_adjust = True
 
     def add_module(self, name, model):
         """Add models into self._models."""
         self.insert_child_to_cell(name, model)
+        if model:
+            model.update_parameters_name(name + '.')
         self.children_ms = list(self._cells.values())
 
     def children(self):
@@ -48,9 +50,10 @@ class Module(nn.Cell):
         """Overide __setattr__."""
         if isinstance(value, nn.Cell):
             super().__setattr__(name, value)
+            # value.update_parameters_name(name + uuid.uuid1().hex[:8] + '.')
             self.children_ms = list(self._cells.values())
         else:
-            object.__setattr__(self, name, value)
+            super().__setattr__(name, value)
 
     def named_modules(self):
         """Return names spaces."""
@@ -63,6 +66,20 @@ class Module(nn.Cell):
                 child_modules = model.named_modules()
                 _names_modules.extend(child_modules)
         return _names_modules
+
+    #
+    def _apply_names(self, parent_name=''):
+        """Apply names spaces."""
+        for scope_name, module in self.name_cells().items():
+            scope_name = '{}.{}'.format(parent_name, scope_name) if parent_name else scope_name
+            # module.update_parameters_name(scope_name + '.')
+            module.name = scope_name + '/' + module.__class__.__name__
+            if hasattr(module, "_apply_names"):
+                module._apply_names(scope_name)
+
+    def named_children(self):
+        """Return names children."""
+        return [(name, module) for name, module in self._cells.items()]
 
     def initialize(self):
         """Init params."""
@@ -140,7 +157,7 @@ class QuantizeConv2d(OperatorSerializable):
 
 
 @ClassFactory.register(ClassType.NETWORK)
-class Pad(nn.Cell, OperatorSerializable):
+class Pad(OperatorSerializable, nn.Cell):
     """Pad layer."""
 
     def __init__(self, output_size=(1, 1)):
@@ -153,7 +170,7 @@ class Pad(nn.Cell, OperatorSerializable):
 
 
 @ClassFactory.register(ClassType.NETWORK)
-class AdaptiveAvgPool2d(nn.Cell, OperatorSerializable):
+class AdaptiveAvgPool2d(OperatorSerializable, nn.Cell):
     """Call reduce_mean."""
 
     def __init__(self, output_size=(1, 1)):
@@ -167,7 +184,7 @@ class AdaptiveAvgPool2d(nn.Cell, OperatorSerializable):
 
 
 @ClassFactory.register(ClassType.NETWORK)
-class View(nn.Cell, OperatorSerializable):
+class View(OperatorSerializable, nn.Cell):
     """Call squeeze."""
 
     def __init__(self, size=None):
@@ -189,11 +206,12 @@ class View(nn.Cell, OperatorSerializable):
 
 
 @ClassFactory.register(ClassType.NETWORK)
-class Linear(nn.Cell, OperatorSerializable):
+class Linear(OperatorSerializable, nn.Cell):
     """Call dense."""
 
     def __init__(self, in_features=None, out_features=None, has_bias=True, activation=None):
         super(Linear, self).__init__()
+        self.in_features = in_features
         self.activation = activation
         self.linear = nn.Dense(in_features, out_features, has_bias=has_bias)
         self.linear.update_parameters_name("linear_" + uuid.uuid1().hex[:8] + ".")
@@ -257,7 +275,7 @@ class KaimingNormal(init.Initializer):
 
 
 @ClassFactory.register(ClassType.NETWORK)
-class DepthwiseConv2d(nn.Cell, OperatorSerializable):
+class DepthwiseConv2d(OperatorSerializable, nn.Cell):
     """Call DepthwiseConv2d."""
 
     def __init__(self, in_channels, kernel_size, stride, pad_mode, pad, channel_multiplier=1, has_bias=False,
@@ -291,30 +309,34 @@ class DepthwiseConv2d(nn.Cell, OperatorSerializable):
 
 
 @ClassFactory.register(ClassType.NETWORK)
-class Conv2d(nn.Cell, OperatorSerializable):
+class Conv2d(OperatorSerializable, nn.Cell):
     """Call conv2d."""
 
-    def __init__(self, in_channels, out_channels, kernel_size=3, stride=1, padding=0, bias=True,
-                 groups=1, dilation=1, separable=False, depthwise=False):
+    def __init__(self, in_channels, out_channels, kernel_size=3, stride=1, padding=None, bias=True,
+                 groups=1, dilation=1, separable=False, depthwise=False, padding_mode=None):
         super(Conv2d, self).__init__()
-        if kernel_size % 2 == 0:
+        if padding_mode == "same":
             pad_mode = "same"
             padding = 0
-        elif padding == 0:
+        elif padding is None:
             pad_mode = "same"
+            padding = 0
         else:
             pad_mode = "pad"
-
+            padding = padding[0] if isinstance(padding, (list, tuple)) else padding
+        self.in_channels = in_channels
         self.out_channels = out_channels
+        stride = tuple(stride) if isinstance(stride, list) else stride
+        dilation = tuple(dilation) if isinstance(dilation, list) else dilation
         if groups == 1:
             self.conv2d = nn.Conv2d(in_channels, out_channels, kernel_size=kernel_size, stride=stride, padding=padding,
                                     has_bias=bias, group=groups, dilation=dilation, pad_mode=pad_mode)
             self.conv2d.update_parameters_name("conv2d_" + uuid.uuid1().hex[:8] + ".")
 
-        elif in_channels == out_channels and in_channels == groups:
-            self.conv2d = DepthwiseConv2d(in_channels, kernel_size=kernel_size, stride=stride, pad_mode=pad_mode,
-                                          pad=padding, has_bias=bias, dilation=dilation)
-            self.conv2d.update_parameters_name("conv2d_" + uuid.uuid1().hex[:8] + ".")
+        # elif in_channels == out_channels and in_channels == groups:
+        #     self.conv2d = DepthwiseConv2d(in_channels, kernel_size=kernel_size, stride=stride, pad_mode=pad_mode,
+        #                                   pad=padding, has_bias=bias, dilation=dilation)
+        #     self.conv2d.update_parameters_name("conv2d_" + uuid.uuid1().hex[:8] + ".")
         else:
             # TODO delete
             self.conv2d = nn.Conv2d(in_channels, out_channels, kernel_size=kernel_size, stride=stride, padding=padding,
@@ -339,12 +361,12 @@ class Conv2d(nn.Cell, OperatorSerializable):
 
 
 @ClassFactory.register(ClassType.NETWORK)
-class BatchNorm2d(nn.Cell, OperatorSerializable):
+class BatchNorm2d(OperatorSerializable, nn.Cell):
     """Call BatchNorm2d."""
 
     def __init__(self, num_features, eps=1e-05, momentum=0.9, affine=True):
         super(BatchNorm2d, self).__init__()
-
+        self.num_features = num_features
         self.batch_norm = nn.BatchNorm2d(num_features=num_features, eps=eps, momentum=momentum, affine=affine)
         self.batch_norm.update_parameters_name("batchnorm_" + uuid.uuid1().hex[:8] + ".")
 
@@ -354,7 +376,7 @@ class BatchNorm2d(nn.Cell, OperatorSerializable):
 
 
 @ClassFactory.register(ClassType.NETWORK)
-class SeparableConv2d(nn.Cell, OperatorSerializable):
+class SeparableConv2d(OperatorSerializable, nn.Cell):
     """Separable Conv2d  args."""
 
     def __init__(self, in_channels, out_channels, kernel_size=3, stride=1, padding=0, dilation=1, bias=False):
@@ -372,7 +394,7 @@ class SeparableConv2d(nn.Cell, OperatorSerializable):
 
 
 @ClassFactory.register(ClassType.NETWORK)
-class MaxPool2d(nn.Cell, OperatorSerializable):
+class MaxPool2d(OperatorSerializable, nn.Cell):
     """MaxPool2d Module inherit nn.MaxPool2d."""
 
     def __init__(self, kernel_size, stride, padding=0, pad_mode="valid"):
@@ -393,7 +415,7 @@ class MaxPool2d(nn.Cell, OperatorSerializable):
 
 
 @ClassFactory.register(ClassType.NETWORK)
-class AvgPool2d(nn.Cell, OperatorSerializable):
+class AvgPool2d(OperatorSerializable, nn.Cell):
     """AvgPool2d Module inherit nn.AvgPool2d."""
 
     def __init__(self, kernel_size, stride, padding=0, count_include_pad=True, pad_mode="valid"):
@@ -414,7 +436,7 @@ class AvgPool2d(nn.Cell, OperatorSerializable):
 
 
 @ClassFactory.register(ClassType.NETWORK)
-class Relu(nn.Cell, OperatorSerializable):
+class Relu(OperatorSerializable, nn.Cell):
     """Relu Module inherit nn.Relu."""
 
     def __init__(self, inplace=False):
@@ -428,7 +450,7 @@ class Relu(nn.Cell, OperatorSerializable):
 
 
 @ClassFactory.register(ClassType.NETWORK)
-class Relu6(nn.Cell, OperatorSerializable):
+class Relu6(OperatorSerializable, nn.Cell):
     """Relu6 Module inherit nn.Relu6."""
 
     def __init__(self, inplace=False):
@@ -442,7 +464,7 @@ class Relu6(nn.Cell, OperatorSerializable):
 
 
 @ClassFactory.register(ClassType.NETWORK)
-class Hsigmoid(nn.Cell, OperatorSerializable):
+class Hsigmoid(OperatorSerializable, nn.Cell):
     """Hsigmoid Module."""
 
     def __init__(self, inplace=False):
@@ -456,7 +478,7 @@ class Hsigmoid(nn.Cell, OperatorSerializable):
 
 
 @ClassFactory.register(ClassType.NETWORK)
-class Hswish(nn.Cell, OperatorSerializable):
+class Hswish(OperatorSerializable, nn.Cell):
     """Hswish Module."""
 
     def __init__(self, inplace=False):
@@ -470,7 +492,7 @@ class Hswish(nn.Cell, OperatorSerializable):
 
 
 @ClassFactory.register(ClassType.NETWORK)
-class Identity(nn.Cell, OperatorSerializable):
+class Identity(OperatorSerializable, nn.Cell):
     """Identity block."""
 
     def __init__(self):
@@ -487,21 +509,23 @@ class Identity(nn.Cell, OperatorSerializable):
 
 
 @ClassFactory.register(ClassType.NETWORK)
-class Dropout(Module, OperatorSerializable):
+class Dropout(OperatorSerializable, nn.Cell):
     """Dropout block."""
 
-    def __init__(self, prob=0.5, inplace=False):
+    def __init__(self, prob=0.5):
         """Construct Dropout class."""
-        super(Dropout, self).__init__(prob, inplace)
-        pass
+        super(Dropout, self).__init__()
+        if prob == 0:
+            prob = 1e-12
+        self.dropout = nn.Dropout(1 - prob)  # keep prob
 
     def construct(self, x, **kwargs):
         """Do an inference on Dropout."""
-        return x
+        return self.dropout(x)
 
 
 @ClassFactory.register(ClassType.NETWORK)
-class Zero(nn.Cell, OperatorSerializable):
+class Zero(OperatorSerializable, nn.Cell):
     """Zero block."""
 
     def __init__(self, stride):
@@ -534,7 +558,7 @@ def zeros(shape):
 
 
 @ClassFactory.register(ClassType.NETWORK)
-class PixelShuffle(nn.Cell, OperatorSerializable):
+class PixelShuffle(OperatorSerializable, nn.Cell):
     """Class of PixelShuffle."""
 
     def __init__(self, upscale):
@@ -547,7 +571,7 @@ class PixelShuffle(nn.Cell, OperatorSerializable):
 
 
 @ClassFactory.register(ClassType.NETWORK)
-class Split(nn.Cell, OperatorSerializable):
+class Split(OperatorSerializable, nn.Cell):
     """Class of PixelShuffle."""
 
     def __init__(self, size=None, dim=0):
@@ -565,7 +589,7 @@ class Split(nn.Cell, OperatorSerializable):
 
 
 @ClassFactory.register(ClassType.NETWORK)
-class Squeeze(nn.Cell, OperatorSerializable):
+class Squeeze(OperatorSerializable, nn.Cell):
     """Class of Squeeze."""
 
     def __init__(self, dim=0):
@@ -578,7 +602,7 @@ class Squeeze(nn.Cell, OperatorSerializable):
 
 
 @ClassFactory.register(ClassType.NETWORK)
-class Permute(nn.Cell, OperatorSerializable):
+class Permute(OperatorSerializable, nn.Cell):
     """Class of Permute."""
 
     def __init__(self, size=None):
@@ -588,11 +612,11 @@ class Permute(nn.Cell, OperatorSerializable):
 
     def construct(self, inputs):
         """Call Permute function."""
-        return self.permute(inputs, tuple(self.size))
+        return self.permute(inputs, self.size)
 
 
 @ClassFactory.register(ClassType.NETWORK)
-class Stack(nn.Cell, OperatorSerializable):
+class Stack(OperatorSerializable, nn.Cell):
     """Class of Stack."""
 
     def __init__(self, dim=0):
@@ -611,7 +635,7 @@ class Stack(nn.Cell, OperatorSerializable):
 
 
 @ClassFactory.register(ClassType.NETWORK)
-class Transpose(nn.Cell, OperatorSerializable):
+class Transpose(OperatorSerializable, nn.Cell):
     """Class of Transpose."""
 
     def __init__(self, dim1=0, dim2=1):
@@ -623,14 +647,22 @@ class Transpose(nn.Cell, OperatorSerializable):
     def construct(self, inputs):
         """Call Transpose function."""
         # new_dim = [i for i in range(len(self.shape(inputs)))]
+        new_dim = ()
+        for i in range(len(self.shape(inputs))):
+            if i == self.dim1:
+                index = self.dim2
+            elif i == self.dim2:
+                index = self.dim1
+            else:
+                index = i
+            new_dim = new_dim + (index,)
         # new_dim[self.dim1], new_dim[self.dim2] = new_dim[self.dim2], new_dim[self.dim1]
         # return self.transpose(inputs, tuple(new_dim))
-        new_dim = (0, 2, 1, 3, 4)
         return self.transpose(inputs, new_dim)
 
 
 @ClassFactory.register(ClassType.NETWORK)
-class LeakyReLU(nn.Cell, OperatorSerializable):
+class LeakyReLU(OperatorSerializable, nn.Cell):
     """Class of LeakyReLU."""
 
     def __init__(self, inplace=False, negative_slope=0.01):
@@ -643,7 +675,7 @@ class LeakyReLU(nn.Cell, OperatorSerializable):
 
 
 @ClassFactory.register(ClassType.NETWORK)
-class InterpolateScale(nn.Cell, OperatorSerializable):
+class InterpolateScale(OperatorSerializable, nn.Cell):
     """Upsample of torch with scale_factor."""
 
     def __init__(self, scale_factor=None, size=None, mode='bilinear', align_corners=False):
@@ -652,16 +684,21 @@ class InterpolateScale(nn.Cell, OperatorSerializable):
         self.align_corners = align_corners
         self.shape = P.Shape()
         self.mode = mode
+        self.size = size
 
     def construct(self, inputs):
         """Call forward function."""
-        w, h = self.shape(inputs)[2] * self.scale_factor, self.shape(inputs)[3] * self.scale_factor
-        resize = P.ResizeBilinear((w, h), self.align_corners)
+        if self.size is not None:
+            resize = P.ResizeBilinear(self.size, self.align_corners)
+        else:
+            w, h = self.shape(inputs)[2] * self.scale_factor, self.shape(inputs)[3] * self.scale_factor
+            resize = P.ResizeBilinear((w, h), self.align_corners)
+
         return resize(inputs)
 
 
 @ClassFactory.register(ClassType.NETWORK)
-class MeanShift(nn.Cell, OperatorSerializable):
+class MeanShift(OperatorSerializable, nn.Cell):
     """Subtract or add rgb_mean to the image."""
 
     def __init__(self, rgb_range, rgb_mean, rgb_std=(1.0, 1.0, 1.0), sign=-1):
@@ -734,11 +771,6 @@ def concat(inputs, dim=1):
 def mul(a, b):
     """Call mul according to backends."""
     return P.Mul()(a, b)
-
-
-def matmul(a, b):
-    """Call matmul according to backends."""
-    pass
 
 
 def random_normal(*size):
@@ -935,7 +967,7 @@ def reduce_sum(input, dim=0, dtype=None):
 
 def gelu(x):
     """Apply gelu function."""
-    pass
+    return nn.GELU()(x)
 
 
 def swish(x):
@@ -953,8 +985,66 @@ def sqrt(x):
     pass
 
 
+def matmul(x1, x2):
+    """Apply matmul function."""
+    return ops.matmul(x1, x2)
+
+
 @ClassFactory.register(ClassType.NETWORK)
-class LayerNorm(Module, OperatorSerializable):
+class LayerNorm(OperatorSerializable, nn.Cell):
     """Layer Norm module."""
 
+    def __init__(self, in_channels=None, eps=1e-12, return_2d=False):
+        super(LayerNorm, self).__init__()
+        self.return_2d = return_2d
+        self.layer_norm = nn.LayerNorm((in_channels,))
+        self.cast = P.Cast()
+        self.get_dtype = P.DType()
+        self.reshape = P.Reshape()
+        self.get_shape = P.Shape()
+
+    def construct(self, input_tensor):
+        """Layer norm."""
+        shape = self.get_shape(input_tensor)
+        batch_size = shape[0]
+        max_len = shape[1]
+        embed_dim = shape[2]
+
+        output = self.reshape(input_tensor, (-1, embed_dim))
+        # output = self.cast(output, mstype.float32)
+        output = self.layer_norm(output)
+        output = self.cast(output, self.get_dtype(input_tensor))
+        if not self.return_2d:
+            output = self.reshape(output, (batch_size, max_len, embed_dim))
+        return output
+
+
+@ClassFactory.register(ClassType.NETWORK)
+class Flatten(OperatorSerializable, nn.Cell):
+    """Flatten module."""
+
+    def __init__(self, start_dim=0):
+        super(Flatten, self).__init__()
+        self.shape = P.Shape()
+        self.reshape = P.Reshape()
+        self.start_dim = start_dim
+
+    def construct(self, x):
+        """Apply Flatten."""
+        old_shape = self.shape(x)
+        flatten_dim = old_shape[self.start_dim:]
+        flatten_size = 1
+        for i in range(len(flatten_dim)):
+            flatten_size = flatten_size * flatten_dim[i]
+        new_shape = old_shape[0:self.start_dim] + (flatten_size,)
+        return self.reshape(x, new_shape)
+
+
+def expand(x, expand_shape):
+    """Expand a tensor."""
+    return P.Tile()(x, expand_shape)
+
+
+def MSELoss():
+    """MSE Loss."""
     pass

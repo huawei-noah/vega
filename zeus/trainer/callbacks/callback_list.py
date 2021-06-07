@@ -77,7 +77,7 @@ class CallbackList(object):
                         "RuntimeCallback", "ProgressLogger", "ReportCallback", ]
         elif zeus.is_ms_backend():
             defaults = ["ModelStatistics", "MetricsEvaluator", "ModelCheckpoint", "ModelBuilder", "PerformanceSaver",
-                        "ProgressLogger", "ReportCallback", ]
+                        "ProgressLogger", "ReportCallback"]
 
         custom_disables = []
         disables = disables if disables else []
@@ -111,7 +111,7 @@ class CallbackList(object):
         params = {
             'epochs': trainer.epochs,
             'is_chief': trainer.is_chief,
-            'use_cuda': trainer.use_cuda,
+            'use_cuda': zeus.is_gpu_device(),
             'do_validation': trainer.do_validation,
             'is_detection_trainer': trainer.config.is_detection_trainer
         }

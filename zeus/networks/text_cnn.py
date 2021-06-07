@@ -22,7 +22,7 @@ class TextCells(Module):
 
     def __init__(self, in_channels=1, embed_dim=8, out_channels=16):
         super(TextCells, self).__init__()
-        self.kernels = self.define_props('kernels', [3, 4, 5])
+        self.kernels = self.define_arch_params('kernels', [3, 4, 5])
         self.cells = Concat()
         for idx, kernel_size in enumerate(self.kernels):
             kernel_size = (kernel_size, embed_dim)

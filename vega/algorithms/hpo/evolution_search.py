@@ -9,6 +9,7 @@
 # MIT License for more details.
 
 """EvolutionAlgorithm."""
+from collections import OrderedDict
 import random
 import logging
 import numpy as np
@@ -27,10 +28,11 @@ class EvolutionAlgorithm(SearchAlgorithm):
     def __init__(self, search_space=None, **kwargs):
         """Init for EvolutionAlgorithm."""
         super(EvolutionAlgorithm, self).__init__(search_space, **kwargs)
+        self._code_cache = OrderedDict()
         self.sample_count = 0
         self.num_individual = self.config.policy.num_individual
         self.num_generation = self.config.policy.num_generation
-        self.random_models = self.config.policy.random_models
+        self.random_samples = self.config.policy.random_samples
 
     def search(self):
         """Search one NetworkDesc from search space.
@@ -38,9 +40,12 @@ class EvolutionAlgorithm(SearchAlgorithm):
         :return: search id, network desc
         :rtype: int, NetworkDesc
         """
-        if self.sample_count < self.random_models:
+        if self.sample_count < self.random_samples:
             self.sample_count += 1
-            return dict(worker_id=self.sample_count, encoded_desc=self.search_space.sample())
+            desc = self.search_space.sample()
+            sample = dict(worker_id=self.sample_count, encoded_desc=desc)
+            self._code_cache[self.sample_count] = desc
+            return sample
         records = ReportServer().get_pareto_front_records(self.step_name, self.num_individual)
         if not records:
             return None
@@ -49,7 +54,9 @@ class EvolutionAlgorithm(SearchAlgorithm):
         # Merge codes
         for record in records:
             each_code = []
-            for key, item in record.desc.get('props').items():
+            for key, item in self._code_cache.get(record.worker_id).items():
+                if isinstance(item, int):
+                    item = [item]
                 each_codes_cache[key] = len(item)
                 each_code.extend(item)
             codes.append(each_code)
@@ -69,15 +76,17 @@ class EvolutionAlgorithm(SearchAlgorithm):
         # split codes
         desc = {}
         for _name, _size in each_codes_cache.items():
-            desc["network.props.{}".format(_name)] = encoding_new[:_size]
+            desc[_name] = encoding_new[:_size]
             encoding_new = encoding_new[_size:]
         self.sample_count += 1
-        return dict(worker_id=self.sample_count, encoded_desc=desc)
+        sample = dict(worker_id=self.sample_count, encoded_desc=desc)
+        self._code_cache[self.sample_count] = desc
+        return sample
 
     @property
     def is_completed(self):
         """Whether to complete algorithm."""
-        return self.sample_count >= self.random_models + self.num_generation * self.num_individual
+        return self.sample_count >= self.random_samples + self.num_generation * self.num_individual
 
     @property
     def max_samples(self):

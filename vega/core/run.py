@@ -49,11 +49,10 @@ def _init_env(cfg_path):
     init_log(level=General.logger.level,
              log_file="pipeline.log",
              log_path=TaskOps().local_log_path)
-    cluster_args = env_args()
-    if not cluster_args:
-        cluster_args = init_cluster_args()
+    General.env = env_args()
+    if not General.env:
+        General.env = init_cluster_args()
     setattr(PipelineConfig, "steps", UserConfig().data.pipeline)
-    General.env = cluster_args
     set_backend(General.backend, General.device_category)
 
 
@@ -103,4 +102,5 @@ def init_cluster_args():
             "rank": 0,
             "slaves": General.cluster.slaves,
         })
+    General.env = env
     return env

@@ -9,7 +9,6 @@
 # MIT License for more details.
 
 """Dictionary based configuration."""
-
 # modified from https://github.com/HarryVolek/PyTorch_Speaker_Verification
 import yaml
 import copy
@@ -91,16 +90,20 @@ class Config(dict):
         Config.set_value(val, '.'.join(keywords[1:]), value)
 
     @staticmethod
-    def apply(config, dct):
+    def apply(config, spec):
         """Apply items to a configuration."""
-        if isinstance(dct, dict):
-            dct = Config(dct=dct)
-        elif isinstance(dct, list):
-            dct = {k: yaml.load(v, Loader=yaml.SafeLoader) for (k, v) in [item.split('=') for item in dct]}
+        if isinstance(spec, dict):
+            spec = Config(dct=spec)
+            for k, v in spec.items():
+                Config.set_value(config, k, v)
+        elif isinstance(spec, list):
+            for item in spec:
+                Config.apply(config, item)
+        elif isinstance(spec, str):
+            k, v = spec.split('=')
+            Config.set_value(config, k, yaml.load(v, Loader=yaml.SafeLoader))
         else:
-            raise ValueError('unsupported apply type: {}'.format(type(dct)))
-        for k, v in dct.items():
-            Config.set_value(config, k, v)
+            raise ValueError('unsupported apply type: {}'.format(type(spec)))
 
     @staticmethod
     def load(conf):

@@ -9,7 +9,6 @@
 # MIT License for more details.
 
 """Basic Optimizer classes."""
-
 import random
 from modnas import backend
 from modnas.core.param_space import ParamSpace

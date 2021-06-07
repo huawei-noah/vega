@@ -24,6 +24,7 @@ class ParamTypes(Enum):
     BOOL = 6
     BINARY_CODE = 7
     ADJACENCY_LIST = 8
+    HALF = 9
 
 
 PARAM_TYPE_MAP = {
@@ -34,5 +35,6 @@ PARAM_TYPE_MAP = {
     'CATEGORY': ParamTypes.CATEGORY,
     'BOOL': ParamTypes.BOOL,
     'BINARY_CODE': ParamTypes.BINARY_CODE,
-    'ADJACENCY_LIST': ParamTypes.ADJACENCY_LIST
+    'ADJACENCY_LIST': ParamTypes.ADJACENCY_LIST,
+    'HALF': ParamTypes.HALF
 }

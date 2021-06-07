@@ -9,7 +9,6 @@
 # MIT License for more details.
 
 """Local network hardware performance profiler metrics."""
-
 import time
 import torch
 from modnas.registry.metrics import register

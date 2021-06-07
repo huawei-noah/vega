@@ -7,7 +7,7 @@ serial:
     search_algorithm:
         type: SpNasS
         max_sample: 20
-        objective_keys: mAP
+        objective_keys: AP50
 
     search_space:
         type: SearchSpace
@@ -19,13 +19,11 @@ serial:
     model:
         model_desc:
             type: FasterRCNN
-            weight_file: /cache/models/torch_rpn.pth
             backbone:
                 type: SerialBackbone
-                weight_file:  /cache/models/fasterrcnn_serialnet_backbone.pth
+                weight_file: /cache/models/fasterrcnn_serialnet_backbone.pth
             neck:
-                type: TorchFPN
-                weight_file:  /cache/models/torch_fpn.pth
+                type: ParallelFPN
             num_classes: 91
 
     trainer:
@@ -33,12 +31,12 @@ serial:
         epochs: 6
         get_train_metric_after_epoch: False
         model_statistics: False
-        load_checkpoint: False
         is_detection_trainer: True
+        perfs_cmp_key: AP50
         optimizer:
             type: SGD
             params:
-                lr: 0.002
+                lr: 0.03
                 momentum: 0.9
                 weight_decay: !!float 1e-4
         lr_scheduler:
@@ -46,13 +44,13 @@ serial:
             by_epoch: False
             params:
                 warmup_type: linear
-                warmup_iters: 5000
+                warmup_iters: 2000
                 warmup_ratio: 0.001
                 after_scheduler_config:
                     type: MultiStepLR
                     by_epoch: True
                     params:
-                        milestones: [3]
+                        milestones:  [10, 20]
                         gamma: 0.1
         loss:
             type: SumLoss
@@ -64,17 +62,16 @@ serial:
     dataset:
         type: CocoDataset
         common:
-            batch_size: 1
             data_root: /cache/datasets/COCO2017
+            batch_size: 4
             img_prefix: "2017"
             ann_prefix: instances
-            transforms:
-                -   type: PolysToMaskTransform
-                -   type: PILToTensor
 
 parallel:
     pipe_step:
         type: SearchPipeStep
+        models_folder: "{local_base_path}/output/serial/"
+        pretrained_folder: "{local_base_path}/output/serial/"
 
     search_algorithm:
         type: SpNasP
@@ -87,10 +84,9 @@ parallel:
                 range: [[0, 1, 2, 3]]
 
     model:
+        head: ["backbone.fpn", "roi_heads"]
         model_desc:
             type: FasterRCNN
-            backbone:
-                type: SerialBackbone
             neck:
                 type: ParallelFPN
             num_classes: 91
@@ -109,7 +105,7 @@ fullytrain:
 
     trainer:
         ref: serial.trainer
-        epochs: 20
+        epochs: 24
 
     dataset:
         ref: serial.dataset

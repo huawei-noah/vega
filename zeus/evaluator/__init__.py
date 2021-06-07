@@ -10,9 +10,11 @@
 
 """Import and register evaluator automatically."""
 
+from zeus.common.class_factory import ClassFactory
 
-def register_evaluator():
-    """Import and register evaluator automatically."""
-    from .evaluator import Evaluator
-    from .host_evaluator import HostEvaluator
-    from .device_evaluator import DeviceEvaluator
+
+ClassFactory.lazy_register("zeus.evaluator", {
+    "device_evaluator": ["DeviceEvaluator"],
+    "host_evaluator": ["HostEvaluator"],
+    "evaluator": ["Evaluator"],
+})

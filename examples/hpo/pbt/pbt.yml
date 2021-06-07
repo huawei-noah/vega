@@ -1,0 +1,76 @@
+general:
+    backend: pytorch
+
+
+pipeline: [pbt, fully_train]
+
+
+pbt:
+    pipe_step:
+        type: SearchPipeStep
+
+    dataset:
+        type: Cifar10
+        common:
+            data_path: /cache/datasets/cifar10/
+            batch_size: 256
+            train_portion: 0.008
+
+    search_space:
+        type: SearchSpace
+        hyperparameters:
+            - key: trainer.optimizer.params.lr
+              type: FLOAT_EXP
+              range: [0.00001, 0.1]
+            - key: trainer.optimizer.params.momentum
+              type: FLOAT
+              range: [0.0, 0.99]
+            - key: trainer.optimizer.params.weight_decay
+              type: FLOAT_EXP
+              range: [0.0001, 0.01]
+
+    search_algorithm:
+        type: PBTHpo
+        policy:
+            each_epochs: 3
+            config_count: 16
+            total_rungs: 200
+
+
+    model:
+        model_desc:
+            modules: ["backbone"]
+            backbone:
+                type: ResNet
+                depth: 18
+                num_class: 10
+    trainer:
+        type: Trainer
+        epochs: 1
+        optimizer:
+            type: SGD
+            params:
+                lr: 0.01
+
+
+fully_train:
+    pipe_step:
+        type: TrainPipeStep
+    dataset:
+        ref: pbt.dataset
+        common:
+            train_portion: 1
+    model:
+        ref: pbt.model
+    trainer:
+        ref: pbt.trainer
+        callbacks: PbtTrainerCallback
+        epochs: 2000
+        hps_folder: "{local_base_path}/output/pbt/"
+
+    evaluator:
+        type: Evaluator
+        host_evaluator:
+            type: HostEvaluator
+            metric:
+                type: accuracy

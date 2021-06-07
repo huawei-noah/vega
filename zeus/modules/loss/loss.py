@@ -42,8 +42,11 @@ class Loss(object):
                 cls_obj = self._cls(**params) if isclass(self._cls) else partial(self._cls, **params)
             else:
                 cls_obj = self._cls() if isclass(self._cls) else partial(self._cls)
-            if zeus.is_torch_backend() and TrainerConfig().cuda:
-                cls_obj = cls_obj.cuda()
+            if zeus.is_torch_backend():
+                if zeus.is_gpu_device():
+                    cls_obj = cls_obj.cuda()
+                elif zeus.is_npu_device():
+                    cls_obj = cls_obj.npu()
             return cls_obj
         except Exception as ex:
             logging.error("Failed to call Loss name={}, params={}".format(self._cls.__name__, params))

@@ -22,10 +22,13 @@ def use(backend, *args, imported=False, **kwargs):
     global _backend, _backend_keys
     if backend == _backend or backend in ['none', None]:
         return
-    if imported:
-        bk_mod = importlib.import_module(backend)
-    else:
-        bk_mod = build(backend, *args, **kwargs)
+    try:
+        if imported:
+            bk_mod = importlib.import_module(backend)
+        else:
+            bk_mod = build(backend, *args, **kwargs)
+    except ImportError:
+        return
     bk_vars = vars(bk_mod)
     bk_keys = bk_vars.keys()
     ns = globals()

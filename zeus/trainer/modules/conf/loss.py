@@ -9,6 +9,7 @@
 # MIT License for more details.
 """Default loss configs."""
 from zeus.common import ConfigSerializable
+import zeus
 
 
 class LossConfig(ConfigSerializable):
@@ -18,14 +19,16 @@ class LossConfig(ConfigSerializable):
     _exclude_keys = ['type']
     _update_all_attrs = True
     type = 'CrossEntropyLoss'
-    params = {'sparse': True}
 
     @classmethod
     def from_dict(cls, data, skip_check=True):
         """Restore config from a dictionary or a file."""
         cls = super(LossConfig, cls).from_dict(data, skip_check)
-        if "params" not in data:
-            cls.params = {}
+        if zeus.is_ms_backend():
+            if "params" not in data:
+                cls.params = {'sparse': True}
+            elif "sparse" not in data.params:
+                cls.params.update({'sparse': True})
         return cls
 
     @classmethod
@@ -44,12 +47,13 @@ class LossMappingDict(object):
                               ms='SoftmaxCrossEntropyWithLogits'),
         MixAuxiliaryLoss=dict(torch='MixAuxiliaryLoss', tf='MixAuxiliaryLoss', ms='MixAuxiliaryLoss'),
         L1Loss=dict(torch='L1Loss', tf='absolute_difference', ms="L1Loss"),
+        MSELoss=dict(torch='MSELoss', tf='mean_squared_error', ms=None),
     )
 
     params_mapping_dict = dict(
         CrossEntropyLoss=dict(
             ignore_index=dict(torch='ignore_index', tf='ignore_index', ms=None),
-            is_grad=dict(torch=None, tf=None, ms='is_grad'),
+            # is_grad=dict(torch=None, tf=None, ms='is_grad'),
             sparse=dict(torch=None, tf=None, ms='sparse'),
         ),
         MixAuxiliaryLoss=dict(

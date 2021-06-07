@@ -9,7 +9,6 @@
 # MIT License for more details.
 
 """Torch data providers."""
-
 from modnas.utils import merge_config
 from modnas.registry.data_provider import build
 from modnas.registry.dataloader import build as build_dataloader

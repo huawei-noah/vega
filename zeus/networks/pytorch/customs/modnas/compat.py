@@ -10,7 +10,10 @@
 
 """ModularNAS arch space wrapper."""
 
-import torch
+try:
+    from torch.nn import Module
+except ModuleNotFoundError:
+    Module = object
 from zeus.common import ClassFactory, ClassType
 from modnas.backend import use as use_backend
 from modnas.utils.config import Config
@@ -19,7 +22,7 @@ import modnas.utils.predefined
 
 
 @ClassFactory.register(ClassType.NETWORK)
-class ModNasArchSpace(torch.nn.Module):
+class ModNasArchSpace(Module):
     """ModularNAS Architecture Space."""
 
     def __init__(self,

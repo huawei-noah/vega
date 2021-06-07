@@ -85,7 +85,7 @@ hpo:
         type: PBAHpo
         policy:
             each_epochs: 3      # Number of epochs to be trained for each trainer round
-            config_count: 16    # Number of model groups for parallel training of the search algorithm
+            config_count: 16    # Number of model groups (multiple of 4) for parallel training of the search algorithm
             total_rungs: 200    # Number of iterations of the search algorithm 
     trainer:
         type: Trainer

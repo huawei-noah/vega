@@ -18,6 +18,7 @@ import numpy as np
 import torch
 import json
 from tensorboardX import SummaryWriter
+import zeus
 from zeus.datasets import Adapter
 from zeus.datasets.common.utils.dataset import Dataset
 from zeus.common import init_log, FileOps
@@ -159,7 +160,7 @@ class CyclesrTrainerCallback(Callback):
             batch_time.update(time.time() - end)
             # print result
             if (batch_idx + 1) % print_freq == 0:
-                if not self.cfg.cuda or (self.cfg.cuda and self.trainer.is_chief):
+                if not zeus.is_gpu_device() or (zeus.is_gpu_device() and self.trainer.is_chief):
                     logging.info('[epoch {0},iter {1}/{2}]\t'
                                  'Time {batch_time.val:.3f}({batch_time.avg:.3f})\t'
                                  'Data {data_time.val:.3f}({data_time.avg:.3f})\t'
@@ -281,8 +282,8 @@ class CyclesrTrainerCallback(Callback):
                  log_file="worker_{}.log".format(self.trainer.worker_id),
                  log_path=self.trainer.local_log_path)
         self._init_report()
-        if self.cfg.cuda:
-            self.trainer._init_cuda_setting()
+        if not zeus.is_cpu_device():
+            self.trainer._init_setting()
         self.model = self._init_model()
         if self.cfg.distributed:
             self._horovod_init_optimizer()
@@ -325,7 +326,7 @@ class CyclesrTrainerCallback(Callback):
                     logging.info(
                         "==> Best PSNR on val dataset {:.3f}, achieved at epoch {}".format(best_psnr, best_epoch))
                     self._save_checkpoint(epoch, best=True)
-                    self._broadcast(epoch, {"psnr": val_ave_psnr})
+                    self._update_report(epoch, {"psnr": val_ave_psnr})
                 model_name = 'epoch' + str(epoch)
                 logging.info("Saving checkpoints to {}".format(model_name))
                 self._save_checkpoint(epoch)
@@ -350,12 +351,16 @@ class CyclesrTrainerCallback(Callback):
                 best_file = FileOps.join_path(
                     self.worker_path,
                     "model_{}.pth".format(name))
-                if self.cfg.cuda and torch.cuda.is_available():
+                if zeus.is_gpu_device() and torch.cuda.is_available():
                     # torch.save(net.module.cpu().state_dict(), save_path)
                     torch.save(net.module.state_dict(), save_path)
                     # net.cuda()
                     if best:
                         torch.save(net.module.state_dict(), best_file)
+                elif zeus.is_npu_device():
+                    torch.save(net.state_dict(), save_path)
+                    if best:
+                        torch.save(net.state_dict(), best_file)
                 else:
                     torch.save(net.cpu().state_dict(), save_path)
                     if best:
@@ -409,17 +414,16 @@ class CyclesrTrainerCallback(Callback):
         )
 
     def _init_report(self):
-        info = dict(
+        record = ReportClient().update(
             worker_id=self.trainer.worker_id,
             desc=self.cfg.model_desc,
             step_name=self.trainer.step_name,
             weights_file=self.best_model_file)
-        record = ReportRecord().load_dict(info)
-        logging.debug("Broadcast Record=%s", str(record))
-        ReportClient.broadcast(record)
+        logging.debug("update record=%s", str(record))
 
-    def _broadcast(self, epoch, performance):
-        record = ReportClient.get_record(self.trainer.step_name, self.trainer.worker_id)
-        record.performance = performance
-        ReportClient.broadcast(record)
+    def _update_report(self, epoch, performance):
+        record = ReportClient().update(
+            self.trainer.step_name,
+            self.trainer.worker_id,
+            performance=performance)
         logging.debug("report_callback record: {}".format(record))

@@ -1,3 +1,13 @@
+# -*- coding:utf-8 -*-
+
+# Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the MIT License.
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# MIT License for more details.
+
 import sys
 import time
 import inspect
@@ -24,6 +34,20 @@ def import_file(path, name=None):
         sys.modules[name] = module
     spec.loader.exec_module(module)
     return module
+
+
+def exec_file(path):
+    """Execute file and return globals."""
+    with open(path, 'rb') as fp:
+        code = compile(fp.read(), path, 'exec')
+    globs = {
+        '__file__': path,
+        '__name__': '__main__',
+        '__package__': None,
+        '__cached__': None,
+    }
+    exec(code, globs, None)
+    return globs
 
 
 def import_modules(modules):
@@ -53,20 +77,20 @@ def get_exp_name(config):
     return '{}.{}'.format(time.strftime('%Y%m%d', time.localtime()), hashlib.sha1(str(config).encode()).hexdigest()[:4])
 
 
-def merge_config(src, dest, overwrite=True):
+def merge_config(src, dest, extend_list=True, overwrite=True):
     """Return merged config."""
     if isinstance(src, dict) and isinstance(dest, dict):
         for k, v in dest.items():
             if k not in src:
                 src[k] = v
-                logger.warning('merge_config: add key {}'.format(k))
+                logger.debug('merge_config: add key %s' % k)
             else:
-                src[k] = merge_config(src[k], v, overwrite)
-    elif isinstance(src, list) and isinstance(dest, list):
-        logger.warning('merge_config: extend list: {} + {}'.format(src, dest))
+                src[k] = merge_config(src[k], v, extend_list, overwrite)
+    elif isinstance(src, list) and isinstance(dest, list) and extend_list:
+        logger.debug('merge_config: extend list: %s + %s' % (src, dest))
         src.extend(dest)
     elif overwrite:
-        logger.warning('merge_config: overwrite: {} -> {}'.format(src, dest))
+        logger.debug('merge_config: overwrite: %s -> %s' % (src, dest))
         src = dest
     return src
 
@@ -82,7 +106,7 @@ def env_info():
     return 'env info: {}'.format(', '.join(['{k}={{{k}}}'.format(k=k) for k in info])).format(**info)
 
 
-def check_config(config):
+def check_config(config, defaults=None):
     """Check config and set default values."""
     def check_field(config, field, default):
         cur_key = ''
@@ -114,19 +138,18 @@ def check_config(config):
                 cur_dict[cur_key] = default
         return False
 
-    defaults = {
+    default_config = {
         'backend': 'torch',
         'device_ids': 'all',
-        'estim.*.save_arch_desc': True,
-        'estim.*.save_freq': 0,
         'estim.*.arch_update_epoch_start': 0,
         'estim.*.arch_update_epoch_intv': 1,
         'estim.*.arch_update_intv': -1,
         'estim.*.arch_update_batch': 1,
         'estim.*.metrics': 'ValidateMetrics',
     }
+    default_config.update(defaults or {})
 
-    for key, val in defaults.items():
+    for key, val in default_config.items():
         check_field(config, key, val)
 
 

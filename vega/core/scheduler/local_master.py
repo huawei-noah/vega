@@ -10,20 +10,18 @@
 
 """The LocalMaster's method is same as Master, and the class is used on single node."""
 import os
-import time
-
 from zeus.trainer.utils import WorkerTypes
 from zeus.common.general import General
+from zeus.report import ReportClient
+from .master_base import MasterBase
 
 
-class LocalMaster(object):
+class LocalMaster(MasterBase):
     """The Master's method is same as Master."""
 
     def __init__(self, update_func=None):
         """Init master."""
         self.cfg = General
-        self.step_name = None
-        self.worker_id = None
         self.update_func = update_func
         if os.environ['DEVICE_CATEGORY'] == 'NPU':
             os.environ['RANK_SIZE'] = '1'
@@ -38,36 +36,29 @@ class LocalMaster(object):
         """
         if worker is None:
             return
-        self.step_name = worker.step_name
-        self.worker_id = worker.worker_id
-        if worker.worker_type == WorkerTypes.EVALUATOR:
-            for sub_worker in worker.sub_worker_list:
-                sub_worker.train_process()
-        else:
-            worker.train_process()
-        if evaluator:
+
+        step_name = worker.step_name
+        worker_id = worker.worker_id
+
+        workers = [worker]
+        if evaluator and evaluator.worker_type == WorkerTypes.EVALUATOR:
             for sub_worker in evaluator.sub_worker_list:
-                sub_worker.train_process()
-        self._update(self.step_name, self.worker_id)
+                if sub_worker.worker_type == WorkerTypes.DeviceEvaluator:
+                    workers.insert(0, sub_worker)
+                else:
+                    workers.append(sub_worker)
+
+        for worker in workers:
+            worker.train_process()
+
+        self._update(step_name, worker_id)
 
     def _update(self, step_name, worker_id):
         # Waiting report thread update all record
-        time.sleep(0.5)
+        ReportClient().set_finished(step_name, worker_id)
         if not self.update_func:
             return
         if self.update_func.__code__.co_varnames.index("step_name") == 1:
             self.update_func(step_name, worker_id)
         else:
             self.update_func({"step_name": step_name, "worker_id": worker_id})
-
-    def join(self):
-        """Return immediately."""
-        return
-
-    def close_client(self):
-        """Close cluster client, implement the interface without actually closing."""
-        pass
-
-    def shutdown(self):
-        """Shut down the cluster, implement the interface without actually shutting down."""
-        pass

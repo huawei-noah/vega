@@ -15,6 +15,7 @@ from pycocotools.coco import COCO
 from pycocotools.cocoeval import COCOeval
 from zeus.common import ClassFactory, ClassType
 from zeus.metrics.pytorch.metrics import MetricBase
+from zeus.common.task_ops import TaskOps
 
 
 @ClassFactory.register(ClassType.METRIC, alias='coco')
@@ -24,9 +25,14 @@ class CocoMetric(MetricBase):
     __metric_name__ = "coco"
 
     def __init__(self, anno_path=None, category=None):
-        self.anno_path = anno_path
+        self.anno_path = anno_path or os.path.join(TaskOps().local_output_path, 'instances.json')
         self.category = category or []
         self.result_record = []
+
+    @property
+    def objective(self):
+        """Define reward mode, default is max."""
+        return {'mAP': 'MAX', 'AP50': 'MAX', 'AP_small': 'MAX', 'AP_medium': 'MAX', 'AP_large': 'MAX'}
 
     def __call__(self, output, targets, *args, **kwargs):
         """Append input into result record cache.
@@ -61,7 +67,7 @@ class CocoMetric(MetricBase):
         """Summary all record from result cache, and get performance."""
         if not self.result_record:
             return {"mAP": -1, "AP_small": -1, "AP_medium": -1, "AP_large": -1}
-        det_json_file = os.path.join(os.path.dirname(self.anno_path), 'det_json_file.json')
+        det_json_file = os.path.join(TaskOps().local_output_path, 'det_json_file.json')
         with open(det_json_file, 'w') as f:
             json.dump(self.result_record, f)
         eval_result = self.print_scores(det_json_file, self.anno_path)

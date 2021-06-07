@@ -34,3 +34,23 @@ class MultiLoss(Module):
             else:
                 outputs = outputs + model(output, target)
         return outputs
+
+
+@ClassFactory.register(ClassType.LOSS)
+class SingleLoss(Module):
+    """Select loss function from dict."""
+
+    def __init__(self, key='loss'):
+        super(SingleLoss, self).__init__()
+        self.key = key
+
+    def call(self, losses, targets=None):
+        """Compute loss.
+
+        :param inputs: predict data.
+        :param targets: true data.
+        :return:
+        """
+        if not isinstance(losses, dict):
+            return losses
+        return losses[self.key]

@@ -17,10 +17,9 @@ import vega
 from .pipe_step import PipeStep
 from zeus.common.general import General
 from zeus.common.class_factory import ClassFactory, ClassType
-from zeus.common.file_ops import FileOps
-from zeus.common.task_ops import TaskOps
+from zeus.common import FileOps, TaskOps, Status
 from zeus.report import ReportServer, ReportRecord, ReportClient
-from vega.core.scheduler.create_master import create_master
+from vega.core.scheduler import create_master
 from vega.core.pipeline.conf import PipeStepConfig, PipelineConfig
 from zeus.trainer.conf import TrainerConfig
 
@@ -35,30 +34,33 @@ class TrainPipeStep(PipeStep):
     for user to choose.
     """
 
-    def __init__(self):
-        super().__init__()
-        # cls_trainer = ClassFactory.get_cls('trainer')
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         self._distributed_training = not General._parallel and TrainerConfig.distributed
         logger.info("init TrainPipeStep...")
 
     def do(self):
         """Start to run fully train with horovod or local trainer."""
+        super().do()
         logger.info("TrainPipeStep started...")
         records = self._get_current_step_records()
         logger.debug("load pipestep records: {}".format(records))
+        self.num_models = len(records)
+        self.num_epochs = self.num_models * TrainerConfig.epochs
+        self.update_status(Status.running)
         self.master = create_master()
         self._train_multi_models(records)
         self.master.join()
         ReportServer().output_step_all_records(step_name=self.task.step_name)
-        self.master.close_client()
+        self.master.close()
         ReportServer().backup_output_path()
+        self.update_status(Status.finished)
 
     def _get_current_step_records(self):
         step_name = self.task.step_name
         models_folder = PipeStepConfig.pipe_step.get("models_folder")
         cur_index = PipelineConfig.steps.index(step_name)
         if cur_index >= 1 or models_folder:
-            # records = ReportServer().get_pareto_front_records(PipelineConfig.steps[cur_index - 1])
             if not models_folder:
                 models_folder = FileOps.join_path(
                     TaskOps().local_output_path, PipelineConfig.steps[cur_index - 1])
@@ -73,18 +75,17 @@ class TrainPipeStep(PipeStep):
         return records
 
     def _train_single_model(self, model_desc=None, model_id=None, weights_file=None):
-        cls_trainer = ClassFactory.get_cls('trainer')
+        cls_trainer = ClassFactory.get_cls(ClassType.TRAINER, PipeStepConfig.trainer.type)
         step_name = self.task.step_name
         if model_desc is not None:
             sample = dict(worker_id=model_id, desc=model_desc, step_name=step_name)
             record = ReportRecord().load_dict(sample)
-            logging.debug("Broadcast Record=%s", str(record))
+            logging.debug("update record=%s", str(record))
             trainer = cls_trainer(model_desc=model_desc, id=model_id, pretrained_model_file=weights_file)
         else:
             trainer = cls_trainer(None, 0)
             record = ReportRecord(trainer.step_name, trainer.worker_id, desc=trainer.model_desc)
-        ReportClient.broadcast(record)
-        ReportServer.add_watched_var(trainer.step_name, trainer.worker_id)
+        ReportClient().update(**record.to_dict())
         # resume training
         if vega.is_torch_backend() and General._resume:
             trainer.load_checkpoint = True
@@ -159,6 +160,8 @@ class TrainPipeStep(PipeStep):
         model_desc = trainer.model_desc
         del trainer
 
+        os.environ['RANK_SIZE'] = os.environ['ORIGIN_RANK_SIZE']
+        os.environ['RANK_TABLE_FILE'] = os.environ['ORIGIN_RANK_TABLE_FILE']
         origin_parallel_fully_train = General.parallel_fully_train
         origin_parallel = General._parallel
         General.parallel_fully_train = True
@@ -175,7 +178,7 @@ class TrainPipeStep(PipeStep):
             self.master.run(trainer, evaluator)
 
         self.master.join()
-        self.master.shutdown()
+        self.master.close()
         General.parallel_fully_train = origin_parallel_fully_train
         General.dft = False
         General._parallel = origin_parallel

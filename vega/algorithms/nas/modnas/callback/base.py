@@ -9,7 +9,6 @@
 # MIT License for more details.
 
 """Base callback."""
-
 from modnas.core.event import event_on, event_off
 from modnas.utils.logging import get_logger
 

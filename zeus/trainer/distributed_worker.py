@@ -35,7 +35,7 @@ class DistributedWorker(TaskOps):
         """Init DistributedWorker."""
         super(DistributedWorker, self).__init__()
         # privates
-        DistributedWorker.__worker_id__ = DistributedWorker.__worker_id__ + 1
+        DistributedWorker.__worker_id__ += 1
         self._worker_id = DistributedWorker.__worker_id__
         # publics
         self.rank = 0

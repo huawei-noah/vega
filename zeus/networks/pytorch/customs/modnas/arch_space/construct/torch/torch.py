@@ -9,15 +9,13 @@
 # MIT License for more details.
 
 """Torch constructors."""
-
 import torch
-import numpy as np
 from modnas.registry.construct import register
 from modnas.arch_space.slot import Slot
 from modnas.arch_space import ops
 from modnas.core.param_space import ParamSpace
-from modnas.core.event import EventManager
 from modnas.utils.logging import get_logger
+from modnas import backend
 
 
 logger = get_logger('construct')
@@ -34,15 +32,6 @@ def parse_device(device):
         return list(range(torch.cuda.device_count()))
     else:
         return [int(s) for s in device.split(',')]
-
-
-def init_device(device=None, seed=11235):
-    """Initialize device and set seed."""
-    np.random.seed(seed)
-    torch.manual_seed(seed)
-    if device != 'cpu':
-        torch.cuda.manual_seed_all(seed)
-        torch.backends.cudnn.benchmark = True
 
 
 def configure_ops(new_config):
@@ -73,7 +62,7 @@ class TorchInitConstructor():
         ParamSpace().reset()
         seed = self.seed
         if seed:
-            init_device(self.device, seed)
+            backend.init_device(self.device, seed)
         configure_ops(self.ops_conf or {})
         return model
 

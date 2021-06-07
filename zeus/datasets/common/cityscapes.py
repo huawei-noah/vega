@@ -27,7 +27,7 @@ class Cityscapes(Dataset):
     Two types of data are supported:
         1) Image with extensions in 'jpg', 'JPG', 'jpeg', 'JPEG', 'png', 'PNG', 'ppm', 'PPM', 'bmp', 'BMP'
         2) pkl with extensions in 'pkl', 'pt', 'pth'. Image pkl should be in format of HWC, with bgr as the channels
-    To use this dataset, provide either: 1) data_dir and label_dir; or 2) root_dir and list_file
+    To use this dataset, provide either: 1) data_dir and label_dir; or 2) data_path and list_file
     :param train: if the mdoe is train or false, defaults to True
     :type train: bool, optional
     :param cfg: the config the dataset need, defaults to None, and if the cfg is None,
@@ -70,7 +70,7 @@ class Cityscapes(Dataset):
         """Construct method.
 
         If both data_dir and label_dir are provided, then use data_dir and label_dir
-        Otherwise use root_dir and list_file.
+        Otherwise use data_path and list_file.
         """
         if "data_dir" in self.args and "label_dir" in self.args:
             self.args.data_dir = FileOps.download_dataset(self.args.data_dir)
@@ -78,17 +78,17 @@ class Cityscapes(Dataset):
             self.data_files = sorted(glob.glob(osp.join(self.args.data_dir, "*")))
             self.label_files = sorted(glob.glob(osp.join(self.args.label_dir, "*")))
         else:
-            if "root_dir" not in self.args or "list_file" not in self.args:
-                raise Exception("You must provide a root_dir and a list_file!")
-            self.args.root_dir = FileOps.download_dataset(self.args.root_dir)
-            with open(osp.join(self.args.root_dir, self.args.list_file)) as f:
+            if "data_path" not in self.args or "list_file" not in self.args:
+                raise Exception("You must provide a data_path and a list_file!")
+            self.args.data_path = FileOps.download_dataset(self.args.data_path)
+            with open(osp.join(self.args.data_path, self.args.list_file)) as f:
                 lines = f.readlines()
             self.data_files = [None] * len(lines)
             self.label_files = [None] * len(lines)
             for i, line in enumerate(lines):
                 data_file_name, label_file_name = line.strip().split()
-                self.data_files[i] = osp.join(self.args.root_dir, data_file_name)
-                self.label_files[i] = osp.join(self.args.root_dir, label_file_name)
+                self.data_files[i] = osp.join(self.args.data_path, data_file_name)
+                self.label_files[i] = osp.join(self.args.data_path, label_file_name)
 
         datatype = self._get_datatype()
         if datatype == "image":

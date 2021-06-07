@@ -9,7 +9,6 @@
 # MIT License for more details.
 
 """Default parameter classes."""
-
 import random
 import numpy as np
 from .base import Param

@@ -22,6 +22,7 @@ def _get_worker_config(worker):
     from zeus.datasets.conf.dataset import DatasetConfig
     from zeus.networks.model_config import ModelConfig
     from zeus.evaluator.conf import EvaluatorConfig
+    from vega.core.pipeline.conf import PipeStepConfig
 
     env = {
         "LOCAL_RANK": os.environ.get("LOCAL_RANK", None),
@@ -52,25 +53,27 @@ def _get_worker_config(worker):
         "timeout": worker.timeout,
 
         "env": env,
+        "pipe_step": PipeStepConfig().to_dict()
     }
     return worker_config
 
 
-def pickle_worker(worker, id):
+def pickle_worker(workers, id):
     """Pickle worker to file."""
-    # pickle config
-    config_file = os.path.join(
-        worker.get_local_worker_path(),
-        '.{0}.c.pkl'.format(id))
-    worker_config = _get_worker_config(worker)
-    with open(config_file, "wb") as f:
-        pickle.dump(worker_config, f)
-    # pickle worker
-    worker_file = os.path.join(
-        worker.get_local_worker_path(),
-        '.{0}.w.pkl'.format(id))
-    with open(worker_file, "wb") as f:
-        pickle.dump(worker, f)
+    for index, worker in enumerate(workers):
+        # pickle config
+        config_file = os.path.join(
+            worker.get_local_worker_path(),
+            f".{str(id)}.{str(index)}.config.pkl")
+        worker_config = _get_worker_config(worker)
+        with open(config_file, "wb") as f:
+            pickle.dump(worker_config, f)
+        # pickle worker
+        worker_file = os.path.join(
+            worker.get_local_worker_path(),
+            f".{str(id)}.{str(index)}.worker.pkl")
+        with open(worker_file, "wb") as f:
+            pickle.dump(worker, f)
 
 
 def load_config(config_file):
@@ -93,6 +96,7 @@ def load_config(config_file):
     from zeus.networks.model_config import ModelConfig
     from zeus.trainer.conf import TrainerConfig
     from zeus.evaluator.conf import EvaluatorConfig
+    from vega.core.pipeline.conf import PipeStepConfig
 
     ClassFactory.__registry__ = config["class_factory"]
     General.from_dict(config["general"])
@@ -100,6 +104,7 @@ def load_config(config_file):
     ModelConfig.from_dict(config["model"])
     TrainerConfig.from_dict(config["trainer"])
     EvaluatorConfig.from_dict(config["evaluator"])
+    PipeStepConfig.from_dict(config["pipe_step"])
 
 
 def load_worker(worker_file):

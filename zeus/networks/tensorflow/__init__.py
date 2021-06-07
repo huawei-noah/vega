@@ -13,11 +13,13 @@
 from .network import Sequential
 from zeus.common.class_factory import ClassFactory
 
-
 ClassFactory.lazy_register("zeus.networks.tensorflow", {
-    "resnet_tf": ["ResNetTF"],
+    "resnet_tf": ["ResNetTF", 'ResNetSlim'],
     # backbones
     "backbones.resnet_det": ["ResNetDet"],
+    # customs
+    "customs.edvr.edvr": ["EDVR"],
+    "customs.gcn_regressor": ["GCNRegressor"],
     # detectors
     "detectors.faster_rcnn_trainer_callback": ["FasterRCNNTrainerCallback"],
     "detectors.faster_rcnn": ["FasterRCNN"],
@@ -25,6 +27,7 @@ ClassFactory.lazy_register("zeus.networks.tensorflow", {
     # losses
     "losses.cross_entropy_loss": ["CrossEntropyLoss"],
     "losses.mix_auxiliary_loss": ["MixAuxiliaryLoss"],
+    "losses.charbonnier": ["CharbonnierLoss"],
     # necks
     "necks.mask_rcnn_box": ["MaskRCNNBox"],
 })

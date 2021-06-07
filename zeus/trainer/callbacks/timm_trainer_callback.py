@@ -27,6 +27,7 @@ try:
 except Exception:
     pass
 import horovod.torch as hvd
+import zeus
 from zeus.common import Config
 from zeus.common import ClassFactory, ClassType
 from zeus.common import FileOps
@@ -126,8 +127,11 @@ class TimmTrainerCallback(Callback):
     def make_batch(self, batch):
         """Prepare batch data for train_step."""
         input, target = batch
-        if self.config.cuda and not self.config.prefetcher:
-            input, target = input.cuda(), target.cuda()
+        if not self.config.prefetcher:
+            if zeus.is_gpu_device():
+                input, target = input.cuda(), target.cuda()
+            elif zeus.is_npu_device():
+                input, target = input.npu(), target.npu()
         return input, target
 
     def train_step(self, batch):
@@ -173,8 +177,8 @@ class TimmTrainerCallback(Callback):
         if self.trainer.hps and self.trainer.hps.get('trainer'):
             self.config.from_dict(self.trainer.hps.get('trainer'))
         self.trainer._init_distributed_setting()
-        if self.config.cuda:
-            self.trainer._init_cuda_setting()
+        if not zeus.is_cpu_device():
+            self.trainer._init_setting()
         self.epochs = self.trainer.epochs
         self.distributed = self.trainer.distributed
         self.trainer.model = self._init_model()
@@ -224,8 +228,10 @@ class TimmTrainerCallback(Callback):
                              bn_momentum=args.bn_momentum,
                              bn_eps=args.bn_eps,
                              checkpoint_path=args.initial_checkpoint)
-        if self.config.cuda:
+        if zeus.is_gpu_device():
             model = model.cuda()
+        elif zeus.is_npu_device():
+            model = model.npu()
         return model
 
     def _init_optimizer(self):
@@ -252,8 +258,10 @@ class TimmTrainerCallback(Callback):
         loss_config = self.config.loss().to_dict()["params"]
         loss_class = getattr(importlib.import_module('timm.loss'), loss_name)
         loss_fn = loss_class(**loss_config)
-        if self.config.cuda:
+        if zeus.is_gpu_device():
             loss_fn = loss_fn.cuda()
+        elif zeus.is_npu_device():
+            loss_fn = loss_fn.npu()
         return loss_fn
 
     def _reset_sync_opt(self):

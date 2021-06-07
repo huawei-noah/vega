@@ -34,7 +34,7 @@ class ProgressLogger(Callback):
 
     def __init__(self):
         """Initialize a ProgressLogger with user-defined verbose levels."""
-        super(Callback, self).__init__()
+        super(ProgressLogger, self).__init__()
         self.priority = 270
 
     def before_train(self, logs=None):
@@ -48,7 +48,6 @@ class ProgressLogger(Callback):
         if self.valid_report_steps is None:
             self.valid_verbose = 0
         logging.debug("Start the unified trainer ... ")
-        self.epochs = self.params['epochs']
         self.is_chief = self.params['is_chief']
         self.do_validation = self.params['do_validation']
 
@@ -77,7 +76,7 @@ class ProgressLogger(Callback):
                            "loss [{:8.3f}, {:8.3f}], lr [{:12.7f}], train metrics {}"
                 log_info = log_info.format(
                     self.trainer.worker_id,
-                    self.cur_epoch + 1, self.epochs,
+                    self.cur_epoch + 1, self.trainer.epochs,
                     self._format_batch(batch_index, self.train_num_batches),
                     cur_loss, loss_avg, lr,
                     self._format_metrics(metrics_results))
@@ -87,7 +86,7 @@ class ProgressLogger(Callback):
                 log_info = log_info.format(
                     self.trainer.worker_id,
                     self.cur_epoch + 1,
-                    self.epochs,
+                    self.trainer.epochs,
                     self._format_batch(batch_index, self.train_num_batches),
                     cur_loss, loss_avg, lr)
                 logging.info(log_info)
@@ -101,7 +100,7 @@ class ProgressLogger(Callback):
                 log_info = "worker id [{}], epoch [{}/{}], valid step {}, valid metrics {}".format(
                     self.trainer.worker_id,
                     self.cur_epoch + 1,
-                    self.epochs,
+                    self.trainer.epochs,
                     self._format_batch(batch_index, self.valid_num_batches),
                     self._format_metrics(metrics_results))
                 logging.info(log_info)
@@ -115,7 +114,7 @@ class ProgressLogger(Callback):
                 log_info = "worker id [{}], epoch [{}/{}], current valid perfs {}, best valid perfs {}".format(
                     self.trainer.worker_id,
                     self.cur_epoch + 1,
-                    self.epochs,
+                    self.trainer.epochs,
                     self._format_metrics(cur_valid_perfs),
                     self._format_metrics(best_valid_perfs))
                 logging.info(log_info)

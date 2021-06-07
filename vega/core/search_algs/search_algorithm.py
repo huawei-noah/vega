@@ -90,4 +90,4 @@ class SearchAlgorithm(TaskOps):
     @property
     def max_samples(self):
         """Max samples in search algorithms."""
-        raise NotImplementedError
+        return 1

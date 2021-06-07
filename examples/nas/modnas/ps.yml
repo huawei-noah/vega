@@ -42,7 +42,7 @@ nas:
         ### modnas begin
         callbacks: ModNasTrainerCallback
         modnas:
-            imports:
+            import:
                 - modnas.contrib.estim.progressive_shrinking
                 - modnas.contrib.arch_space.mobilenetv2_elastic
             export:

@@ -32,7 +32,7 @@ fully_train:
         model_desc:
             modules: ["custom"]
             custom:
-	        type: AutoGroupModel
+            type: AutoGroupModel
                 input_dim: 645195
                 input_dim4lookup: 24
                 hidden_dims: [1024, 512, 256, 1]
@@ -98,7 +98,7 @@ model:
     model_desc:
         modules: ["custom"]
         custom:
-	    type: AutoGroupModel    # model name
+        type: AutoGroupModel    # model name
             input_dim: 645195       # feature num
             input_dim4lookup: 24    # feature fields num
             hidden_dims: [1024, 512, 256, 1] # DNN part

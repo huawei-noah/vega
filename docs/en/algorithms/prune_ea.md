@@ -57,7 +57,7 @@ nas:
             length: 464         # Total number of channels to be searched
             num_generation: 31  # Evolution algebra
             num_individual: 32  # Number of individuals in each generation
-            random_models: 64   # Number of randomly initialized models
+            random_samples: 64   # Number of randomly initialized models
 
     search_space:               # Search space configuration information
         type: SearchSpace

@@ -54,7 +54,6 @@ class CARSAlgorithm(SearchAlgorithm):
         self.network_weight_decay = self.config.policy.weight_decay
         self.parallel = self.config.policy.parallel
         self.sample_num = self.config.policy.sample_num
-        self._remove_watched_var = self.config._remove_watched_var
         self.sample_idx = 0
         self.completed = False
         self.trainer = None
@@ -197,7 +196,7 @@ class CARSAlgorithm(SearchAlgorithm):
                 self.save_genotypes(genotype_keep, np.array(fitness_keep), np.array(size_keep),
                                     'genotype_keep_{}.txt'.format(ga_epoch))
                 alphas = alphas[keep].copy()
-                self._broadcast(selected_genotypes, selected_acc)
+                self._update_report(selected_genotypes, selected_acc)
                 logging.info('############## End update alpha ############')
         return alphas
 
@@ -286,6 +285,8 @@ class CARSAlgorithm(SearchAlgorithm):
         min_acc = fitness.min()
         # Normalization
         _range = max_acc - min_acc
+        if _range == 0.:
+            return genotypes[:1], fitness[:1], obj[:1]
         ratio = 0.5 / _range
         keep = (((fitness - min_acc) / _range) > ratio)
         fitness = fitness[keep]
@@ -499,8 +500,8 @@ class CARSAlgorithm(SearchAlgorithm):
         )
         return genotype
 
-    def _broadcast(self, genotype, performance):
-        """Broadcast performance."""
+    def _update_report(self, genotype, performance):
+        """Update report."""
         self.trainer.performance = performance
         self.trainer.config.codec = self.genotypes_to_json(genotype)
 
@@ -508,26 +509,26 @@ class CARSAlgorithm(SearchAlgorithm):
             worker_id = index
             model_desc = self.trainer.config.codec[index]
 
-            ReportServer.add_watched_var(self.trainer.step_name, worker_id)
-
-            record = ReportClient.get_record(self.trainer.step_name, worker_id)
-            record.epoch = self.trainer.epochs
-            record.desc = model_desc
-            record.performance = {"accuracy": value}
-            record.objectives = self.trainer.valid_metrics.objectives
-            if record.performance is not None:
-                for key in record.performance:
-                    if key not in record.objectives:
+            performance = {"accuracy": value}
+            objectives = self.trainer.valid_metrics.objectives
+            if performance is not None:
+                for key in performance:
+                    if key not in objectives:
                         if (key == 'flops' or key == 'params' or key == 'latency'):
-                            record.objectives.update({key: 'MIN'})
+                            objectives.update({key: 'MIN'})
                         else:
-                            record.objectives.update({key: 'MAX'})
-            record.model_path = self.trainer.model_path
-            record.checkpoint_path = self.trainer.checkpoint_file
-            record.weights_file = self.trainer.weights_file
-            if self.trainer.runtime is not None:
-                record.runtime = self.trainer.runtime
-            ReportClient.broadcast(record)
+                            objectives.update({key: 'MAX'})
+            record = ReportClient().update(
+                self.trainer.step_name,
+                worker_id,
+                epoch=self.trainer.epochs,
+                desc=model_desc,
+                performance=performance,
+                objectives=objectives,
+                model_path=self.trainer.model_path,
+                checkpoint_path=self.trainer.checkpoint_file,
+                weights_file=self.trainer.weights_file,
+                runtime=self.trainer.runtime)
             logging.debug("report_callback record: {}".format(record))
 
     def save_model_checkpoint(self, model, model_name):

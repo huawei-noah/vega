@@ -12,7 +12,13 @@ SEGMENTATION-Adelaide-EA-NAS是图像分割网络架构搜索算法。该搜索�
 
 ### 2.1 搜索空间和搜索策略
 
-在搜索空间上，主要针对decoder进行搜索，具体包括：（1）decoder和backbone之间的连接；（2）decoder中cell的结构，包括cell中的算子和连接方式；（3）decoder中cell的连接方式。在搜索策略上，采用EA搜索策略。每一个网络由19个字符表示，前13个字符代表的是decoder中cell的结构（包括cell中的算子和连接方式），后6个字符代表的是decoder和backbone之间的连接以及decoder中cell的连接方式。每一代搜索时，改变上一代中的某个字符获得当前代的一个网络表示。此外，考虑在一般情况下对语义分割网络进行训练时，需要对backbone进行预训练（通常是在ImageNet上），然后再在目标分割数据集上对语义分割网络进行训练。因此我们在搜索前，需要对backbone部分进行预训练。这样做的目的是为了加快模型收敛速度，从而加快搜索。下面主要介绍SEGMENTATION-Adelaide-EA-NAS搜索空间：
+在搜索空间上，主要针对decoder进行搜索，具体包括：
+
+1. decoder和backbone之间的连接；
+2. decoder中cell的结构，包括cell中的算子和连接方式；
+3. decoder中cell的连接方式。在搜索策略上，采用EA搜索策略。
+
+每一个网络由19个字符表示，前13个字符代表的是decoder中cell的结构（包括cell中的算子和连接方式），后6个字符代表的是decoder和backbone之间的连接以及decoder中cell的连接方式。每一代搜索时，改变上一代中的某个字符获得当前代的一个网络表示。此外，考虑在一般情况下对语义分割网络进行训练时，需要对backbone进行预训练（通常是在ImageNet上），然后再在目标分割数据集上对语义分割网络进行训练。因此我们在搜索前，需要对backbone部分进行预训练。这样做的目的是为了加快模型收敛速度，从而加快搜索。下面主要介绍SEGMENTATION-Adelaide-EA-NAS搜索空间：
 
 #### 2.1.1 搜索cell
 
@@ -90,7 +96,7 @@ mutate:
 
 `VOC2012/JPEGImages/2007_000033.jpg VOC2012/SegmentationClassAug/2007_000033.png`
 
-### 4 算法输出
+### 4. 算法输出
 
 输出结果包括一系列.pth文件（训练到配置文件中```num_iter```迭代次数的模型）、```result.csv```文件以及```pareto_front.csv```文件。```result.csv```文件记录了所有搜索模型，```pareto_front.csv```文件记录了所有```pareto_front```模型。.csv文件中包含了```encoding```、```flops```、```parameters```以及```mIOU```：
 

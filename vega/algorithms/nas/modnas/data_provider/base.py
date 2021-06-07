@@ -9,7 +9,6 @@
 # MIT License for more details.
 
 """Base DataProvider."""
-
 from modnas.utils.logging import get_logger
 
 

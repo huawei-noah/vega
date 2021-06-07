@@ -10,18 +10,13 @@ The Vega HPO algorithms are suitable for deep neural network hyperparameter opti
 
 Currently, Vega provides the following hyperparameter optimization algorithms:
 
-1. Single-objective hyperparameter optimization
-
-- [x] Random
-- [x] BO
-- [x] ASHA
-- [x] BOHB
-- [x] BOSS
-- [x] TPE
-
-2. Multi-objective hyperparameter optimization
-
-- [x] RandomPareto
+| algorithm | Single-objective HPO | Multi-objective HPO |
+| :--: | :--: | :--: |
+| Random | √ | √ |
+| ASHA | √ | √ |
+| BOHB | √ | √ |
+| BOSS | √ | × |
+| PBT | √ | × |
 
 ## 2. Introduction to Hyperparameter Optimization Algorithms
 
@@ -91,7 +86,7 @@ Overall architecture:
 
 ![sha.png](../../images/hyperparameter_space_2.png)
 
-Hyperparameter stores the name, type, and range of each hyperparameter and maps the hyperparameter range to a uniform value range that can be calculated. The hyperparameter types mainly used here are EXP and CAT. The EXP parameters are mapped to [0,1] after the log operation. The CAT parameters are mapped to [0,1] with a catogrized discretation.
+Hyperparameter stores the name, type, and range of each hyperparameter and maps the hyperparameter range to a uniform value range that can be calculated. The hyperparameter types mainly used here are EXP and CAT. The EXP parameters are mapped to [0,1] after the log operation. The CAT parameters are mapped to [0,1] with a catogrized discretation. 
 
 ### 3.3 Condition
 
@@ -173,7 +168,6 @@ hpo:
         loss:
             type: CrossEntropyLoss
 ```
-
 ### 4.2 Output
 
 #### Run Example

@@ -9,7 +9,6 @@
 # MIT License for more details.
 
 """Aggregate metrics."""
-
 from functools import reduce
 from ..base import MetricsBase
 from modnas.registry.metrics import register, build

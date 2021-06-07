@@ -96,17 +96,6 @@ class DaskEnv(object):
             raise Exception('device category must be GPU or NPU.')
         return system_device_num
 
-    def _get_address(self):
-        """Get the master ip address and check if current node is master node.
-
-        :return: if current node is master node.
-        :rtype: bool.
-
-        """
-        ip, port = utils.get_master_address(self.args)
-        self.master_address = "{}:{}".format(ip, port)
-        return self.args.rank == 0
-
     def start(self):
         """Init DaskEnv, start cluster and wait all workers to connected with master.
 
@@ -114,9 +103,8 @@ class DaskEnv(object):
         :rtype: bool
 
         """
-        self._install_dask()
         self._start_dask()
-        self.is_master = self._get_address()
+        self.is_master = self.args.rank == 0
         if self.is_master:
             status = self._wait_workers()
             if status == 0:
@@ -127,10 +115,6 @@ class DaskEnv(object):
     def stop(self):
         """TODO, stop the current cluster."""
         return
-
-    def _install_dask(self):
-        """Install dask package if dask.distributed not installed."""
-        utils.install_and_import_local('dask', 'dask[complete]')
 
     def _start_dask(self):
         """Set PYTHONPATH, and start dask-scheduler on master node.
@@ -163,10 +147,14 @@ class DaskEnv(object):
             scheduler_p = subprocess.Popen(["dask-scheduler", port], env=os.environ)
             self._cluster_pid.append(scheduler_p.pid)
         time.sleep(10)
-        self._check_dask_scheduler()
+
         master_host, master_port = utils.get_master_address(self.args)
         address = "tcp://{0}:{1}".format(master_host, master_port)
+        self.master_address = "{}:{}".format(master_host, master_port)
         logging.info("master host({}), address({}).".format(master_host, address))
+
+        self._check_dask_scheduler()
+
         # nproc_set = "--nprocs={}".format(self.slave_proc_num)
         _local_dir = "{}/.vega_worker_{}".format(
             self.temp_path,
@@ -174,13 +162,13 @@ class DaskEnv(object):
         FileOps.make_dir(_local_dir)
         local_dir = "--local-directory={}".format(_local_dir)
         # run dask-worker in master
-        for i in range(self.slave_proc_num):
+        for _ in range(self.slave_proc_num):
             worker_p = subprocess.Popen(["dask-worker", address, '--nthreads=1', '--nprocs=1',
                                          '--memory-limit=0', local_dir], env=os.environ)
             self._cluster_pid.append(worker_p.pid)
         # run dask-worker in each slaves.
         for slave_ip in self.slaves:
-            for i in range(self.slave_proc_num):
+            for _ in range(self.slave_proc_num):
                 worker_p = subprocess.Popen(["ssh", slave_ip, shutil.which("dask-worker"), address, '--nthreads=1',
                                              '--nprocs=1', '--memory-limit=0', local_dir], env=os.environ)
                 self._cluster_pid.append(worker_p.pid)
@@ -201,7 +189,7 @@ class DaskEnv(object):
 
         """
         self.client = Client(self.master_address)
-        logging.info("client scheduler info: {}".format(self.client.scheduler_info()))
+        logging.debug("client scheduler info: {}".format(self.client.scheduler_info()))
         if int(self.world_size) <= 1:
             self.worker_portion = 1
         worker_count_min = int(self.world_size * self.worker_portion)

@@ -9,7 +9,6 @@
 # MIT License for more details.
 
 """Network operators / candidates."""
-
 import torch
 import torch.nn as nn
 from modnas.utils import get_same_padding

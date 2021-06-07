@@ -14,14 +14,14 @@ Supported Models and Hardware Devices:
 
 | Algorithm | Model | Atlas 200 DK |Atlas 300 | Bolt |
 | :--: | :--: | :--: | :--: | :--: |
-| Prune-EA | ResNetGeneral | supported | supported | supported |
-| ESR-EA | ESRN | | supported | supported |
-| SR-EA | MtMSR | | supported | supported |
-| Backbone-nas | ResNet| supported| supported | |
-| CARS | CARSDartsNetwork | | supported | |
-| Quant-EA | ResNetGeneral | supported | supported | supported |
+| Prune-EA | ResNetGeneral | √ | √ | √ |
+| ESR-EA | ESRN | | √ | √ |
+| SR-EA | MtMSR | | √ | √ |
+| Backbone-nas | ResNet| √| √ | |
+| CARS | CARSDartsNetwork | | √ | |
+| Quant-EA | ResNetGeneral | √ | √ | √ |
 | CycleSR | CycleSRModel | | | |
-| Adlaide-EA | AdelaideFastNAS | | supported | |
+| Adlaide-EA | AdelaideFastNAS | | √ | |
 | Auto-Lane | ResNetVariantDet | | |
 | Auto-Lane | ResNeXtVariantDet | | |
 
@@ -206,13 +206,10 @@ Reference to section 3.1.3.2.
 
 ### 3.2 Installing and Starting the Evaluation Service
 
-Download the code [evaluate_service](https://github.com/huawei-noah/vega/tree/master/evaluate_service) to any directory on the evaluation server. (Note: The `sample` code in this path is developed based on the Huawei HiSilicon public sample code.)
-
-- Modify the `config.py` configuration file based on the site requirements.
-  - davinci_environment_type indicates the Davinci environment type. Currently, the `ATLAS200DK`, `ATLAS300` and development board `Evb` are supported. Set this parameter based on the site requirements.
-  - `ddk_host_ip` indicates the IP address of the evaluation server. Set it based on the site requirements. `listen_port` indicates the listening port number, which can be set to any value. Ensure that it does not conflict with an existing port number.
-  - If the environment type is `ATLAS200DK`, you need to configure the following fields. If the environment type is not `ATLAS200DK`, ignore the following configuration. `ddk_user_name` is the user name for logging in to the evaluation server, and `atlas_host_ip` is the actual IP address of the `ATLAS200DK` hardware.
-- Run the `install.sh` script to start the evaluation service that depends on the environment installation.
+1 Installation: Install the vega on the evaluation server, and add the `--no-dependencies` parameter during installation. Do not install dependencies.       
+2 Start: Run the `vega-evaluate_service-service -i {your_ip_adress} -w {your_work_path}` command. The `-i` parameter specifies the IP address of the current server and 
+the `-w` parameter specifies the working path, please use absolute path. The intermediate files generated during program running are stored in this directory.
+For details about other optional parameters, see the help information of this command. Generally, the default values are recommended.
 
 ## 4. Use evaluate service
 

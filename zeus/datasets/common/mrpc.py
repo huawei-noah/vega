@@ -16,6 +16,7 @@ from zeus.datasets.common.utils.dataset import Dataset
 from zeus.common import ClassFactory, ClassType
 from ..conf.mrpc import MrpcConfig
 from zeus.common.config import Config
+from pytorch_pretrained_bert import BertTokenizer
 
 
 @ClassFactory.register(ClassType.DATASET)
@@ -27,7 +28,7 @@ class MrpcDataset(Dataset):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         label_list = self.get_labels()
-        from pytorch_pretrained_bert import BertTokenizer
+
         tokenizer = BertTokenizer.from_pretrained(self.args.vocab_file, do_lower_case=self.args.do_lower_case)
         if tokenizer is None:
             raise ValueError("Tokenizer can't be None.")
@@ -42,7 +43,7 @@ class MrpcDataset(Dataset):
     def __getitem__(self, idx):
         """Get item."""
         example = self.examples[idx]
-        input_ids = [example.get('input_ids')]
+        input_ids = example.get('input_ids')
         input_mask = example.get('input_mask')
         segment_ids = example.get('segment_ids')
         label_ids = example.get('label_id')
@@ -50,7 +51,7 @@ class MrpcDataset(Dataset):
             input_ids, input_mask, segment_ids, label_ids = self.transforms(input_ids, input_mask, segment_ids,
                                                                             label_ids)
         target = label_ids
-        data = dict(input_ids=input_ids, input_mask=input_mask, segment_ids=segment_ids)
+        data = dict(input_ids=input_ids, attention_mask=input_mask, token_type_ids=segment_ids, labels=label_ids)
         return data, target
 
     def __len__(self):

@@ -33,7 +33,7 @@ class PruneEA(SearchAlgorithm):
         self.length = self.config.policy.length
         self.num_individual = self.config.policy.num_individual
         self.num_generation = self.config.policy.num_generation
-        self.random_models = self.config.policy.random_models
+        self.random_samples = self.config.policy.random_samples
         self.random_count = 0
         self.ea_count = 0
         self.ea_epoch = 0
@@ -77,7 +77,7 @@ class PruneEA(SearchAlgorithm):
         :return: search id, network desc
         :rtype: int, NetworkDesc
         """
-        if self.random_count < self.random_models:
+        if self.random_count < self.random_samples:
             self.random_count += 1
             desc = self._random_sample()
             # desc.update({"trainer.codec": dict(desc)})
@@ -122,4 +122,4 @@ class PruneEA(SearchAlgorithm):
     @property
     def max_samples(self):
         """Get max samples number."""
-        return self.num_individual * self.num_generation + self.random_models
+        return self.num_individual * self.num_generation + self.random_samples

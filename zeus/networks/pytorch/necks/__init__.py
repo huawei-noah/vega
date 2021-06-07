@@ -15,5 +15,5 @@ from zeus.common.class_factory import ClassFactory
 
 ClassFactory.lazy_register("zeus.networks.pytorch.necks", {
     "ffm": ["network:FeatureFusionModule"],
-    "fpn": ["TorchFPN"]
+    "fpn": ["FPN"]
 })

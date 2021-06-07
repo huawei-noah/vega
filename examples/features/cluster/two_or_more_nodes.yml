@@ -15,7 +15,6 @@ general:
     parallel_fully_train: True
     cluster:
         master_ip: 192.168.0.2  # IP address of the node where the Vega is started.
-        listen_port: 8786
         slaves: [192.168.0.3]   # or [192.168.0.3, 192.168.0.4, 192.168.0.5], according to cluster information
 ########################### end #############################
 

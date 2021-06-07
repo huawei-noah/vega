@@ -13,6 +13,7 @@
 The Master Class to create, maintain distribute framework and distribute
 calculate tasks.
 """
+
 import os
 import sys
 import logging
@@ -24,16 +25,17 @@ from threading import Lock
 from queue import Queue
 from zeus.trainer import utils
 from .distribution import ClusterDaskDistributor
-from zeus.common import TaskOps
+from zeus.common import TaskOps, FileOps
 from zeus.common.general import General
 from .worker_env import WorkerEnv
 from .dask_env import DaskEnv
 from zeus.trainer.deserialize import pickle_worker
 from zeus.trainer.run_remote_worker import run_remote_worker
-from zeus.report import ReportServer
+from .master_base import MasterBase
+from zeus.report import ReportClient
 
 
-class Master(object):
+class Master(MasterBase):
     """The Master Class is to create, maintain distribute framework and distribute calculate tasks.
 
     :param argparse.ArgumentParser args: `args` is a argparse that should
@@ -42,13 +44,14 @@ class Master(object):
 
     """
 
-    __master_path__ = None
-
     def __init__(self, update_func=None):
         """Init master attrs, setup and start dask distributed cluster and local multiprocess pool."""
+        self._checkout_cluster_existed()
         self.cfg = General()
         self.task_count = 0
         self.eval_count = General.worker.eval_count
+        self.__master_path__ = FileOps.join_path(TaskOps().temp_path, "master")
+        FileOps.make_dir(self.__master_path__)
         self.dask_env = DaskEnv(General.env,
                                 self.__master_path__,
                                 General.devices_per_trainer,
@@ -59,12 +62,27 @@ class Master(object):
         self._start_cluster()
         self.t_queue = Queue()
         self.update_func = update_func
-        self.evaluator_list = {}
         self._thread_runing = True
         self._lock = Lock()
         self._thread = self._run_monitor_thread()
-        ReportServer().renew()
         return
+
+    def restart(self, update_func=None):
+        """Renew master."""
+        self.client = self.get_client()
+        self.update_func = update_func
+        if not self._thread_runing:
+            self._thread = self._run_monitor_thread()
+
+    def get_client(self):
+        """Get Master client."""
+        if not hasattr(self, "client"):
+            self.client = self.md.get_client()
+        return self.client
+
+    def _checkout_cluster_existed(self):
+        # TODO
+        return False
 
     def _start_cluster(self):
         """Set and start dask distributed cluster."""
@@ -120,61 +138,51 @@ class Master(object):
         if worker is None:
             return
 
-        if evaluator:
-            with self._lock:
-                self.evaluator_list[str(worker.worker_id)] = evaluator
-
-        if worker.worker_type == utils.WorkerTypes.EVALUATOR:
-            for sub_worker in worker.sub_worker_list:
-                self.run(sub_worker)
-        else:
-            finished = False
-            while not finished:
-                if not self.md.process_queue_full():
-                    p_id = self.task_count
-                    if worker.step_name is not None and worker.worker_id is not None:
-                        p_id = "{0}::{1}::{2}".format(worker.worker_type.name,
-                                                      worker.step_name,
-                                                      worker.worker_id)
-                    pickle_id = uuid.uuid1().hex[:8]
-                    pickle_worker(worker, pickle_id)
-                    self.md.distribute(
-                        client=self.client,
-                        pid=p_id,
-                        func=run_remote_worker,
-                        kwargs={
-                            "worker_id": worker.worker_id,
-                            "worker_path": worker.get_local_worker_path(),
-                            "id": pickle_id})
-                    self.task_count = self.task_count + 1
-                    return p_id
+        workers = [worker]
+        if evaluator and evaluator.worker_type == utils.WorkerTypes.EVALUATOR:
+            for sub_worker in evaluator.sub_worker_list:
+                if sub_worker.worker_type == utils.WorkerTypes.DeviceEvaluator:
+                    workers.insert(0, sub_worker)
                 else:
-                    time.sleep(0.1)
+                    workers.append(sub_worker)
+
+        finished = False
+        while not finished:
+            if not self.md.process_queue_full():
+                p_id = self.task_count
+                if worker.step_name is not None and worker.worker_id is not None:
+                    p_id = "{0}::{1}::{2}".format(
+                        worker.worker_type.name, worker.step_name, worker.worker_id)
+                pickle_id = uuid.uuid1().hex[:8]
+                pickle_worker(workers, pickle_id)
+                self.md.distribute(
+                    client=self.client,
+                    pid=p_id,
+                    func=run_remote_worker,
+                    kwargs={
+                        "worker_id": worker.worker_id,
+                        "worker_path": worker.get_local_worker_path(),
+                        "id": pickle_id,
+                        "num_workers": len(workers)})
+                self.task_count = self.task_count + 1
+                return p_id
+            else:
+                time.sleep(0.1)
         return
 
     @staticmethod
     def _monitor_thread(master):
-        evaluator_counter = {}
         while master and master._thread_runing:
             worker_info_list = master._pop_all_finished_worker()
             if worker_info_list:
                 for worker_info in worker_info_list:
                     worker_id = worker_info["worker_id"]
-                    if str(worker_id) in master.evaluator_list.keys():
-                        with master._lock:
-                            evalutor = master.evaluator_list.pop(str(worker_id))
-                        evaluator_counter[worker_id] = len(evalutor.sub_worker_list) - 1
-                        master.run(evalutor)
-                    elif master.update_func:
-                        if worker_id not in evaluator_counter or evaluator_counter[worker_id] == 0:
-                            master._update(worker_info["step_name"], worker_id)
-                        else:
-                            evaluator_counter[worker_id] -= 1
+                    master._update(worker_info["step_name"], worker_id)
             time.sleep(0.1)
 
     def _update(self, step_name, worker_id):
         # Waiting report thread update all record
-        time.sleep(0.5)
+        ReportClient().set_finished(step_name, worker_id)
         if not self.update_func:
             return
         if self.update_func.__code__.co_varnames.index("step_name") == 1:
@@ -185,6 +193,7 @@ class Master(object):
     def _run_monitor_thread(self):
         try:
             logging.debug("Start master monitor thread.")
+            self._thread_runing = True
             monitor_thread = threading.Thread(target=Master._monitor_thread, args=(self,))
             monitor_thread.daemon = True
             monitor_thread.start()
@@ -259,13 +268,13 @@ class Master(object):
             finished_train_worker_info = self._pop_finished_worker()
         return worker_info_list
 
-    def close_client(self):
+    def close(self):
         """Close cluster client."""
-        ReportServer.stop()
         self._thread_runing = False
+        if self._thread:
+            self._thread.join()
         # Waiting thread exit.
-        time.sleep(1)
-        if hasattr(self, "client") and self.client is not None:
+        if hasattr(self, "client") and not self.client:
             self.client.close()
             del self.client
         # Waiting cluster closed
@@ -273,15 +282,10 @@ class Master(object):
 
     def shutdown(self):
         """Close cluster client."""
-        ReportServer.stop()
-        self._thread_runing = False
-        if self._thread:
-            self._thread.join()
-        # Waiting thread exit.
-        time.sleep(1)
-        if hasattr(self, "client") and self.client is not None:
-            self.client.shutdown()
-            self.client.close()
-            del self.client
+        self.close()
+        client = self.get_client()
+        client.shutdown()
+        client.close()
+        del client
         # Waiting cluster closed
         time.sleep(1)

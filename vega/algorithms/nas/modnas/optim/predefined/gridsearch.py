@@ -9,7 +9,6 @@
 # MIT License for more details.
 
 """Basic categorical Optimizers."""
-
 import time
 import random
 from ..base import CategoricalSpaceOptim

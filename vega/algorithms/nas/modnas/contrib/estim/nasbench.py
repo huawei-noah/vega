@@ -9,7 +9,6 @@
 # MIT License for more details.
 
 """NASBench estimator."""
-
 from modnas.core.params import Categorical
 from modnas.registry.estim import RegressionEstim
 from modnas.registry.construct import register as register_constructor

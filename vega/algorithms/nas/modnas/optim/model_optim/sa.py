@@ -9,7 +9,6 @@
 # MIT License for more details.
 
 """Simulated annealing model optimum finder."""
-
 import heapq
 import random
 import numpy as np

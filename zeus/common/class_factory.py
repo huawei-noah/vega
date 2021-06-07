@@ -139,8 +139,8 @@ class ClassFactory(object):
     @classmethod
     def _import_pkg(cls, type_name, cls_name):
         type_cls = "{}:{}".format(type_name, cls_name)
-        pkg = cls.__registry__.get(ClassType.PACKAGE).get(type_cls) or \
-            cls.__registry__.get(ClassType.PACKAGE).get(cls_name)
+        pkg = cls.__registry__.get(ClassType.PACKAGE).get(
+            type_cls) or cls.__registry__.get(ClassType.PACKAGE).get(cls_name)
         if pkg:
             __import__(pkg)
 
@@ -152,32 +152,33 @@ class ClassFactory(object):
         :param t_cls_name: class name
         :return:t_cls
         """
-        # lazy load class
-        if not cls.is_exists(type_name, t_cls_name) and t_cls_name:
-            cls._import_pkg(type_name, t_cls_name)
-        # verify class
-        if not cls.is_exists(type_name, t_cls_name):
-            raise ValueError("can't find class type {} class name {} in class registry".format(type_name, t_cls_name))
-        # create instance without configs
+        # get class name
+        if type_name == ClassType.TRAINER and t_cls_name in [None, "Trainer"]:
+            import zeus
+            if zeus.is_torch_backend():
+                t_cls_name = "TrainerTorch"
+            elif zeus.is_tf_backend():
+                t_cls_name = "TrainerTf"
+            elif zeus.is_ms_backend():
+                t_cls_name = "TrainerMs"
         if t_cls_name is None:
             from zeus.datasets.conf.dataset import DatasetConfig
             from zeus.evaluator.conf import EvaluatorConfig
             if type_name == ClassType.DATASET:
                 t_cls_name = DatasetConfig.type
-            elif type_name == ClassType.TRAINER:
-                import zeus
-                if zeus.is_torch_backend():
-                    t_cls_name = "TrainerTorch"
-                elif zeus.is_tf_backend():
-                    t_cls_name = "TrainerTf"
-                elif zeus.is_ms_backend():
-                    t_cls_name = "TrainerMs"
             elif type_name == ClassType.EVALUATOR:
                 t_cls_name = EvaluatorConfig.type
             else:
                 pass
         if t_cls_name is None:
             raise ValueError("can't find class. class type={}".format(type_name))
+        # lazy load class
+        if not cls.is_exists(type_name, t_cls_name) and t_cls_name is not None:
+            cls._import_pkg(type_name, t_cls_name)
+        # verify class
+        if not cls.is_exists(type_name, t_cls_name):
+            raise ValueError("can't find class type {} class name {} in class registry".format(type_name, t_cls_name))
+        # get class
         t_cls = cls.__registry__.get(type_name).get(t_cls_name)
         return t_cls
 
@@ -187,6 +188,8 @@ class ClassFactory(object):
         _params = deepcopy(params)
         if not _params:
             return
+        if isinstance(_params, str):
+            _params = dict(type=_params)
         t_cls_name = _params.pop('type')
         if kwargs:
             _params.update(kwargs)

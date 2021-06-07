@@ -9,7 +9,6 @@
 # MIT License for more details.
 
 """Architecture Parameter Space."""
-
 from collections import OrderedDict
 from . import singleton
 from modnas.utils.logging import get_logger

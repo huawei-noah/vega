@@ -16,10 +16,11 @@ import sys
 import logging
 import imp
 import numpy as np
+import random
+import socket
 from functools import wraps
 from copy import deepcopy
 from contextlib import contextmanager
-from zeus.common.general import General
 
 
 logger = logging.getLogger(__name__)
@@ -81,7 +82,7 @@ def update_dict_with_flatten_keys(desc, flatten_keys):
     return desc
 
 
-def init_log(level=None, log_path="./logs/", log_file="log.txt"):
+def init_log(level, log_path="./logs/", log_file="log.txt"):
     """Init logging configuration."""
     if not os.path.isdir(log_path):
         os.mkdir(log_path)
@@ -91,8 +92,6 @@ def init_log(level=None, log_path="./logs/", log_file="log.txt"):
         level=logging.INFO,
         format=fmt,
         datefmt='%Y-%m-%d %H:%M:%S')
-    if not level:
-        level = General.logger.level
     if level == "debug":
         logging.getLogger().setLevel(logging.DEBUG)
     elif level == "info":
@@ -104,7 +103,7 @@ def init_log(level=None, log_path="./logs/", log_file="log.txt"):
     elif level == "critical":
         logging.getLogger().setLevel(logging.CRITICAL)
     else:
-        raise ("Not supported logging level: {}".format(level))
+        raise Exception(f"Not supported logging level: {level}")
     fh = logging.FileHandler(os.path.join(log_path, log_file))
     fmt = '%(asctime)s %(levelname)s %(message)s'
     fh.setFormatter(logging.Formatter(fmt))
@@ -215,3 +214,28 @@ def remove_np_value(value):
     else:
         data = value
     return data
+
+
+def get_available_port(min_port=8000, max_port=9999):
+    """Get available port."""
+    _sock = socket.socket()
+    while True:
+        port = random.randint(min_port, max_port)
+        try:
+            _sock.bind(('', port))
+            _sock.close()
+            return port
+        except Exception:
+            continue
+    return None
+
+
+def verify_port(port):
+    """Verify port."""
+    _sock = socket.socket()
+    try:
+        _sock.bind(('', port))
+        _sock.close()
+        return True
+    except Exception:
+        return False

@@ -9,21 +9,21 @@
 # MIT License for more details.
 
 """Nodes for Modules."""
-import re
 
 
 class Node(dict):
     """Node for Dag."""
 
     __slots__ = ['inputs', 'outputs', 'op_list', 'op_name']
-    __support_ops__ = ['/Conv2D', '/FusedBatchNorm', '/MaxPool', '/MatMul', '/Mean', '/add', '/paddings',
-                       '/Relu', '/Squeeze']
+    __support_ops__ = ['/Conv2D', '/FusedBatchNorm', '/MaxPool', '/MatMul', '/Mean', '/add', '/Pad',
+                       '/Relu', 'Squeeze', '/Softmax']
+    __support_ops_types__ = ['Mean']
 
     def __new__(cls, type_name=None, *args, **kwargs):
         """Create sub class according to type name."""
         for sub_class in cls.__subclasses__():
             if not sub_class.__class_type__ or not sub_class.__module_type__:
-                raise "__class_type__ and __module_type__ should be defined in class {}".format(sub_class)
+                raise Exception(f"__class_type__ and __module_type__ should be defined in class {sub_class}")
             sub_class_types = sub_class.__class_type__ if isinstance(sub_class.__class_type__, list) else [
                 sub_class.__class_type__]
             if type_name in sub_class_types:
@@ -126,6 +126,7 @@ class Conv2DNode(Node):
         self.padding = None
         self.dilations = None
         self.bias = False
+        self.bn = False
         super(Conv2DNode, self).__init__(*args, **kwargs)
         self.name = self.op_name.replace('/{}'.format(self.__class_type__), '') if self.op_name else ''
 
@@ -135,12 +136,17 @@ class Conv2DNode(Node):
         for op in self.op_list:
             if not isinstance(op, tf.Operation):
                 continue
-            if op.name.endswith('kernel'):
+            if op.name.endswith('kernel') or op.name.endswith('weights'):
                 self.kernel_size = op.outputs[0].shape.as_list()[0:2]
                 self.out_channels = op.outputs[0].shape.as_list()[3]
             if op.name.endswith('bias'):
                 self.bias = True
+            if op.name.endswith("BiasAdd"):
+                self.bn = True
             elif op.name.endswith(self.__class_type__):
+                attr = op.node_def.attr
+                data_format = str(attr.get('data_format').s, encoding='utf8')
+                axis = 3 if 'NHWC' in data_format else 1
                 in_channels = op.inputs[0]
                 if in_channels.op.type == 'Pad':
                     pre_op_input = in_channels.op.inputs[0]
@@ -148,10 +154,9 @@ class Conv2DNode(Node):
                         in_channels = pre_op_input.op.inputs[0]
                     else:
                         in_channels = in_channels.op.inputs[0]
-                self.in_channels = in_channels.shape.as_list()[1]
+                self.in_channels = in_channels.shape.as_list()[axis]
                 attr = op.node_def.attr
-                self.stride = list(attr.get('strides').list.i)[3]
-                # self.data_format = str(attr.get('data_format').s, encoding='utf8')
+                self.stride = list(attr.get('strides').list.i)[2]
                 self.padding = str(attr.get('padding').s, encoding='utf8')
                 self.dilations = list(attr.get('dilations').list.i)
 
@@ -200,7 +205,7 @@ class MaxPoolNode(Node):
         if not isinstance(op, tf.Operation):
             return
         attr = op.node_def.attr
-        self.stride = list(attr.get('strides').list.i)[3]
+        self.stride = list(attr.get('strides').list.i)[2]
         self.padding = str(attr.get('padding').s, encoding='utf8')
         self.kernel_size = list(attr.get('ksize').list.i)[3]
 
@@ -208,7 +213,7 @@ class MaxPoolNode(Node):
 class LinearNode(Node):
     """Linear Node."""
 
-    __class_type__ = 'MatMul'
+    __class_type__ = ['MatMul', 'Softmax']
     __module_type__ = 'Linear'
 
     def __init__(self, *args, **kwargs):
@@ -216,7 +221,11 @@ class LinearNode(Node):
         self.in_features = None
         self.use_bias = None
         super(LinearNode, self).__init__(*args, **kwargs)
-        self.name = self.op_name.replace('/{}'.format(self.__class_type__), '') if self.op_name else self.op_name
+        op_name = self.op_name
+        if op_name:
+            for class_type in self.__class_type__:
+                op_name = op_name.replace('/{}'.format(class_type), '')
+        self.name = op_name
 
     def from_ops(self):
         """Convert attrs from ops."""
@@ -229,6 +238,11 @@ class LinearNode(Node):
             elif op.name.endswith('MatMul'):
                 self.out_features = op.outputs[0].shape.as_list()[1]
                 self.in_features = op.inputs[0].shape.as_list()[1]
+            elif op.name.endswith('Softmax'):
+                self.out_features = op.outputs[0].shape.as_list()[1]
+                self.in_features = op.inputs[0].shape.as_list()[1]
+        if self.inputs[0].op.type == 'Reshape':
+            self.inputs = self.inputs[0].op.inputs
 
 
 class MeanNode(Node):

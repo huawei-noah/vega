@@ -2,7 +2,6 @@ general:
     backend: pytorch  # pytorch | tensorflow | mindspore
     parallel_search: True
     parallel_fully_train: True
-    backend: pytorch
 
 
 pipeline: [nas, fully_train, benchmark_DIV2K, benchmark_Set5, benchmark_Set14, benchmark_BSDS100]

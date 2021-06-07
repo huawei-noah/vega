@@ -9,7 +9,6 @@
 # MIT License for more details.
 
 """Subnet-based Estimator."""
-
 import itertools
 import traceback
 from ..base import EstimBase
@@ -27,8 +26,6 @@ class SubNetEstim(EstimBase):
         self.rebuild_subnet = rebuild_subnet
         self.num_bn_batch = num_bn_batch
         self.clear_subnet_bn = clear_subnet_bn
-        self.best_score = None
-        self.best_arch_desc = None
 
     def step(self, params):
         """Return evaluation results of a parameter set."""
@@ -69,10 +66,10 @@ class SubNetEstim(EstimBase):
         arch_batch_size = config.arch_update_batch
         # arch step
         if epoch >= tot_epochs:
-            return 1
+            return {'stop': True}
         if not optim.has_next():
             logger.info('Search: finished')
-            return 1
+            return {'stop': True}
         if epoch >= arch_epoch_start and (epoch - arch_epoch_start) % arch_epoch_intv == 0:
             optim.step(self)
         inputs = optim.next(batch_size=arch_batch_size)
@@ -81,17 +78,6 @@ class SubNetEstim(EstimBase):
             # estim step
             self.stepped(params)
         self.wait_done()
-        for _, res, arch_desc in self.buffer():
-            score = self.get_score(res)
-            if self.best_score is None or (score is not None and score > self.best_score):
-                self.best_score = score
-                self.best_arch_desc = arch_desc
-        # save
-        if config.save_arch_desc:
-            self.save_arch_desc(epoch)
-        if config.save_freq != 0 and epoch % config.save_freq == 0:
-            self.save_checkpoint(epoch)
-        self.save_arch_desc(save_name='best', arch_desc=self.best_arch_desc)
 
     def run(self, optim):
         """Run Estimator routine."""
@@ -99,9 +85,5 @@ class SubNetEstim(EstimBase):
         config = self.config
         tot_epochs = config.epochs
         for epoch in itertools.count(self.cur_epoch + 1):
-            if self.run_epoch(optim, epoch=epoch, tot_epochs=tot_epochs) == 1:
+            if (self.run_epoch(optim, epoch=epoch, tot_epochs=tot_epochs) or {}).get('stop'):
                 break
-        return {
-            'best_score': self.best_score,
-            'best_arch': self.best_arch_desc,
-        }

@@ -9,7 +9,6 @@
 # MIT License for more details.
 
 """Supernet-based Estimator."""
-
 import itertools
 from ..base import EstimBase
 from modnas.core.param_space import ParamSpace
@@ -19,11 +18,6 @@ from modnas.registry.estim import register
 @register
 class SuperNetEstim(EstimBase):
     """Supernet-based Estimator class."""
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.best_score = None
-        self.best_arch_desc = None
 
     def step(self, params):
         """Return evaluation results of a parameter set."""
@@ -47,17 +41,13 @@ class SuperNetEstim(EstimBase):
         config = self.config
         tot_epochs = config.epochs
         for epoch in itertools.count(self.cur_epoch + 1):
-            if self.run_epoch(optim, epoch=epoch, tot_epochs=tot_epochs) == 1:
+            if (self.run_epoch(optim, epoch=epoch, tot_epochs=tot_epochs) or {}).get('stop'):
                 break
-        return {
-            'best_score': self.best_score,
-            'best_arch': self.best_arch_desc,
-        }
 
     def run_epoch(self, optim, epoch, tot_epochs):
         """Run Estimator routine for one epoch."""
         if epoch == tot_epochs:
-            return 1
+            return {'stop': True}
         config = self.config
         # train
         self.print_tensor_params()
@@ -93,14 +83,3 @@ class SuperNetEstim(EstimBase):
         self.clear_buffer()
         self.stepped(dict(ParamSpace().named_param_values()))
         self.wait_done()
-        for _, res, arch_desc in self.buffer():
-            score = self.get_score(res)
-            if self.best_score is None or (score is not None and score > self.best_score):
-                self.best_score = score
-                self.best_arch_desc = arch_desc
-        # save
-        if config.save_arch_desc:
-            self.save_arch_desc(epoch, arch_desc=arch_desc)
-        if config.save_freq != 0 and epoch % config.save_freq == 0:
-            self.save_checkpoint(epoch)
-        self.save_arch_desc(save_name='best', arch_desc=self.best_arch_desc)

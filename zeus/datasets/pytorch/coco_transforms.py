@@ -112,3 +112,72 @@ def convert_coco_poly_to_mask(segmentations, height, width):
     else:
         masks = torch.zeros((0, height, width), dtype=torch.uint8)
     return masks
+
+
+@ClassFactory.register(ClassType.TRANSFORM)
+class PrepareVOCInstance(object):
+    """Convert dataset to Voc instance."""
+
+    CLASSES = (
+        # "__background__ ",
+        "aeroplane",
+        "bicycle",
+        "bird",
+        "boat",
+        "bottle",
+        "bus",
+        "car",
+        "cat",
+        "chair",
+        "cow",
+        "diningtable",
+        "dog",
+        "horse",
+        "motorbike",
+        "person",
+        "pottedplant",
+        "sheep",
+        "sofa",
+        "train",
+        "tvmonitor",
+    )
+
+    def __init__(self, classes=None):
+        self.classes = classes or self.CLASSES
+        if isinstance(self.classes, list):
+            self.classes = tuple(self.classes)
+
+    def __call__(self, image, target):
+        """Convert to voc."""
+        anno = target['annotation']
+        boxes = []
+        classes = []
+        area = []
+        iscrowd = []
+        objects = anno['object']
+        if not isinstance(objects, list):
+            objects = [objects]
+        for obj in objects:
+            bbox = obj['bndbox']
+            bbox = [int(bbox[n]) - 1 for n in ['xmin', 'ymin', 'xmax', 'ymax']]
+            boxes.append(bbox)
+            classes.append(self.classes.index(obj['name']))
+            iscrowd.append(int(obj['difficult']))
+            area.append((bbox[2] - bbox[0]) * (bbox[3] - bbox[1]))
+
+        boxes = torch.as_tensor(boxes, dtype=torch.float32)
+        classes = torch.as_tensor(classes)
+        area = torch.as_tensor(area)
+        iscrowd = torch.as_tensor(iscrowd)
+        image_id = anno['filename'][5:-4]
+        # image_id = torch.as_tensor([int(image_id)])
+        image_id = image_id
+        target = {}
+        target["boxes"] = boxes
+        target["labels"] = classes
+        target["image_id"] = image_id
+        # for conversion to coco api
+        target["area"] = area
+        target["iscrowd"] = iscrowd
+        target["file_name"] = anno['filename']
+        return image, target

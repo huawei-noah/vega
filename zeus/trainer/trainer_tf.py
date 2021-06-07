@@ -110,7 +110,7 @@ class TrainerTf(TrainerBase):
 
     def _train_epoch(self):
         if self.config.train_in_once:
-            max_steps = len(self.train_loader) * self.epochs
+            max_steps = self.config.max_train_steps or len(self.train_loader) * self.epochs
             self.estimator.train(input_fn=self.train_input_fn,
                                  max_steps=max_steps,
                                  hooks=self._init_logging_hook())
@@ -315,7 +315,8 @@ class TrainerTf(TrainerBase):
             train_op = tf.group(minimize_op, update_ops)
             logging_hook = list()
             logging_hook.append(tf.train.LoggingTensorHook(
-                tensors={"learning rate": self.lr_scheduler.get_lr()[0]}, every_n_iter=10))
+                tensors={"learning rate": self.lr_scheduler.get_lr()[0]},
+                every_n_iter=self.config.train_report_steps))
 
         eval_metric_ops = None
         if mode == tf.estimator.ModeKeys.EVAL:
@@ -374,7 +375,7 @@ class TrainerTf(TrainerBase):
             distribution = tf.contrib.distribute.MirroredStrategy()
         config = tf.estimator.RunConfig(model_dir=self.get_local_worker_path(),
                                         save_checkpoints_steps=self.config.save_steps,
-                                        log_step_count_steps=self.config.report_freq,
+                                        log_step_count_steps=self.config.train_report_steps,
                                         session_config=None if distribution else sess_config,
                                         train_distribute=distribution)
         self.estimator = tf.estimator.Estimator(model_fn=self.model_fn, config=config)
@@ -385,7 +386,7 @@ class TrainerTf(TrainerBase):
         model_dir = self.get_local_worker_path()
         config = NPURunConfig(model_dir=model_dir,
                               save_checkpoints_steps=self.config.save_steps,
-                              log_step_count_steps=self.config.report_freq,
+                              log_step_count_steps=self.config.train_report_steps,
                               session_config=sess_config,
                               enable_data_pre_proc=True,
                               iterations_per_loop=1)

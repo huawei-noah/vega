@@ -20,7 +20,7 @@ class QuantPolicyConfig(EAConfig):
     length = 40
     num_generation = 50
     num_individual = 16
-    random_models = 32
+    random_samples = 32
 
     @classmethod
     def rules(cls):
@@ -28,7 +28,7 @@ class QuantPolicyConfig(EAConfig):
         rules_QuantPolicyConfig = {"length": {"type": int},
                                    "num_generation": {"type": int},
                                    "num_individual": {"type": int},
-                                   "random_models": {"type": int}
+                                   "random_samples": {"type": int}
                                    }
         return rules_QuantPolicyConfig
 

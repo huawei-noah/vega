@@ -9,7 +9,6 @@
 # MIT License for more details.
 
 """Slot module."""
-
 from functools import partial
 import copy
 import torch.nn as nn

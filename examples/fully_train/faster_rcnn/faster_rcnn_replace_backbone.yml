@@ -1,0 +1,57 @@
+general:
+    backend: pytorch
+
+
+pipeline: [fullytrain]
+
+fullytrain:
+    pipe_step:
+        type: TrainPipeStep
+
+    model:
+        model_desc:
+            type: FasterRCNN
+            num_classes: 91
+            backbone:
+                type: SerialBackbone
+                weight_file: /cache/models/fasterrcnn_serialnet_backbone.pth
+            neck:
+                type: FPN
+    trainer:
+        type: Trainer
+        get_train_metric_after_epoch: False
+        model_statistics: False
+        is_detection_trainer: True
+        epochs: 1
+        optimizer:
+            type: SGD
+            params:
+                lr: 0.003
+                momentum: 0.9
+                weight_decay: 0.0001
+        lr_scheduler:
+            type: WarmupScheduler
+            params:
+                by_epoch: False
+                warmup_type: linear
+                warmup_iters: 2000
+                warmup_ratio: 0.1
+                after_scheduler_config:
+                    type: CosineAnnealingLR
+                    T_max: 30000
+                    eta_min: 0.0001
+                after_scheduler_by_epoch: False
+        loss:
+            type: SumLoss
+        metric:
+            type: coco
+            params:
+                anno_path: /cache/datasets/COCO2017/annotations/instances_val2017.json
+
+    dataset:
+        type: CocoDataset
+        common:
+            batch_size: 1
+            data_root: /cache/datasets/COCO2017/
+            img_prefix: 2017
+            ann_prefix: instances

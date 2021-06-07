@@ -11,6 +11,7 @@
 """Default general."""
 import os
 from datetime import datetime
+from zeus.common.utils import get_available_port
 from .config_serializable import ConfigSerializable
 
 
@@ -32,8 +33,8 @@ class ClusterConfig(ConfigSerializable):
     """Cluster Config."""
 
     master_ip = None
-    listen_port = 8000
-    slaves = None
+    listen_port = get_available_port()
+    slaves = []
 
 
 class Worker(ConfigSerializable):
@@ -98,11 +99,11 @@ class General(ConfigSerializable):
     """General Config."""
 
     task = TaskConfig
-    step_name = None
-    worker_id = None
+    step_name = "pipestep"
     logger = Logger
     backend = 'pytorch'
     device_category = 'GPU'
+    TF_CPP_MIN_LOG_LEVEL = 2
     cluster = ClusterConfig
     worker = Worker
     env = None
@@ -110,7 +111,7 @@ class General(ConfigSerializable):
     dft = False
     workers_num = 1
     quota = QuotaConfig
-    data_format = None
+    data_format = "channels_first"
     # parallel
     parallel_search = False
     parallel_fully_train = False
@@ -119,3 +120,5 @@ class General(ConfigSerializable):
     devices_per_trainer = 1
     clean_worker_dir = True
     requires = []
+    message_port = None
+    python_command = "python3"

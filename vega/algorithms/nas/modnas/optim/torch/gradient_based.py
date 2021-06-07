@@ -9,7 +9,6 @@
 # MIT License for more details.
 
 """Optimizer operating on tensor parameters."""
-
 import math
 import copy
 import torch

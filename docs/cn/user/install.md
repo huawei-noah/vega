@@ -28,7 +28,3 @@ pip3 install --user --upgrade noah-vega
 2. 安装完成后，若`~/.local/bin`不在`$PATH`环境变量中，则需要重新登录，使环境变量生效。
 
 若是Ascend 910训练环境，请联系我们。
-
-## 3. 支持混合精度和SyncBNN
-
-需要支持混合精度和SyncBN，则需要安装Apex，下载Apex源码 `apex-master.zip` ，请根据该软件主页上的安装说明来安装该软件。

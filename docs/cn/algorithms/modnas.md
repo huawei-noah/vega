@@ -5,7 +5,7 @@
 ModularNAS是一个神经架构搜索代码库，它把最先进的高效的NAS方法分解为模块化的、可重用的组件，如搜索算法、评估策略、架构搜索空间和候选项、网络转换等。同时统一了搜索过程中各组件之间的交互。
 它还支持为自定义用例自动生成搜索空间，同时重用预定义的搜索策略，允许用户友好的NAS部署，而不需要额外的工作。
 
-<center><img src="../../en/algorithms/images/modnas_formulation.png" style="zoom:30%;" /></center>
+<center><img src="../../images/modnas_formulation.png" style="zoom:30%;" /></center>
 
 支持的NAS方法 (在VEGA上):
 

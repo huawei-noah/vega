@@ -6,17 +6,25 @@
 
 **English | [中文](./README.cn.md)**
 
-**Vega ver1.3.0 released:**
+---
+
+**Vega ver1.4.0 released**
 
 - Feature enhancement:
-  - Ascend platform, search and training on the Ascend 910 (TensorFlow and MindSpore), and model evaluation on the Ascend 310.
-  - Model evaluation is supported on the Kirin 990.
-  - Allows user datasets to be FineTune on DNet pretrained models and surpass SOTA on Ascend 910/310.
-  - Support the pruning capability of user datasets and ResNet models. For the Cifar100 data set, the precision changes slightly (+– 0.5), the latency decreases by 15%, and the model size decreases by 30%.
+
+  - Support TensorFlow and Mindpore distributed training in the search phase.
+  - The classification and detection joint training with same backend.
+  - Dynamically setting transformers.
+  - Added tools such as vega-process and vega-progress.
+  - New trainer ScriptRunner that directly invoke user scripts during the HPO process.
+  - The BO of the BOHB can use [HEBO](https://github.com/huawei-noah/noah-research/tree/master/HEBO).
+
 - New algorithm:
-  - ModularNAS: Towards Modularized and Reusable Neural Architecture Search, a code library for various neural architecture search methods including weight sharing and network morphism.
-  - DNet: Network architecture search algorithms and Model Zoo that are affinity with Davinci chips.
-  - MF-ASC: Multi-Fidelity neural Architecture Search with Co-kriging.
+
+  - [PBT](https://arxiv.org/abs/1711.09846)：Population Based Training of Neural Networks
+  - [Ada-Segment](https://arxiv.org/abs/2012.03603): Automated Multi-loss Adaptation for Panoptic Segmentation
+
+---
 
 ## Introduction
 
@@ -59,8 +67,6 @@ Vega is an AutoML algorithm tool chain developed by Noah's Ark Laboratory, the m
 | Model Compression | Quant-EA: Quantization based on Evolutionary Algorithm | Automatic mixed bit quantization algorithm, using evolutionary strategy to quantize each layer of the CNN network | [ref](./docs/en/algorithms/quant_ea.md) |
 | Model Compression | Prune-EA | Automatic channel pruning algorithm using evolutionary strategies | [ref](./docs/en/algorithms/prune_ea.md) |
 | HPO | [ASHA: Asynchronous Successive Halving Algorithm](https://arxiv.org/abs/1810.05934) | Dynamic continuous halving algorithm | [ref](./docs/en/algorithms/hpo.md) |
-| HPO | [TPE: Tree-structured Parzen Estimator Approach](https://papers.nips.cc/paper/4443-algorithms-for-hyper-parameter-optimization.pdf) | A hyperparameter optimization Algorithm Based on Tree - Structured Parzen Estimation | [ref](./docs/en/algorithms/hpo.md) |
-| HPO | BO: Bayesian Optimization | Bayesian optimization algorithm | [ref](./docs/en/algorithms/hpo.md) |
 | HPO | [BOHB: Hyperband with Bayesian Optimization](https://arxiv.org/abs/1807.01774) | Hyperband with Bayesian Optimization | [ref](./docs/en/algorithms/hpo.md) |
 | HPO | BOSS: Bayesian Optimization via Sub-Sampling | A universal hyperparameter optimization algorithm based on Bayesian optimization framework for resource-constraint hyper-parameters search | [ref](./docs/en/algorithms/hpo.md) |
 | Data Augmentation | [PBA: Population Based Augmentation: Efficient Learning of Augmentation Policy Schedules](https://arxiv.org/abs/1905.05393) | Data augmentation based on PBT optimization  | [ref](./docs/en/algorithms/pba.md) |

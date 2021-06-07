@@ -219,6 +219,7 @@ search_space:
     desc_construct:
       arch_desc:
         type: # arch. desc. constructor
+    arch_desc: # the arch. desc. to be constructed, or the path to its YAML file
 ```
 
 The construct routine will use search space constructors on the base model in the search phase, and architecture description constructors in the fully training phase.

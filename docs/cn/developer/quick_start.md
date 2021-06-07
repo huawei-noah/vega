@@ -166,9 +166,7 @@ nas:
                 gamma: 0.5
         loss:
             type: CrossEntropyLoss
-            params:
-                is_grad: False
-                sparse: True
+
         metric:
             type: accuracy
         epochs: 3

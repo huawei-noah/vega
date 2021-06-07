@@ -10,20 +10,13 @@
 
 """FPN neck for detection."""
 from zeus.common.class_factory import ClassType, ClassFactory
-from zeus.modules.module import Module
 from torchvision.ops.feature_pyramid_network import FeaturePyramidNetwork, LastLevelMaxPool
 
 
 @ClassFactory.register(ClassType.NETWORK)
-class TorchFPN(Module):
+class FPN(FeaturePyramidNetwork):
     """Adds a FPN from torchvision."""
 
-    def __init__(self, in_channels, out_channels=256, weight_file=None):
-        super(TorchFPN, self).__init__()
-        self.weight_file = weight_file
-        self.fpn = FeaturePyramidNetwork(in_channels_list=in_channels, out_channels=out_channels,
-                                         extra_blocks=LastLevelMaxPool())
-
-    def call(self, x):
-        """Call inputs."""
-        return self.fpn(x)
+    def __init__(self, in_channels, out_channels=256):
+        super(FPN, self).__init__(in_channels_list=in_channels, out_channels=out_channels,
+                                  extra_blocks=LastLevelMaxPool())

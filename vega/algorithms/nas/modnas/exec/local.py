@@ -9,8 +9,13 @@
 # MIT License for more details.
 
 """Run ModularNAS routines locally."""
-
 from modnas.utils.wrapper import run
 
+
+def exec_local():
+    """Run ModularNAS locally."""
+    return run()
+
+
 if __name__ == '__main__':
-    run()
+    exec_local()

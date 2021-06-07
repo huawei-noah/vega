@@ -9,11 +9,11 @@
 # MIT License for more details.
 
 """Event managing and triggering."""
-
 import inspect
 from functools import wraps
 from . import singleton, make_decorator
 from modnas.utils.logging import get_logger
+from modnas.utils import merge_config
 
 
 logger = get_logger(__name__)
@@ -23,19 +23,14 @@ logger = get_logger(__name__)
 class EventManager():
     """Event manager class."""
 
-    def __init__(self, verbose=False):
+    def __init__(self):
         self.handlers = {}
         self.event_queue = []
-        self.verbose = verbose
 
     def reset(self):
         """Reset event states."""
         self.handlers.clear()
         self.event_queue.clear()
-
-    def set_verbose(self, verbose):
-        """Set verbosity."""
-        self.verbose = verbose
 
     def get_handlers(self, ev):
         """Return generator over handlers of event."""
@@ -45,28 +40,26 @@ class EventManager():
 
     def on(self, ev, handler, priority=0):
         """Bind handler on event with priority."""
-        if self.verbose:
-            logger.info('on: {} {} {}'.format(ev, handler, priority))
+        logger.debug('on: %s %s %s' % (ev, handler, priority))
         ev_handlers = self.handlers.get(ev, [])
         ev_handlers.append((priority, handler))
         ev_handlers.sort(key=lambda s: -s[0])
         self.handlers[ev] = ev_handlers
 
-    def emit(self, ev, *args, callback=None, delayed=False, **kwargs):
+    def emit(self, ev, *args, e_cb=None, e_delayed=False, e_merge_ret=False,
+             e_chain_ret=True, e_fret=None, e_is_ret=False, **kwargs):
         """Trigger event with arguments."""
-        if self.verbose:
-            logger.info('emit: {} a: {} kw: {} d: {}'.format(ev, len(args), len(kwargs), delayed))
+        logger.debug('emit: %s a: %s kw: %s d: %s' % (ev, len(args), len(kwargs), e_delayed))
         if ev not in self.handlers:
             return
-        self.event_queue.append((ev, args, kwargs, callback))
-        if delayed:
+        self.event_queue.append((ev, args, kwargs, e_cb))
+        if e_delayed:
             return
-        return self.dispatch_all()
+        return self.dispatch_all(merge_ret=e_merge_ret, chain_ret=e_chain_ret, fret=e_fret, is_ret=e_is_ret)
 
     def off(self, ev, handler=None):
         """Un-bind handler on event."""
-        if self.verbose:
-            logger.info('off: {} {}'.format(ev, handler))
+        logger.debug('off: %s %s' % (ev, handler))
         ev_handlers = self.handlers.get(ev, None)
         if ev_handlers is None:
             return
@@ -80,7 +73,7 @@ class EventManager():
         if not ev_handlers:
             del self.handlers[ev]
 
-    def dispatch_all(self):
+    def dispatch_all(self, merge_ret=False, chain_ret=True, fret=None, is_ret=False):
         """Trigger all delayed event handlers."""
         rets = {}
         self.event_queue, ev_queue = [], self.event_queue
@@ -88,7 +81,11 @@ class EventManager():
             ev, args, kwargs, callback = ev_spec
             ret = None
             for handler in self.get_handlers(ev):
-                ret = handler(*args, **kwargs)
+                hret = handler(*args, **kwargs)
+                logger.debug('handler: %s %s' % (handler, hret))
+                if chain_ret and is_ret:
+                    args = (fret if hret is None else hret, ) + args[1:]
+                ret = merge_config(ret, hret) if merge_ret and hret is not None else hret
             if callback is not None:
                 callback(ret)
             if len(ev_queue) == 1:
@@ -98,7 +95,7 @@ class EventManager():
 
 
 @make_decorator
-def event_hooked(func, name=None, before=True, after=True, pass_ret=True, qual=True, module=False):
+def event_hooked(func, name=None, before=True, after=True, pass_ret=True, qual=True, module=False, **emit_args):
     """Return wrapped function with hooked event triggers."""
     qual = func.__qualname__.split('.')[0] if qual is True else (None if qual is False else qual)
     module = func.__module__ if module is True else (None if module is False else module)
@@ -112,14 +109,14 @@ def event_hooked(func, name=None, before=True, after=True, pass_ret=True, qual=T
         ev_before = wrapped.ev_before
         ev_after = wrapped.ev_after
         if ev_before:
-            hret = EventManager().emit(ev_before, *args, **kwargs)
+            hret = EventManager().emit(ev_before, *args, **kwargs, **emit_args)
             if hret is not None:
                 args, kwargs = args if hret[0] is None else hret[0], kwargs if hret[1] is None else hret[1]
         fret = func(*args, **kwargs)
         if ev_after:
             if wrapped.pass_ret:
                 args = (fret,) + args
-            hret = EventManager().emit(ev_after, *args, **kwargs)
+            hret = EventManager().emit(ev_after, *args, **kwargs, e_fret=fret, e_is_ret=True, **emit_args)
             if hret is not None:
                 return hret
         return fret

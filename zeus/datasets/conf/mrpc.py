@@ -19,6 +19,7 @@ class MrpcCommonConfig(BaseConfig):
     max_seq_length = 128
     vocab_file = None
     do_lower_case = True
+    transforms = dict(type='ToTensorAll')
 
 
 class MrpcTrainConfig(MrpcCommonConfig):

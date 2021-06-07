@@ -63,7 +63,7 @@ retrain:
         type: TrainPipeStep
 
     dataset:
-        type: AvazuDatasetNew
+        type: AvazuDataset
         batch_size: 2000
         common:
             data_path: /cache/datasets/Avazu/

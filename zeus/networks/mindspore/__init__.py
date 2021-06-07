@@ -16,7 +16,6 @@ from zeus.common.class_factory import ClassFactory
 ClassFactory.lazy_register("zeus.networks.mindspore", {
     "dnet": ["DNet"],
     "super_network": ["DartsNetwork", "CARSDartsNetwork", "GDASDartsNetwork"],
-    "prune_deformation": ["PruneDeformation", "Deformation"],
     "backbones.load_official_model": ["OffcialModelLoader"],
     "backbones.resnet_ms": ["ResNetMs"],
     "losses.mix_auxiliary_loss": ["MixAuxiliaryLoss"],

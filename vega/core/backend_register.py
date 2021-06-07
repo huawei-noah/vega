@@ -13,24 +13,14 @@ import os
 from zeus import register_zeus
 
 
-def set_data_format():
-    """Set data format for tensorflow."""
-    from zeus.common.general import General
-    if General.data_format is None:
-        if General.device_category == 'GPU':
-            General.data_format = 'channels_first'
-        elif General.device_category == 'NPU':
-            General.data_format = 'channels_last'
-
-
 def set_backend(backend='pytorch', device_category='GPU'):
     """Set backend.
 
     :param backend: backend type, default pytorch
     :type backend: str
     """
-    if "BACKEND_TYPE" in os.environ:
-        return
+    # if "BACKEND_TYPE" in os.environ:
+    #     return
     if 'NPU_VISIBLE_DEVICES' in os.environ:
         os.environ['NPU-VISIBLE-DEVICES'] = os.environ['NPU_VISIBLE_DEVICES']
     # CUDA visible
@@ -44,19 +34,21 @@ def set_backend(backend='pytorch', device_category='GPU'):
     # device
     if device_category is not None:
         os.environ['DEVICE_CATEGORY'] = device_category
+        from zeus.common.general import General
+        General.device_category == device_category
 
     # backend
-    if backend == 'pytorch':
+    if backend in ['pytorch', "p"]:
         os.environ['BACKEND_TYPE'] = 'PYTORCH'
-    elif backend == 'tensorflow':
+    elif backend in ['tensorflow', "t"]:
         os.environ['BACKEND_TYPE'] = 'TENSORFLOW'
         import warnings
         warnings.filterwarnings("ignore", category=FutureWarning)
-    elif backend == 'mindspore':
+    elif backend in ['mindspore', "m"]:
         os.environ['BACKEND_TYPE'] = 'MINDSPORE'
     else:
         raise Exception('backend must be pytorch, tensorflow or mindspore')
-    set_data_format()
+
     register_zeus(backend)
 
     # vega

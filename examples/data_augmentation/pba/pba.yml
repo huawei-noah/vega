@@ -38,9 +38,9 @@ pba:
     search_algorithm:
         type: PBAHpo
         policy:
-            each_epochs: 3
-            config_count: 16
-            total_rungs: 200
+            each_epochs: 3      # Number of epochs to be trained for each trainer round
+            config_count: 16    # Number of model groups (multiple of 4) for parallel training of the search algorithm
+            total_rungs: 200    # Number of iterations of the search algorithm
 
     model:
         model_desc:
@@ -64,7 +64,7 @@ fully_train:
     trainer:
         ref: pba.trainer
         callbacks: PbaTrainerCallback
-        epochs: 2000
+        epochs: 2000    # multiple of 4
         hps_folder: "{local_base_path}/output/pba/"
     evaluator:
         type: Evaluator

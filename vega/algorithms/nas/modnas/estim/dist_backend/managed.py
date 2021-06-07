@@ -9,7 +9,6 @@
 # MIT License for more details.
 
 """Managed list of remote clients."""
-
 import threading
 from modnas.registry.dist_remote import register as register_remote, build
 from .base import RemoteBase
@@ -69,6 +68,11 @@ class ManagedRemotes(RemoteBase):
             self.idle_cond.release()
         elif not self.idle_remotes():
             self.idle_cond.acquire()
+
+    def close(self):
+        """Close the remote client."""
+        for rmt in self.remotes.values():
+            rmt.close()
 
     def call(self, *args, on_done=None, on_failed=None, **kwargs):
         """Call function on remote client with callbacks."""

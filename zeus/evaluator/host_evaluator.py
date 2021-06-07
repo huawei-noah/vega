@@ -10,6 +10,7 @@
 
 """HostEvaluator used to do evaluate process on gpu."""
 import time
+import os
 import logging
 import zeus
 from zeus.common import ClassFactory, ClassType
@@ -73,9 +74,15 @@ class HostEvaluator(Evaluator):
                     else:
                         raise ValueError("The dataset format must be tuple or list,"
                                          "but get {}.".format(type(batch)))
-                    if self.config.cuda:
+                    if zeus.is_gpu_device():
                         data, target = data.cuda(), target.cuda()
                         self.model = self.model.cuda()
+                    elif zeus.is_npu_device():
+                        import torch.npu
+                        device = "npu:{}".format(os.environ.get('ASCEND_DEVICE_ID', 0))
+                        torch.npu.set_device(device)
+                        data, target = data.npu(), target.npu()
+                        self.model = self.model.npu()
                     time_start = time.time()
                     logits = self.model(data)
                     latency_sum += time.time() - time_start
@@ -100,11 +107,12 @@ class HostEvaluator(Evaluator):
             from .utils import FakeLoss
             metrics = Metrics(self.config.metric)
             metric_name = self.config.metric().type
+            ms_metric = metrics() if isinstance(metrics(), dict) else {metric_name: metrics()}
             dataset_sink_mode = True if zeus.is_npu_device() else False
             # when eval, the loss_fn is not needed actually, but when initilized, the loss_fn can't be None
             ms_model = MsModel(network=self.model,
                                loss_fn=FakeLoss(),
-                               metrics={metric_name: metrics()})
+                               metrics=ms_metric)
             time_start = time.time()
             eval_metrics = ms_model.eval(valid_dataset=valid_loader,
                                          callbacks=None,
@@ -148,18 +156,8 @@ class HostEvaluator(Evaluator):
         self.load_model()
         self.valid_loader = self._init_dataloader(mode='test')
         performance = self.valid(self.valid_loader)
-        self._broadcast(performance)
-        logging.info("the model (id {}) is evaluated on the host".format(self.worker_id))
-
-    def _broadcast(self, pfms):
-        """Boadcase pfrm to record."""
-        record = ReportClient.get_record(self.step_name, self.worker_id)
-        if record.performance:
-            record.performance.update(pfms)
-        else:
-            record.performance = pfms
-        ReportClient.broadcast(record)
-        logging.debug("evaluate record: {}".format(record))
+        ReportClient().update(self.step_name, self.worker_id, performance=performance)
+        logging.info(f"finished host evaluation, id: {self.worker_id}, performance: {performance}")
 
     def _init_session_config(self):
         import tensorflow as tf

@@ -9,7 +9,6 @@
 # MIT License for more details.
 
 """ONNX export metrics."""
-
 import os
 import tempfile
 import torch

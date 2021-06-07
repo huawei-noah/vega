@@ -13,6 +13,7 @@ import copy
 import logging
 import os
 import zeus
+import glob
 from zeus.common import ClassFactory, ClassType
 from zeus.trainer.distributed_worker import DistributedWorker
 from zeus.trainer.utils import WorkerTypes
@@ -21,6 +22,7 @@ from zeus.datasets import Adapter
 from .conf import EvaluatorConfig
 from zeus.model_zoo import ModelZoo
 from zeus.networks.model_config import ModelConfig
+from vega.core.pipeline.conf import PipeStepConfig
 
 logger = logging.getLogger(__name__)
 
@@ -102,10 +104,7 @@ class Evaluator(DistributedWorker):
         """Load model."""
         self.saved_folder = self.get_local_worker_path(self.step_name, self.worker_id)
         if not self.model_desc:
-            model_config = Config(FileOps.join_path(self.saved_folder, 'desc_{}.json'.format(self.worker_id)))
-            if "type" not in model_config and "modules" not in model_config:
-                model_config = ModelConfig.model_desc
-            self.model_desc = model_config
+            self.model_desc = self._get_model_desc()
         if not self.weights_file:
             if zeus.is_torch_backend():
                 self.weights_file = FileOps.join_path(self.saved_folder, 'model_{}.pth'.format(self.worker_id))
@@ -115,7 +114,11 @@ class Evaluator(DistributedWorker):
                         self.weights_file = FileOps.join_path(self.saved_folder, file)
             elif zeus.is_tf_backend():
                 self.weights_file = FileOps.join_path(self.saved_folder, 'model_{}'.format(self.worker_id))
-        self.model = ModelZoo.get_model(self.model_desc, self.weights_file)
+        if self.weights_file is not None and os.path.exists(self.weights_file):
+            self.model = ModelZoo.get_model(self.model_desc, self.weights_file)
+        else:
+            logger.info("evalaute model without loading weights file")
+            self.model = ModelZoo.get_model(self.model_desc)
 
     def _use_evaluator(self):
         """Check if use evaluator and get the evaluators.
@@ -150,3 +153,40 @@ class Evaluator(DistributedWorker):
         for cls in cls_evaluator_set:
             evaluator = cls(worker_info=self.worker_info)
             self.add_evaluator(evaluator)
+
+    def _get_model_desc(self):
+        model_desc = self.model_desc
+        self.saved_folder = self.get_local_worker_path(self.step_name, self.worker_id)
+        if not model_desc:
+            if os.path.exists(FileOps.join_path(self.saved_folder, 'desc_{}.json'.format(self.worker_id))):
+                model_config = Config(FileOps.join_path(self.saved_folder, 'desc_{}.json'.format(self.worker_id)))
+                if "type" not in model_config and "modules" not in model_config:
+                    model_config = ModelConfig.model_desc
+                model_desc = model_config
+            elif ModelConfig.model_desc_file is not None:
+                desc_file = ModelConfig.model_desc_file
+                desc_file = desc_file.replace("{local_base_path}", self.local_base_path)
+                if ":" not in desc_file:
+                    desc_file = os.path.abspath(desc_file)
+                if ":" in desc_file:
+                    local_desc_file = FileOps.join_path(
+                        self.local_output_path, os.path.basename(desc_file))
+                    FileOps.copy_file(desc_file, local_desc_file)
+                    desc_file = local_desc_file
+                model_desc = Config(desc_file)
+                logger.info("net_desc:{}".format(model_desc))
+            elif ModelConfig.model_desc is not None:
+                model_desc = ModelConfig.model_desc
+            elif ModelConfig.models_folder is not None:
+                folder = ModelConfig.models_folder.replace("{local_base_path}", self.local_base_path)
+                pattern = FileOps.join_path(folder, "desc_*.json")
+                desc_file = glob.glob(pattern)[0]
+                model_desc = Config(desc_file)
+
+            elif PipeStepConfig.pipe_step.get("models_folder") is not None:
+                folder = PipeStepConfig.pipe_step.get("models_folder").replace("{local_base_path}",
+                                                                               self.local_base_path)
+                desc_file = FileOps.join_path(folder, "desc_{}.json".format(self.worker_id))
+                model_desc = Config(desc_file)
+                logger.info("Load model from model folder {}.".format(folder))
+        return model_desc

@@ -9,7 +9,6 @@
 # MIT License for more details.
 
 """Implementation of Criterions (Loss functions)."""
-
 import math
 import random
 import torch

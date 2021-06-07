@@ -13,17 +13,16 @@ import os
 import traceback
 import logging
 import signal
-import datetime
 import pandas as pd
 import json
 from .pipe_step import PipeStep
 from zeus.common.user_config import UserConfig
-from zeus.common.file_ops import FileOps
-from zeus.common.task_ops import TaskOps
+from zeus.common import FileOps, TaskOps, Status
 from vega.core.scheduler import shutdown_cluster
 from zeus.common.general import General
 from .conf import PipeStepConfig, PipelineConfig
 from zeus.report import ReportServer
+from zeus.common import MessageServer
 
 logger = logging.getLogger(__name__)
 
@@ -35,6 +34,9 @@ class Pipeline(object):
     Execute steps one by one and set glob configs with current step config.
     """
 
+    def __init__(self):
+        self.steps = []
+
     def run(self):
         """Execute the whole pipeline."""
 
@@ -43,13 +45,19 @@ class Pipeline(object):
             shutdown_cluster()
             os._exit(0)
 
-        steps_time = []
         error_occured = False
+
+        # start MessageServer
+        MessageServer().run(ip=General.cluster.master_ip)
+        General.message_port = MessageServer().port
+
+        # start Report Server
+        ReportServer().run()
+        ReportServer().set_step_names(PipelineConfig.steps)
 
         try:
             signal.signal(signal.SIGINT, _shutdown_cluster)
             signal.signal(signal.SIGTERM, _shutdown_cluster)
-            _ = ReportServer()
             for step_name in PipelineConfig.steps:
                 step_cfg = UserConfig().data.get(step_name)
                 General.step_name = step_name
@@ -65,22 +73,20 @@ class Pipeline(object):
                 if PipeStepConfig.type == "TrainPipeStep":
                     General._parallel = General.parallel_fully_train
 
-                start_time = datetime.datetime.now()
-                PipeStep().do()
-                end_time = datetime.datetime.now()
-                steps_time.append([step_name, start_time, end_time, self._interval_time(start_time, end_time)])
-        except Exception:
+                pipestep = PipeStep(name=step_name)
+                self.steps.append(pipestep)
+                pipestep.do()
+        except Exception as e:
             logger.error("Failed to run pipeline.")
             logger.error(traceback.format_exc())
             error_occured = True
-        try:
-            shutdown_cluster()
-        except Exception:
-            logger.error("Failed to shutdown dask cluster.")
-            logger.error(traceback.format_exc())
+            if "pipestep" in locals():
+                pipestep.update_status(Status.error, str(e))
+
+        shutdown_cluster()
 
         if not error_occured:
-            self._show_pipeline_info(steps_time, step_name)
+            self._show_pipeline_info()
 
     def _set_evaluator_config(self, step_cfg):
         if "evaluator" in step_cfg:
@@ -97,26 +103,28 @@ class Pipeline(object):
         hours, minutes = divmod(minutes, 60)
         return "%d:%02d:%02d" % (hours, minutes, seconds)
 
-    def _show_pipeline_info(self, steps_time, step_name):
+    def _show_pipeline_info(self):
         logging.info("-" * 48)
         logging.info("  Pipeline end.")
         logging.info("")
         logging.info("  task id: {}".format(General.task.task_id))
         logging.info("  output folder: {}".format(TaskOps().local_output_path))
         logging.info("")
-        self._show_step_time(steps_time)
+        self._show_step_time()
         logging.info("")
-        self._show_report(step_name)
+        self._show_report()
         logging.info("-" * 48)
 
-    def _show_step_time(self, steps_time):
+    def _show_step_time(self):
         logging.info("  running time:")
-        for step in steps_time:
-            logging.info("  {:>16s}:  {}  [{} - {}]".format(str(step[0]), step[3], step[1], step[2]))
+        for step in self.steps:
+            #  nas:  0:01:45  [2021-03-29 06:44:19.033835 - 2021-03-29 06:46:04.792390]
+            step_time = self._interval_time(step.start_time, step.end_time)
+            logging.info("  {:>16s}:  {}  [{} - {}]".format(step.name, step_time, step.start_time, step.end_time))
 
-    def _show_report(self, step_name):
+    def _show_report(self):
         performance_file = FileOps.join_path(
-            TaskOps().local_output_path, step_name, "output.csv")
+            TaskOps().local_output_path, self.steps[-1].name, "output.csv")
         try:
             data = pd.read_csv(performance_file)
         except Exception:

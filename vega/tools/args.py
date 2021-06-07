@@ -9,7 +9,7 @@
 # MIT License for more details.
 
 """Inference of vega model."""
-import argparse
+from zeus.common import argment_parser
 from zeus.common.config import Config, build_tree
 from zeus.common.general import General
 from vega.core.pipeline.conf import PipelineConfig, PipeStepConfig
@@ -17,13 +17,12 @@ from zeus.trainer.conf import TrainerConfig
 
 
 def _parse_args(sections, desc):
-    parser = argparse.ArgumentParser(description=desc)
+    parser = argment_parser(desc)
     parser.add_argument("-backend", "--general.backend", default="pytorch", type=str,
                         help="pytorch|tensorflow|mindspore")
     if "cluster" in sections:
         parser.add_argument("-devices_per_trainer", "--general.worker.devices_per_trainer", default=None, type=int)
         parser.add_argument("-master_ip", "--general.cluster.master_ip", default=None, type=str)
-        parser.add_argument("-listen_port", "--general.cluster.listen_port", default=8000, type=int)
         parser.add_argument("-slaves", "--general.cluster.slaves", default=[],
                             action='store', dest='general.cluster.slaves', type=str, nargs='*',
                             help="slave IP list")

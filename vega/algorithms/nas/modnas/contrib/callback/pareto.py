@@ -9,8 +9,6 @@
 # MIT License for more details.
 
 """Pareto optimum statistics reporter."""
-
-import matplotlib
 from modnas.registry.callback import register
 from modnas.registry.callback import OptimumReporter
 from matplotlib import pyplot as plt

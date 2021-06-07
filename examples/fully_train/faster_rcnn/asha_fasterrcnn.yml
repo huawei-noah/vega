@@ -1,0 +1,69 @@
+general:
+    backend: pytorch  #pytorch
+
+pipeline: [hpo]
+
+hpo:
+    pipe_step:
+        type: SearchPipeStep
+
+    search_algorithm:
+        type: AshaHpo
+        objective_keys: mAP
+        policy:
+            total_epochs: 200
+
+    search_space:
+        type: SearchSpace
+        hyperparameters:
+            -   key: network.box_score_thresh
+                type: FLOAT_EXP
+                range: [0.0001, 1]
+            -   key: trainer.optimizer.params.lr
+                type: FLOAT_EXP
+                range: [0.0001, 0.01]
+            -   key: trainer.optimizer.type
+                type: CATEGORY
+                range: ['Adam', 'SGD']
+            -   key: trainer.optimizer.params.momentum
+                type: FLOAT
+                range: [0.0, 0.99]
+        condition:
+            -   key: condition_for_sgd_momentum
+                child: trainer.optimizer.params.momentum
+                parent: trainer.optimizer.type
+                type: EQUAL
+                range: ["SGD"]
+    model:
+        model_desc:
+            type: torchvision_fasterrcnn_resnet50_fpn
+
+    trainer:
+        type: Trainer
+        get_train_metric_after_epoch: False
+        model_statistics: False
+        is_detection_trainer: True
+        optimizer:
+            type: SGD
+            params:
+                lr: 0.003
+                momentum: 0.9
+                weight_decay: 0.0001
+        lr_scheduler:
+            type: CosineAnnealingLR
+            params:
+                T_max: 30000
+                eta_min: 0.0001
+        loss:
+            type: SumLoss
+        metric:
+            type: coco
+            params:
+                anno_path: /cache/datasets/COCO2017/annotations/instances_val2017.json
+
+    dataset:
+        type: CocoDataset
+        common:
+            data_root: /cache/datasets/COCO2017/
+            img_prefix: 2017
+            ann_prefix: instances

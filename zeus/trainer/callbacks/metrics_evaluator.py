@@ -21,7 +21,7 @@ class MetricsEvaluator(Callback):
 
     def __init__(self):
         """Initialize MetricsEvaluator callback."""
-        super(Callback, self).__init__()
+        super(MetricsEvaluator, self).__init__()
         self.priority = 230
 
     def before_train(self, logs=None):
@@ -87,7 +87,7 @@ class MetricsEvaluator(Callback):
     def after_valid_step(self, batch_index, logs=None):
         """Be called after each batch of validation."""
         if self.do_validation and self.valid_metrics is not None:
-            input, target = self.valid_batch
+            _, target = self.valid_batch
             output = logs['valid_batch_output']
             self.valid_metrics(output, target)
 

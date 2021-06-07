@@ -120,7 +120,7 @@ vega ./nas/backbone_nas/backbone_nas.yml -b m -d NPU
     | :--: | :--: | :-- |
     | nas | Input | Config File: compression/prune-ea/prune.yml <br> Pre-Trained Model: /cache/models/resnet20.pth <br> Dataset: /cache/datasets/cifar10 |
     | nas | Output | Network Description File: tasks/\<task id\>/output/nas/model_desc_\<id\>.json |
-    | nas | approximate running time | (random_models + num_generation * num_individual) * epochs / Number of GPUs * Training time per epoch |
+    | nas | approximate running time | (random_samples + num_generation * num_individual) * epochs / Number of GPUs * Training time per epoch |
     | fully train | Input | Config File: compression/prune-ea/prune.yml <br> Network Description File: tasks/\<task id\>/output/nas/model_desc_\<id\>.json <br> Dataset: /cache/datasets/cifar10 |
     | fully train | Output | Model: tasks/\<task id\>/output/fully_train/model_\<id\>.pth |
     | fully train | approximate running time | epochs * Training time per epoch |
@@ -131,7 +131,7 @@ vega ./nas/backbone_nas/backbone_nas.yml -b m -d NPU
     | :--: | :--: | :-- |
     | nas | Input | Config File: compression/quant-ea/quant.yml <br> Dataset: /cache/datasets/cifar10 |
     | nas | Output | Network Description File: tasks/\<task id\>/output/nas/model_desc_\<id\>.json |
-    | nas | approximate running time | (random_models + num_generation * num_individual) * epochs / Number of GPUs * Training time per epoch |
+    | nas | approximate running time | (random_samples + num_generation * num_individual) * epochs / Number of GPUs * Training time per epoch |
     | fully train | Input | Config File: compression/quant-ea/quant.yml <br> Network Description File: tasks/\<task id\>/output/nas/model_desc_\<id\>.json <br> Dataset: /cache/datasets/cifar10 |
     | fully train | Output | Model: tasks/\<task id\>/output/fully_train/model_\<id\>.pth |
     | fully train | approximate running time | epochs * Training time per epoch |

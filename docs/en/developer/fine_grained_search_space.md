@@ -93,7 +93,7 @@ params = ParamsFactory.create_search_space(
 param_name='backbone.block1.conv.in_channels',
 param_type=ParamTypes.CATEGORY,
 param_range=[8, 16, 32, 64, 128, 256])
-search_space = SearchSpace().add_hyperparameter(params)
+search_space = SearchSpace().add_hp(params)
 # Search algorithm
 id, desc = RandomSearch(search_space).search()
 # Parse into a model.

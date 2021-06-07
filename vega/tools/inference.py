@@ -9,13 +9,14 @@
 # MIT License for more details.
 
 """Inference of vega model."""
-import argparse
+
 import pickle
 import os
 import numpy as np
 import cv2
 import csv
 import vega
+from zeus.common import argment_parser
 
 
 def _load_data(args):
@@ -140,17 +141,17 @@ def _save_result(args, result):
 
 def parse_args_parser():
     """Parse parameters."""
-    parser = argparse.ArgumentParser(description='Vega Inference.')
+    parser = argment_parser('Vega Inference.')
     parser.add_argument("-c", "--model_desc", default=None, type=str, required=True,
-                        help="Model description file, generally in json format, contains 'module' node.")
+                        help="model description file, generally in json format, contains 'module' node.")
     parser.add_argument("-m", "--model", default=None, type=str, required=True,
-                        help="Model weight file, usually ends with pth, ckpl, etc.")
+                        help="model weight file, usually ends with pth, ckpl, etc.")
     parser.add_argument("-df", "--data_format", default="classification", type=str,
                         choices=["classification", "c",
                                  "super_resolution", "s",
                                  "segmentation", "g",
                                  "detection", "d"],
-                        help="Data type. "
+                        help="data type, "
                         "classification: some pictures file in a folder, "
                         "super_resolution: some low resolution picture in a folder, "
                         "segmentation: , "
@@ -158,14 +159,15 @@ def parse_args_parser():
                         "'classification' is default"
                         )
     parser.add_argument("-dp", "--data_path", default=None, type=str, required=True,
-                        help="The folder where the file to be inferred is located.")
+                        help="the folder where the file to be inferred is located.")
     parser.add_argument("-b", "--backend", default="pytorch", type=str,
-                        choices=["pytorch", "tensorflow", "mindspore"])
+                        choices=["pytorch", "tensorflow", "mindspore"],
+                        help="set training platform")
     parser.add_argument("-d", "--device", default="GPU", type=str,
                         choices=["CPU", "GPU", "NPU"],
-                        help="The folder where the file to be inferred is located.")
+                        help="set training device")
     parser.add_argument("-o", "--output_file", default=None, type=str,
-                        help="Output file. "
+                        help="output file. "
                         "classification: ./result.csv, "
                         "super_resolution: ./result.pkl, "
                         "segmentation: ./result.pkl, "

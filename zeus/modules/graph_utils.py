@@ -33,12 +33,16 @@ def get_ops_from_graph(graph):
     merged_ops = OrderedDict()
     for op in ops:
         support_ops_name = None
+        scope_name = None
         for _support_ops_name in Node.__support_ops__:
             if re.findall(_support_ops_name, op.name) or op.name.endswith(_support_ops_name):
                 support_ops_name = _support_ops_name
+        if op.type in Node.__support_ops_types__:
+            support_ops_name = op.name
+            scope_name = op.name
         if not support_ops_name:
             continue
-        scope_name = op.name[:op.name.index(support_ops_name)]
+        scope_name = scope_name or op.name[:op.name.index(support_ops_name)]
         all_ops_in_scope = [op for op in ops if op.name.startswith(scope_name + '/') or op.name == scope_name]
         if not all_ops_in_scope and len(op.inputs) == 0:
             continue
@@ -47,28 +51,39 @@ def get_ops_from_graph(graph):
             all_ops_in_scope.insert(0, inputs)
             inputs = op.inputs[0].op.inputs
         type_name = op.type if op.type != 'Const' else op.name.split('/')[-1]
+        if op.type == 'Const':
+            continue
         node = Node(inputs=inputs, outputs=op.outputs[0], type_name=type_name, op_name=op.name,
                     op_list=all_ops_in_scope)
         merged_ops[node.op_name] = node
+        if op.name.endswith('Softmax'):
+            break
     return merged_ops
 
 
 def ops2dag(merged_ops):
     """Load ops dict into dag."""
     dag = DAG()
+    dot = DagGraphVisual()
+    dot.node(name='root', label='root')
     outs = {op['outputs'].name: op for name, op in merged_ops.items() if op['outputs'] is not None}
+    outs = {k.replace('Conv2D:0', 'BiasAdd:0'): v for k, v in outs.items()}
     for name, node in merged_ops.items():
         inps = node['inputs']
         pre_node_name = 'root'
         dag.add_node_if_not_exists(name)
+        dot.node(name=name, label=name)
         if inps is not None:
             for inp in inps:
                 pre_node = outs.get(inp.name)
                 if pre_node is not None:
                     pre_node_name = pre_node.op_name
                     dag.add_edge(pre_node_name, name)
+                    dot.edge(pre_node_name, name)
         else:
             dag.add_edge(pre_node_name, name)
+            dot.edge(pre_node_name, name)
+    dot.show()
     return dag
 
 
@@ -127,3 +142,29 @@ class Dag2Module(object):
             k, v = g.popitem(False)
             seq.append(self.ops.get(k))
         return seq
+
+
+class DagGraphVisual(object):
+    """Dag Graph Visual."""
+
+    def __init__(self, show_dag=False):
+        if show_dag:
+            from graphviz import Digraph
+            self.dot = Digraph(name="Root", comment="network", format="png")
+        else:
+            self.dot = None
+
+    def node(self, name, label):
+        """Add node to dot."""
+        if self.dot:
+            self.dot.node(name=name, label=label, color='green')
+
+    def edge(self, pre_node_name, name):
+        """Add edge to dot."""
+        if self.dot:
+            self.dot.edge(pre_node_name, name)
+
+    def show(self):
+        """Show dot."""
+        if self.dot:
+            self.dot.view()

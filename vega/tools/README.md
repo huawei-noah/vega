@@ -8,7 +8,6 @@ usage:
 usage: fully_train.py [-h] [-backend GENERAL.BACKEND]
                       [-devices_per_trainer GENERAL.WORKER.devices_per_trainer]
                       [-master_ip GENERAL.CLUSTER.MASTER_IP]
-                      [-listen_port GENERAL.CLUSTER.LISTEN_PORT]
                       [-slaves [GENERAL.CLUSTER.SLAVES [GENERAL.CLUSTER.SLAVES ...]]]
                       -dataset DATASET.TYPE
                       [-data_path DATASET.COMMON.DATA_PATH]
@@ -26,7 +25,6 @@ optional arguments:
                         pytorch|tensorflow|mindspore
   -devices_per_trainer GENERAL.WORKER.devices_per_trainer, --general.worker.devices_per_trainer GENERAL.WORKER.devices_per_trainer
   -master_ip GENERAL.CLUSTER.MASTER_IP, --general.cluster.master_ip GENERAL.CLUSTER.MASTER_IP
-  -listen_port GENERAL.CLUSTER.LISTEN_PORT, --general.cluster.listen_port GENERAL.CLUSTER.LISTEN_PORT
   -slaves [GENERAL.CLUSTER.SLAVES [GENERAL.CLUSTER.SLAVES ...]], --general.cluster.slaves [GENERAL.CLUSTER.SLAVES [GENERAL.CLUSTER.SLAVES ...]]
                         slave IP list
   -dataset DATASET.TYPE, --dataset.type DATASET.TYPE

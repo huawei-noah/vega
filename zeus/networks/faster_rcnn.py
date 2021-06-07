@@ -10,39 +10,24 @@
 
 """This is FasterRCNN network."""
 from zeus.common import ClassFactory, ClassType
-from zeus.modules.module import Module
 from zeus.modules.connections import Sequential
+from zeus.modules.module import Module
+from torchvision.models.detection import FasterRCNN
 
 
 @ClassFactory.register(ClassType.NETWORK)
-class FasterRCNN(Module):
+class FasterRCNN(FasterRCNN, Module):
     """Create ResNet Network."""
 
-    def __init__(self, num_classes, backbone='SerialBackbone', neck='TorchFPN', network_name='torchvision_FasterRCNN',
-                 weight_file=None, **kwargs):
+    def __init__(self, num_classes, backbone='ResNetBackbone', neck='FPN', **kwargs):
         """Create layers.
 
         :param num_class: number of class
         :type num_class: int
         """
-        super(FasterRCNN, self).__init__()
-        self.weight_file = weight_file
-        backbone_cls = self.define_props('backbone', backbone, dtype=ClassType.NETWORK)
-        backbone_cls.freeze()
-        if getattr(backbone_cls, 'out_channels') and 'in_channels' not in neck:
-            neck_in_channel = backbone_cls.out_channels
-            params = {"in_channels": neck_in_channel}
-            neck_cls = self.define_props('neck', neck, dtype=ClassType.NETWORK, params=params)
-        else:
-            neck_cls = self.define_props('neck', neck, dtype=ClassType.NETWORK)
-        backbone_neck = Sequential(backbone_cls, neck_cls)
-        backbone_neck.freeze()
-        self.model = ClassFactory.get_cls(ClassType.NETWORK, network_name)(backbone_neck, num_classes, **kwargs)
-
-    def call(self, inputs, targets=None):
-        """Call inputs."""
-        return self.model(inputs, targets)
-
-    def load_state_dict(self, state_dict=None, strict=None):
-        """Remove backbone."""
-        self.model.load_state_dict(state_dict, strict or False)
+        backbone_cls = ClassFactory.get_instance(ClassType.NETWORK, backbone)
+        neck_cls = ClassFactory.get_instance(ClassType.NETWORK, neck, in_channels=backbone_cls.out_channels)
+        backbone_neck = Sequential()
+        backbone_neck.append(backbone_cls, 'body')
+        backbone_neck.append(neck_cls, 'fpn')
+        super(FasterRCNN, self).__init__(backbone_neck, num_classes, **kwargs)

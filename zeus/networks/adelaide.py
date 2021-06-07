@@ -14,6 +14,7 @@ from zeus.modules.blocks.micro_decoder import MicroDecoder
 from zeus.modules.operators import ops
 from zeus.common import ClassFactory, ClassType
 from zeus.modules.module import Module
+import zeus
 
 
 @ClassFactory.register(ClassType.NETWORK)
@@ -31,6 +32,8 @@ class AdelaideFastNAS(Module):
         self.decoder = MicroDecoder(backbone_out_sizes, op_names, num_classes, config, agg_size, aux_cell, sep_repeats,
                                     agg_concat)
         self.head = ops.InterpolateScale(mode='bilinear', align_corners=True)
+        if zeus.is_ms_backend():
+            self.permute = ops.Permute((0, 2, 3, 1))
 
     def call(self, inputs):
         """Do an inference on AdelaideFastNAS model."""

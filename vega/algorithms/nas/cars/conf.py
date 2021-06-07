@@ -52,7 +52,6 @@ class CARSConfig(ConfigSerializable):
     codec = 'DartsCodec'
     policy = CARSPolicyConfig
     objective_keys = 'accuracy'
-    _remove_watched_var = False
 
     @classmethod
     def rules(cls):

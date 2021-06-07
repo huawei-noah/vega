@@ -16,6 +16,7 @@ import traceback
 from zeus.common import FileOps
 from zeus.common import ClassFactory, ClassType
 from zeus.trainer.callbacks import Callback
+from zeus.report import ReportClient
 from vega.core.search_space import SearchSpace
 from vega.core.search_algs import SearchAlgorithm
 from modnas.data_provider.predefined.default import DefaultDataProvider
@@ -237,7 +238,7 @@ class ModNasTrainerCallback(Callback):
         self.config['expman'] = self.config.get('expman', {})
         self.config['expman']['root_dir'] = FileOps.join_path(self.trainer.get_local_worker_path(), 'exp')
         self.config = merge_config(self.config, self.model.config)
-        ctx = init_all(self.config, model=self.model.net)
+        ctx = init_all(config=self.config, base_model=self.model.net)
         self.__dict__.update(ctx)
         self.model.net = list(self.estims.values())[0].model
         if self.optim:
@@ -329,8 +330,9 @@ class ModNasTrainerCallback(Callback):
         ret = self.estim_ret.get('final')
         self.trainer.performance = {'default': ret.get('best_score')}
         desc = self.trainer.model_desc.copy()
-        desc['custom']['arch_desc'] = ret.get('best_arch')
-        self.trainer.config.codec = desc
+        desc['custom']['arch_desc'] = ret.get('best_arch_desc')
+        # force update trainer record
+        ReportClient().update(self.trainer.step_name, self.trainer.worker_id, desc=desc)
 
     def after_valid_step(self, batch_index, logs=None):
         """Be called after a batch validation."""

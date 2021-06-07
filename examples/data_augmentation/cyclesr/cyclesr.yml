@@ -16,7 +16,7 @@ fully_train:
         train:
             HR_dir: "/cache/datasets/DIV2K_unpair/DIV2K_HR_sub480"
             LR_dir: "/cache/datasets/DIV2K_unpair/DIV2K_unknown_sub120"
-            batch_size: 64
+            batch_size: 32
         test:
             HR_dir: "/cache/datasets/DIV2K_unpair/DIV2K_valid_HR"
             LR_dir: "/cache/datasets/DIV2K_unpair/DIV2K_valid_LR_unknown"

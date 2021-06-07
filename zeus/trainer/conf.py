@@ -46,7 +46,6 @@ class TrainerConfig(ConfigSerializable):
     with_valid = True
     with_train = True
     max_train_steps = None
-    cuda = True
     is_detection_trainer = False
     is_gan_trainer = False
     distributed = False
@@ -62,7 +61,6 @@ class TrainerConfig(ConfigSerializable):
     grad_clip = None
     pretrained_model_file = None
     model_statistics = True
-    device = cuda if cuda is not True else 0
     # config a object
     optimizer = OptimConfig
     lr_scheduler = LrSchedulerConfig
@@ -99,13 +97,14 @@ class TrainerConfig(ConfigSerializable):
     calc_latency = False
     train_in_once = False
     mixup = False
+    multi_task = False
+    adaptive_muti_loss = False
 
     @classmethod
     def rules(cls):
         """Return rules for checking."""
         check_rules_trainer = {"type": {"type": str},
                                "with_valid": {"type": bool},
-                               "cuda": {"type": bool},
                                "is_detection_trainer": {"type": bool},
                                "distributed": {"type": bool},
                                "save_model_desc": {"type": bool},
@@ -144,7 +143,9 @@ class TrainerConfig(ConfigSerializable):
                                "valid_report_steps": {"type": int},
                                "calc_params_each_epoch": {"type": bool},
                                "load_checkpoint": {"type": bool},
-                               "mixup": {"type": bool}
+                               "mixup": {"type": bool},
+                               "multi_task": {"type": bool},
+                               "adaptive_muti_loss": {"type": bool}
                                }
         return check_rules_trainer
 

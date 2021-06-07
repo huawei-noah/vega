@@ -10,7 +10,6 @@
 
 """Nas Pipe Step defined in Pipeline."""
 import logging
-from copy import deepcopy
 import time
 import os
 import glob
@@ -22,29 +21,34 @@ from zeus.common import ClassFactory, ClassType
 from ..pipeline.conf import PipeStepConfig
 from zeus.report import ReportServer
 from zeus.common.general import General
-from zeus.common.task_ops import TaskOps
+from zeus.common import TaskOps, Status
 from zeus.trainer.conf import TrainerConfig
-from zeus.trainer.trainer_base import TrainerBase
 
 
 @ClassFactory.register(ClassType.PIPE_STEP)
 class SearchPipeStep(PipeStep):
     """PipeStep is the base components class that can be added in Pipeline."""
 
-    def __init__(self):
+    def __init__(self, *args, **kwargs):
         """Initialize."""
-        super().__init__()
+        super().__init__(*args, **kwargs)
         if not hasattr(self, "generator"):
             self.generator = Generator.restore()
         if not self.generator:
             self.generator = Generator()
-        ReportServer.restore()
         self.master = create_master(update_func=self.generator.update)
         self.user_trainer_config = TrainerConfig().to_dict()
 
     def do(self):
         """Do the main task in this pipe step."""
+        super().do()
         logging.debug("SearchPipeStep started...")
+
+        if hasattr(self.generator, "search_alg") and hasattr(self.generator.search_alg, "max_samples"):
+            self.num_models = self.generator.search_alg.max_samples
+            self.num_epochs = self.num_models * TrainerConfig.epochs
+        self.update_status(Status.running)
+
         while not self.generator.is_completed:
             res = self.generator.sample()
             if res:
@@ -54,18 +58,18 @@ class SearchPipeStep(PipeStep):
         self.master.join()
         logging.debug("Pareto_front values: %s", ReportServer().pareto_front(General.step_name))
         ReportServer().output_pareto_front(General.step_name)
-        self.master.close_client()
+        self.master.close()
         if General.clean_worker_dir:
             self._clean_checkpoint()
+        self.update_status(Status.finished)
 
     def _dispatch_trainer(self, samples):
         for (id, desc, hps) in samples:
-            cls_trainer = ClassFactory.get_cls(ClassType.TRAINER)
+            cls_trainer = ClassFactory.get_cls(ClassType.TRAINER, PipeStepConfig.trainer.type)
             TrainerConfig.from_dict(self.user_trainer_config)
             trainer = cls_trainer(id=id, model_desc=desc, hps=hps)
             evaluator = self._get_evaluator(trainer)
             logging.info("submit trainer, id={}".format(id))
-            ReportServer.add_watched_var(General.step_name, trainer.worker_id)
             self.master.run(trainer, evaluator)
 
     def _get_evaluator(self, trainer):

@@ -9,7 +9,6 @@
 # MIT License for more details.
 
 """Predefined components."""
-
 import modnas.arch_space.predefined
 import modnas.arch_space.construct.predefined
 import modnas.arch_space.export.predefined

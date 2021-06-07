@@ -1,1 +1,1 @@
-from . import proxylessnas, darts, pyramidnet, resnet, mobilenetv2, mobilenetv3, shufflenetv2
+from . import darts, pyramidnet, resnet, mobilenetv2, mobilenetv3, shufflenetv2

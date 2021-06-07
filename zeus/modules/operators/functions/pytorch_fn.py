@@ -9,6 +9,7 @@
 # MIT License for more details.
 
 """Custom functions of pytorch."""
+from collections import OrderedDict
 import logging
 import math
 import torch
@@ -17,6 +18,10 @@ from torch.functional import F
 import torch.nn.init as init
 from .serializable import OperatorSerializable
 from torch.nn.quantized import Conv2d as QuantConv2d
+from torch import Tensor
+from torch.nn import LayerNorm
+from torch.nn import Parameter as Torch_Parameter
+import zeus
 from zeus.common.class_factory import ClassType, ClassFactory
 
 
@@ -31,19 +36,8 @@ class Module(nn.Module):
         self.exclude_weight_prefix = None
         self.weight_file = None
         self._apply_once = True
-        self._is_adaptive_weight = False
-
-    @property
-    def is_adaptive_weight(self):
-        """Get _is_adaptive_weight flag."""
-        return self._is_adaptive_weight
-
-    @is_adaptive_weight.setter
-    def is_adaptive_weight(self, value):
-        """Set _is_adaptive_weight flag."""
-        self._is_adaptive_weight = value
-        for module in self.children():
-            module.is_adaptive_weight = value
+        self._arch_type = None
+        self._before_call_hooks = OrderedDict()
 
     def build(self):
         """Build network or params."""
@@ -66,14 +60,19 @@ class Module(nn.Module):
                 own_states[own_key] = state
         if not_swap_keys:
             logging.info("Not Swap Keys: {}".format(not_swap_keys))
-        super().load_state_dict(state_dict, self.strict)
+        super(Module, self).load_state_dict(state_dict, self.strict)
+        return not_swap_keys
 
-    def freeze(self):
+    def freeze(self, parameter_to_train=None):
         """Freeze parameters."""
         for name, parameter in self.named_parameters():
-            parameter.requires_grad_(False)
+            if parameter_to_train:
+                if all([not name.startswith(layer) for layer in parameter_to_train]):
+                    parameter.requires_grad_(False)
+                else:
+                    parameter.requires_grad_(False)
         for name, module in self.named_modules():
-            if isinstance(module, nn.BatchNorm2d):
+            if isinstance(module, BatchNorm2d) or isinstance(module, nn.BatchNorm2d):
                 module.eval()
 
     def _exclude_checkpoint_by_prefix(self, states):
@@ -87,7 +86,12 @@ class Module(nn.Module):
 
     def set_parameters(self, name, value):
         """Set Parameters."""
-        self.register_parameter(name, nn.Parameter(value.cuda()))
+        if zeus.is_npu_device():
+            self.register_parameter(name, nn.Parameter(value.npu()))
+        elif zeus.is_gpu_device():
+            self.register_parameter(name, nn.Parameter(value.cuda()))
+        else:
+            self.register_parameter(name, nn.Parameter(value))
         return getattr(self, name)
 
     def get_weights(self, name):
@@ -98,33 +102,30 @@ class Module(nn.Module):
         """Get weight ops."""
         return self.get_weights(name)
 
-    def call(self, inputs, *args, **kwargs):
+    def call(self, inputs=None, *args, **kwargs):
         """Call inputs."""
         output = inputs
         models = self.children()
         for model in models:
-            output = model(output)
+            output = model(output, *args, **kwargs)
         return output
 
     def _apply_names(self):
         """Apply names spaces."""
         for name, module in self.named_modules():
-            module.name = name
+            if not hasattr(module, 'name') or not module.name:
+                module.name = name
 
-    def adaptive_weight(self, inputs):
-        """Adaptive weight."""
-        return {}
-
-    def forward(self, inputs, *args, **kwargs):
+    def forward(self, inputs=None, *args, **kwargs):
         """Call compiled function."""
         if self._apply_once:
             self.build()
             if self.weight_file is not None:
                 logging.info("Start to load weight file : {}".format(self.weight_file))
                 self.load_state_dict(torch.load(self.weight_file))
-            if self.is_adaptive_weight:
-                self.adaptive_weight(inputs)
             self._apply_once = False
+        if inputs is None and kwargs:
+            return self.call(**kwargs)
         return self.call(inputs, *args, **kwargs)
 
 
@@ -150,7 +151,12 @@ class QuantizeConv2d(QuantConv2d, Module, OperatorSerializable):
         input = input.cpu()
         input = torch.quantize_per_tensor(input, 1.0, 0, self._quant_type[self.quant_bit])
         output = super().forward(input)
-        output = torch.dequantize(output).cuda()
+        if zeus.is_npu_device():
+            output = torch.dequantize(output).npu()
+        elif zeus.is_gpu_device():
+            output = torch.dequantize(output).cuda()
+        else:
+            output = torch.dequantize(output)
         return output
 
 
@@ -158,10 +164,9 @@ class QuantizeConv2d(QuantConv2d, Module, OperatorSerializable):
 class Conv2d(nn.Conv2d, OperatorSerializable):
     """Conv2d Module inherit nn.Module."""
 
-    def __init__(self, in_channels, out_channels, kernel_size=3, stride=1, padding=0, bias=True, groups=1,
-                 dilation=1, separable=False, depthwise=False):
+    def __init__(self, in_channels, out_channels, kernel_size=3, stride=1, padding=0, bias=False, groups=1,
+                 dilation=1, separable=False, depthwise=False, padding_mode="same"):
         """Construct Identity class."""
-        self.is_adaptive_weight = False
         if isinstance(padding, str):
             padding = kernel_size // 2 if isinstance(kernel_size, int) else [v // 2 for v in kernel_size]
         padding = padding if not isinstance(padding, str) else kernel_size // 2
@@ -170,8 +175,6 @@ class Conv2d(nn.Conv2d, OperatorSerializable):
 
     def forward(self, x):
         """Do an inference on Identity."""
-        if self.is_adaptive_weight:
-            self.adaptive_weight(x)
         return super().forward(x)
 
     def initial(self, kernel_mode='he', bias_mode='zero', kernel_scale=1., bias_scale=1.):
@@ -183,22 +186,18 @@ class Conv2d(nn.Conv2d, OperatorSerializable):
             if self.bias is not None:
                 self.bias.data.zero_()
 
-    def adaptive_weight(self, inputs):
-        """Adaptive weight."""
-        in_channels = inputs.shape[1]
-        w_in_shape = self.weight.data.shape[1]
-        self.in_channels = in_channels
-        if in_channels > w_in_shape:
-            self.weight.data = self.weight.data.repeat(1, 2, 1, 1)
-        elif in_channels < w_in_shape:
-            cut = list(range(w_in_shape)[:in_channels])
-            self.weight.data = self.weight.data[:, cut, :, :]
-        w_out_shape = self.weight.data.shape[0]
-        if self.out_channels > w_out_shape:
-            self.weight.data = self.weight.data.repeat(2, 1, 1, 1)
-        elif self.out_channels < w_out_shape:
-            cut = list(range(w_out_shape)[:self.out_channels])
-            self.weight.data = self.weight.data[cut, :, :, :]
+    @classmethod
+    def from_module(cls, module):
+        """Convert nn.Conv2d to ops.Conv2d."""
+        in_channels = module.in_channels
+        out_channels = module.out_channels
+        kernel_size = module.kernel_size
+        stride = module.stride
+        bias = True if module.bias else False
+        padding = module.padding
+        groups = module.groups
+        dilation = module.dilation
+        return cls(in_channels, out_channels, kernel_size, stride, padding, bias, groups, dilation)
 
     def get_weights(self):
         """Get weights."""
@@ -231,13 +230,10 @@ class BatchNorm2d(nn.BatchNorm2d, OperatorSerializable):
 
     def __init__(self, num_features, eps=1e-05, momentum=0.1, affine=True):
         """Construct Identity class."""
-        self.is_adaptive_weight = False
         super(BatchNorm2d, self).__init__(num_features, eps, momentum, affine)
 
     def forward(self, x):
         """Do an inference on Identity."""
-        if self.is_adaptive_weight:
-            self.adaptive_weight(x)
         return super().forward(x)
 
     def get_weights(self):
@@ -247,28 +243,16 @@ class BatchNorm2d(nn.BatchNorm2d, OperatorSerializable):
             weights.pop('num_batches_tracked')
         return weights
 
-    def adaptive_weight(self, inputs):
-        """Adaptive weight."""
-        if self.num_features < inputs.shape[1]:
-            self.num_features = inputs.shape[1]
-            self.weight.data = self.weight.data.repeat(2)
-            self.bias.data = self.bias.data.repeat(2)
-            self.running_mean = self.running_mean.repeat(2)
-            self.running_var = self.running_var.repeat(2)
-        elif self.num_features > inputs.shape[1]:
-            self.num_features = inputs.shape[1]
-            idx = list(range(inputs.shape[1])[:inputs.shape[1]])
-            self.weight.data = self.weight.data[idx]
-            self.bias.data = self.bias.data[idx]
-            self.running_mean = self.running_mean[idx]
-            self.running_var = self.running_var[idx]
-
     def set_weights(self, name, weight):
         """Set weights."""
-        if name in ['running_mean', 'running_var']:
-            self._buffers[name] = weight
-        else:
-            self._parameters[name] = nn.Parameter(weight)
+        if name == 'running_mean':
+            self.running_mean.data = weight
+        elif name == 'running_var':
+            self.running_var.data = weight
+        elif name == 'weight':
+            self.weight.data = weight
+        elif name == 'bias':
+            self.bias.data = weight
 
 
 @ClassFactory.register(ClassType.NETWORK)
@@ -320,7 +304,7 @@ class Relu(nn.ReLU, OperatorSerializable):
 
     def __init__(self, inplace=False):
         """Construct ReLU class."""
-        super(Relu, self).__init__(inplace)
+        super(Relu, self).__init__(inplace=False)
 
     def forward(self, x):
         """Do an inference on Relu."""
@@ -375,6 +359,8 @@ class AdaptiveAvgPool2d(nn.AdaptiveAvgPool2d, OperatorSerializable):
 
     def forward(self, x):
         """Do an inference on AdaptiveAvgPool2d."""
+        if isinstance(x, list):
+            x = x[0]
         return super().forward(x)
 
 
@@ -384,28 +370,15 @@ class Linear(nn.Linear, OperatorSerializable):
 
     def __init__(self, in_features, out_features, use_bias=True, activation=None):
         """Construct Linear class."""
-        self.is_adaptive_weight = False
         super(Linear, self).__init__(in_features, out_features, use_bias)
         self.activation = activation
 
     def forward(self, x):
         """Do an inference on Linear."""
-        if self.is_adaptive_weight:
-            self.adaptive_weight(x)
         out = super().forward(x)
         if self.activation == 'softmax':
             return F.softmax(out)
         return out
-
-    def adaptive_weight(self, inputs):
-        """Adaptive weight."""
-        if self.in_features < inputs.shape[1]:
-            self.weight.data = self.weight.data.repeat(1, 2)
-            self.in_features = inputs.shape[1]
-        elif self.in_features > inputs.shape[1]:
-            idx = list(range(inputs.shape[1])[:inputs.shape[1]])
-            self.weight.data = self.weight.data[:, idx]
-            self.in_features = inputs.shape[1]
 
     def get_weights(self):
         """Get weights."""
@@ -739,7 +712,10 @@ def drop_path(x, prob):
     if prob <= 0.:
         return x
     keep = 1. - prob
-    mask = torch.cuda.FloatTensor(x.size(0), 1, 1, 1).bernoulli_(keep)
+    if zeus.is_gpu_device():
+        mask = torch.cuda.FloatTensor(x.size(0), 1, 1, 1).bernoulli_(keep)
+    elif zeus.is_npu_device():
+        mask = torch.npu.FloatTensor(x.size(0), 1, 1, 1).bernoulli_(keep)
     x.div_(keep)
     x.mul_(mask)
     return x
@@ -791,9 +767,9 @@ def clamp(x, min=float("-inf"), max=float("inf")):
     return torch.clamp(x, min=min, max=max)
 
 
-def where(cond):
+def where(cond, x, y):
     """Return index by condition."""
-    return torch.nonzero(cond)
+    return torch.where(cond, x, y)
 
 
 def unique(inputs):
@@ -924,25 +900,6 @@ def sqrt(x):
 
 
 @ClassFactory.register(ClassType.NETWORK)
-class LayerNorm(Module, OperatorSerializable):
-    """Layer Norm module."""
-
-    def __init__(self, hidden_size, eps=1e-12):
-        """Construct a layernorm module in the TF style (epsilon inside the square root)."""
-        super(LayerNorm, self).__init__()
-        self.weight = self.set_parameters('gamma', ones(hidden_size))
-        self.bias = self.set_parameters('beta', zeros(hidden_size))
-        self.variance_epsilon = eps
-
-    def call(self, x):
-        """Call LayerNorm."""
-        u = x.mean(-1, keepdim=True)
-        s = (x - u).pow(2).mean(-1, keepdim=True)
-        x = (x - u) / sqrt(s + self.variance_epsilon)
-        return self.weight * x + self.bias
-
-
-@ClassFactory.register(ClassType.NETWORK)
 class GroupNorm(nn.GroupNorm, OperatorSerializable):
     """GroupNorm Module inherit nn.GroupNorm."""
 
@@ -1047,3 +1004,43 @@ class ConvWS2d(nn.Conv2d):
         """Forward function of conv2d with weight standarlization."""
         return conv_ws_2d(x, self.weight, self.bias, self.stride, self.padding,
                           self.dilation, self.groups, self.eps)
+
+
+@ClassFactory.register(ClassType.NETWORK)
+class Flatten(OperatorSerializable, nn.Module):
+    """Flatten Module."""
+
+    def __init__(self, start_dim=0):
+        super(Flatten, self).__init__()
+        self.start_dim = start_dim
+
+    def forward(self, x):
+        """Apply flatten."""
+        old_shape = x.shape
+        flatten_dim = old_shape[self.start_dim:]
+        flatten_size = 1
+        for i in range(len(flatten_dim)):
+            flatten_size = flatten_size * flatten_dim[i]
+        new_shape = old_shape[0:self.start_dim] + (flatten_size,)
+        return torch.reshape(x, new_shape)
+
+
+def expand(x, expand_shape):
+    """Apply expand function."""
+    expand_shape_new = []
+    for size in expand_shape:
+        if size == 1:
+            size == -1
+        expand_shape_new.append(size)
+    return x.expand(expand_shape_new)
+
+
+class Parameter(Torch_Parameter):
+    """Wrapper of torch Parameter."""
+
+    def __new__(cls, data=None, requires_grad=True, name=None):
+        """Wrap __new__ of torch Parameter."""
+        return Torch_Parameter.__new__(cls, data, requires_grad)
+
+
+MSELoss = nn.MSELoss

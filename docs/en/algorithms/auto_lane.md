@@ -1,4 +1,4 @@
-# auto_lane
+# Auto-Lane
 
 ## 1. Algorithm Introduction
 
@@ -65,15 +65,15 @@ This Algorithm is mainly designed for the application of automatic driving indus
 
    The search algorithm is a mixture of random sampling and evolution algorithm, which is controlled by the search_algorithm subtree in the configuration tree. The configuration items are as follows:
 
-   ```yaml
-       search_algorithm:
-           type: AutoLaneNas        # Set the search algorithm
-           codec: AutoLaneNasCodec  # Set the codec to be used
-           random_ratio: 0.5        # Set the sampling ratio of random sampling to the total number of samples.
-           num_mutate: 10           # Set Genetic Algebra for Genetic Algorithm
-           max_sample: 100          # Set the maximum number of samples
-           min_sample: 10           # Set the minimum number of samples
-   ```
+    ```yaml
+        search_algorithm:
+            type: AutoLaneNas        # Set the search algorithm
+            codec: AutoLaneNasCodec  # Set the codec to be used
+            random_ratio: 0.5        # Set the sampling ratio of random sampling to the total number of samples.
+            num_mutate: 10           # Set Genetic Algebra for Genetic Algorithm
+            max_sample: 100          # Set the maximum number of samples
+            min_sample: 10           # Set the minimum number of samples
+    ```
 
 3. How to set search space
 
@@ -86,7 +86,7 @@ This Algorithm is mainly designed for the application of automatic driving indus
 
      The configuration is determined by the `search_space` and `model` configuration subtree in the configuration file. ：
 
-     ```yaml
+    ```yaml
     search_space:
         hyperparameters:
             -   key: network.backbone.base_depth
@@ -106,76 +106,76 @@ This Algorithm is mainly designed for the application of automatic driving indus
                 range: [FeatureFusionModule]                 # Set FeatureFusionModule series
 
     model:
-		model_desc:
-		    modules: ['backbone','neck']                     # Module to be searched for (Do not modify this item.)
-		    backbone:
-		        type: [ResNetVariantDet, ResNeXtVariantDet]   # Set the ResNetVariantDet and ResNeXtVariantDet trunk series. This subtree can be deleted if not needed.
-		    neck:
-		        type: FeatureFusionModule
-     ```
+        model_desc:
+            modules: ['backbone','neck']                     # Module to be searched for (Do not modify this item.)
+            backbone:
+                type: [ResNetVariantDet, ResNeXtVariantDet]   # Set the ResNetVariantDet and ResNeXtVariantDet trunk series. This subtree can be deleted if not needed.
+            neck:
+                type: FeatureFusionModule
+    ```
 
 4. How to config trainer
 
      The configuration items of the trainer are as follows:
 
-     ```yaml
-     trainer:
-         type: Trainer
-         save_model_desc: True           # Save the model details
-         with_valid: True                # Whether to validate during training
-         is_detection_trainer: True      # Set this parameter to True when the algorithm is detection
-         callbacks: ['AutoLaneTrainerCallback','DetectionMetricsEvaluator','DetectionProgressLogger']
-         report_freq: 50                 # The interval of report(measured by step)
-         valid_interval: 3               # The interval of valid(measure by epoch)
-         epochs: 40                      # Number of epochs to be trained
-         optim:
-             type: SGD                   # Set the optimizer to SGD
-             lr: 0.02                    # Set the initial learning rate
-             momentum: 0.9               # Set the momentum
-             weight_decay: 0.0001        # Set the weight_decay
-         lr_scheduler:
-             type: WarmupScheduler       # Set WarmupScheduler
-             params:
-                warmup_type: linear         # Set warmup_type
-                warmup_iters: 5000          # Set the number of steps of the warmup.
-                warmup_ratio: 0.1           # Set the initial learning rate.
-                after_scheduler_config:
-                    by_epoch: False      # Set WarmupScheduler changes with the step instead of the epoch.
-                    type: CosineAnnealingLR # Set the scheduler of the LR.
-                    params:
-                        T_max: 120000    # int(10_0000/batch_size)*epoch-warmup_iters
-         metric:
-             type: LaneMetric            # Set the evaluation mode (The evaluation mode of the lane line is special. Do not modify the subtree)
-             method: f1_measure          # Set the evaluation indicator to f1_measure
-             eval_width: 1640            # Set the image width for the evaluation
-             eval_height: 590            # Set the image height for the evaluated
-             iou_thresh: 0.5             # Set IoU threshhold
-             lane_width: 30              # Set the line width for calculating the bit-wise IoU.
-             thresh_list:  [0.50, 0.60, 0.70, 0.80, 0.90] # Perform grid search for the prediction threshhold during evaluation.
-     ```
+    ```yaml
+    trainer:
+        type: Trainer
+        save_model_desc: True           # Save the model details
+        with_valid: True                # Whether to validate during training
+        is_detection_trainer: True      # Set this parameter to True when the algorithm is detection
+        callbacks: ['AutoLaneTrainerCallback','DetectionMetricsEvaluator','DetectionProgressLogger']
+        report_freq: 50                 # The interval of report(measured by step)
+        valid_interval: 3               # The interval of valid(measure by epoch)
+        epochs: 40                      # Number of epochs to be trained
+        optim:
+            type: SGD                   # Set the optimizer to SGD
+            lr: 0.02                    # Set the initial learning rate
+            momentum: 0.9               # Set the momentum
+            weight_decay: 0.0001        # Set the weight_decay
+        lr_scheduler:
+            type: WarmupScheduler       # Set WarmupScheduler
+            params:
+            warmup_type: linear         # Set warmup_type
+            warmup_iters: 5000          # Set the number of steps of the warmup.
+            warmup_ratio: 0.1           # Set the initial learning rate.
+            after_scheduler_config:
+                by_epoch: False      # Set WarmupScheduler changes with the step instead of the epoch.
+                type: CosineAnnealingLR # Set the scheduler of the LR.
+                params:
+                    T_max: 120000    # int(10_0000/batch_size)*epoch-warmup_iters
+        metric:
+            type: LaneMetric            # Set the evaluation mode (The evaluation mode of the lane line is special. Do not modify the subtree)
+            method: f1_measure          # Set the evaluation indicator to f1_measure
+            eval_width: 1640            # Set the image width for the evaluation
+            eval_height: 590            # Set the image height for the evaluated
+            iou_thresh: 0.5             # Set IoU threshhold
+            lane_width: 30              # Set the line width for calculating the bit-wise IoU.
+            thresh_list:  [0.50, 0.60, 0.70, 0.80, 0.90] # Perform grid search for the prediction threshhold during evaluation.
+    ```
 
 5. How to configure dataset
    The interface of the CULane dataset and the CurveLanes dataset are provided here. After downloaded the correspond dataset to the target place, You can configure and use the dataset.
 
    Dataset configuration parameters:
 
-   ```yaml
-   dataset:
-       type: AutoLaneDataset
-       common:
-           batch_size: 32
-           num_workers: 12
-           dataset_path: "/cache/datasets/CULane/"
-           dataset_format: CULane
-       train:
-           with_aug: False                       # Set this parameter to True when fullytrain.
-           shuffle: True
-           random_sample: True
-       valid:
-           shuffle: False
-       test:
-           shuffle: False
-   ```
+    ```yaml
+    dataset:
+        type: AutoLaneDataset
+        common:
+            batch_size: 32
+            num_workers: 12
+            dataset_path: "/cache/datasets/CULane/"
+            dataset_format: CULane
+        train:
+            with_aug: False                       # Set this parameter to True when fullytrain.
+            shuffle: True
+            random_sample: True
+        valid:
+            shuffle: False
+        test:
+            shuffle: False
+    ```
 
 ## 5. Benchmark
 

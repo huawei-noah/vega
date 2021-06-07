@@ -9,10 +9,11 @@
 # MIT License for more details.
 """Default configs."""
 
+from .base import BaseConfig
 from zeus.common import ConfigSerializable
 
 
-class ClassificationDatasetCommonConfig(ConfigSerializable):
+class ClassificationDatasetCommonConfig(BaseConfig):
     """Default Optim Config."""
 
     data_path = None

@@ -7,4 +7,5 @@ ClassFactory.lazy_register("zeus.metrics.tensorflow", {
     "classifier_metric": ["trainer.metric:accuracy"],
     "sr_metric": ["trainer.metric:PSNR", "trainer.metric:SSIM"],
     "forecast": ["trainer.metric:MSE", "trainer.metric:RMSE"],
+    "r2score": ["trainer.metric:r2score", "trainer.metric:R2Score"],
 })

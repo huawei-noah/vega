@@ -18,7 +18,7 @@ from zeus.modules.connections import ModuleList
 class ParallelFPN(Module):
     """Parallel FPN."""
 
-    def __init__(self, in_channels=[64, 128, 256, 512], out_channels=256, code=[0, 1, 2, 3],
+    def __init__(self, in_channels=[64, 128, 256, 512], out_channels=256, code=None,
                  weight_file=None, weights_prefix='head.backbone.1'):
         """Init FPN.
 
@@ -46,7 +46,7 @@ class ParallelFPN(Module):
         num_stage = len(laterals)
         for i in range(num_stage - 1, 0, -1):
             laterals[i - 1] += ops.InterpolateScale(size=laterals[i - 1].size()[2:], mode='nearest')(laterals[i])
-        outs = [self.fpn_convs[i](laterals[i]) for i in range(num_stage)]
+        outs = [self.fpn_convs[i](laterals[i]) for i in self.code or range(num_stage)]
         outs.append(ops.MaxPool2d(1, stride=2)(outs[-1]))
         return {idx: out for idx, out in enumerate(outs)}
 

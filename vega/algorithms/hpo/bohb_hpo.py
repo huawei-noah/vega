@@ -10,7 +10,7 @@
 
 """Defined BohbHpo class."""
 from math import pow
-from vega.algorithms.hpo.common import BOHB
+from vega.algorithms.hpo.sha_base import BOHB
 from zeus.common import ClassFactory, ClassType
 from vega.algorithms.hpo.hpo_base import HPOBase
 from .bohb_conf import BohbConfig
@@ -29,12 +29,19 @@ class BohbHpo(HPOBase):
         max_epochs = self.config.policy.max_epochs
         if self.config.policy.total_epochs != -1:
             num_samples, max_epochs = self.design_parameter()
+        self._max_samples = num_samples
+        multi_obj = isinstance(self.config.objective_keys, list) and len(self.config.objective_keys) > 1
         self.hpo = BOHB(self.search_space,
                         num_samples,
                         max_epochs,
                         self.config.policy.repeat_times,
                         self.config.policy.min_epochs,
-                        self.config.policy.eta)
+                        self.config.policy.eta,
+                        multi_obj=multi_obj,
+                        random_samples=self.config.random_samples,
+                        prob_crossover=self.config.prob_crossover,
+                        prob_mutatation=self.config.prob_mutatation,
+                        tuner=self.config.tuner)
 
     def design_parameter(self):
         """Design parameters based on total_epochs.
@@ -115,3 +122,8 @@ class BohbHpo(HPOBase):
                 it_list.append(iter_list_hl[i][j])
                 ep_list.append(min_ep_list_hl[i][j])
         return it_list, ep_list
+
+    @property
+    def max_samples(self):
+        """Get max samples number."""
+        return self._max_samples

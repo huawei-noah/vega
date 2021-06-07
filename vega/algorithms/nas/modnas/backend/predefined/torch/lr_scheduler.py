@@ -9,7 +9,6 @@
 # MIT License for more details.
 
 """LR Scheduler."""
-
 import torch
 from modnas.registry import parse_spec
 from modnas.registry.lr_scheduler import register, build

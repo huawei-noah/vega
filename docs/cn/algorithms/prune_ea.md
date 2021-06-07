@@ -60,7 +60,7 @@ nas:
             length: 464         # 搜索的总通道数
             num_generation: 31  # 进化代数
             num_individual: 32  # 每一代的个体数
-            random_models: 64   # 随机初始化的模型数
+            random_samples: 64   # 随机初始化的模型数
 
     search_space:               # 搜索空间配置信息
         type: SearchSpace

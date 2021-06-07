@@ -34,7 +34,7 @@ The following describes how to use Vega to search and train models in these scen
 This scenario only requires the user to provide enough training data, and configure the pipeline according to the following steps to complete the model search and training:
 
 1. Use the NAS search algorithm to search the network architecture and output alternative networks. The search algorithm can try to use one of the three BackboneNAS, CARS, DartsCNN, prefer BackboneNAS algorithm, the algorithm is based on ResNet, simple to set up, can be used for larger data sets.
-2. Use HPO to determine the model training parameters. The network can choose one from the networks output by the NAS in the first step. This step will output the network training hyperparameters. The HPO algorithm can use BOSS, BOHB, ASHA, etc., and the BOSS algorithm is preferred.
+2. Use HPO to determine the model training parameters. The network can choose one from the networks output by the NAS in the first step. This step will output the network training hyperparameters. The HPO algorithm can use BOSS, BOHB, ASHA, etc., and the BOHB algorithm is preferred.
 3. Use the data augmentation algorithm to select the transform, it is recommended to use the PBA algorithm.
 4. The last step is fully train, using the alternative network searched by NAS, hyperparameters searched by HPO, and data augmentation search transforms as the input of fully train, train a set of models, and select the best model.
 
@@ -46,7 +46,7 @@ The key to this scenario is to search the model under certain constraints to fac
 
 1. Use the NAS search algorithm to search the network architecture and output alternative networks. The search algorithm can try to use one of BackboneNAS, CARS, DartsCNN. Generally, in this scenario, the model is small, and the CARS algorithm can be selected first. The algorithm has high execution efficiency and simple settings, and is suitable for the search of small models.
 2. In the NAS search phase, the performance of the searched model on specific hardware should be considered. The evaluation service can be configured to convert the model to specific hardware in the model search to evaluate its delay. (To be provided)
-3. Use HPO to determine the model training parameters. The network can select one from the networks output by the NAS in the first step. This step will output the network training hyperparameters. The HPO algorithm can use BOSS, BOHB, ASHA, etc., and the BOSS algorithm is preferred.
+3. Use HPO to determine the model training parameters. The network can select one from the networks output by the NAS in the first step. This step will output the network training hyperparameters. The HPO algorithm can use BOSS, BOHB, ASHA, etc., and the BOHB algorithm is preferred.
 4. Use the data augmentation algorithm to select the transform, the PBA algorithm is recommended.
 5. The final step is fully train, which uses the NAS search alternative network, HPO search hyperparameters, and data augmentation search transforms as fully train input, trains a set of models, and selects the optimal model.
 
@@ -58,7 +58,7 @@ The steps suggested in this scenario are as follows:
 
 1. Use the NAS search algorithm to search the network architecture and output alternative networks. The search algorithm can try to use one of BackboneNAS, CARS, DartsCNN. Generally, in this scenario, the model is small, and the CARS algorithm can be selected first. The algorithm has high execution efficiency and simple settings, and is suitable for the search of small models.
 2. In the NAS search phase, the performance of the searched model on specific hardware should be considered. The evaluation service can be configured to convert the model to specific hardware in the model search to evaluate its delay. (To be provided)
-3. Use HPO to determine the model training parameters. The network can select one from the networks output by the NAS in the first step. This step will output the network training hyperparameters. The HPO algorithm can use BOSS, BOHB, ASHA, etc., and the BOSS algorithm is preferred.
+3. Use HPO to determine the model training parameters. The network can select one from the networks output by the NAS in the first step. This step will output the network training hyperparameters. The HPO algorithm can use BOSS, BOHB, ASHA, etc., and the BOHB algorithm is preferred.
 4. Use the data augmentation algorithm to select the transform, the PBA algorithm is recommended.
 5. The final step is fully train, which uses the NAS search alternative network, HPO search hyperparameter, and data augmentation search transforms as fully train input, trains a set of models, and selects the optimal model.
 

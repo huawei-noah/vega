@@ -12,9 +12,13 @@ A semantic segmentation model may be generally decoupled into an encoder part (w
 
 ### 2.1 Search Space and Strategy
 
-The decoder for segmentation model is searched, which includes (a) Connection between the decoder and the backbone; (b)Structure of the cell (including the operators and connection inside the cell); (3)Connections between cells. The EA search policy is used.
+The decoder for segmentation model is searched, which includes:
 
-Each network is represented by 19 characters. The first 13 characters indicate the structure of the cell in the decoder (including the operator and connection mode in the cell), and the last 6 characters indicate the connection between the decoder and the backbone and the connection of the cell in the decoder. In each generation of search, a character in the previous generation is changed to obtain a new network. In addition, we need to pre-train the backbone part before the search.  The purpose of this is to speed up the convergence of the model, thereby speeding up the search.
+1. Connection between the decoder and the backbone;
+2. Structure of the cell (including the operators and connection inside the cell);
+3. Connections between cells.
+
+The EA search policy is used. Each network is represented by 19 characters. The first 13 characters indicate the structure of the cell in the decoder (including the operator and connection mode in the cell), and the last 6 characters indicate the connection between the decoder and the backbone and the connection of the cell in the decoder. In each generation of search, a character in the previous generation is changed to obtain a new network. In addition, we need to pre-train the backbone part before the search.  The purpose of this is to speed up the convergence of the model, thereby speeding up the search.
 
 The SEGMENTATION-Adelaide-EA-NAS search space is described as follows:
 

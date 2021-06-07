@@ -77,8 +77,11 @@ class VisualCallBack(Callback):
             input_batch, _ = data_iter.next()
 
             input_data = input_batch[:1]
-            if self.trainer.use_cuda and not self.trainer.config.is_detection_trainer:
-                input_data = input_data.cuda()
+            if not self.trainer.config.is_detection_trainer:
+                if zeus.is_gpu_device():
+                    input_data = input_data.cuda()
+                elif zeus.is_npu_device():
+                    input_data = input_data.npu()
             try:
                 self.summary.add_graph(model=model, feed_data=input_data,
                                        backend="torch")

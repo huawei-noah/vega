@@ -19,6 +19,7 @@ class AshaPolicyConfig(ConfigSerializable):
     max_epochs = 81
     config_count = 1
     num_samples = 9
+    eta = 3
 
     @classmethod
     def rules(cls):

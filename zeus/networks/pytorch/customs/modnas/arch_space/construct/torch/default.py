@@ -9,7 +9,6 @@
 # MIT License for more details.
 
 """Default Constructors."""
-
 import importlib
 import copy
 from functools import partial
@@ -67,6 +66,32 @@ class ExternalModelConstructor():
             logger.info('Importing model from lib: {}'.format(self.import_path))
             mod = importlib.import_module(self.import_path)
         model = mod.__dict__[self.model_type](**self.args)
+        return model
+
+
+@register
+class DefaultTraversalConstructor():
+    """Constructor that traverses and converts modules."""
+
+    def __init__(self, by_class=None, by_classname=None):
+        self.by_class = by_class
+        self.by_classname = by_classname
+
+    def convert(self, module):
+        """Return converted module."""
+        raise NotImplementedError
+
+    def __call__(self, model):
+        """Run constructor."""
+        for m in model.modules():
+            for k, sm in m._modules.items():
+                if self.by_class and not isinstance(sm, self.by_class):
+                    continue
+                if self.by_classname and type(sm).__qualname__ != self.by_classname:
+                    continue
+                new_sm = self.convert(sm)
+                if new_sm is not None:
+                    m._modules[k] = new_sm
         return model
 
 

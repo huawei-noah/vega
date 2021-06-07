@@ -12,13 +12,13 @@
 
 from zeus.common.class_factory import ClassFactory
 
-
 ClassFactory.lazy_register("vega.algorithms.hpo", {
     "asha_hpo": ["AshaHpo"],
-    "bo_hpo": ["BoHpo"],
     "bohb_hpo": ["BohbHpo"],
     "boss_hpo": ["BossHpo"],
     "random_hpo": ["RandomSearch"],
-    "random_pareto_hpo": ["RandomParetoHpo"],
     "evolution_search": ["EvolutionAlgorithm"],
+    "pbt_hpo": ["PBTHpo"],
+    "pbt_trainer_callback": ["PbtTrainerCallback"],
+    "sha_base.hebo_adaptor": ["HeboAdaptor"],
 })

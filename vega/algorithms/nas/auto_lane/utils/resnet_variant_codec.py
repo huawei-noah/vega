@@ -335,7 +335,7 @@ class ResNet_Variant(Backbone):
                         R = num_mutate // 2
                         new_arch = _swap(new_arch, R)
                     else:
-                        raise ('operation index out of range')
+                        raise Exception('operation index out of range')
             except Exception:
                 continue
             new_arch = ''.join(new_arch)

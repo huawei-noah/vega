@@ -9,7 +9,6 @@
 # MIT License for more details.
 
 """Torch Architecture Exporters."""
-
 import copy
 from modnas.arch_space.slot import Slot
 from modnas.arch_space.mixed_ops import MixedOp
@@ -36,6 +35,8 @@ class DefaultSlotTraversalExporter():
 
     def __call__(self, model):
         """Run Exporter."""
+        if model is None:
+            return
         Slot.set_export_fn(self.export)
         arch_desc = []
         gen = self.gen or Slot.gen_slots_model(model)

@@ -9,50 +9,105 @@
 # MIT License for more details.
 
 """Pipeline Estimator."""
-
+import time
+import yaml
 import traceback
 import queue
-from multiprocessing import Process, Pipe
+import threading
+import multiprocessing as mp
 from ..base import EstimBase
-from modnas.registry.runner import build as build_runner
-from modnas.registry import parse_spec
 from modnas.registry.estim import register
+from modnas.utils.wrapper import run
 
 
 def _mp_step_runner(conn, step_conf):
-    ret = build_runner(step_conf)
+    ret = run(**(yaml.load(step_conf, Loader=yaml.SafeLoader) or {}))
     conn.send(ret)
 
 
 def _mp_runner(step_conf):
-    p_con, c_con = Pipe()
-    proc = Process(target=_mp_step_runner, args=(c_con, step_conf))
+    ctx = mp.get_context('spawn')
+    p_con, c_con = ctx.Pipe()
+    proc = ctx.Process(target=_mp_step_runner, args=(c_con, yaml.dump(step_conf)))
+    time.sleep(step_conf.get('delay', 0))
     proc.start()
     proc.join()
     if not p_con.poll(0):
-        return None
+        raise RuntimeError('step process failed')
     return p_con.recv()
 
 
 def _default_runner(step_conf):
-    return build_runner(step_conf)
+    time.sleep(step_conf.get('delay', 0))
+    return run(**(yaml.load(step_conf, Loader=yaml.SafeLoader) or {}))
 
 
 @register
 class PipelineEstim(EstimBase):
     """Pipeline Estimator class."""
 
-    def __init__(self, *args, use_multiprocessing=False, **kwargs):
+    def __init__(self, *args, use_multiprocessing=True, return_res=True, **kwargs):
         super().__init__(*args, **kwargs)
+        self.return_res = return_res
         self.runner = _mp_runner if use_multiprocessing else _default_runner
+        self.step_results = dict()
+        self.pending = queue.Queue()
+        self.finished = set()
+        self.cond_all_finished = threading.Lock()
 
-    def step(self, step_conf):
-        """Return results from single pipeline process."""
+    def exec_runner(self, pname):
+        """Execute runner in a thread."""
         try:
-            return self.runner(step_conf)
+            ret = self.runner(self.config.pipeline[pname])
         except RuntimeError:
             self.logger.info('pipeline step failed with error: {}'.format(traceback.format_exc()))
-        return None
+            ret = None
+        self.step_done(pname, ret, None)
+
+    def step(self, pname):
+        """Run a single pipeline step."""
+        pconf = self.config.pipeline[pname]
+        pconf['name'] = pconf.get('name', pname)
+        for inp_kw, inp_idx in pconf.get('inputs', {}).items():
+            keys = inp_idx.split('.')
+            inp_val = self.step_results
+            for k in keys:
+                if not inp_val or k not in inp_val:
+                    raise RuntimeError('input key {} not found in return {}'.format(inp_idx, self.step_results))
+                inp_val = inp_val[k]
+            pconf[inp_kw] = inp_val
+        self.logger.info('pipeline: running {}'.format(pname))
+        self.th_step = threading.Thread(target=self.exec_runner, args=(pname, ))
+        self.th_step.start()
+
+    def step_done(self, params, value, arch_desc=None):
+        """Store evaluation results of a pipeline step."""
+        super().step_done(False, value, arch_desc)
+        pname = params
+        self.logger.info('pipeline: finished {}, results={}'.format(pname, value))
+        self.step_results[pname] = value
+        self.finished.add(pname)
+        self._schedule()
+        return {'no_opt': True}
+
+    def _schedule(self):
+        """Scheduler available jobs."""
+        if len(self.finished) == len(self.config.pipeline):
+            self.cond_all_finished.release()
+            return
+        while not self.pending.empty():
+            pname = self.pending.get()
+            pconf = self.config.pipeline.get(pname)
+            dep_sat = True
+            deps = pconf.get('depends', []) + list(set([v.split('.')[0] for v in pconf.get('inputs', {}).values()]))
+            for dep in deps:
+                if dep not in self.finished:
+                    dep_sat = False
+                    break
+            if not dep_sat:
+                self.pending.put(pname)
+                continue
+            self.stepped(pname)
 
     def run(self, optim):
         """Run Estimator routine."""
@@ -60,37 +115,12 @@ class PipelineEstim(EstimBase):
         logger = self.logger
         config = self.config
         pipeconf = config.pipeline
-        pending = queue.Queue()
         for pn in pipeconf.keys():
-            pending.put(pn)
-        finished = set()
-        ret_values, ret = dict(), None
-        while not pending.empty():
-            pname = pending.get()
-            pconf = pipeconf.get(pname)
-            dep_sat = True
-            for dep in pconf.get('depends', []):
-                if dep not in finished:
-                    dep_sat = False
-                    break
-            if not dep_sat:
-                pending.put(pname)
-                continue
-            ptype, pargs = parse_spec(pconf)
-            pargs['name'] = pargs.get('name', pname)
-            for inp_kw, inp_idx in pconf.get('inputs', {}).items():
-                keys = inp_idx.split('.')
-                inp_val = ret_values
-                for k in keys:
-                    if not inp_val or k not in inp_val:
-                        raise RuntimeError('input key {} not found in return {}'.format(inp_idx, ret_values))
-                    inp_val = inp_val[k]
-                pargs[inp_kw] = inp_val
-            logger.info('pipeline: running {}, type={}'.format(pname, ptype))
-            ret = self.step(pconf)
-            ret_values[pname] = ret
-            logger.info('pipeline: finished {}, results={}'.format(pname, ret))
-            finished.add(pname)
-        ret_values['final'] = ret
-        logger.info('pipeline: all finished')
-        return ret_values
+            self.pending.put(pn)
+        self.cond_all_finished.acquire()
+        self._schedule()
+        self.cond_all_finished.acquire()
+        self.cond_all_finished.release()
+        logger.info('pipeline: all finished: {}'.format(self.step_results))
+        if self.return_res:
+            return {'step_results': self.step_results}

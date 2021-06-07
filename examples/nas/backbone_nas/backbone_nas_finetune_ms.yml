@@ -22,7 +22,6 @@ fine_tune:
     trainer:
         type: Trainer
         epochs: 40
-        mixup: True
         optimizer:
             type: SGD
             params:
@@ -37,6 +36,7 @@ fine_tune:
         loss:
             type: CrossEntropyLoss
 
+
     evaluator:
         type: Evaluator
         host_evaluator:
@@ -49,8 +49,6 @@ fine_tune:
             data_path: /cache/datasets/cifar10/
             batch_size: 128
         train:
-            mixup: True
-            num_class: 10
             transforms:
                 - type: Resize
                   size: [256, 256]

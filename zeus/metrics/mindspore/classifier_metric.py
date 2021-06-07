@@ -12,6 +12,7 @@
 from mindspore.nn.metrics import Accuracy
 from zeus.common import ClassFactory, ClassType
 from zeus.metrics.mindspore.metrics import MetricBase
+import mindspore.nn as nn
 
 
 @ClassFactory.register(ClassType.METRIC)
@@ -20,10 +21,17 @@ class accuracy(MetricBase):
 
     __metric_name__ = 'accuracy'
 
-    def __init__(self, topk=(1,)):
+    def __init__(self, topk=(1, 5)):
         """Init accuracy metric."""
-        pass
+        self.topk = topk
 
     def __call__(self, output, target, *args, **kwargs):
         """Forward and calculate accuracy."""
-        return Accuracy()
+        if len(self.topk) == 1:
+            return Accuracy()
+
+        else:
+            return {"accuracy": Accuracy(),
+                    "accuracy_top1": nn.Top1CategoricalAccuracy(),
+                    "accuracy_top5": nn.Top5CategoricalAccuracy()
+                    }

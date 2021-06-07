@@ -9,7 +9,6 @@
 # MIT License for more details.
 
 """Elastic sequential (depth) transformations."""
-
 import torch.nn as nn
 from .modifier import modify_attr, restore_module_attrs
 

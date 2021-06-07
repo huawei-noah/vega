@@ -10,12 +10,12 @@
 
 """Import and register trainer automatically."""
 
+from zeus.common.class_factory import ClassFactory
 
-def register_trainer(backend):
-    """Import and register trainer automatically."""
-    if backend == "pytorch":
-        from zeus.trainer.trainer_torch import TrainerTorch
-    elif backend == "tensorflow":
-        from zeus.trainer.trainer_tf import TrainerTf
-    elif backend == "mindspore":
-        from zeus.trainer.trainer_ms import TrainerMs
+
+ClassFactory.lazy_register("zeus.trainer", {
+    "trainer_torch": ["TrainerTorch"],
+    "trainer_tf": ["TrainerTf"],
+    "trainer_ms": ["TrainerMs"],
+    "script_runner": ["ScriptRunner"],
+})

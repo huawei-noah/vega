@@ -45,8 +45,7 @@ def inception_score(imgs, model_checkpoint, cuda=True, batch_size=100, resize=Tr
     if model_checkpoint is None:
         model_checkpoint = "/workspace/code_paper/inception_v3_google-1a9a5a14.pth"
     if not os.path.isfile(model_checkpoint):
-        raise "Pretrained model is not existed, model={}".format(
-            model_checkpoint)
+        raise Exception(f"Pretrained model is not existed, model={model_checkpoint}")
     checkpoint = torch.load(model_checkpoint)
     inception_model.load_state_dict(checkpoint)
     inception_model.eval()

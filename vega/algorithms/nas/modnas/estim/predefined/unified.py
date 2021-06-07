@@ -9,7 +9,6 @@
 # MIT License for more details.
 
 """Unified Estimator."""
-
 import itertools
 from ..base import EstimBase
 from modnas.core.param_space import ParamSpace
@@ -29,8 +28,6 @@ class UnifiedEstim(EstimBase):
         self.reset_training = reset_training
         self.eval_steps = eval_steps
         self.cur_step = -1
-        self.best_score = None
-        self.best_arch_desc = None
 
     def step(self, params):
         """Return evaluation results of a parameter set."""
@@ -73,11 +70,11 @@ class UnifiedEstim(EstimBase):
         train_steps = self.train_steps
         n_epoch_steps = 1 if train_steps == 0 else (self.get_num_train_batch() + train_steps - 1) // train_steps
         if self.cur_epoch >= tot_epochs:
-            return 1
+            return {'stop': True}
         # arch step
         if not optim.has_next():
             logger.info('Search: finished')
-            return 1
+            return {'stop': True}
         if self.cur_epoch >= arch_epoch_start and (self.cur_epoch - arch_epoch_start) % arch_epoch_intv == 0:
             optim.step(self)
         self.inputs = optim.next(batch_size=arch_batch_size)
@@ -89,17 +86,6 @@ class UnifiedEstim(EstimBase):
         self.wait_done()
         if (epoch + 1) % n_epoch_steps != 0:
             return
-        for _, res, arch_desc in self.buffer():
-            score = self.get_score(res)
-            if self.best_score is None or (score is not None and score > self.best_score):
-                self.best_score = score
-                self.best_arch_desc = arch_desc
-        # save
-        if config.save_arch_desc:
-            self.save_arch_desc(epoch)
-        if config.save_freq != 0 and self.cur_epoch % config.save_freq == 0:
-            self.save_checkpoint()
-        self.save_arch_desc(save_name='best', arch_desc=self.best_arch_desc)
         self.cur_epoch += 1
 
     def run(self, optim):
@@ -109,9 +95,5 @@ class UnifiedEstim(EstimBase):
         tot_epochs = config.epochs
         self.cur_epoch += 1
         for epoch in itertools.count(0):
-            if self.run_epoch(optim, epoch=epoch, tot_epochs=tot_epochs) == 1:
+            if (self.run_epoch(optim, epoch=epoch, tot_epochs=tot_epochs) or {}).get('stop'):
                 break
-        return {
-            'best_score': self.best_score,
-            'best_arch': self.best_arch_desc,
-        }

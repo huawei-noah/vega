@@ -22,7 +22,7 @@ class ModelTuner(Callback):
 
     def __init__(self):
         """Initialize ModleTuner callback."""
-        super(Callback, self).__init__()
+        super(ModelTuner, self).__init__()
         self.priority = 250
 
     def init_trainer(self, logs=None):

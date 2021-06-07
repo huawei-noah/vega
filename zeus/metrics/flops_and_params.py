@@ -11,6 +11,7 @@
 """Model counter of FLOPS and parameters."""
 from copy import deepcopy
 import zeus
+import numpy as np
 
 
 def add_new_hooks(custom_hooks):
@@ -53,12 +54,12 @@ def calc_model_flops_params(model, input, custom_hooks=None, verbose=False):
     :return: flops and params
     :rtype: float, float
     """
+    try:
+        _model = deepcopy(model)
+    except Exception:
+        _model = model
     if zeus.is_torch_backend():
         from thop import profile
-        try:
-            _model = deepcopy(model)
-        except Exception:
-            _model = model
         if custom_hooks is None:
             custom_hooks = {}
         custom_hooks = add_new_hooks(custom_hooks)
@@ -69,14 +70,19 @@ def calc_model_flops_params(model, input, custom_hooks=None, verbose=False):
         import tensorflow.compat.v1 as tf
         with tf.Graph().as_default() as graph:
             dummy_input = tf.placeholder(dtype=tf.float32, shape=input.shape.as_list())
-            model.training = False
-            model(dummy_input)
+            _model.training = False
+            _model(dummy_input)
             opts = tf.profiler.ProfileOptionBuilder.float_operation()
             flops = tf.profiler.profile(graph, cmd='op', options=opts).total_float_ops
             opts = tf.profiler.ProfileOptionBuilder.trainable_variables_parameter()
             params = tf.profiler.profile(graph, cmd='op', options=opts).total_parameters
             flops *= 0.5
+        del _model
     elif zeus.is_ms_backend():
+        total_params = 0
+        for param in model.trainable_params():
+            total_params += np.prod(param.shape)
+        params = total_params
         # TODO
-        flops, params = 0, 0
+        flops = 0
     return flops, params

@@ -34,7 +34,7 @@ class ValidFilter(FilterTerminateBase):
             model, count_input = self.get_model_input(desc)
             model(count_input)
             return False
-        except Exception:
+        except Exception as e:
             encoding = desc['backbone']['encoding']
-            logging.info('Invalid encoding: {}'.format(encoding))
+            logging.info(f"Invalid encoding: {encoding}, message: {str(e)}")
             return True

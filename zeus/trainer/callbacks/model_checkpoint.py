@@ -12,6 +12,8 @@
 import os
 import glob
 import logging
+import numpy as np
+from copy import deepcopy
 import zeus
 from .callback import Callback
 from zeus.common import FileOps
@@ -29,7 +31,7 @@ class ModelCheckpoint(Callback):
 
     def __init__(self):
         """Initialize ModelCheckpoint callback."""
-        super(Callback, self).__init__()
+        super(ModelCheckpoint, self).__init__()
         self.priority = 240
 
     def before_train(self, logs=None):
@@ -58,8 +60,7 @@ class ModelCheckpoint(Callback):
             checkpoint_file = tf.train.latest_checkpoint(worker_path)
             ckpt_globs = glob.glob("{}.*".format(checkpoint_file))
             for _file in ckpt_globs:
-                dst_file = model_id + os.path.splitext(_file)[-1]
-                FileOps.copy_file(_file, FileOps.join_path(weights_folder, dst_file))
+                FileOps.copy_file(_file, FileOps.join_path(weights_folder, os.path.split(_file)[-1]))
             FileOps.copy_file(FileOps.join_path(worker_path, 'checkpoint'), weights_folder)
         elif zeus.is_ms_backend():
             worker_path = self.trainer.get_local_worker_path()
@@ -89,14 +90,22 @@ class ModelCheckpoint(Callback):
     def _load_checkpoint(self):
         """Load checkpoint."""
         if zeus.is_torch_backend():
-            checkpoint_file = FileOps.join_path(
-                self.trainer.get_local_worker_path(), self.trainer.checkpoint_file_name)
+            if hasattr(self.trainer.config, "checkpoint_path"):
+                checkpoint_path = self.trainer.config.checkpoint_path
+            else:
+                checkpoint_path = self.trainer.get_local_worker_path()
+            checkpoint_file = FileOps.join_path(checkpoint_path, self.trainer.checkpoint_file_name)
             if os.path.exists(checkpoint_file):
                 try:
                     logging.info("Load checkpoint file, file={}".format(checkpoint_file))
                     checkpoint = torch.load(checkpoint_file)
-                    self.trainer.model.load_state_dict(checkpoint["weight"])
-                    self.trainer.optimizer.load_state_dict(checkpoint["optimizer"])
+                    if self.trainer.multi_task:
+                        self.trainer.model.load_state_dict(checkpoint["weight"], strict=False)
+                        checkpoint_optimizer = self._modify_saved_optimizer(checkpoint["optimizer"])
+                        self.trainer.optimizer.load_state_dict(checkpoint_optimizer)
+                    else:
+                        self.trainer.model.load_state_dict(checkpoint["weight"])
+                        self.trainer.optimizer.load_state_dict(checkpoint["optimizer"])
                     self.trainer.lr_scheduler.load_state_dict(checkpoint["lr_scheduler"])
                     if self.trainer._resume_training:
                         # epoch = checkpoint["epoch"]
@@ -105,4 +114,24 @@ class ModelCheckpoint(Callback):
                 except Exception as e:
                     logging.info("Load checkpoint failed {}".format(e))
             else:
-                logging.info('Use default model')
+                logging.info("skip loading checkpoint file that do not exist, {}".format(checkpoint_file))
+
+    def _modify_saved_optimizer(self, checkpoint):
+        """Modify saved optimizer."""
+        state_dict = deepcopy(checkpoint)
+        groups = self.trainer.optimizer.param_groups
+        saved_groups = state_dict["param_groups"]
+        if len(groups) != len(saved_groups):
+            raise ValueError("loaded state dict has a different number of parameter groups")
+        param = (g['params'] for g in groups)
+        saved = (g['params'] for g in saved_groups)
+        state = -1
+        for p, s in zip(param, saved):
+            state += 1
+            if len(p) > len(s):
+                saved_groups[state]['params'].extend(np.random.randint(low=min(s), high=max(s), size=(len(p) - len(s))))
+            elif len(p) < len(s):
+                saved_groups[state]['params'] = saved_groups[state]['params'][:len(p)]
+            else:
+                continue
+        return state_dict

@@ -14,7 +14,7 @@ from zeus.common.class_factory import ClassFactory
 
 
 ClassFactory.lazy_register("zeus.networks.pytorch.backbones", {
-    "getter": ["BackboneGetter"],
+    "getter": ["BackboneGetter", "ResNetBackbone"],
     "load_official_model": ["OffcialModelLoader"],
     "resnet_variant_det": ["ResNetVariantDet"],
     "resnext_variant_det": ["ResNeXtVariantDet"],

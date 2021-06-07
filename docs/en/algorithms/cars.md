@@ -156,8 +156,7 @@ nas:
                 eta_min: 0.001
         loss:
             type: CrossEntropyLoss
-	        params:
-	            sparse: True
+
         grad_clip: 5.0
         seed: 10
         unrolled: True
@@ -184,8 +183,7 @@ Configuration of the fully train phase:
 	        params:
                 loss_base:
                     type: CrossEntropyLoss
-		            params:
-                        sparse: True
+
             aux_weight: 0.4
         seed: 100
         drop_path_prob: 0.2

@@ -85,7 +85,7 @@ hpo:
         type: PBAHpo
         policy:
             each_epochs: 3            # 每轮trainer需要训练的epoch数目
-            config_count: 16          # 搜索算法并行训练的模型组数
+            config_count: 16          # 搜索算法并行训练的模型组数，4的倍数
             total_rungs: 200          # 搜索算法迭代轮数
     trainer:
         type: Trainer
