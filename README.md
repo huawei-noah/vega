@@ -12,9 +12,9 @@
 
 - Feature enhancement:
 
-- Fixed some bugs in distributed training.
-- Some networks support PyTorch + Ascend 910.
-- The Vega-process, Vega-progress, and vega-verify-cluster commands provide JSON format information.
+  - Fixed some bugs in distributed training.
+  - Some networks support PyTorch + Ascend 910.
+  - The Vega-process, Vega-progress, and vega-verify-cluster commands provide JSON format information.
 
 ---
 
