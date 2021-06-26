@@ -99,9 +99,9 @@ If there are multiple GPU|NUPs in the running environment, select a proper paral
 | :--: | :--: | :--: | :-- |
 | False | 1 | False | (default) Serial search and training with one card |
 | False | >1 | False | Serial Search and Training Using Multiple Cards |
-| False | Any value | True | Training with Horovod/HCCL |
+| False |  >=1<br>(Number of cards assigned to each model) | True | Training with Horovod/HCCL |
 | True | 1 | Any value | Parallel search and training with one card per model |
-| True | >1 | Any value | Parallel search and training with multiple cards per model |
+| True | >1<br>(Number of cards assigned to each model) | Any value | Parallel search and training with multiple cards per model |
 
 Here's how to train a model using 2 cards during the search phase and Horovod during the full training phase:
 

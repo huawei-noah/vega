@@ -10,7 +10,7 @@
 
 """VEGA Registry."""
 
-from zeus.common import ClassFactory, ClassType
+from vega.common import ClassFactory, ClassType
 from modnas.utils.logging import get_logger
 
 

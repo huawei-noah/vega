@@ -30,7 +30,7 @@ import operator
 import shutil
 import numpy as np
 import pandas as pd
-from zeus.common import FileOps
+from vega.common import FileOps
 import copy
 from enum import Enum
 

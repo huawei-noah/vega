@@ -23,16 +23,16 @@ import uuid
 import glob
 from threading import Lock
 from queue import Queue
-from zeus.trainer import utils
+from vega.trainer import utils
 from .distribution import ClusterDaskDistributor
-from zeus.common import TaskOps, FileOps
-from zeus.common.general import General
+from vega.common import TaskOps, FileOps
+from vega.common.general import General
 from .worker_env import WorkerEnv
 from .dask_env import DaskEnv
-from zeus.trainer.deserialize import pickle_worker
-from zeus.trainer.run_remote_worker import run_remote_worker
+from vega.trainer.deserialize import pickle_worker
+from vega.trainer.run_remote_worker import run_remote_worker
 from .master_base import MasterBase
-from zeus.report import ReportClient
+from vega.report import ReportClient
 
 
 class Master(MasterBase):

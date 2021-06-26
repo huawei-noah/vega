@@ -15,13 +15,13 @@ import subprocess
 import pickle
 import vega
 from .pipe_step import PipeStep
-from zeus.common.general import General
-from zeus.common.class_factory import ClassFactory, ClassType
-from zeus.common import FileOps, TaskOps, Status
-from zeus.report import ReportServer, ReportRecord, ReportClient
+from vega.common.general import General
+from vega.common.class_factory import ClassFactory, ClassType
+from vega.common import FileOps, TaskOps, Status
+from vega.report import ReportServer, ReportRecord, ReportClient
 from vega.core.scheduler import create_master
 from vega.core.pipeline.conf import PipeStepConfig, PipelineConfig
-from zeus.trainer.conf import TrainerConfig
+from vega.trainer.conf import TrainerConfig
 
 logger = logging.getLogger(__name__)
 
@@ -168,13 +168,13 @@ class TrainPipeStep(PipeStep):
         General.dft = True
         General._parallel = True
 
-        cls_trainer = ClassFactory.get_cls('trainer')
+        cls_trainer = ClassFactory.get_cls(ClassType.TRAINER, PipeStepConfig.trainer.type)
         self.master = create_master()
         workers_num = int(os.environ['RANK_SIZE'])
         for i in range(workers_num):
             worker_id = "{}-{}".format(origin_worker_id, i)
             trainer = cls_trainer(model_desc, id=worker_id)
-            evaluator = self._get_evaluator(worker_id)
+            evaluator = self._get_evaluator(worker_id) if os.environ['DEVICE_ID'] == "0" else None
             self.master.run(trainer, evaluator)
 
         self.master.join()

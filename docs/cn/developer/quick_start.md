@@ -188,8 +188,8 @@ nas:
 ```python
 import vega
 import torch.nn as nn
-from zeus.common.config import Config
-from zeus.common import ClassType, ClassFactory
+from vega.common.config import Config
+from vega.common import ClassType, ClassFactory
 
 @ClassFactory.register(ClassType.NETWORK)
 class SimpleCnn(nn.Module):

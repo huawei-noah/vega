@@ -11,9 +11,9 @@
 """Codec of Prune EA."""
 import copy
 import random
-from zeus.common import Config
-from zeus.common import ClassFactory, ClassType
-from zeus.common import update_dict
+from vega.common import Config
+from vega.common import ClassFactory, ClassType
+from vega.common import update_dict
 from vega.core.search_algs.codec import Codec
 
 

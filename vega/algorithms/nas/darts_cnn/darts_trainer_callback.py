@@ -13,16 +13,15 @@ import logging
 import os
 from copy import deepcopy
 import vega
-import zeus
-from zeus.common import Config, FileOps
+from vega.common import Config, FileOps
 from vega.algorithms.nas.darts_cnn import DartsNetworkTemplateConfig
-from zeus.common import ClassFactory, ClassType
-from zeus.trainer.callbacks import Callback
+from vega.common import ClassFactory, ClassType
+from vega.trainer.callbacks import Callback
 from vega.core.search_space import SearchSpace
 from vega.core.search_algs import SearchAlgorithm
-from zeus.trainer.modules.optimizer import Optimizer
-from zeus.trainer.modules.lr_schedulers import LrScheduler
-from zeus.modules.loss import Loss
+from vega.trainer.modules.optimizer import Optimizer
+from vega.trainer.modules.lr_schedulers import LrScheduler
+from vega.modules.loss import Loss
 
 if vega.is_torch_backend():
     pass
@@ -40,7 +39,7 @@ class DartsTrainerCallback(Callback):
         """Be called before the training process."""
         self.config = self.trainer.config
         self.unrolled = self.trainer.config.unrolled
-        self.device = zeus.is_gpu_device() if zeus.is_gpu_device() is not True else 0
+        self.device = vega.is_gpu_device() if vega.is_gpu_device() is not True else 0
         self.model = self.trainer.model
         self.optimizer = self.trainer.optimizer
         self.lr_scheduler = self.trainer.lr_scheduler

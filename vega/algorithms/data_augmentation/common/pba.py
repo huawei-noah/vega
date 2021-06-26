@@ -31,7 +31,7 @@ import shutil
 import numpy as np
 import pandas as pd
 from .status_type import StatusType
-from zeus.common import FileOps
+from vega.common import FileOps
 
 
 class PBA(object):

@@ -13,15 +13,14 @@ import logging
 import copy
 import os
 import vega
-import zeus
-from zeus.common import ClassFactory, ClassType
-from zeus.common import FileOps
-from zeus.metrics import calc_model_flops_params, calc_forward_latency
-from zeus.trainer.callbacks import Callback
-from zeus.networks.network_desc import NetworkDesc
-from zeus.modules.operators import PruneResnet
-from zeus.trainer.modules.lr_schedulers import LrScheduler
-from zeus.trainer.modules.optimizer import Optimizer
+from vega.common import ClassFactory, ClassType
+from vega.common import FileOps
+from vega.metrics import calc_model_flops_params, calc_forward_latency
+from vega.trainer.callbacks import Callback
+from vega.networks.network_desc import NetworkDesc
+from vega.modules.operators import PruneResnet
+from vega.trainer.modules.lr_schedulers import LrScheduler
+from vega.trainer.modules.optimizer import Optimizer
 import numpy as np
 
 if vega.is_torch_backend():
@@ -48,11 +47,14 @@ class PruneTrainerCallback(Callback):
     def before_train(self, logs=None):
         """Be called before the train process."""
         self.config = self.trainer.config
-        self.device = zeus.is_gpu_device() if zeus.is_gpu_device() is not True else 0
+        self.device = vega.is_gpu_device() if vega.is_gpu_device() is not True else 0
         self.base_net_desc = self.trainer.model.desc
         sess_config = None
         if vega.is_torch_backend():
-            count_input = torch.FloatTensor(1, 3, 32, 32).to(self.device)
+            if vega.is_npu_device():
+                count_input = torch.FloatTensor(1, 3, 32, 32).npu()
+            elif vega.is_gpu_device():
+                count_input = torch.FloatTensor(1, 3, 32, 32).to(self.device)
         elif vega.is_tf_backend():
             count_input = tf.random.uniform([1, 3, 32, 32], dtype=tf.float32)
             sess_config = self.trainer._init_session_config()
@@ -116,10 +118,18 @@ class PruneTrainerCallback(Callback):
         model_init = self._new_model_init()
         chn_node_mask = self._init_chn_node_mask()
         if vega.is_torch_backend():
-            checkpoint = torch.load(self.config.init_model_file + '.pth')
-            model_init.load_state_dict(checkpoint)
-            model = PruneResnet(model_init).apply(chn_node_mask, self.base_net_desc.backbone.chn_mask)
-            model.to(self.device)
+            if vega.is_gpu_device():
+                checkpoint = torch.load(self.config.init_model_file + '.pth')
+                model_init.load_state_dict(checkpoint)
+                model = PruneResnet(model_init).apply(chn_node_mask, self.base_net_desc.backbone.chn_mask)
+                model.to(self.device)
+            elif vega.is_npu_device():
+                device = "npu:{}".format(os.environ.get('DEVICE_ID', 0))
+                checkpoint = torch.load(self.config.init_model_file + '.pth',
+                                        map_location=torch.device('{}'.format(device)))
+                model_init.load_state_dict(checkpoint)
+                model = PruneResnet(model_init).apply(chn_node_mask, self.base_net_desc.backbone.chn_mask)
+                model.npu()
         elif vega.is_tf_backend():
             model = model_init
             with tf.compat.v1.Session(config=self.trainer._init_session_config()) as sess:

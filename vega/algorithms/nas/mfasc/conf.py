@@ -10,7 +10,7 @@
 
 """Defined Configs."""
 
-from zeus.common import ConfigSerializable
+from vega.common import ConfigSerializable
 
 
 class MFASCConfig(ConfigSerializable):

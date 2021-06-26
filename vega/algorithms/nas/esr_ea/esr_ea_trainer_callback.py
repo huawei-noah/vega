@@ -9,8 +9,8 @@
 # MIT License for more details.
 
 """The trainer program for ESR_EA."""
-from zeus.common import ClassFactory, ClassType
-from zeus.trainer.callbacks import Callback
+from vega.common import ClassFactory, ClassType
+from vega.trainer.callbacks import Callback
 
 
 @ClassFactory.register(ClassType.CALLBACK)

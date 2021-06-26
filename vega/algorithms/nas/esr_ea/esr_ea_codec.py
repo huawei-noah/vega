@@ -13,7 +13,7 @@ from vega.core.search_algs.codec import Codec
 from copy import deepcopy
 import numpy as np
 import logging
-from zeus.common import ClassType, ClassFactory
+from vega.common import ClassType, ClassFactory
 
 
 @ClassFactory.register(ClassType.CODEC)

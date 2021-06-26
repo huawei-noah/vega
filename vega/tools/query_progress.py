@@ -12,12 +12,14 @@
 
 import os
 import json
+import time
 from datetime import datetime
-from zeus.common import Status, JsonEncoder, DatatimeFormatString, argment_parser
+from vega.common import Status, JsonEncoder, DatatimeFormatString, argment_parser
 from vega.tools.query_process import get_pid
 
 
 __all__ = ["query_progress"]
+time_limit = 180
 
 
 def _parse_args(desc):
@@ -119,15 +121,22 @@ def _statistic_progress(progress):
 def query_progress():
     """Query vega progress."""
     args = _parse_args("Query Vega progress.")
-    is_running = get_pid(args.task_id) is not None
+    is_running = get_pid(args.task_id)
     report_path = _get_report_path(args.root_path, args.task_id)
 
     if not os.path.exists(report_path):
-        if not is_running:
-            return json.dumps({
-                "status": Status.error,
-                "message": "The task does not exist, please check root path and task id."
-            }, cls=JsonEncoder, indent=4)
+        if is_running is None:
+            run_time = time.time() - is_running.create_time()
+            if run_time > 0 and run_time < time_limit:
+                return json.dumps({
+                    "status": Status.error,
+                    "message": "The task is being created, please query again."
+                }, cls=JsonEncoder, indent=4)
+            else:
+                return json.dumps({
+                    "status": Status.error,
+                    "message": "The task does not exist, please check root path and task id."
+                }, cls=JsonEncoder, indent=4)
         else:
             return json.dumps({
                 "status": Status.initializing,

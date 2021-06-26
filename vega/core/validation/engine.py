@@ -10,7 +10,7 @@
 
 """Provide Validation engine."""
 from functools import wraps
-from zeus.common import ClassFactory, ClassType
+from vega.common import ClassFactory, ClassType
 
 
 def validation(class_name):

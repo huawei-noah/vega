@@ -10,11 +10,11 @@
 
 """Check and Define Prune Model SearchSpace."""
 import logging
-from zeus.common import ClassFactory, ClassType
+from vega.common import ClassFactory, ClassType
 from vega.core.search_space import SearchSpace
 from vega.core.pipeline.conf import PipeStepConfig
-from zeus.networks.network_desc import NetworkDesc
-from zeus.modules.operators import ops
+from vega.networks.network_desc import NetworkDesc
+from vega.modules.operators import ops
 
 
 @ClassFactory.register(ClassType.SEARCHSPACE)

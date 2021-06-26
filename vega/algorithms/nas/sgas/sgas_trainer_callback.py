@@ -15,7 +15,7 @@ import vega
 import torch
 import torch.nn.functional as F
 from vega.algorithms.nas.darts_cnn import DartsTrainerCallback
-from zeus.common import ClassFactory, ClassType
+from vega.common import ClassFactory, ClassType
 from vega.core.search_space import SearchSpace
 from vega.core.search_algs import SearchAlgorithm
 

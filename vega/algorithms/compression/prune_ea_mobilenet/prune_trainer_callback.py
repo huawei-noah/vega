@@ -13,9 +13,9 @@ import copy
 import os
 import vega
 from vega.algorithms.compression.prune_ea.prune_trainer_callback import PruneTrainerCallback
-from zeus.common import ClassFactory, ClassType, FileOps
-from zeus.networks.network_desc import NetworkDesc
-from zeus.modules.operators import PruneMobileNet
+from vega.common import ClassFactory, ClassType, FileOps
+from vega.networks.network_desc import NetworkDesc
+from vega.modules.operators import PruneMobileNet
 
 
 @ClassFactory.register(ClassType.CALLBACK)

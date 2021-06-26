@@ -19,8 +19,9 @@ import shutil
 import signal
 import json
 from dask.distributed import Client
-from zeus.common import argment_parser
-from zeus.common.utils import get_available_port
+from vega.common import argment_parser
+from vega.common.general import General
+from vega.common.utils import get_available_port
 
 
 def _parse_args():
@@ -123,9 +124,9 @@ def _verify_pkg(args):
     _print("*" * 32)
     _print("Start verify packages.")
     # python
-    main_output = _check_output(["python3", "--version"])
+    main_output = _check_output([General.python_command, "--version"])
     for slave in args.slaves:
-        slave_output = _check_output(["ssh", slave, "python3", "--version"])
+        slave_output = _check_output(["ssh", slave, General.python_command, "--version"])
         if main_output != slave_output:
             raise Exception(f"Python version is different.\nmaster:\n{main_output}\nslave:\n{slave_output}.")
     # main packages
@@ -206,7 +207,7 @@ def _verfiy_local(args):
     _print("Pass.")
 
     _print("Test local dask Client.")
-    cmd = f"python3 -c \"from dask.distributed import Client;"\
+    cmd = f"{General.python_command} -c \"from dask.distributed import Client;"\
           f"client=Client('{args.master}:{_port}');client.close()\""
     try:
         result = _call(cmd, shell=True)
@@ -232,7 +233,7 @@ def _verify_client(args):
         _print("Pass.")
 
         _print(f"Test slave({slave}) dask Client.")
-        cmd = f"python3 -c \"from dask.distributed import Client;"\
+        cmd = f"{General.python_command} -c \"from dask.distributed import Client;"\
               f"client=Client('{args.master}:{_port}');client.close()\""
         try:
             result = _call(cmd, shell=True, env=os.environ)

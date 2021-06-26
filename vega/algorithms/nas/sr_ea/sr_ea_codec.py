@@ -10,7 +10,7 @@
 
 """Encode and decode the model config."""
 from vega.core.search_algs.codec import Codec
-from zeus.common import ClassType, ClassFactory
+from vega.common import ClassType, ClassFactory
 
 
 @ClassFactory.register(ClassType.CODEC)

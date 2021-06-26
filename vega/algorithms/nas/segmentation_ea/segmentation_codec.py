@@ -10,7 +10,7 @@
 
 """Codec of Prune EA."""
 import re
-from zeus.common import ClassFactory, ClassType
+from vega.common import ClassFactory, ClassType
 from vega.core.search_algs.codec import Codec
 
 

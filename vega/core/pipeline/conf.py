@@ -9,13 +9,13 @@
 # MIT License for more details.
 
 """Defined Conf for Pipeline."""
-from zeus.common import ClassType
-from zeus.common import ConfigSerializable
-from zeus.networks.model_config import ModelConfig
-from zeus.trainer.conf import TrainerConfig
-from zeus.evaluator.conf import EvaluatorConfig
-from zeus.datasets.conf.dataset import DatasetConfig
-from zeus.common.check import valid_rule
+from vega.common import ClassType
+from vega.common import ConfigSerializable
+from vega.networks.model_config import ModelConfig
+from vega.trainer.conf import TrainerConfig
+from vega.evaluator.conf import EvaluatorConfig
+from vega.datasets.conf.dataset import DatasetConfig
+from vega.common.check import valid_rule
 
 
 class SearchSpaceConfig(ConfigSerializable):

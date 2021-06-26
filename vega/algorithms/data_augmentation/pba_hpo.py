@@ -13,8 +13,8 @@ import os
 import copy
 import shutil
 from vega.algorithms.data_augmentation.common import PBA
-from zeus.common import ClassFactory, ClassType
-from zeus.common import FileOps
+from vega.common import ClassFactory, ClassType
+from vega.common import FileOps
 from vega.algorithms.hpo.hpo_base import HPOBase
 from .pba_conf import PBAConfig
 

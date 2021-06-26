@@ -11,7 +11,7 @@
 """Defined Configs."""
 
 from vega.core.search_algs import ParetoFrontConfig
-from zeus.common import ConfigSerializable
+from vega.common import ConfigSerializable
 
 
 class DblockNasRangeConfig(ConfigSerializable):

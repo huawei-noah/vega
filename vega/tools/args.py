@@ -9,11 +9,11 @@
 # MIT License for more details.
 
 """Inference of vega model."""
-from zeus.common import argment_parser
-from zeus.common.config import Config, build_tree
-from zeus.common.general import General
+from vega.common import argment_parser
+from vega.common.config import Config, build_tree
+from vega.common.general import General
 from vega.core.pipeline.conf import PipelineConfig, PipeStepConfig
-from zeus.trainer.conf import TrainerConfig
+from vega.trainer.conf import TrainerConfig
 
 
 def _parse_args(sections, desc):

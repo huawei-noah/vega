@@ -12,7 +12,7 @@
 
 import logging
 import torch.optim as optim
-from zeus.common import ClassFactory, ClassType
+from vega.common import ClassFactory, ClassType
 from .ctr_trainer_callback import CtrTrainerCallback
 
 logger = logging.getLogger(__name__)

@@ -46,7 +46,7 @@ Vega的所有数据集类都继承自基类`Dataset`，`Dataset`基类定义了�
 数据集的配置类为`ClassificationDatasetConfig`，包含四部分：train、val、test、common，在公共配置中有一些缺省的配置项，如下：
 
 ```python
-from zeus.common import ConfigSerializable
+from vega.common import ConfigSerializable
 
 
 class ClassificationDatasetCommonConfig(ConfigSerializable):
@@ -112,11 +112,11 @@ import numpy as np
 import random
 import os
 import PIL
-import zeus
-from zeus.common import ClassFactory, ClassType
-from zeus.common import FileOps
-from zeus.datasets.conf.cls_ds import ClassificationDatasetConfig
-from .utils.dataset import Dataset
+import vega
+from vega.common import ClassFactory, ClassType
+from vega.common import FileOps
+from vega.datasets.conf.cls_ds import ClassificationDatasetConfig
+from .dataset import Dataset
 
 
 @ClassFactory.register(ClassType.DATASET)
@@ -198,13 +198,13 @@ class ClassificationDataset(Dataset):
 ```python
 import unittest
 import vega
-from zeus.common.class_factory import ClassFactory, ClassType
+from vega.common.class_factory import ClassFactory, ClassType
 
 
 class TestDataset(unittest.TestCase):
 
     def test_cifar10(self):
-        from zeus.datasets import Adapter
+        from vega.datasets import Adapter
         dataset_cls = ClassFactory.get_cls(ClassType.DATASET, "ClassificationDataset")
         dataset = dataset_cls(mode="train", data_path="/cache/datasets/classification/")
         dataloader = Adapter(dataset).loader

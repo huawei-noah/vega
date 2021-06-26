@@ -19,7 +19,7 @@ This method can be considered as an operator that replaces dropout. Generally, t
 The code related to the FMD operator is stored in the following directory:
 
 ```text
-zeus/networks/pytorch/ops/fmdunit.py
+vega/networks/pytorch/ops/fmdunit.py
 ```
 
 The parameters related to the FMD operator are as follows:

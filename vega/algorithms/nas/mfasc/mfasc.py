@@ -11,8 +11,8 @@
 """Multi-fidelity Active Search with Co-kriging."""
 
 import copy
-from zeus.common import update_dict
-from zeus.common import ClassFactory, ClassType
+from vega.common import update_dict
+from vega.common import ClassFactory, ClassType
 from vega.core.search_algs import SearchAlgorithm
 import itertools
 from sklearn import preprocessing

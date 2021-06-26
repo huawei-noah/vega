@@ -12,9 +12,9 @@
 import logging
 import json
 import glob
-from zeus.common import TaskOps, FileOps
-from zeus.common import ClassFactory, ClassType
-from zeus.report import ReportRecord
+from vega.common import TaskOps, FileOps
+from vega.common import ClassFactory, ClassType
+from vega.report import ReportRecord
 from vega.core.search_algs.codec import Codec
 from vega.core.pipeline.conf import PipeStepConfig
 

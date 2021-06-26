@@ -13,10 +13,10 @@ import itertools
 
 import tensorflow as tf
 
-from zeus.datasets import Adapter
-from zeus.datasets.common.spatiotemporal import SpatiotemporalDataset
-from zeus.metrics.tensorflow.forecast import RMSE
-from zeus.model_zoo import ModelZoo
+from vega.datasets import Adapter
+from vega.datasets.common.spatiotemporal import SpatiotemporalDataset
+from vega.metrics.tensorflow.forecast import RMSE
+from vega.model_zoo import ModelZoo
 
 
 def _init_tf_estimator(desc_file, model_dir):

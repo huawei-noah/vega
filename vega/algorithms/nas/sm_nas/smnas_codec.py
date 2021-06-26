@@ -9,7 +9,7 @@
 # MIT License for more details.
 
 """Defined BackboneNasCodec."""
-from zeus.common import ClassType, ClassFactory
+from vega.common import ClassType, ClassFactory
 from vega.core.search_algs.codec import Codec
 
 

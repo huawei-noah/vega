@@ -18,15 +18,14 @@ import numpy as np
 import torch
 import json
 from tensorboardX import SummaryWriter
-import zeus
-from zeus.datasets import Adapter
-from zeus.datasets.common.utils.dataset import Dataset
-from zeus.common import init_log, FileOps
-from zeus.common.general import General
-from zeus.report import ReportClient, ReportRecord
-from zeus.common import ClassFactory, ClassType
-from zeus.networks.network_desc import NetworkDesc
-from zeus.trainer.callbacks import Callback
+import vega
+from vega.datasets import Adapter
+from vega.datasets.common.dataset import Dataset
+from vega.common import FileOps
+from vega.report import ReportClient
+from vega.common import ClassFactory, ClassType
+from vega.networks.network_desc import NetworkDesc
+from vega.trainer.callbacks import Callback
 from .utils import AverageMeter
 from .utils import TensorNorm
 
@@ -54,7 +53,7 @@ class CyclesrTrainerCallback(Callback):
     def set_trainer(self, trainer):
         """Set trainer object for current callback."""
         self.trainer = trainer
-        self.trainer._train_loop = self.train_process
+        self.trainer._train_loop = self._train_loop
         self.cfg = self.trainer.config
         self._worker_id = self.trainer._worker_id
         self.worker_path = self.trainer.get_local_worker_path()
@@ -160,7 +159,7 @@ class CyclesrTrainerCallback(Callback):
             batch_time.update(time.time() - end)
             # print result
             if (batch_idx + 1) % print_freq == 0:
-                if not zeus.is_gpu_device() or (zeus.is_gpu_device() and self.trainer.is_chief):
+                if not vega.is_gpu_device() or (vega.is_gpu_device() and self.trainer.is_chief):
                     logging.info('[epoch {0},iter {1}/{2}]\t'
                                  'Time {batch_time.val:.3f}({batch_time.avg:.3f})\t'
                                  'Data {data_time.val:.3f}({data_time.avg:.3f})\t'
@@ -206,9 +205,14 @@ class CyclesrTrainerCallback(Callback):
         model.set_mode('eval')
         with torch.no_grad():
             for i, img in enumerate(imgs):
-                real_X = img['X'].cuda()
-                real_Y = img['Y'].cuda()
-                HR = img['HR'].cuda()
+                if vega.is_npu_device():
+                    real_X = img['X'].npu()
+                    real_Y = img['Y'].npu()
+                    HR = img['HR'].npu()
+                else:
+                    real_X = img['X'].cuda()
+                    real_Y = img['Y'].cuda()
+                    HR = img['HR'].cuda()
                 fake_Y = model.netG(real_X)  # G(X)
                 rec_X = model.netF(fake_Y)  # F(G(X))
                 fake_X = model.netF(real_Y)  # F(Y)
@@ -254,7 +258,10 @@ class CyclesrTrainerCallback(Callback):
                     HR = data['HR']
                 else:
                     HR = None
-                SR = SRnet(val_LR.cuda())
+                if vega.is_npu_device():
+                    SR = SRnet(val_LR.npu())
+                else:
+                    SR = SRnet(val_LR.cuda())
                 SR = torch.clamp(SR, 0.0, 1.0)
                 if i < val_sr_num:
                     if i == 0:
@@ -269,20 +276,20 @@ class CyclesrTrainerCallback(Callback):
                 else:
                     if HR is None:
                         return None
-                val_PSNR.append(find_best_PSNR(HR.cuda(), SR, ps_offset) if HR is not None else None)
+                if vega.is_npu_device():
+                    val_PSNR.append(find_best_PSNR(HR.npu(), SR, ps_offset) if HR is not None else None)
+                else:
+                    val_PSNR.append(find_best_PSNR(HR.cuda(), SR, ps_offset) if HR is not None else None)
             if all(val_PSNR):
                 ave_PSNR = np.asarray(val_PSNR).mean()
             else:
                 ave_PSNR = None
             return ave_PSNR
 
-    def train_process(self):
+    def _train_loop(self):
         """Whole train and validate process for the fully train cyclesr."""
-        init_log(level=General.logger.level,
-                 log_file="worker_{}.log".format(self.trainer.worker_id),
-                 log_path=self.trainer.local_log_path)
         self._init_report()
-        if not zeus.is_cpu_device():
+        if not vega.is_cpu_device():
             self.trainer._init_setting()
         self.model = self._init_model()
         if self.cfg.distributed:
@@ -351,13 +358,13 @@ class CyclesrTrainerCallback(Callback):
                 best_file = FileOps.join_path(
                     self.worker_path,
                     "model_{}.pth".format(name))
-                if zeus.is_gpu_device() and torch.cuda.is_available():
+                if vega.is_gpu_device() and torch.cuda.is_available():
                     # torch.save(net.module.cpu().state_dict(), save_path)
                     torch.save(net.module.state_dict(), save_path)
                     # net.cuda()
                     if best:
                         torch.save(net.module.state_dict(), best_file)
-                elif zeus.is_npu_device():
+                elif vega.is_npu_device():
                     torch.save(net.state_dict(), save_path)
                     if best:
                         torch.save(net.state_dict(), best_file)

@@ -12,10 +12,10 @@
 
 import logging
 from datetime import datetime
-from zeus.common import TaskOps, Status
-from zeus.common import ClassFactory, ClassType
+from vega.common import TaskOps, Status
+from vega.common import ClassFactory, ClassType
 from vega.core.pipeline.conf import PipeStepConfig
-from zeus.report import ReportServer
+from vega.report import ReportServer
 
 
 __all__ = ["PipeStep"]

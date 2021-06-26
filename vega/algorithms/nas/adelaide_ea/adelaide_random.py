@@ -12,7 +12,7 @@
 import random
 from copy import deepcopy
 from .conf import AdelaideConfig
-from zeus.common import ClassFactory, ClassType
+from vega.common import ClassFactory, ClassType
 from vega.core.search_algs import SearchAlgorithm
 
 

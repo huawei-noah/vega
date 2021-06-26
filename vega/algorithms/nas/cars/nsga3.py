@@ -11,7 +11,7 @@
 """Function for pNSGA-III."""
 import numpy as np
 import random
-from zeus.report import NonDominatedSorting
+from vega.report import NonDominatedSorting
 
 
 def CARS_NSGA(target, objs, N):

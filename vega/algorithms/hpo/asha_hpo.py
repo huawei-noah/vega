@@ -12,7 +12,7 @@
 
 from math import log
 from vega.algorithms.hpo.sha_base import ASHA
-from zeus.common import ClassFactory, ClassType
+from vega.common import ClassFactory, ClassType
 from vega.algorithms.hpo.hpo_base import HPOBase
 from .asha_conf import AshaConfig
 

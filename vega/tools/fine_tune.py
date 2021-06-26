@@ -13,12 +13,12 @@
 import pandas as pd
 import logging
 import json
-from zeus.common import argment_parser
-from zeus.common.general import General
-from zeus.common.task_ops import TaskOps
-from zeus.common.file_ops import FileOps
+from vega.common import argment_parser
+from vega.common.general import General
+from vega.common.task_ops import TaskOps
+from vega.common.file_ops import FileOps
 from vega.core.pipeline.conf import PipelineConfig, PipeStepConfig
-from zeus.trainer.conf import TrainerConfig
+from vega.trainer.conf import TrainerConfig
 from vega.core.pipeline.train_pipe_step import TrainPipeStep
 from vega.tools.init_env import _init_env
 from vega.tools.run_pipeline import _set_backend

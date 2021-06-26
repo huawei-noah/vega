@@ -2,10 +2,10 @@
 
 import logging
 import random
-from zeus.common import ClassFactory, ClassType
+from vega.common import ClassFactory, ClassType
 from vega.core.search_algs import SearchAlgorithm
-from zeus.common import ConfigSerializable
-from zeus.networks.model_config import ModelConfig
+from vega.common import ConfigSerializable
+from vega.networks.model_config import ModelConfig
 
 
 class SMNasConfig(ConfigSerializable):

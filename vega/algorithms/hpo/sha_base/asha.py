@@ -46,7 +46,7 @@ import numpy as np
 import random
 from .sha_base import ShaBase
 from .status_type import StatusType
-from zeus.common.pareto_front import get_pareto
+from vega.common.pareto_front import get_pareto
 
 
 logger = logging.getLogger(__name__)

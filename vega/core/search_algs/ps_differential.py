@@ -16,10 +16,10 @@ import numpy as np
 from functools import partial
 import vega
 from .search_algorithm import SearchAlgorithm
-from zeus.common import ClassFactory, ClassType
-from zeus.networks.network_desc import NetworkDesc
-from zeus.trainer.conf import TrainerConfig
-from zeus.common import ConfigSerializable
+from vega.common import ClassFactory, ClassType
+from vega.networks.network_desc import NetworkDesc
+from vega.trainer.conf import TrainerConfig
+from vega.common import ConfigSerializable
 
 if vega.is_torch_backend():
     import torch

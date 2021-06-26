@@ -13,7 +13,7 @@
 import psutil
 import json
 from psutil import _pprint_secs
-from zeus.common import MessageServer, MessageClient, argment_parser
+from vega.common import MessageServer, MessageClient, argment_parser
 
 
 __all__ = [

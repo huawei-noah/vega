@@ -11,9 +11,9 @@
 """Codec of DARTS."""
 import copy
 import numpy as np
-from zeus.common import Config
+from vega.common import Config
 from vega.core.search_algs.codec import Codec
-from zeus.common import ClassType, ClassFactory
+from vega.common import ClassType, ClassFactory
 
 
 @ClassFactory.register(ClassType.CODEC)

@@ -10,14 +10,14 @@
 
 """Fully Train PipeStep that used in Pipeline."""
 import logging
-from zeus.common.general import General
-from zeus.common.class_factory import ClassFactory, ClassType
-from zeus.report import ReportServer, ReportRecord, ReportClient
-from zeus.common import Status
+from vega.common.general import General
+from vega.common.class_factory import ClassFactory, ClassType
+from vega.report import ReportServer, ReportRecord, ReportClient
+from vega.common import Status
 from vega.core.scheduler import create_master
 from vega.core.pipeline.conf import PipeStepConfig
 from vega.core.pipeline.train_pipe_step import TrainPipeStep
-from zeus.trainer.conf import TrainerConfig
+from vega.trainer.conf import TrainerConfig
 
 
 logger = logging.getLogger(__name__)
@@ -49,7 +49,7 @@ class MultiTaskPipeStep(TrainPipeStep):
         self.update_status(Status.finished)
 
     def _train_single_model(self, model_desc, model_id, hps, multi_task):
-        cls_trainer = ClassFactory.get_cls('trainer')
+        cls_trainer = ClassFactory.get_cls(ClassType.TRAINER, PipeStepConfig.trainer.type)
         step_name = self.task.step_name
         sample = dict(worker_id=model_id, desc=model_desc, step_name=step_name)
         record = ReportRecord().load_dict(sample)

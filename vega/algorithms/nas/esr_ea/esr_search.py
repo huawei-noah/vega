@@ -16,10 +16,10 @@ from bisect import bisect_right
 from random import random, sample
 import numpy as np
 import pandas as pd
-from zeus.common.general import General
+from vega.common.general import General
 from .conf import ESRConfig
-from zeus.common import FileOps
-from zeus.common import ClassFactory, ClassType
+from vega.common import FileOps
+from vega.common import ClassFactory, ClassType
 from vega.core.search_algs import SearchAlgorithm
 from .esr_ea_individual import ESRIndividual
 

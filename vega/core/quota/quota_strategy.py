@@ -12,10 +12,10 @@
 import os
 import logging
 import copy
-import zeus
-from zeus.common.general import General
-from zeus.report import ReportServer
-from zeus.common.task_ops import TaskOps
+import vega
+from vega.common.general import General
+from vega.report import ReportServer
+from vega.common.task_ops import TaskOps
 from vega.core.pipeline.conf import PipelineConfig, PipeStepConfig
 from vega.core.pipeline.pipe_step import PipeStep
 
@@ -43,7 +43,7 @@ class QuotaStrategy(object):
         self._simulate_tiny_pipeline(cfg_tiny)
         General.parallel_search = cfg.general.parallel_search
         self._modify_pipeline_config(workers_num, self.epoch_time, self.params_dict)
-        if zeus.is_npu_device():
+        if vega.is_npu_device():
             os.environ['RANK_TABLE_FILE'] = os.environ['ORIGIN_RANK_TABLE_FILE']
             os.environ['RANK_SIZE'] = os.environ['ORIGIN_RANK_SIZE']
         logging.info('Adjust runtime config successfully.')
@@ -130,12 +130,12 @@ class QuotaStrategy(object):
         """Calculate workers numbers."""
         if not General.parallel_search:
             return 1
-        if zeus.is_gpu_device():
+        if vega.is_gpu_device():
             import torch
             world_size = General.env.world_size
             devices_per_node = torch.cuda.device_count()
             worker_num = (world_size * devices_per_node) // General.devices_per_trainer
-        elif zeus.is_npu_device():
+        elif vega.is_npu_device():
             world_devices = int(os.environ['RANK_SIZE'])
             worker_num = world_devices // General.devices_per_trainer
         return worker_num

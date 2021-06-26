@@ -11,9 +11,9 @@
 """Set env."""
 import sys
 import logging
-from zeus.common import init_log
-from zeus.common.general import General
-from zeus.common.task_ops import TaskOps
+from vega.common import init_log
+from vega.common.general import General
+from vega.common.task_ops import TaskOps
 from vega.core.run import init_cluster_args
 
 logger = logging.getLogger(__name__)

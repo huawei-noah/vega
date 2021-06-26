@@ -551,7 +551,7 @@ metric:
 自定义一个metric
 
 - 使用`@ClassFactory.register(ClassType.METRIC)`进行注册
-- 继承`zeus.metrics.metrics_base.MetricBase`
+- 继承`vega.metrics.metrics_base.MetricBase`
 - 指定`__metric_name__`，供记录打印metrics使用
 - 实现`__call__`、`summay`、`reset`方法，call是在每轮step的时候调用，summay是每轮epoch结束后调用
 

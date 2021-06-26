@@ -1,7 +1,7 @@
 general:
     backend: pytorch
     parallel_search: True
-    requires: ["dataclasses"]
+    requires: ["dataclasses", "networkx"]
 
 
 pipeline: [nas]

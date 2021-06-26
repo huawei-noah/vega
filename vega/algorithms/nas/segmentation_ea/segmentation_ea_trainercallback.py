@@ -11,9 +11,9 @@
 """The trainer program for SegmentationEA."""
 import logging
 import torch
-from zeus.common import ClassFactory, ClassType
-from zeus.metrics import calc_model_flops_params
-from zeus.trainer.callbacks import Callback
+from vega.common import ClassFactory, ClassType
+from vega.metrics import calc_model_flops_params
+from vega.trainer.callbacks import Callback
 
 logger = logging.getLogger(__name__)
 

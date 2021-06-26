@@ -13,16 +13,16 @@ import logging
 import os
 import traceback
 
-from zeus.common import FileOps, Config
-from zeus.common import ClassFactory, ClassType
-from zeus.common.general import General
-from zeus.common.task_ops import TaskOps
+from vega.common import FileOps, Config
+from vega.common import ClassFactory, ClassType
+from vega.common.general import General
+from vega.common.task_ops import TaskOps
 from vega.core.pipeline.conf import PipeStepConfig, PipelineConfig
-from zeus.evaluator.conf import EvaluatorConfig
-from zeus.report import ReportClient, ReportRecord, ReportServer
+from vega.evaluator.conf import EvaluatorConfig
+from vega.report import ReportClient, ReportRecord, ReportServer
 from .pipe_step import PipeStep
 from ..scheduler import create_master
-from zeus.common import Status
+from vega.common import Status
 
 logger = logging.getLogger(__name__)
 

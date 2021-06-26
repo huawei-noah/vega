@@ -47,7 +47,7 @@ cyclegan:
 The Cycle GAN model file is located in the
 
 ```text
-zeus/networks/pytorch/cyclesrbodys/trans_model.py
+vega/networks/pytorch/cyclesrbodys/trans_model.py
 ```
 
 #### super-resolution network
@@ -66,7 +66,7 @@ VDSR:
 The model file of the super-resolution network is stored in the following directory:
 
 ```text
-zeus/networks/pytorch/cyclesrbodys/srmodels.py
+vega/networks/pytorch/cyclesrbodys/srmodels.py
 ```
 
 #### Joint training
@@ -96,7 +96,7 @@ model:
 The network description for joint training is located at
 
 ```text
-zeus/networks/pytorch/cyclesrbodys/cyclesr_net.py
+vega/networks/pytorch/cyclesrbodys/cyclesr_net.py
 ```
 
 ## 3. Usage

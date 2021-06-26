@@ -13,8 +13,8 @@ import logging
 import random
 import numpy as np
 from .conf import QuantConfig
-from zeus.common import ClassFactory, ClassType
-from zeus.report import ReportServer
+from vega.common import ClassFactory, ClassType
+from vega.report import ReportServer
 from vega.core.search_algs import SearchAlgorithm
 
 
