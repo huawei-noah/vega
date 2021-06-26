@@ -13,7 +13,7 @@
 import random
 import logging
 import numpy as np
-from zeus.common.pareto_front import get_pareto_index
+from vega.common.pareto_front import get_pareto_index
 
 
 logger = logging.getLogger(__name__)

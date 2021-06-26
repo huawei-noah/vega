@@ -9,7 +9,7 @@
 # MIT License for more details.
 
 """Defined RandomSearch class."""
-from zeus.common import ClassFactory, ClassType
+from vega.common import ClassFactory, ClassType
 from vega.core.search_algs import SearchAlgorithm
 from .random_conf import RandomConfig
 

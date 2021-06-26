@@ -13,14 +13,13 @@ import numpy as np
 from collections import namedtuple
 import logging
 import vega
-import zeus
-from zeus.common import ClassFactory, ClassType
+from vega.common import ClassFactory, ClassType
 from vega.core.search_space import SearchSpace
 from vega.core.search_algs import SearchAlgorithm
-from zeus.trainer.callbacks import Callback
-from zeus.trainer.modules.optimizer import Optimizer
-from zeus.trainer.modules.lr_schedulers import LrScheduler
-from zeus.modules.loss import Loss
+from vega.trainer.callbacks import Callback
+from vega.trainer.modules.optimizer import Optimizer
+from vega.trainer.modules.lr_schedulers import LrScheduler
+from vega.modules.loss import Loss
 
 if vega.is_torch_backend():
     import torch
@@ -69,16 +68,16 @@ class CARSTrainerCallback(Callback):
         self.trainer.model.train()
         input, target = batch
         self.trainer.optimizer.zero_grad()
-        if zeus.is_gpu_device():
+        if vega.is_gpu_device():
             alphas = torch.from_numpy(self.alphas).cuda()
-        elif zeus.is_npu_device():
+        elif vega.is_npu_device():
             alphas = torch.from_numpy(self.alphas).npu()
         for j in range(self.alg_policy.num_individual_per_iter):
             i = np.random.randint(0, self.alg_policy.num_individual, 1)[0]
             if self.epoch < self.alg_policy.warmup:
-                if zeus.is_gpu_device():
+                if vega.is_gpu_device():
                     alpha = torch.from_numpy(self.search_alg.random_sample_path()).cuda()
-                elif zeus.is_npu_device():
+                elif vega.is_npu_device():
                     alpha = torch.from_numpy(self.search_alg.random_sample_path()).npu()
                 # logits = self.trainer.model.forward_random(input)
             else:

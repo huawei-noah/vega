@@ -9,4 +9,3 @@ include README.md
 include RELEASE.md
 include setup.py
 recursive-include vega *
-recursive-include zeus *

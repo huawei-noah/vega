@@ -1,4 +1,4 @@
-**Vega ver1.4.0 released:**
+**Vega ver1.5.0 released:**
 
 **Introduction**
 
@@ -8,7 +8,7 @@ Vega is an AutoML algorithm tool chain developed by Noah's Ark Laboratory, the m
 2. Industry-leading AutoML algorithms: Provides Noah's Ark Laboratory's self-developed **industry-leading algorithms (Benchmark)** and **Model Zoo** to download the State-of-the-art (SOTA) models.
 3. Fine-grained network search space: The network search space can be freely defined, and rich network architecture parameters are provided for use in the search space. The network architecture parameters and model training hyperparameters can be searched at the same time, and the search space can be applied to Pytorch, TensorFlow and MindSpore.
 4. High-concurrency neural network training capability: Provides high-performance trainers to accelerate model training and evaluation.
-5. Multi-Backend: PyTorch, TensorFlow (trial), MindSpore (coming soon).
+5. Multi-Backend: PyTorch, TensorFlow, MindSpore.
 
 **Installation**
 

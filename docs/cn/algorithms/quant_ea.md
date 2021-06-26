@@ -51,7 +51,7 @@ QuantEA（Quantization based on Evolutionary Algorithm）是一种自动混合�
 
 ![quant_ea_search_space](../../images/quant_ea_search_space.png)
 
-目前的代码提供了ResNet系列作为基础神经网络，如果需要更换为其他网络，可参考``zeus/networks/quant.py``将你自己的网络的`nn.Conv2d`更换为我们的量化卷积层`QuantConv`。
+目前的代码提供了ResNet系列作为基础神经网络，如果需要更换为其他网络，可参考``vega/networks/quant.py``将你自己的网络的`nn.Conv2d`更换为我们的量化卷积层`QuantConv`。
 
 ### 4.2 dataset配置
 

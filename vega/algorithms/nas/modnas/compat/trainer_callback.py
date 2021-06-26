@@ -13,10 +13,10 @@
 import copy
 import threading
 import traceback
-from zeus.common import FileOps
-from zeus.common import ClassFactory, ClassType
-from zeus.trainer.callbacks import Callback
-from zeus.report import ReportClient
+from vega.common import FileOps
+from vega.common import ClassFactory, ClassType
+from vega.trainer.callbacks import Callback
+from vega.report import ReportClient
 from vega.core.search_space import SearchSpace
 from vega.core.search_algs import SearchAlgorithm
 from modnas.data_provider.predefined.default import DefaultDataProvider

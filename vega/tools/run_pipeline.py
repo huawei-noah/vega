@@ -14,10 +14,10 @@ import os
 import sys
 import vega
 from copy import deepcopy
-from zeus.common.general import General
-from zeus.common.config import Config
-from zeus.common.utils import verify_requires
-from zeus.common import argment_parser
+from vega.common.general import General
+from vega.common.config import Config
+from vega.common.utils import verify_requires
+from vega.common import argment_parser
 
 
 def _append_env():
@@ -114,7 +114,7 @@ def _resume(args):
     if args.resume:
         if not args.task_id:
             raise Exception("Please set task id (-t task_id) if you want resume not finished task.")
-        from zeus.common.general import TaskConfig
+        from vega.common.general import TaskConfig
         General.task.task_id = args.task_id
         General._resume = True
         TaskConfig.backup_original_value(force=True)
@@ -123,8 +123,8 @@ def _resume(args):
 
 def _backup_config(args):
     _file = args.config_file
-    from zeus.common.task_ops import TaskOps
-    from zeus.common.file_ops import FileOps
+    from vega.common.task_ops import TaskOps
+    from vega.common.file_ops import FileOps
     dest_file = FileOps.join_path(TaskOps().local_output_path, os.path.basename(_file))
     FileOps.make_base_dir(dest_file)
     FileOps.copy_file(_file, dest_file)

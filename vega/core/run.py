@@ -12,12 +12,12 @@
 import sys
 import logging
 import json
-from zeus.common.utils import init_log, lazy
-from zeus.common import Config, UserConfig
-from zeus.common.task_ops import TaskOps
+from vega.common.utils import init_log, lazy
+from vega.common import Config, UserConfig
+from vega.common.task_ops import TaskOps
 from .pipeline.pipeline import Pipeline
-from .backend_register import set_backend
-from zeus.common.general import General
+from vega import set_backend
+from vega.common.general import General
 from vega.core.pipeline.conf import PipelineConfig
 from vega.core.quota import QuotaStrategy
 

@@ -23,8 +23,8 @@ with open("RELEASE.md", "r") as fh:
 
 setuptools.setup(
     name="noah-vega",
-    version="1.4.0",
-    packages=["vega", "zeus", "evaluate_service"],
+    version="1.5.0",
+    packages=["vega", "evaluate_service"],
     include_package_data=True,
     python_requires=">=3.6",
     author="Huawei Noah's Ark Lab",
@@ -50,6 +50,7 @@ setuptools.setup(
         "tf-slim",
         "pandas==0.25.2",
         "distributed==2.18.0",
+        "click==7.1.2",
         "PyYAML==5.1.2",
         "numpy==1.18.5",
         "scipy==1.5.3",

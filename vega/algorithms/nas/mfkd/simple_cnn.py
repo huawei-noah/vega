@@ -11,7 +11,7 @@
 """MFKD1."""
 
 import torch.nn as nn
-from zeus.common.class_factory import ClassFactory, ClassType
+from vega.common.class_factory import ClassFactory, ClassType
 
 
 @ClassFactory.register(ClassType.NETWORK)

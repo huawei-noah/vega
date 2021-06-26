@@ -11,8 +11,8 @@
 """ModNasAlgorithm."""
 
 from functools import partial
-from zeus.common import ConfigSerializable
-from zeus.common import ClassFactory, ClassType
+from vega.common import ConfigSerializable
+from vega.common import ClassFactory, ClassType
 from vega.core.search_algs import SearchAlgorithm
 from modnas.registry.optim import build
 

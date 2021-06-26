@@ -13,7 +13,7 @@ from PIL import Image
 import matplotlib.pyplot as plt
 import torchvision.transforms as T
 import cv2
-from zeus.model_zoo.model_zoo import ModelZoo
+from vega.model_zoo.model_zoo import ModelZoo
 
 
 class ObjectDetectionAPI(object):

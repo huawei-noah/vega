@@ -11,7 +11,7 @@
 """Defined BohbHpo class."""
 from math import log, pow, sqrt
 from vega.algorithms.hpo.sha_base import BOSS
-from zeus.common import ClassFactory, ClassType
+from vega.common import ClassFactory, ClassType
 from vega.algorithms.hpo.hpo_base import HPOBase
 from .boss_conf import BossConfig
 

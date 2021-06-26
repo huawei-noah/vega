@@ -17,12 +17,12 @@ import shutil
 from .pipe_step import PipeStep
 from .generator import Generator
 from ..scheduler import create_master
-from zeus.common import ClassFactory, ClassType
+from vega.common import ClassFactory, ClassType
 from ..pipeline.conf import PipeStepConfig
-from zeus.report import ReportServer
-from zeus.common.general import General
-from zeus.common import TaskOps, Status
-from zeus.trainer.conf import TrainerConfig
+from vega.report import ReportServer
+from vega.common.general import General
+from vega.common import TaskOps, Status
+from vega.trainer.conf import TrainerConfig
 
 
 @ClassFactory.register(ClassType.PIPE_STEP)

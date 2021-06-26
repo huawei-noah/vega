@@ -114,7 +114,7 @@ class ResNet(Module):
         self.head = Linear(in_features=out_plane, out_features=num_class)
 ```
 
-The constructor of the network accepts parameters such as depth, base_channel, doublechannel, and downsample. These parameters are passed through the search algorithm. For details about the implementation of ResNetGeneral, see <https://github.com/huawei-noah/vega/blob/master/zeus/networks/resnet_general.py>.
+The constructor of the network accepts parameters such as depth, base_channel, doublechannel, and downsample. These parameters are passed through the search algorithm. For details about the implementation of ResNetGeneral, see <https://github.com/huawei-noah/vega/blob/master/vega/networks/resnet_general.py>.
 
 ### 1.3 Designing a Search Algorithm
 

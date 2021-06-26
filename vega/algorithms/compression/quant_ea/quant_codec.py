@@ -10,8 +10,8 @@
 
 """Codec for searching quantization model."""
 import copy
-from zeus.common import update_dict
-from zeus.common import ClassType, ClassFactory
+from vega.common import update_dict
+from vega.common import ClassType, ClassFactory
 from vega.core.search_algs.codec import Codec
 
 

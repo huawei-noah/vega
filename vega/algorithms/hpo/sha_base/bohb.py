@@ -44,7 +44,7 @@ from .asha import ASHA
 from .tuner import TunerBuilder
 from ..ea.ga import GeneticAlgorithm
 from .status_type import StatusType
-from zeus.common.class_factory import ClassFactory, ClassType
+from vega.common.class_factory import ClassFactory, ClassType
 
 
 logger = logging.getLogger(__name__)

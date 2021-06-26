@@ -113,7 +113,7 @@ class ResNet(Module):
         self.head = Linear(in_features=out_plane, out_features=num_class)
 ```
 
-网络的构造函数中接受depth、base_channel、doublechannel、downsample等参数，这些参数通过搜索算法传递过来。具体的ResNetGeneral实现，可参考<https://github.com/huawei-noah/vega/blob/master/zeus/networks/resnet_general.py>。
+网络的构造函数中接受depth、base_channel、doublechannel、downsample等参数，这些参数通过搜索算法传递过来。具体的ResNetGeneral实现，可参考<https://github.com/huawei-noah/vega/blob/master/vega/networks/resnet_general.py>。
 
 ### 1.3 设计搜索算法
 

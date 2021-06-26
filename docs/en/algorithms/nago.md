@@ -62,7 +62,7 @@ search_space:
 ```
 
 Note despite we are using the NAS pipeline, we define the search space following HPO pipeline format as we use BOHB to perform the search.
-The exact code for the architecture generator (return a trainable PyTorch network model given a generator hyperparameter value) is `zeus/networks/pytorch/customs/nago.py`.
+The exact code for the architecture generator (return a trainable PyTorch network model given a generator hyperparameter value) is `vega/networks/pytorch/customs/nago.py`.
 
 ### 4.2 Search Strategy
 

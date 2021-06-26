@@ -16,7 +16,7 @@ Create Master or LocalMaster.
 import time
 import logging
 import traceback
-from zeus.common.general import General
+from vega.common.general import General
 
 
 logger = logging.getLogger(__name__)

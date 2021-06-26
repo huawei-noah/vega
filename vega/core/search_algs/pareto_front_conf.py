@@ -9,7 +9,7 @@
 # MIT License for more details.
 
 """Defined Configs."""
-from zeus.common import ConfigSerializable
+from vega.common import ConfigSerializable
 
 
 class ParetoFrontConfig(ConfigSerializable):

@@ -11,8 +11,8 @@
 
 import logging
 import pandas as pd
-from zeus.common import ClassFactory, ClassType
-from zeus.common import FileOps
+from vega.common import ClassFactory, ClassType
+from vega.common import FileOps
 from vega.algorithms.nas.fis.ctr_trainer_callback import CtrTrainerCallback
 from vega.core.pipeline.conf import ModelConfig
 

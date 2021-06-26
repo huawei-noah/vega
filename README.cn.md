@@ -9,21 +9,13 @@
 
 ---
 
-**Vega ver1.4.0 发布**
+**Vega ver1.5.0 发布**
 
 - 特性增强
 
-  - 搜索阶段支持 TensorFlow 和 mindspore 分布式训练能力
-  - 提供分类和检测共用一个backend，联合训练能力
-  - 提供动态设置transformer的能力
-  - 增加 vega-process、vega-progress 等工具
-  - 增加 ScriptRunner 特性，在 HPO 过程中直接调用用户脚本
-  - BOHB算法的BO部分可使用[HEBO](https://github.com/huawei-noah/noah-research/tree/master/HEBO)
-
-- 新增算法
-
-  - [PBT](https://arxiv.org/abs/1711.09846)：Population Based Training of Neural Networks, 支持超参数动态优化
-  - [Ada-Segment](https://arxiv.org/abs/2012.03603): Automated Multi-loss Adaptation for Panoptic Segmentation， 支持多loss的自动权重优化
+  - 解决了分布式训练的一些bug。
+  - 部分网络支持PyTorch + Ascend 910)。
+  - 命令Vega-process、Vega-progress、vega-verify-cluster提供Json格式信息。
 
 ---
 
@@ -35,7 +27,7 @@ Vega是诺亚方舟实验室自研的AutoML算法工具链，有主要特点：
 2. 业界标杆的自研算法：提供了诺亚方舟实验室自研的 **[业界标杆(Benchmark)](./docs/benchmark.md)** 算法，并提供 **[Model Zoo](./docs/model_zoo.md)** 下载SOTA(State-of-the-art)模型。
 3. 高并发模型训练能力：提供高性能Trainer，加速模型训练和评估。
 4. 细粒度SearchSpace：可以自由定义网络搜索空间，提供了丰富的网络架构参数供搜索空间使用，可同时搜索网络架构参数和模型训练超参，并且该搜索空间可以同时适用于Pytorch、TensorFlow和MindSpore。
-5. 多Backend支持：支持PyTorch(GPU), TensorFlow(GPU, Ascend 910), MindSpore(Ascend 910).。
+5. 多Backend支持：支持PyTorch(GPU, Ascend 910), TensorFlow(GPU, Ascend 910), MindSpore(Ascend 910).。
 6. 支持昇腾平台：支持在Ascend 910搜索和训练，支持在Ascend 310上模型评估。
 
 ## AutoML工具特性
@@ -83,11 +75,22 @@ pip3 install --user --upgrade noah-vega
 
 若需要在Ascend 910训练环境上安装，请联系我们。
 
-## 使用参考
+## 使用
+
+使用`vega`命令来运行Vega应用，比如可执行如下命令运行`CARS`算法：
+
+```bash
+vega ./examples/nas/cars/cars.yml
+```
+
+其中`cars.yml`中包含了pipeline、搜索算法、搜索空间、训练参数等定义。
+Vega提供了40+示例供参考：[示例](https://github.com/huawei-noah/vega/tree/master/examples)、[示例参考](./docs/cn/user/examples.md)、[配置参考](./docs/cn/user/config_reference.md)。
+
+## 参考
 
 | 对象 | 参考 |
 | :--: | :-- |
-| [**用户**<br>(用户指南)](./docs/cn/user/README.md) | [安装指导](./docs/cn/user/install.md)、[部署指导](./docs/cn/user/deployment.md)、[配置指导](./docs/cn/user/config_reference.md)、[示例参考](./docs/cn/user/examples.md)、[评估服务](./docs/cn/user/evaluate_service.md)、任务参考([分类](./docs/cn/tasks/classification.md)、[检测](./docs/cn/tasks/detection.md)、[分割](./docs/cn/tasks/segmentation.md)、[超分](./docs/cn/tasks/segmentation.md)) |
+| [**用户**<br>(用户指南)](./docs/cn/user/README.md) | [安装指导](./docs/cn/user/install.md)、[部署指导](./docs/cn/user/deployment.md)、[配置指导](./docs/cn/user/config_reference.md)、[示例参考](./docs/cn/user/examples.md)、[评估服务](./docs/cn/user/evaluate_service.md) |
 | [**开发者**<br>(开发者指南)](./docs/cn/developer/README.md) | [开发者指导](./docs/cn/developer/developer_guide.md)、[快速入门指导](./docs/cn/developer/quick_start.md)、[数据集指导](./docs/cn/developer/datasets.md)、[算法开发指导](./docs/cn/developer/new_algorithm.md)、[细粒度搜索空间指导](./docs/cn/developer/fine_grained_space.md) |
 
 ## FAQ

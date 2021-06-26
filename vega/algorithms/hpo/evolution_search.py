@@ -14,9 +14,9 @@ import random
 import logging
 import numpy as np
 from vega.core.search_algs import SearchAlgorithm
-from zeus.common import ClassFactory, ClassType
+from vega.common import ClassFactory, ClassType
 from .evolution_conf import EvolutionConfig
-from zeus.report import ReportServer
+from vega.report import ReportServer
 
 
 @ClassFactory.register(ClassType.SEARCH_ALGORITHM)

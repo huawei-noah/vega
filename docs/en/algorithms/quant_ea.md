@@ -44,7 +44,7 @@ Quantization bit width of the weight and activation value (configured by bit_can
 
 ![](../../images/quant_ea_search_space.png)
 
-The current example provides the ResNet series as the basic neural network. If you need to replace the network with other networks, refer to zeus/networks/quant.py to replace nn.Conv2d in your network with the quantized convolutional layer QuantConv.
+The current example provides the ResNet series as the basic neural network. If you need to replace the network with other networks, refer to vega/networks/quant.py to replace nn.Conv2d in your network with the quantized convolutional layer QuantConv.
 
 ### 4.2 Dataset Configuration
 

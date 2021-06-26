@@ -16,7 +16,7 @@ import numpy as np
 import cv2
 import csv
 import vega
-from zeus.common import argment_parser
+from vega.common import argment_parser
 
 
 def _load_data(args):
@@ -56,7 +56,7 @@ def _to_tensor(data):
 
 def _get_model(args):
     """Get model."""
-    from zeus.model_zoo import ModelZoo
+    from vega.model_zoo import ModelZoo
     model = ModelZoo.get_model(args.model_desc, args.model)
     if vega.is_torch_backend():
         if args.device == "GPU":

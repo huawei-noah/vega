@@ -17,11 +17,11 @@ import logging
 from sklearn import preprocessing
 from sklearn.gaussian_process import GaussianProcessRegressor as GPR
 from sklearn.gaussian_process.kernels import RBF
-from zeus.report import ReportClient
-from zeus.common import update_dict
-from zeus.common import ClassFactory, ClassType
+from vega.report import ReportClient
+from vega.common import update_dict
+from vega.common import ClassFactory, ClassType
 from vega.core.search_algs import SearchAlgorithm
-from zeus.common import ConfigSerializable
+from vega.common import ConfigSerializable
 
 
 class MFKD1Config(ConfigSerializable):

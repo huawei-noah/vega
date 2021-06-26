@@ -15,8 +15,8 @@ import pickle
 import argparse
 import logging
 import horovod.torch as hvd
-from zeus.common import ClassFactory
-from zeus.common.general import General
+from vega.common import ClassFactory
+from vega.common.general import General
 from vega.core.pipeline.conf import PipeStepConfig
 
 parser = argparse.ArgumentParser(description='Horovod Fully Train')

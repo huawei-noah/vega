@@ -16,21 +16,21 @@ from collections import namedtuple
 import numpy as np
 import vega
 from .conf import CARSConfig
-from zeus.common import Config
+from vega.common import Config
 from vega.algorithms.nas.darts_cnn import DartsNetworkTemplateConfig
-from zeus.common import ClassFactory, ClassType
+from vega.common import ClassFactory, ClassType
 from vega.core.search_algs import SearchAlgorithm
-from zeus.report import SortAndSelectPopulation
-from zeus.report.report_client import ReportClient
-from zeus.report.report_server import ReportServer
+from vega.report import SortAndSelectPopulation
+from vega.report.report_client import ReportClient
+from vega.report.report_server import ReportServer
 from .nsga3 import CARS_NSGA
 from .utils import eval_model_parameters
 
 if vega.is_torch_backend():
     import torch
-    from zeus.metrics.pytorch import Metrics
+    from vega.metrics.pytorch import Metrics
 elif vega.is_tf_backend():
-    from zeus.metrics.tensorflow import Metrics
+    from vega.metrics.tensorflow import Metrics
 
 logger = logging.getLogger(__name__)
 Genotype = namedtuple('Genotype', 'normal normal_concat reduce reduce_concat')

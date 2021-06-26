@@ -14,7 +14,7 @@ import copy
 import logging
 import numpy as np
 from .conf import SegmentationConfig
-from zeus.report import ReportServer
+from vega.report import ReportServer
 
 
 class SegmentationMutate(object):

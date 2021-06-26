@@ -9,7 +9,7 @@
 # MIT License for more details.
 
 """Defined the basic Codec."""
-from zeus.common import ClassFactory, ClassType
+from vega.common import ClassFactory, ClassType
 
 
 class Codec(object):

@@ -14,9 +14,9 @@ import random
 from copy import deepcopy
 
 from .conf import AdelaideConfig
-from zeus.common import ClassFactory, ClassType
-from zeus.common import FileOps
-from zeus.report import ReportServer
+from vega.common import ClassFactory, ClassType
+from vega.common import FileOps
+from vega.report import ReportServer
 from vega.core.search_algs import SearchAlgorithm
 
 

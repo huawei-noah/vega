@@ -23,8 +23,8 @@ class ModNASImporter():
     ]
 
     path_spec = [
-        ('modnas.contrib.arch_space', 'zeus.networks.pytorch.customs.modnas.contrib.arch_space'),
-        ('modnas.arch_space', 'zeus.networks.pytorch.customs.modnas.arch_space'),
+        ('modnas.contrib.arch_space', 'vega.networks.pytorch.customs.modnas.contrib.arch_space'),
+        ('modnas.arch_space', 'vega.networks.pytorch.customs.modnas.arch_space'),
         ('modnas', 'vega.algorithms.nas.modnas'),
     ]
 

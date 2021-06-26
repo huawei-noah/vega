@@ -16,13 +16,13 @@ import signal
 import pandas as pd
 import json
 from .pipe_step import PipeStep
-from zeus.common.user_config import UserConfig
-from zeus.common import FileOps, TaskOps, Status
+from vega.common.user_config import UserConfig
+from vega.common import FileOps, TaskOps, Status
 from vega.core.scheduler import shutdown_cluster
-from zeus.common.general import General
+from vega.common.general import General
 from .conf import PipeStepConfig, PipelineConfig
-from zeus.report import ReportServer
-from zeus.common import MessageServer
+from vega.report import ReportServer
+from vega.common import MessageServer
 
 logger = logging.getLogger(__name__)
 

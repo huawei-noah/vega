@@ -26,6 +26,7 @@ fully_train:
     trainer:
         type: Trainer
         epochs: 1
+        load_weights_file: False
         optimizer:
             type: SGD
             params:

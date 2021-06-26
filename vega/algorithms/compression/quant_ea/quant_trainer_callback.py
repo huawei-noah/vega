@@ -12,12 +12,12 @@
 import logging
 import copy
 import vega
-from zeus.common import ClassFactory, ClassType, General
-from zeus.trainer.callbacks import Callback
-from zeus.metrics import calc_model_flops_params, calc_forward_latency
-from zeus.networks.quant import Quantizer
-from zeus.trainer.modules.lr_schedulers import LrScheduler
-from zeus.trainer.modules.optimizer import Optimizer
+from vega.common import ClassFactory, ClassType, General
+from vega.trainer.callbacks import Callback
+from vega.metrics import calc_model_flops_params, calc_forward_latency
+from vega.networks.quant import Quantizer
+from vega.trainer.modules.lr_schedulers import LrScheduler
+from vega.trainer.modules.optimizer import Optimizer
 
 if vega.is_torch_backend():
     import torch
@@ -51,10 +51,14 @@ class QuantTrainerCallback(Callback):
             count_input = [1, 32, 32, 3]
         sess_config = None
         if vega.is_torch_backend():
-            model = model.cuda()
+            if vega.is_gpu_device():
+                model = model.cuda()
+                count_input = torch.FloatTensor(*count_input).cuda()
+            elif vega.is_npu_device():
+                model = model.npu()
+                count_input = torch.FloatTensor(*count_input).npu()
             self.trainer.optimizer = Optimizer()(model=self.trainer.model, distributed=self.trainer.distributed)
             self.trainer.lr_scheduler = LrScheduler()(self.trainer.optimizer)
-            count_input = torch.FloatTensor(*count_input).cuda()
         elif vega.is_tf_backend():
             tf.compat.v1.reset_default_graph()
             count_input = tf.random.uniform(count_input, dtype=tf.float32)

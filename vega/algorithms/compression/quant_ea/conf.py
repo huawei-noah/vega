@@ -11,7 +11,7 @@
 """Defined Configs."""
 
 from vega.core.search_algs import EAConfig
-from zeus.common import ConfigSerializable
+from vega.common import ConfigSerializable
 
 
 class QuantPolicyConfig(EAConfig):

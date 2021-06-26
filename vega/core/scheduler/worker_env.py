@@ -42,6 +42,8 @@ class WorkerEnv(WorkerPlugin):
         self.device_list = []
         self._backend_type = os.environ["BACKEND_TYPE"]
         self.device_category = os.environ['DEVICE_CATEGORY']
+        self._npu_visible_devices = os.environ.get('NPU_VISIBLE_DEVICES', None)
+        self._batch_task_index = os.environ.get('BATCH_TASK_INDEX', None)
         self.temp_path = temp_path
         self.__worker_null_file__ = os.path.join(temp_path, '.vega_null')
         self.__worker_device_folder__ = os.path.join(temp_path, '.vega_device')
@@ -107,7 +109,7 @@ class WorkerEnv(WorkerPlugin):
             rank_table_json['server_count'] = 1
             group_info = rank_table_json['server_list']
             devices_info = []
-            keep_idx = int(os.environ.get('BATCH_TASK_INDEX'))
+            keep_idx = int(self._batch_task_index)
             instance_info = group_info[keep_idx]
             for device_id in self.device_list:
                 device_id = int(device_id)
@@ -128,6 +130,8 @@ class WorkerEnv(WorkerPlugin):
             os.environ['RANK_SIZE'] = str(len(self.device_list))
             os.environ['DEVICE_ID'] = self.device_list[0]
             os.environ['ASCEND_DEVICE_ID'] = self.device_list[0]
+            os.environ['MASTER_ADDR'] = rank_table_json['server_list'][0]['device'][0]['device_ip']
+            os.environ['MASTER_PORT'] = rank_table_json['server_list'][0].get('server_port', '29688')
             os.environ['RANK_ID'] = rank_table_json['server_list'][0]['device'][0]['rank_id']
             # print("RANK_TABLE_FILE: {}".format(new_rank_table_file))
         else:
@@ -135,7 +139,7 @@ class WorkerEnv(WorkerPlugin):
 
     def _fit_npu_device_list(self):
         """Fit npu device list to actual visible devices."""
-        visible_list = os.environ['NPU_VISIBLE_DEVICES'].split(',')
+        visible_list = self._npu_visible_devices.split(',')
         new_device_list = list()
         for device_id in self.device_list:
             new_device_list.append(visible_list[int(device_id)])

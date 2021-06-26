@@ -10,8 +10,8 @@
 
 """Contains Default and User configuration."""
 import os
-from zeus.common import Config
-from zeus.common import ConfigSerializable
+from vega.common import Config
+from vega.common import ConfigSerializable
 
 
 class DartsNetworkTemplateConfig(ConfigSerializable):

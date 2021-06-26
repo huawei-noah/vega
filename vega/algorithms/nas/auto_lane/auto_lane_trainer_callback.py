@@ -11,9 +11,9 @@
 """The trainer program for Auto Lane."""
 
 import logging
-from zeus.common import ClassFactory, ClassType
-from zeus.common import FileOps
-from zeus.trainer.callbacks import Callback
+from vega.common import ClassFactory, ClassType
+from vega.common import FileOps
+from vega.trainer.callbacks import Callback
 
 logger = logging.getLogger(__name__)
 

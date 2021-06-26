@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-.
 """Main function to run a FmdPipeStep."""
-from zeus.common import ClassFactory, ClassType
+from vega.common import ClassFactory, ClassType
 from networks.resnet_cifar import resnet_cifar
 
 

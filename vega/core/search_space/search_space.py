@@ -18,7 +18,7 @@ from .condition_types import CONDITION_TYPE_MAP
 from .params_factory import ParamsFactory
 from .forbidden import ForbiddenAndConjunction, ForbiddenEqualsClause
 from dag import DAG, DAGValidationError
-from zeus.common.class_factory import ClassFactory, ClassType
+from vega.common.class_factory import ClassFactory, ClassType
 from vega.core.pipeline.conf import SearchSpaceConfig
 
 

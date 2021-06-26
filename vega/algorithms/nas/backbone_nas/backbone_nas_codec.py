@@ -12,7 +12,7 @@
 import copy
 import logging
 import random
-from zeus.common import ClassType, ClassFactory
+from vega.common import ClassType, ClassFactory
 from vega.core.search_algs.codec import Codec
 
 

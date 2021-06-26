@@ -13,9 +13,9 @@ from copy import deepcopy
 from .conf import SegmentationConfig
 from .segmentation_random import SegmentationRandom
 from .segmentation_mutate import SegmentationMutate
-from zeus.common import ClassFactory, ClassType
+from vega.common import ClassFactory, ClassType
 from vega.core.search_algs import SearchAlgorithm
-from zeus.report import ReportServer
+from vega.report import ReportServer
 
 
 @ClassFactory.register(ClassType.SEARCH_ALGORITHM)

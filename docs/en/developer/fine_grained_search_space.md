@@ -13,9 +13,9 @@ After analyzing these problems, we propose a general searchspace fine-grained ne
 - The pytorch style is used. The `self.xx` variable is placed in the module. By default, the variable is executed in sequence.
 - If you need to customize the execution sequence of modules, rewrite the `call` method.
 ```python
-from zeus.common import ClassFactory, ClassType
-from zeus.modules.module import Module
-from zeus.modules.operators import ops
+from vega.common import ClassFactory, ClassType
+from vega.modules.module import Module
+from vega.modules.operators import ops
 @ClassFactory.register(ClassType.NETWORK)
 class SimpleCnn(Module):
     def __init__(self, block_nums=3, filters=32, kernel_size=3):
@@ -86,7 +86,7 @@ from vega.algorithms.hpo.random_hpo import RandomSearch
 from vega.core.search_space import SearchSpace
 from vega.core.search_space.param_types import ParamTypes
 from vega.core.search_space.params_factory import ParamsFactory
-from zeus.networks.network_desc import NetworkDesc
+from vega.networks.network_desc import NetworkDesc
 
 # Definition of SearchSpace
 params = ParamsFactory.create_search_space(

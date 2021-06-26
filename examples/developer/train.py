@@ -11,8 +11,6 @@
 """The example of training model."""
 
 import vega
-from zeus.trainer.trainer_api import Trainer
-from zeus.common.class_factory import ClassFactory, ClassType
 
 
 # ===================== backend =========================
@@ -25,8 +23,7 @@ vega.set_backend("pytorch", "GPU")
 
 # using vega's model directly
 # vega's network can work on pytorch, tensorflwo or mindspore
-resnet = ClassFactory.get_cls(ClassType.NETWORK, "ResNet")
-model = resnet(depth=18).cuda()
+model = vega.network("ResNet", depth=18).cuda()
 
 # # or using vega's model zoo with model desc
 # desc = {
@@ -47,12 +44,8 @@ model = resnet(depth=18).cuda()
 # ===================== dataset =========================
 
 # using vega's dataset, vega's dataset can work on pytorch, tensorflwo or mindspore
-from zeus.datasets import Adapter   # noqa E402
-dataset_cls = ClassFactory.get_cls(ClassType.DATASET, "Cifar10")
-train_dataset = dataset_cls(data_path="/cache/datasets/cifar10", mode="train", batch_size=256)
-test_dataset = dataset_cls(data_path="/cache/datasets/cifar10", mode="test", batch_size=256)
-train_loader = Adapter(train_dataset).loader
-test_loader = Adapter(test_dataset).loader
+train_loader = vega.dataset("Cifar10", data_path="/cache/datasets/cifar10", mode="train", batch_size=256).loader
+test_loader = vega.dataset("Cifar10", data_path="/cache/datasets/cifar10", mode="val", batch_size=256).loader
 
 # # or using torchvision dataset
 # import torchvision
@@ -69,20 +62,20 @@ test_loader = Adapter(test_dataset).loader
 
 # ===================== trainer =========================
 
-trainer = Trainer(model=model)
+trainer = vega.trainer(model=model)
 trainer.config.epochs = 2
 trainer.config.mixup = True
 trainer.train_loader = train_loader
 trainer.valid_loader = test_loader
 trainer.train_process()
-print("Training is complete. Please check the folder: {}".format(trainer.get_local_worker_path()))
+print("Training is complete. Please check folder: {}".format(trainer.get_local_worker_path()))
 
 
 # ===================== cluster =========================
 
 # from vega.core.scheduler import create_master, shutdown_cluster
 # from vega.core.run import init_cluster_args
-# from zeus.common.general import General
+# from vega.common.general import General
 
 # General._parallel = True
 # init_cluster_args()

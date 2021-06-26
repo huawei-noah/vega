@@ -13,8 +13,8 @@ import logging
 import pickle
 from .ada_segment import AdaSegment
 from .ada_segment_conf import AdaSegConfig
-from zeus.common.task_ops import TaskOps
-from zeus.common.class_factory import ClassFactory, ClassType
+from vega.common.task_ops import TaskOps
+from vega.common.class_factory import ClassFactory, ClassType
 from vega.algorithms.hpo.hpo_base import HPOBase
 
 

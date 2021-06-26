@@ -12,7 +12,7 @@
 import logging
 from vega.core.search_algs import SearchAlgorithm
 from vega.core.search_algs import ParetoFront
-from zeus.common import ClassFactory, ClassType
+from vega.common import ClassFactory, ClassType
 from .conf import DblockNasConfig
 
 

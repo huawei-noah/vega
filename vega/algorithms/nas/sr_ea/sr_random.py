@@ -12,7 +12,7 @@
 import random
 from copy import deepcopy
 from vega.core.search_algs import SearchAlgorithm
-from zeus.common import ClassFactory, ClassType
+from vega.common import ClassFactory, ClassType
 from .conf import SRConfig
 
 

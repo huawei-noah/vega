@@ -16,13 +16,13 @@ from copy import deepcopy
 from vega.core.search_algs import SearchAlgorithm
 from vega.core.search_space.search_space import SearchSpace
 from vega.core.pipeline.conf import PipeStepConfig
-from zeus.common.general import General
-from zeus.common.task_ops import TaskOps
-from zeus.report import ReportServer, ReportClient
-from zeus.common.config import Config
-from zeus.common import update_dict
-from zeus.common.utils import remove_np_value
-from zeus.quota.quota_compare import QuotaCompare
+from vega.common.general import General
+from vega.common.task_ops import TaskOps
+from vega.report import ReportServer, ReportClient
+from vega.common.config import Config
+from vega.common import update_dict
+from vega.common.utils import remove_np_value
+from vega.quota.quota_compare import QuotaCompare
 from vega.core.quota.quota_affinity import QuotaAffinity
 
 
@@ -109,7 +109,7 @@ class Generator(object):
     def _decode_hps(hps):
         """Decode hps: `trainer.optim.lr : 0.1` to dict format.
 
-        And convert to `zeus.common.config import Config` object
+        And convert to `vega.common.config import Config` object
         This Config will be override in Trainer or Datasets class
         The override priority is: input hps > user configuration >  default configuration
         :param hps: hyper params

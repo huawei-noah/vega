@@ -8,8 +8,8 @@
 
 """The trainer program for pba."""
 import logging
-from zeus.common.class_factory import ClassFactory, ClassType
-from zeus.trainer.callbacks import Callback
+from vega.common.class_factory import ClassFactory, ClassType
+from vega.trainer.callbacks import Callback
 
 logger = logging.getLogger(__name__)
 

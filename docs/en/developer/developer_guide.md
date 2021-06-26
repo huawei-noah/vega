@@ -555,7 +555,7 @@ metric:
 Customize a metric.
 
 - Use **@ClassFactory.register(ClassType.METRIC)** for registration.
-- Inherited from **zeus.metrics.metrics_base.MetricsBase**
+- Inherited from **vega.metrics.metrics_base.MetricsBase**
 - Specify __metric_name__ for recording and printing metrics.
 - Implement the __call__ and **summay** and **reset** methods. The call method is invoked at each step, and the summay method is invoked after each epoch.
 

@@ -1,0 +1,139 @@
+# -*- coding: utf-8 -*-
+
+# Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the MIT License.
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# MIT License for more details.
+
+"""Load the official model from torchvision."""
+from vega.common import ClassType, ClassFactory
+from official_model_conf import output_layer_map
+from torch import nn
+import operator
+
+
+@ClassFactory.register(ClassType.NETWORK)
+class OffcialModelLoader(nn.Module):
+    """Load torchvison model and change it."""
+
+    def __init__(self, model_name, output_layer_names=None, optional_conv_channels=None, **kwargs):
+        super(OffcialModelLoader, self).__init__()
+        model = ClassFactory.get_cls(ClassType.NETWORK, 'torchvision_' + model_name)
+        self.model = model(**kwargs) if kwargs else model()
+        if output_layer_names is None:
+            self.output_layer_names = output_layer_map[model_name]
+        else:
+            self.output_layer_names = output_layer_names
+
+        if optional_conv_channels is not None:
+            if not isinstance(optional_conv_channels, dict):
+                raise ValueError("The optional_conv_channels must be a dict, but got type of {}".
+                                 format(type(optional_conv_channels)))
+            all_need_changed_layer = self.get_changed_layer(optional_conv_channels)
+            for need_change_layer in all_need_changed_layer:
+                layer_name, new_channel, _type = need_change_layer
+                self.change_layer(layer_name, new_channel, _type)
+
+    def forward(self, inputs):
+        """Forward of the network."""
+        output = inputs
+        for name, module in self.model.named_children():
+            output = module(output)
+            if name == self.output_layer_names:
+                return output
+        return output
+
+    def is_sub_list(self, list1, list2):
+        """Check whether the list1 is sun list of list2 or not.
+
+        :param list1: the given list1.
+        :type list1: list
+        :param list2: the given list2.
+        :type list2: list
+        """
+        if len(list1) >= len(list2):
+            return False
+        for index in range(len(list1)):
+            if list1[index] != list2[index]:
+                return False
+        return True
+
+    def get_all_layer_names(self):
+        """Get all the layers name excluding the parent."""
+        names_list = [name for name, _ in self.model.named_modules()]
+        valid_names = []
+        for index in range(len(names_list) - 1):
+            cur_name = names_list[index]
+            next_name = names_list[index + 1]
+            if cur_name != "" and not self.is_sub_list(cur_name.split("."), next_name.split(".")):
+                valid_names.append(cur_name)
+        valid_names.append(next_name)
+        return valid_names
+
+    def get_changed_layer(self, specified_layers):
+        """Get all the layers needed to change according to the specified layer.
+
+        :param specified_layer: the given layer name, which need to be changed.
+        :type specified_layer: str
+        """
+        valid_names = self.get_all_layer_names()
+        specified_layers_names = [name for name, _ in specified_layers.items()]
+        if not set(specified_layers_names).issubset(set(valid_names)):
+            raise ValueError("The specified layer is not valid because it is not in the init model.")
+        layer_index_map = {}
+        need_change_layers = []
+        for index, name in enumerate(valid_names):
+            layer_index_map.update({name: index})
+
+        for (specified_layer, new_channel) in specified_layers.items():
+            init_index = layer_index_map[specified_layer]
+            need_change_layers.append((specified_layer, new_channel, "out"))
+            for i in range(init_index + 1, len(valid_names)):
+                next_layer = valid_names[i]
+                if next_layer.split(".")[-1].startswith("bn"):
+                    need_change_layers.append((next_layer, new_channel, "in"))
+                elif next_layer.split(".")[-2] == "downsample":
+                    need_change_layers.append((next_layer, new_channel, "out"))
+                elif next_layer.split(".")[-1].startswith("conv"):
+                    need_change_layers.append((next_layer, new_channel, "in"))
+                    break
+
+        return need_change_layers
+
+    def change_layer(self, need_changed_layer, new_channels, _type):
+        """Change the layer according to the given name.
+
+        :param layer_name: the given layer name, which must be a valid name in init model
+        :type layer_name: str
+        :param new_channels: the new channel after changed
+        :type new_channels: int
+        :param _type: "in" or "out"
+        :type _type: str
+        """
+        layer_getter = operator.attrgetter(need_changed_layer)
+        changed_layer = layer_getter(self.model)
+        if isinstance(changed_layer, nn.Conv2d):
+            in_channels = changed_layer.in_channels
+            out_channels = changed_layer.out_channels
+            kernel_size = changed_layer.kernel_size
+            stride = changed_layer.stride
+            padding = changed_layer.padding
+            bias = changed_layer.bias
+
+            if _type == "out":
+                new_layer = nn.Conv2d(in_channels=in_channels, out_channels=new_channels,
+                                      kernel_size=kernel_size, stride=stride, padding=padding,
+                                      bias=bias)
+            else:
+                new_layer = nn.Conv2d(in_channels=new_channels, out_channels=out_channels,
+                                      kernel_size=kernel_size, stride=stride, padding=padding,
+                                      bias=bias)
+        elif isinstance(changed_layer, nn.BatchNorm2d):
+            new_layer = nn.BatchNorm2d(num_features=new_channels)
+
+        layer_name = need_changed_layer.split(".")
+        layer_name = [name if not name.isdigit() else int(name) for name in layer_name]
+        self.model._modules[layer_name[0]][layer_name[1]]._modules[layer_name[2]] = new_layer

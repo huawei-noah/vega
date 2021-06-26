@@ -11,7 +11,7 @@
 """Hebo adaptor."""
 
 import numpy as np
-from zeus.common.class_factory import ClassFactory, ClassType
+from vega.common.class_factory import ClassFactory, ClassType
 from hebo.design_space.design_space import DesignSpace
 from hebo.optimizers.hebo import HEBO
 

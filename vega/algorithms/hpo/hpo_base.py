@@ -13,8 +13,8 @@ import logging
 import copy
 from threading import Lock
 from vega.core.search_algs import SearchAlgorithm
-from zeus.report.record import ReportRecord
-from zeus.common.message_server import MessageServer
+from vega.report.record import ReportRecord
+from vega.common.message_server import MessageServer
 
 
 __all__ = ["HPOBase"]

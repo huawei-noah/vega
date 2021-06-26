@@ -10,9 +10,9 @@
 
 """The LocalMaster's method is same as Master, and the class is used on single node."""
 import os
-from zeus.trainer.utils import WorkerTypes
-from zeus.common.general import General
-from zeus.report import ReportClient
+from vega.trainer.utils import WorkerTypes
+from vega.common.general import General
+from vega.report import ReportClient
 from .master_base import MasterBase
 
 

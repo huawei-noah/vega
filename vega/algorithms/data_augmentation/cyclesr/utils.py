@@ -17,6 +17,7 @@ import os
 import os.path as osp
 import sys
 import torch
+import vega
 
 
 def mkdir_if_missing(dirname):
@@ -152,7 +153,10 @@ def find_best_PSNR(HR, SR, crop_size):
     for i in range(2 * crop_size + 1):
         for j in range(2 * crop_size + 1):
             HR_crop = HR[:, i:i + SR_crop.shape[1], j:j + SR_crop.shape[2]]
-            psnr = 20 * torch.log10(1 / torch.sqrt(torch.mean((HR_crop - SR_crop) ** 2)))
+            if vega.is_npu_device():
+                psnr = 20 * torch.log10(1 / torch.sqrt(torch.mean((HR_crop.cpu() - SR_crop.cpu()) ** 2)))
+            else:
+                psnr = 20 * torch.log10(1 / torch.sqrt(torch.mean((HR_crop - SR_crop) ** 2)))
             PSNR_list[i, j] = psnr.detach().cpu().item()
             del HR_crop
             del psnr

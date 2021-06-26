@@ -2,8 +2,8 @@
 """ResNet models for cifar10."""
 import math
 import torch.nn as nn
-from zeus.networks.pytorch.ops.fmdunit import FMDUnit, LinearScheduler
-from zeus.modules.module import Module
+from vega.networks.pytorch.ops.fmdunit import FMDUnit, LinearScheduler
+from vega.modules.module import Module
 
 
 def conv1x1(in_plane, out_plane, stride=1):

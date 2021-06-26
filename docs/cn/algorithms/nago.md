@@ -61,7 +61,7 @@ search_space:
 ```
 
 注意虽然NAGO使用了VEGA中的NAS pipeline, 我们设定其搜索空间时，遵从的却是HPO pipeline的模板。因为我们使用了HPO中的BOHB方法来执行搜索。
-根据 `nago.yml` 文件中的设置，我们通过 `zeus/networks/pytorch/customs/nago.py` 中的代码来生成有效的神经网络结构（即可以用PyTorch训练的神经网络模型）。
+根据 `nago.yml` 文件中的设置，我们通过 `vega/networks/pytorch/customs/nago.py` 中的代码来生成有效的神经网络结构（即可以用PyTorch训练的神经网络模型）。
 
 ### 4.2 搜索策略设置
 

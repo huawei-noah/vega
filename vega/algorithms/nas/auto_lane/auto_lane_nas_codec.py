@@ -13,9 +13,9 @@
 from .utils.str2dict import str2dict
 from .utils.resnet_variant_det_codec import ResNetVariantDetCodec
 from .utils.resnext_variant_det_codec import ResNeXtVariantDetCodec
-from zeus.common import ClassType, ClassFactory
+from vega.common import ClassType, ClassFactory
 from vega.core.search_algs.codec import Codec
-from zeus.common import Config
+from vega.common import Config
 
 
 @ClassFactory.register(ClassType.CODEC)

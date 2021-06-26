@@ -49,7 +49,7 @@ clegan:
 CycleGAN模型文件位于
 
 ```text
-zeus/networks/pytorch/cyclesrbodys/trans_model.py
+vega/networks/pytorch/cyclesrbodys/trans_model.py
 ```
 
 #### 超分网络
@@ -68,7 +68,7 @@ VDSR:
 超分网络的模型文件位于:
 
 ```text
-zeus/networks/pytorch/cyclesrbodys/srmodels.py
+vega/networks/pytorch/cyclesrbodys/srmodels.py
 ```
 
 #### 联合训练

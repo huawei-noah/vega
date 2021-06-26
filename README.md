@@ -8,21 +8,13 @@
 
 ---
 
-**Vega ver1.4.0 released**
+**Vega ver1.5.0 released**
 
 - Feature enhancement:
 
-  - Support TensorFlow and Mindpore distributed training in the search phase.
-  - The classification and detection joint training with same backend.
-  - Dynamically setting transformers.
-  - Added tools such as vega-process and vega-progress.
-  - New trainer ScriptRunner that directly invoke user scripts during the HPO process.
-  - The BO of the BOHB can use [HEBO](https://github.com/huawei-noah/noah-research/tree/master/HEBO).
-
-- New algorithm:
-
-  - [PBT](https://arxiv.org/abs/1711.09846)：Population Based Training of Neural Networks
-  - [Ada-Segment](https://arxiv.org/abs/2012.03603): Automated Multi-loss Adaptation for Panoptic Segmentation
+- Fixed some bugs in distributed training.
+- Some networks support PyTorch + Ascend 910.
+- The Vega-process, Vega-progress, and vega-verify-cluster commands provide JSON format information.
 
 ---
 
@@ -34,7 +26,7 @@ Vega is an AutoML algorithm tool chain developed by Noah's Ark Laboratory, the m
 2. Industry-leading AutoML algorithms: Provides Noah's Ark Laboratory's self-developed **[industry-leading algorithm (Benchmark)](./docs/benchmark.md)** and **[Model Zoo](./docs/model_zoo.md)** to download the state-of-the-art (SOTA) models.
 3. Fine-grained network search space: The network search space can be freely defined, and rich network architecture parameters are provided for use in the search space. The network architecture parameters and model training hyperparameters can be searched at the same time, and the search space can be applied to Pytorch, TensorFlow and MindSpore.
 4. High-concurrency neural network training capability: Provides high-performance trainers to accelerate model training and evaluation.
-5. Multi-Backend: PyTorch (GPU), TensorFlow (GPU and Ascend 910), MindSpore (Ascend 910).
+5. Multi-Backend: PyTorch (GPU and Ascend 910), TensorFlow (GPU and Ascend 910), MindSpore (Ascend 910).
 6. Ascend platform: Search and training on the Ascend 910 and model evaluation on the Ascend 310.
 
 ## AutoML Tools Features
@@ -84,7 +76,18 @@ pip3 install --user --upgrade noah-vega
 
 If you need to install the Ascend 910 training environment, please contact us.
 
-## Reference List
+## Usage
+
+Run the `vega` command to run the Vega application. For example, run the following command to run the `CARS` algorithm:
+
+```bash
+vega ./examples/nas/cars/cars.yml
+```
+
+The `cars.yml` file contains definitions such as pipeline, search algorithm, search space, and training parameters.
+Vega provides more than 40 examples for reference: [Examples](https://github.com/huawei-noah/vega/tree/master/examples), [Example Guide](./docs/en/user/examples.md), and [Configuration Guide](./docs/en/user/config_reference.md).
+
+## Reference
 
 | object | refrence |
 | :--: | :-- |

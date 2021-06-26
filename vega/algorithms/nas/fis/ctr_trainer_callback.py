@@ -11,9 +11,9 @@
 """Base CTR model TrainerCallback."""
 
 import logging
-import zeus
-from zeus.common import ClassFactory, ClassType
-from zeus.trainer.callbacks import Callback
+import vega
+from vega.common import ClassFactory, ClassType
+from vega.trainer.callbacks import Callback
 
 logger = logging.getLogger(__name__)
 
@@ -38,8 +38,8 @@ class CtrTrainerCallback(Callback):
         :return: batch data, seperate input and target
         """
         input, target = batch
-        if zeus.is_gpu_device():
+        if vega.is_gpu_device():
             input, target = input.cuda(), target.cuda()
-        elif zeus.is_npu_device():
+        elif vega.is_npu_device():
             input, target = input.npu(), target.npu()
         return (input, target)

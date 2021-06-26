@@ -13,7 +13,7 @@ import vega
 import numpy as np
 import cv2
 import torch
-from zeus.common import argment_parser
+from vega.common import argment_parser
 
 
 def _predict_on_weights(feature_maps, weights):
@@ -52,7 +52,7 @@ def _to_tensor(data):
 
 
 def _get_model(args):
-    from zeus.model_zoo import ModelZoo
+    from vega.model_zoo import ModelZoo
     model = ModelZoo.get_model(args.model_desc_file, args.model_weights_file)
     model = model.cuda()
     model.eval()

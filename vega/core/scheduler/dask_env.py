@@ -19,8 +19,8 @@ import logging
 import time
 from datetime import datetime
 from distributed import Client
-from zeus.trainer import utils
-from zeus.common.file_ops import FileOps
+from vega.trainer import utils
+from vega.common.file_ops import FileOps
 import shutil
 
 

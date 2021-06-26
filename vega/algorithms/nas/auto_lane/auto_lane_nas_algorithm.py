@@ -13,15 +13,15 @@ import os
 import random
 import logging
 from vega.core.search_algs import SearchAlgorithm
-from zeus.common import FileOps
+from vega.common import FileOps
 from .utils.resnet_variant_det_codec import ResNetVariantDetCodec
 from .utils.resnext_variant_det_codec import ResNeXtVariantDetCodec
 import pandas as pd
 from .conf import AutoLaneConfig
-from zeus.report import ReportServer
-from zeus.common import ClassType, ClassFactory
-from zeus.common.config import Config
-from zeus.common import update_dict
+from vega.report import ReportServer
+from vega.common import ClassType, ClassFactory
+from vega.common.config import Config
+from vega.common import update_dict
 
 
 @ClassFactory.register(ClassType.SEARCH_ALGORITHM)
@@ -112,7 +112,7 @@ class AutoLaneNas(SearchAlgorithm):
     def decode(self, desc):
         """Decode hps: `trainer.optim.lr : 0.1` to dict format.
 
-        And convert to `zeus.common.config import Config` object
+        And convert to `vega.common.config import Config` object
         This Config will be override in Trainer or Datasets class
         The override priority is: input hps > user configuration >  default configuration
         :param hps: hyper params

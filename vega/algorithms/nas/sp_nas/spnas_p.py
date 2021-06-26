@@ -1,11 +1,11 @@
 """The second stage of SMNAS."""
 
 import logging
-from zeus.common import ClassFactory, ClassType
+from vega.common import ClassFactory, ClassType
 from vega.core.search_algs import SearchAlgorithm
 import numpy as np
 from .conf import SpNasConfig
-from zeus.report import ReportServer
+from vega.report import ReportServer
 
 
 @ClassFactory.register(ClassType.SEARCH_ALGORITHM)

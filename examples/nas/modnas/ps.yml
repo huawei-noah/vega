@@ -115,6 +115,7 @@ fully_train:
         type: Trainer
         epochs: 1
         lazy_built: False
+        load_weights_file: False
         valid_interval: 1
         lr_scheduler:
             type: CosineAnnealingLR

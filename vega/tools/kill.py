@@ -14,7 +14,7 @@ import os
 import signal
 import psutil
 import time
-from zeus.common import argment_parser
+from vega.common import argment_parser
 from vega.tools.query_process import query_process, get_pid, query_processes, get_vega_pids, print_process
 
 
@@ -177,7 +177,7 @@ def _get_all_related_processes():
         cmd = " ".join(p.cmdline())
         if "/bin/vega-kill" in cmd or "/bin/vega-process" in cmd or "/bin/vega-progress" in cmd:
             continue
-        if "vega.tools.run_pipeline" in cmd or "zeus.trainer.deserialize" in cmd or "/bin/vega" in cmd:
+        if "vega.tools.run_pipeline" in cmd or "vega.trainer.deserialize" in cmd or "/bin/vega" in cmd:
             vega_pids.append(pid)
             vega_pids.extend(_get_sub_processes(pid))
             continue

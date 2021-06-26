@@ -16,7 +16,7 @@ import torchvision
 import torchvision.transforms as transforms
 import torchvision.models as models
 from torch.nn import functional as F
-from zeus.trainer.trial_agent import TrialAgent
+from vega.trainer.trial_agent import TrialAgent
 
 logging.info("load trial")
 trial = TrialAgent()
