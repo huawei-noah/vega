@@ -44,6 +44,7 @@ class MFASC(SearchAlgorithm):
         super(MFASC, self).__init__(search_space)
         self.search_space = copy.deepcopy(search_space)
         self.budget_spent = 0
+        self.sample_size = self.config.sample_size
         self.batch_size = self.config.batch_size
         self.hf_epochs = self.config.hf_epochs
         self.lf_epochs = self.config.lf_epochs
@@ -59,7 +60,9 @@ class MFASC(SearchAlgorithm):
         self.cur_fidelity = None
         self.cur_i = None
         self.best_model_idx = None
-        self._get_all_arcs()
+        self.X = self.search_space.get_sample_space(self.sample_size)
+        self.choices = [self.search_space.decode(x) for x in self.X]
+        self.X = preprocessing.scale(self.X, axis=0)
 
     def search(self):
         """Search one random model.
@@ -109,11 +112,10 @@ class MFASC(SearchAlgorithm):
                 train_epochs = self.lf_epochs
                 self.cur_fidelity = 'low'
 
-        desc = self._desc_from_choices(self.choices[i])
+        desc = self.choices[i]
         self.budget_spent += train_epochs
         self.cur_i = i
-        hps = {'trainer': {'epochs': train_epochs}}
-        return self.budget_spent, desc, hps
+        return {"worker_id": self.budget_spent, "encoded_desc": desc, 'trainer': {'epochs': train_epochs}}
 
     def update(self, report):
         """Update function.
@@ -128,7 +130,7 @@ class MFASC(SearchAlgorithm):
             self.hf_sample.append((self.cur_i, acc))
 
             self.best_model_idx = max(self.hf_sample, key=lambda x: x[1])[0]
-            self.best_model_desc = self._desc_from_choices(self.choices[self.best_model_idx])
+            self.best_model_desc = self.choices[self.best_model_idx]
         elif self.cur_fidelity == 'low':
             self.lf_sample.append((self.cur_i, acc))
         else:
@@ -142,53 +144,3 @@ class MFASC(SearchAlgorithm):
         :rtype: bool
         """
         return self.budget_spent > self.max_budget
-
-    def _sub_config_choice(self, config, choices, pos):
-        """Apply choices to config."""
-        for key, value in sorted(config.items()):
-            if isinstance(value, dict):
-                _, pos = self._sub_config_choice(value, choices, pos)
-            elif isinstance(value, list):
-                choice = value[choices[pos]]
-                config[key] = choice
-                pos += 1
-
-        return config, pos
-
-    def _desc_from_choices(self, choices):
-        """Create description object from choices."""
-        desc = {}
-        pos = 0
-
-        for key in self.search_space.modules:
-            config_space = copy.deepcopy(self.search_space[key])
-            module_cfg, pos = self._sub_config_choice(config_space, choices, pos)
-            desc[key] = module_cfg
-
-        desc = update_dict(desc, copy.deepcopy(self.search_space))
-
-        return desc
-
-    def _sub_config_all(self, config, vectors, choices):
-        """Get all possible choices and their values."""
-        for key, value in sorted(config.items()):
-            if isinstance(value, dict):
-                self._sub_config_all(value, vectors, choices)
-            elif isinstance(value, list):
-                vectors.append([float(x) for x in value])
-                choices.append(list(range(len(value))))
-
-    def _get_all_arcs(self):
-        """Get all the architectures from the search space."""
-        vectors = []
-        choices = []
-
-        for key in self.search_space.modules:
-            config_space = copy.deepcopy(self.search_space[key])
-            self._sub_config_all(config_space, vectors, choices)
-
-        self.X = list(itertools.product(*vectors))
-        self.X = preprocessing.scale(self.X, axis=0)
-        self.choices = list(itertools.product(*choices))
-
-        logging.info('Number of architectures in the search space %d' % len(self.X))
