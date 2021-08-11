@@ -100,6 +100,12 @@ if vega.is_torch_backend():
     import torch.optim as torch_opt
 
     ClassFactory.register_from_package(torch_opt, ClassType.OPTIMIZER)
+    if vega.is_npu_device():
+        try:
+            from apex.optimizers import NpuFusedSGD
+            ClassFactory.register_cls(NpuFusedSGD, ClassType.OPTIMIZER)
+        except Exception:
+            pass
 elif vega.is_tf_backend():
     import tensorflow.compat.v1.train as tf_train
 

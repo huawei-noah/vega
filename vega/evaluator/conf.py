@@ -37,6 +37,7 @@ class DeviceEvaluatorConfig(ConfigSerializable):
     backend = "pytorch"
     hardware = "Davinci"
     remote_host = ""
+    intermediate_format = "onnx"  # for torch model convert
     cuda = False
     evaluate_latency = True
     metric = {'type': 'accuracy'}

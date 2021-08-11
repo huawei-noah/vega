@@ -21,6 +21,7 @@ from datetime import datetime
 from distributed import Client
 from vega.trainer import utils
 from vega.common.file_ops import FileOps
+from vega.common.general import General
 import shutil
 
 
@@ -74,6 +75,8 @@ class DaskEnv(object):
             self.slave_device_num_per_proc = system_device_num
             self.slave_proc_num = 1
         self.world_size = self.slave_num * self.slave_proc_num
+        if General.cluster.standalone_boot:
+            self.world_size = General.cluster.num_workers
         return
 
     def _get_slave_device_num(self):
@@ -161,6 +164,9 @@ class DaskEnv(object):
             datetime.now().strftime('%m%d.%H%M%S.%f')[:-3])
         FileOps.make_dir(_local_dir)
         local_dir = "--local-directory={}".format(_local_dir)
+        # standalone boot mode, not dask-work is start by script
+        if General.cluster.standalone_boot:
+            return
         # run dask-worker in master
         for _ in range(self.slave_proc_num):
             worker_p = subprocess.Popen(["dask-worker", address, '--nthreads=1', '--nprocs=1',
@@ -204,5 +210,8 @@ class DaskEnv(object):
                 for k, _ in workers.items():
                     workers_list.append(k)
                 logging.info("worker list: {}".format(workers_list))
+                slave_ips = list(set([item[6:].split(":")[0] for item in workers_list]))
+                slave_ips.remove(General.cluster.master_ip)
+                General.cluster.salves = slave_ips
                 return 1
         return 0

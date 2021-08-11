@@ -9,13 +9,14 @@
 
 ---
 
-**Vega ver1.5.0 发布**
+**Vega ver1.6.0 发布**
 
 - 特性增强
 
-  - 解决了分布式训练的一些bug。
-  - 部分网络支持PyTorch + Ascend 910)。
-  - 命令Vega-process、Vega-progress、vega-verify-cluster提供Json格式信息。
+  - 支持简洁的quota设置，比如：`quota: flops < 11.2 and params in [34.0, 56.0]`。
+  - 支持在python虚拟环境下运行Vega。
+  - 支持运行环境：Python 3.8和PyTorch 1.9。
+  - 解决了并行训练和分布式搜索的一些bug。
 
 ---
 
@@ -90,7 +91,7 @@ Vega提供了40+示例供参考：[示例](https://github.com/huawei-noah/vega/t
 
 | 对象 | 参考 |
 | :--: | :-- |
-| [**用户**<br>(用户指南)](./docs/cn/user/README.md) | [安装指导](./docs/cn/user/install.md)、[部署指导](./docs/cn/user/deployment.md)、[配置指导](./docs/cn/user/config_reference.md)、[示例参考](./docs/cn/user/examples.md)、[评估服务](./docs/cn/user/evaluate_service.md) |
+| [**用户**<br>(用户指南)](./docs/cn/user/README.md) | [安装指导](./docs/cn/user/install.md)、[部署指导](./docs/cn/user/deployment.md)、[配置指导](./docs/cn/user/config_reference.md)、[示例参考](./docs/cn/user/examples.md)、[评估服务](./docs/cn/user/evaluate_service.md)、任务参考([分类](./docs/cn/tasks/classification.md)、[检测](./docs/cn/tasks/detection.md)、[分割](./docs/cn/tasks/segmentation.md)、[超分](./docs/cn/tasks/segmentation.md)) |
 | [**开发者**<br>(开发者指南)](./docs/cn/developer/README.md) | [开发者指导](./docs/cn/developer/developer_guide.md)、[快速入门指导](./docs/cn/developer/quick_start.md)、[数据集指导](./docs/cn/developer/datasets.md)、[算法开发指导](./docs/cn/developer/new_algorithm.md)、[细粒度搜索空间指导](./docs/cn/developer/fine_grained_space.md) |
 
 ## FAQ

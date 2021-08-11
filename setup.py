@@ -23,7 +23,7 @@ with open("RELEASE.md", "r") as fh:
 
 setuptools.setup(
     name="noah-vega",
-    version="1.5.0",
+    version="1.6.0",
     packages=["vega", "evaluate_service"],
     include_package_data=True,
     python_requires=">=3.6",
@@ -61,6 +61,7 @@ setuptools.setup(
         "torch==1.3.0",
         "torchvision==0.4.1",
         "tensorflow-gpu>=1.14.0,<2.0",
+        # "onnx-simplifier"
     ],
     entry_points="""
         [console_scripts]

@@ -9,8 +9,6 @@
 # MIT License for more details.
 
 """Torch Trainer."""
-
-import os
 import torch
 import numpy as np
 import vega
@@ -52,7 +50,7 @@ class TrainerTorch(TrainerBase):
         if self.use_amp:
             from apex import amp
             self.model, self.optimizer = amp.initialize(
-                self.model, self.optimizer, opt_level='O1')
+                self.model, self.optimizer, opt_level=self.config.opt_level, loss_scale=64, combine_grad=True)
 
     def _set_default_funcs(self):
         self.make_batch = self._default_make_batch
@@ -77,8 +75,7 @@ class TrainerTorch(TrainerBase):
             torch.cuda.manual_seed(self.config.seed)
         elif vega.is_npu_device():
             import torch.npu
-            device = "npu:{}".format(os.environ.get('DEVICE_ID', 0))
-            torch.npu.set_device(device)
+            torch.npu.set_device(vega.get_devices())
             torch.npu.manual_seed(self.config.seed)
         elif vega.is_cpu_device():
             self.config.device = -1
@@ -108,7 +105,7 @@ class TrainerTorch(TrainerBase):
     def _train_epoch(self):
         self.model.train()
         for batch_index, batch in enumerate(self.train_loader):
-            if self.config.max_train_steps and batch_index > self.config.max_train_steps:
+            if self.config.max_train_steps and batch_index >= self.config.max_train_steps:
                 return
             batch = self.make_batch(batch)
             batch_logs = {'train_batch': batch}
@@ -122,7 +119,6 @@ class TrainerTorch(TrainerBase):
     def _valid_epoch(self):
         self.callbacks.before_valid()
         valid_logs = None
-
         self.model.eval()
         with torch.no_grad():
             for batch_index, batch in enumerate(self.valid_loader):
@@ -145,7 +141,7 @@ class TrainerTorch(TrainerBase):
             if vega.is_gpu_device():
                 return data.cuda()
             else:
-                return data.npu()
+                return data.to(vega.get_devices())
         if isinstance(data, dict):
             return {k: self._set_device(v) for k, v in data.items()}
         elif isinstance(data, list):
@@ -161,6 +157,8 @@ class TrainerTorch(TrainerBase):
             output = self.model(**batch)
         elif isinstance(batch, list) and isinstance(batch[0], dict):
             output = self.model(batch)
+        elif isinstance(batch, list) and isinstance(batch[0], list):
+            output = self.model(*batch)
         else:
             # classification
             input, target = batch
@@ -177,11 +175,16 @@ class TrainerTorch(TrainerBase):
             loss = self.loss(output, target)
         if self.use_amp:
             from apex import amp
-            with amp.scale_loss(loss, self.optimizer) as scaled_loss:
-                scaled_loss.backward()
-                self.optimizer.synchronize()
-            with self.optimizer.skip_synchronize():
+            if vega.is_npu_device():
+                with amp.scale_loss(loss, self.optimizer) as scaled_loss:
+                    scaled_loss.backward()
                 self.optimizer.step()
+            else:
+                with amp.scale_loss(loss, self.optimizer) as scaled_loss:
+                    scaled_loss.backward()
+                    self.optimizer.synchronize()
+                with self.optimizer.skip_synchronize():
+                    self.optimizer.step()
         else:
             loss.backward()
             if self.config.grad_clip:

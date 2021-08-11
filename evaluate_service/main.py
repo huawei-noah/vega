@@ -50,7 +50,7 @@ class Evaluate(Resource):
     """Evaluate Service for service."""
 
     def __init__(self):
-        self.result = {"latency": "-1", "out_data": [], "status": "sucess", "timestamp": ""}
+        self.result = {"latency": "9999", "out_data": [], "status": "sucess", "timestamp": ""}
 
     @classmethod
     def _add_params(cls, work_path, optional_params):

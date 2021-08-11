@@ -48,11 +48,11 @@ class PruneTrainerCallback(Callback):
         """Be called before the train process."""
         self.config = self.trainer.config
         self.device = vega.is_gpu_device() if vega.is_gpu_device() is not True else 0
-        self.base_net_desc = self.trainer.model.desc
+        self.base_net_desc = self.trainer.model_desc
         sess_config = None
         if vega.is_torch_backend():
             if vega.is_npu_device():
-                count_input = torch.FloatTensor(1, 3, 32, 32).npu()
+                count_input = torch.FloatTensor(1, 3, 32, 32).to(vega.get_devices())
             elif vega.is_gpu_device():
                 count_input = torch.FloatTensor(1, 3, 32, 32).to(self.device)
         elif vega.is_tf_backend():
@@ -129,7 +129,7 @@ class PruneTrainerCallback(Callback):
                                         map_location=torch.device('{}'.format(device)))
                 model_init.load_state_dict(checkpoint)
                 model = PruneResnet(model_init).apply(chn_node_mask, self.base_net_desc.backbone.chn_mask)
-                model.npu()
+                model.to(vega.get_devices())
         elif vega.is_tf_backend():
             model = model_init
             with tf.compat.v1.Session(config=self.trainer._init_session_config()) as sess:

@@ -81,18 +81,11 @@ class ScriptRunner(DistributedWorker):
         if hps is not None:
             pass
         elif self.config.hps_file is not None:
-            desc_file = self.config.hps_file.replace("{local_base_path}", self.local_base_path)
-            hps = Config(desc_file)
-            if "trainer" in hps:
-                if "epochs" in hps["trainer"]:
-                    hps["trainer"].pop("epochs")
-                if "checkpoint_path" in hps["trainer"]:
-                    hps["trainer"].pop("checkpoint_path")
-        elif self.config.hps_folder is not None:
-            folder = self.config.hps_folder.replace("{local_base_path}", self.local_base_path)
-            pattern = os.path.join(folder, "hps_*.json")
-            desc_file = glob.glob(pattern)[0]
-            hps = Config(desc_file)
+            hps_file = self.config.hps_file.replace("{local_base_path}", self.local_base_path)
+            if os.path.isdir(hps_file):
+                pattern = os.path.join(hps_file, "hps_*.json")
+                hps_file = glob.glob(pattern)[0]
+            hps = Config(hps_file)
             if "trainer" in hps:
                 if "epochs" in hps["trainer"]:
                     hps["trainer"].pop("epochs")

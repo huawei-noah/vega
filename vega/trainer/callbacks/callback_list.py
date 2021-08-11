@@ -71,7 +71,8 @@ class CallbackList(object):
         defaults = []
         if vega.is_torch_backend():
             defaults = ["ModelStatistics", "MetricsEvaluator", "ModelCheckpoint", "ModelBuilder", "PerformanceSaver",
-                        "RuntimeCallback", "LearningRateScheduler", "ProgressLogger", "ReportCallback", ]
+                        "RuntimeCallback", "LearningRateScheduler", "ProgressLogger", "ReportCallback",
+                        "DataParallel"]
         elif vega.is_tf_backend():
             defaults = ["ModelStatistics", "MetricsEvaluator", "ModelCheckpoint", "ModelBuilder", "PerformanceSaver",
                         "RuntimeCallback", "ProgressLogger", "ReportCallback", ]

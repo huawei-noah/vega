@@ -13,6 +13,7 @@ import logging
 import os
 import pickle
 from copy import deepcopy
+import vega
 from vega.core.search_algs import SearchAlgorithm
 from vega.core.search_space.search_space import SearchSpace
 from vega.core.pipeline.conf import PipeStepConfig
@@ -20,10 +21,8 @@ from vega.common.general import General
 from vega.common.task_ops import TaskOps
 from vega.report import ReportServer, ReportClient
 from vega.common.config import Config
-from vega.common import update_dict
+from vega.common import update_dict, SearchableRegister
 from vega.common.utils import remove_np_value
-from vega.quota.quota_compare import QuotaCompare
-from vega.core.quota.quota_affinity import QuotaAffinity
 
 
 class Generator(object):
@@ -35,29 +34,29 @@ class Generator(object):
         self.search_alg = SearchAlgorithm(self.search_space)
         if hasattr(self.search_alg.config, 'objective_keys'):
             self.objective_keys = self.search_alg.config.objective_keys
-        self.quota = QuotaCompare('restrict')
-        self.affinity = None if General.quota.affinity.type is None else QuotaAffinity(General.quota.affinity)
 
     @property
     def is_completed(self):
         """Define a property to determine search algorithm is completed."""
-        return self.search_alg.is_completed or self.quota.is_halted()
+        return self.search_alg.is_completed or vega.quota().quota_reached
 
     def sample(self):
         """Sample a work id and model from search algorithm."""
+        out = []
+        num_samples = 1
         for _ in range(10):
             res = self.search_alg.search()
             if not res:
                 return None
             if not isinstance(res, list):
                 res = [res]
-            if len(res) == 0:
+            num_samples = len(res)
+            if num_samples == 0:
                 return None
-            out = []
             for sample in res:
                 if isinstance(sample, dict):
                     id = sample["worker_id"]
-                    desc = self._decode_hps(sample["encoded_desc"])
+                    desc = sample["encoded_desc"]
                     sample.pop("worker_id")
                     sample.pop("encoded_desc")
                     kwargs = sample
@@ -68,7 +67,12 @@ class Generator(object):
                 if hasattr(self, "objective_keys") and self.objective_keys:
                     kwargs["objective_keys"] = self.objective_keys
                 (id, desc, hps) = sample
-
+                if SearchableRegister().has_searchable():
+                    hps = SearchableRegister().update(desc)
+                    desc = PipeStepConfig.model.model_desc
+                else:
+                    desc = self._decode_hps(desc)
+                    hps = self._decode_hps(hps)
                 if "modules" in desc:
                     PipeStepConfig.model.model_desc = deepcopy(desc)
                 elif "network" in desc:
@@ -78,15 +82,32 @@ class Generator(object):
                     desc.pop('network')
                     desc.update(model_desc)
 
-                if self.quota.is_filtered(desc):
+                (hps, desc) = self._split_hps_desc(hps, desc)
+
+                if not vega.quota().verify_sample(desc) or not vega.quota().verify_affinity(desc):
                     continue
-                if self.affinity and not self.affinity.is_affinity(desc):
-                    continue
+
                 ReportClient().update(General.step_name, id, desc=desc, hps=hps, **kwargs)
                 out.append((id, desc, hps))
-            if out:
+            if len(out) >= num_samples:
                 break
-        return out
+        return out[:num_samples]
+
+    def _split_hps_desc(self, hps, desc):
+        if "type" not in desc or desc.get("type") != "Sequential":
+            del_items = []
+            for item in desc:
+                # TODO
+                flag = item in ["modules", "networks",
+                                "bit_candidates", "type", "nbit_a_list", "nbit_w_list",
+                                "_arch_params"]
+                flag = flag or ("modules" in desc and item in desc["modules"])
+                if not flag:
+                    hps[item] = desc[item]
+                    del_items.append(item)
+            for item in del_items:
+                desc.pop(item)
+        return hps, desc
 
     def update(self, step_name, worker_id):
         """Update search algorithm accord to the worker path.

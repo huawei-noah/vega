@@ -71,14 +71,14 @@ class CARSTrainerCallback(Callback):
         if vega.is_gpu_device():
             alphas = torch.from_numpy(self.alphas).cuda()
         elif vega.is_npu_device():
-            alphas = torch.from_numpy(self.alphas).npu()
+            alphas = torch.from_numpy(self.alphas).to(vega.get_devices())
         for j in range(self.alg_policy.num_individual_per_iter):
             i = np.random.randint(0, self.alg_policy.num_individual, 1)[0]
             if self.epoch < self.alg_policy.warmup:
                 if vega.is_gpu_device():
                     alpha = torch.from_numpy(self.search_alg.random_sample_path()).cuda()
                 elif vega.is_npu_device():
-                    alpha = torch.from_numpy(self.search_alg.random_sample_path()).npu()
+                    alpha = torch.from_numpy(self.search_alg.random_sample_path()).to(vega.get_devices())
                 # logits = self.trainer.model.forward_random(input)
             else:
                 alpha = alphas[i]

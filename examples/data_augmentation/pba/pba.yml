@@ -65,7 +65,7 @@ fully_train:
         ref: pba.trainer
         callbacks: PbaTrainerCallback
         epochs: 2000    # multiple of 4
-        hps_folder: "{local_base_path}/output/pba/"
+        hps_file: "{local_base_path}/output/pba/"
     evaluator:
         type: Evaluator
         host_evaluator:

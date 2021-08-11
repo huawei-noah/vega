@@ -8,13 +8,14 @@
 
 ---
 
-**Vega ver1.5.0 released**
+**Vega ver1.6.0 released**
 
 - Feature enhancement:
 
-  - Fixed some bugs in distributed training.
-  - Some networks support PyTorch + Ascend 910.
-  - The Vega-process, Vega-progress, and vega-verify-cluster commands provide JSON format information.
+  - Supports simple quota settings, for example, `quota: flops < 11.2 and params in [34.0, 56.0]`.
+  - Supports running Vega in a Python virtual environment.
+  - Supported running environments: Python 3.8 and PyTorch 1.9.
+  - Fixed some bugs with parallel training and distributed search.
 
 ---
 

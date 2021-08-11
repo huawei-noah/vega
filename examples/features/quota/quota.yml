@@ -11,17 +11,11 @@
 
 #### copy the following configuration to your yaml file ####
 general:
-    quota:
-        restrict:
-            flops: !!float 1.6
-            params: !!float 1e10
-            latency: 10
-            model_valid: True
-        filter_rules: "model_valid and max_latency and flops_params"
+    quota: "flops < 1.6 and params < 1e10 and model_valid and host_latency < 10"
 ########################### end #############################
 
 
-pipeline: [nas, fullytrain]
+pipeline: [nas]
 
 
 nas:
@@ -52,13 +46,3 @@ nas:
         type: Cifar10
         common:
             data_path: /cache/datasets/cifar10/
-
-
-fullytrain:
-    pipe_step:
-        type: TrainPipeStep
-        models_folder: "{local_base_path}/output/nas/"
-    trainer:
-        ref: nas.trainer
-    dataset:
-        ref: nas.dataset

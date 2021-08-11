@@ -39,7 +39,7 @@ class AdelaideEATrainerCallback(Callback):
                 count_input = torch.FloatTensor(*input_shape).cuda()
             elif vega.is_npu_device():
                 input_shape = [1, 3, 192, 192]
-                count_input = torch.FloatTensor(*input_shape).npu()
+                count_input = torch.FloatTensor(*input_shape).to(vega.get_devices())
         elif vega.is_tf_backend():
             tf.compat.v1.reset_default_graph()
             count_input = tf.random.uniform(input_shape, dtype=tf.float32)

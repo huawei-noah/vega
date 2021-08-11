@@ -59,6 +59,7 @@ class TrainPipeStep(PipeStep):
     def _get_current_step_records(self):
         step_name = self.task.step_name
         models_folder = PipeStepConfig.pipe_step.get("models_folder")
+        models_folder = models_folder or PipeStepConfig.pipe_step.get("hps_folder")
         cur_index = PipelineConfig.steps.index(step_name)
         if cur_index >= 1 or models_folder:
             if not models_folder:
@@ -74,17 +75,17 @@ class TrainPipeStep(PipeStep):
             record.step_name = step_name
         return records
 
-    def _train_single_model(self, model_desc=None, model_id=None, weights_file=None):
+    def _train_single_model(self, model_desc=None, hps=None, model_id=None, weights_file=None):
         cls_trainer = ClassFactory.get_cls(ClassType.TRAINER, PipeStepConfig.trainer.type)
         step_name = self.task.step_name
         if model_desc is not None:
             sample = dict(worker_id=model_id, desc=model_desc, step_name=step_name)
             record = ReportRecord().load_dict(sample)
             logging.debug("update record=%s", str(record))
-            trainer = cls_trainer(model_desc=model_desc, id=model_id, pretrained_model_file=weights_file)
+            trainer = cls_trainer(model_desc=model_desc, hps=hps, id=model_id, pretrained_model_file=weights_file)
         else:
-            trainer = cls_trainer(None, 0)
-            record = ReportRecord(trainer.step_name, trainer.worker_id, desc=trainer.model_desc)
+            trainer = cls_trainer(None, 0, hps=hps)
+            record = ReportRecord(trainer.step_name, trainer.worker_id, desc=trainer.model_desc, hps=hps)
         ReportClient().update(**record.to_dict())
         # resume training
         if vega.is_torch_backend() and General._resume:
@@ -119,7 +120,8 @@ class TrainPipeStep(PipeStep):
     def _train_multi_models(self, records):
         for record in records:
             weights_file = record.weights_file if PipeStepConfig.pipe_step.get("load_weights", True) else None
-            self._train_single_model(record.desc, record.worker_id, weights_file)
+            self._train_single_model(
+                model_desc=record.desc, hps=record.hps, model_id=record.worker_id, weights_file=weights_file)
 
     def _get_evaluator(self, worker_id):
         if not PipeStepConfig.evaluator_enable:
@@ -146,8 +148,8 @@ class TrainPipeStep(PipeStep):
                 worker_ips = General.cluster.master_ip
                 for ip in General.cluster.slaves:
                     worker_ips = worker_ips + ',' + ip
-            cmd = ['bash', '{}/horovod/run_horovod_train.sh'.format(pwd_dir),
-                   str(self.world_device_size), cf_file, worker_ips]
+            cmd = ['bash', f'{pwd_dir}/horovod/run_horovod_train.sh',
+                   str(self.world_device_size), cf_file, worker_ips, General.python_command]
         else:
             # Roma
             cmd = ['bash', '/home/work/run_horovod_train.sh',

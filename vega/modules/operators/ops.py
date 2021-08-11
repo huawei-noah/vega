@@ -23,6 +23,15 @@ else:
     ConvWS2d = fn.ConvWS2d
     GroupNorm = fn.GroupNorm
     SyncBatchNorm = fn.SyncBatchNorm
+    ConvTranspose2d = fn.ConvTranspose2d
+    Clip = fn.Clip
+    Shape = fn.Shape
+    Gather = fn.Gather
+    Unsqueeze = fn.Unsqueeze
+    ConcatTensor = fn.ConcatTensor
+    Mean = fn.Mean
+    Pad = fn.Pad
+    Reshape = fn.Reshape
 
 Module = fn.Module
 Conv2d = fn.Conv2d

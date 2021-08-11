@@ -11,7 +11,7 @@
 """Import and register metrics automatically."""
 
 from .flops_and_params import calc_model_flops_params
-from .forward_latency import calc_forward_latency
+from .forward_latency import calc_forward_latency, calc_forward_latency_on_host
 
 
 def register_metrics(backend):

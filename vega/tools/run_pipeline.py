@@ -155,7 +155,7 @@ def run_pipeline(load_special_lib_func=None):
     dict_args = vars(args)
     dict_args = _check_parse(dict_args)
     config = _modify_config(dict_args, config)
-    _backup_config(args)
+    # _backup_config(args)
     _change_process_name()
     vega.run(config)
 

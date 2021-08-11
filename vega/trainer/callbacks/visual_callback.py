@@ -80,7 +80,7 @@ class VisualCallBack(Callback):
                 if vega.is_gpu_device():
                     input_data = input_data.cuda()
                 elif vega.is_npu_device():
-                    input_data = input_data.npu()
+                    input_data = input_data.to(vega.get_devices())
             try:
                 self.summary.add_graph(model=model, feed_data=input_data,
                                        backend="torch")

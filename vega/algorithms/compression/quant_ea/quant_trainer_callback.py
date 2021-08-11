@@ -55,8 +55,8 @@ class QuantTrainerCallback(Callback):
                 model = model.cuda()
                 count_input = torch.FloatTensor(*count_input).cuda()
             elif vega.is_npu_device():
-                model = model.npu()
-                count_input = torch.FloatTensor(*count_input).npu()
+                model = model.to(vega.get_devices())
+                count_input = torch.FloatTensor(*count_input).to(vega.get_devices())
             self.trainer.optimizer = Optimizer()(model=self.trainer.model, distributed=self.trainer.distributed)
             self.trainer.lr_scheduler = LrScheduler()(self.trainer.optimizer)
         elif vega.is_tf_backend():

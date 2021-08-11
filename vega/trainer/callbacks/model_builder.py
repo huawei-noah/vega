@@ -17,7 +17,6 @@ from .callback import Callback
 from vega.common import FileOps, Config
 from vega.common import ClassFactory, ClassType
 from vega.networks.model_config import ModelConfig
-from vega.common.general import General
 from vega.model_zoo import ModelZoo
 
 logger = logging.getLogger(__name__)
@@ -30,7 +29,7 @@ class ModelBuilder(Callback):
     def __init__(self):
         """Initialize ModelCheckpoint callback."""
         super(ModelBuilder, self).__init__()
-        self.priority = 240
+        self.priority = 200
 
     def init_trainer(self, logs=None):
         """Set trainer object for current callback."""
@@ -52,19 +51,10 @@ class ModelBuilder(Callback):
             if hasattr(model, "desc"):
                 self.trainer.model_desc = model.desc
             if vega.is_torch_backend():
-                import torch
                 if vega.is_gpu_device():
                     model = model.cuda()
-                    if General._parallel and General.devices_per_trainer > 1:
-                        model = torch.nn.DataParallel(model)
                 elif vega.is_npu_device():
-                    model = model.npu()
-                    if General._parallel and General.devices_per_trainer > 1:
-                        import torch.distributed as dist
-                        dist.init_process_group(backend='hccl', world_size=int(os.environ['WORLD_SIZE']),
-                                                rank=int(os.environ['RANK_ID']))
-                        model = torch.nn.parallel.DistributedDataParallel(model,
-                                                                          device_ids=[int(os.environ['DEVICE_ID'])])
+                    model = model.to(vega.get_devices())
         return model
 
     def _get_model_desc(self):

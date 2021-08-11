@@ -76,7 +76,7 @@ class EvolutionAlgorithm(SearchAlgorithm):
         # split codes
         desc = {}
         for _name, _size in each_codes_cache.items():
-            desc[_name] = encoding_new[:_size]
+            desc[_name] = encoding_new[:_size][0]
             encoding_new = encoding_new[_size:]
         self.sample_count += 1
         sample = dict(worker_id=self.sample_count, encoded_desc=desc)

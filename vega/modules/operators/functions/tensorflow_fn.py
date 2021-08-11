@@ -204,6 +204,11 @@ class Module(object):
         values = [(var, self._weights_buffer.get(var.name.replace(':0', ''))) for var in variables if
                   var.name.replace(':0', '') in self._weights_buffer]
         for v, weight in values:
+            if len(v.shape) == 4:
+                if v.shape[2] != weight.shape[2]:
+                    import torch
+                    num = v.shape[2] // weight.shape[2]
+                    weight = torch.cat([weight] * num, 2)
             v._initializer_op = state_ops.assign(v, weight)
         self._weights_buffer.clear()
 

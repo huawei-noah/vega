@@ -9,6 +9,7 @@
 # MIT License for more details.
 
 """Model counter of FLOPS and parameters."""
+
 from copy import deepcopy
 import vega
 import numpy as np
@@ -40,6 +41,16 @@ def add_new_hooks(custom_hooks):
     return custom_hooks
 
 
+def _do_calc_flops_params(model, input, custom_hooks=None, verbose=False):
+    from thop import profile
+    if custom_hooks is None:
+        custom_hooks = {}
+    custom_hooks = add_new_hooks(custom_hooks)
+    inputs = (input,)
+    flops, params = profile(model, inputs, custom_hooks, verbose)
+    return flops, params
+
+
 def calc_model_flops_params(model, input, custom_hooks=None, verbose=False):
     """Pytorch model flops and parameters calculation.
 
@@ -58,14 +69,11 @@ def calc_model_flops_params(model, input, custom_hooks=None, verbose=False):
         _model = deepcopy(model)
     except Exception:
         _model = model
+
     if vega.is_torch_backend():
-        from thop import profile
-        if custom_hooks is None:
-            custom_hooks = {}
-        custom_hooks = add_new_hooks(custom_hooks)
-        inputs = (input,)
-        flops, params = profile(_model, inputs, custom_hooks, verbose)
-        del _model
+        from vega.modules.arch.architecture import register_clear_module_arch_params_hooks
+        flops, params = _do_calc_flops_params(_model, input, custom_hooks, verbose)
+        register_clear_module_arch_params_hooks(model)
     elif vega.is_tf_backend():
         import tensorflow.compat.v1 as tf
         with tf.Graph().as_default() as graph:
@@ -77,7 +85,6 @@ def calc_model_flops_params(model, input, custom_hooks=None, verbose=False):
             opts = tf.profiler.ProfileOptionBuilder.trainable_variables_parameter()
             params = tf.profiler.profile(graph, cmd='op', options=opts).total_parameters
             flops *= 0.5
-        del _model
     elif vega.is_ms_backend():
         total_params = 0
         for param in model.trainable_params():
@@ -85,4 +92,6 @@ def calc_model_flops_params(model, input, custom_hooks=None, verbose=False):
         params = total_params
         # TODO
         flops = 0
+
+    del _model
     return flops, params

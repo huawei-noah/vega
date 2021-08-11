@@ -20,6 +20,7 @@ from vega.common.general import General
 from vega.modules.graph_utils import graph2desc
 from vega.modules.module import Module
 from vega.modules.arch import transform_architecture
+from vega.common.searchable import SearchableRegister
 
 
 class ModelZoo(object):
@@ -63,8 +64,9 @@ class ModelZoo(object):
         if pretrained_model_file is not None:
             if exclude_weight_prefix:
                 model.exclude_weight_prefix = exclude_weight_prefix
-            model = cls._load_pretrained_model(model, pretrained_model_file)
+            model = cls._load_pretrained_model(model, pretrained_model_file, exclude_weight_prefix)
         model = transform_architecture(model, pretrained_model_file)
+        model = SearchableRegister().active_search_event(model)
         if model is None:
             raise ValueError("Failed to get mode, model is None.")
         return model
@@ -75,7 +77,9 @@ class ModelZoo(object):
         if vega.is_ms_backend():
             from vega.networks.mindspore.backbones.ms2vega import transform_model
             return transform_model(model)
-        else:
+        if vega.is_torch_backend():
+            return model
+        if vega.is_tf_backend():
             try:
                 model_desc = cls.parse_desc_from_pretrained_model(model)
             except Exception as ex:
@@ -110,15 +114,43 @@ class ModelZoo(object):
         return desc
 
     @classmethod
-    def _load_pretrained_model(cls, model, pretrained_model_file):
+    def _exclude_checkpoint_by_prefix(cls, states, head_prefix):
+        if head_prefix:
+            if not isinstance(head_prefix, list):
+                head_prefix = [head_prefix]
+            for prefix in head_prefix:
+                states = {k: v for k, v in states.items() if not k.startswith(prefix)}
+        return states
+
+    @classmethod
+    def _load_pretrained_model(cls, model, pretrained_model_file, exclude_weight_prefix=None):
         pretrained_model_file = cls._get_abs_path(pretrained_model_file)
         logging.info("load model weights from file, weights file={}".format(pretrained_model_file))
         if vega.is_torch_backend():
+            import torch
             if not os.path.isfile(pretrained_model_file):
                 raise Exception(f"Pretrained model is not existed, model={pretrained_model_file}")
-            import torch
-            checkpoint = torch.load(pretrained_model_file)
-            model.load_state_dict(checkpoint)
+            if vega.is_npu_device():
+                device = int(os.environ.get('DEVICE_ID', 0))
+                target_model_file = "/tmp/checkpoint_{}.pth".format(device)
+                cmd = "/bin/cp -f {} {} && sed -i 's/npu:[0-9]/npu:{}/g' {}".format(pretrained_model_file,
+                                                                                    target_model_file,
+                                                                                    device,
+                                                                                    target_model_file)
+                ret = os.system(cmd)
+                logging.info("modify weight file result: " + str(ret))
+                checkpoint = torch.load(target_model_file)
+            else:
+                checkpoint = torch.load(pretrained_model_file)
+            if exclude_weight_prefix:
+                # TODO: make it more generalize
+                if vega.is_torch_backend():
+                    model.load_state_dict(checkpoint, False, exclude_weight_prefix=exclude_weight_prefix)
+                else:
+                    checkpoint = cls._exclude_checkpoint_by_prefix(checkpoint, exclude_weight_prefix)
+                    model.load_state_dict(checkpoint, False)
+            else:
+                model.load_state_dict(checkpoint)
 
             # del checkpoint
         if vega.is_tf_backend():

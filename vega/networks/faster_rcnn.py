@@ -19,7 +19,7 @@ from torchvision.models.detection import FasterRCNN
 class FasterRCNN(FasterRCNN, Module):
     """Create ResNet Network."""
 
-    def __init__(self, num_classes, backbone='ResNetBackbone', neck='FPN', **kwargs):
+    def __init__(self, num_classes=81, backbone='ResNetBackbone', neck='FPN', **kwargs):
         """Create layers.
 
         :param num_class: number of class

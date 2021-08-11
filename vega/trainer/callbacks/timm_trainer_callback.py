@@ -131,7 +131,7 @@ class TimmTrainerCallback(Callback):
             if vega.is_gpu_device():
                 input, target = input.cuda(), target.cuda()
             elif vega.is_npu_device():
-                input, target = input.npu(), target.npu()
+                input, target = input.to(vega.get_devices()), target.to(vega.get_devices())
         return input, target
 
     def train_step(self, batch):
@@ -231,7 +231,7 @@ class TimmTrainerCallback(Callback):
         if vega.is_gpu_device():
             model = model.cuda()
         elif vega.is_npu_device():
-            model = model.npu()
+            model = model.to(vega.get_devices())
         return model
 
     def _init_optimizer(self):
@@ -261,7 +261,7 @@ class TimmTrainerCallback(Callback):
         if vega.is_gpu_device():
             loss_fn = loss_fn.cuda()
         elif vega.is_npu_device():
-            loss_fn = loss_fn.npu()
+            loss_fn = loss_fn.to(vega.get_devices())
         return loss_fn
 
     def _reset_sync_opt(self):

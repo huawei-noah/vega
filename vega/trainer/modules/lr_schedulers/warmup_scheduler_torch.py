@@ -91,12 +91,13 @@ class WarmupScheduler(_LRScheduler):
             self.after_scheduler.step(epoch)
             return
 
-        self.current_iters = epoch
-        warmup_lr = self.get_lr()
-        for param_group, lr in zip(self.optimizer.param_groups, warmup_lr):
-            param_group['lr'] = lr
+        if epoch is not None:
+            self.current_iters = epoch
+            warmup_lr = self.get_lr()
+            for param_group, lr in zip(self.optimizer.param_groups, warmup_lr):
+                param_group['lr'] = lr
 
-        if epoch >= self.warmup_iters:
-            self.warmup_finished = True
-            self.after_scheduler = LrScheduler(self.after_scheduler_config)(self.optimizer)
-            self.by_epoch = self.after_scheduler.by_epoch
+            if epoch >= self.warmup_iters:
+                self.warmup_finished = True
+                self.after_scheduler = LrScheduler(self.after_scheduler_config)(self.optimizer)
+                self.by_epoch = self.after_scheduler.by_epoch

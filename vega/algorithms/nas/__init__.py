@@ -29,5 +29,6 @@ ClassFactory.lazy_register("vega.algorithms.nas", {
     "sm_nas": ["SmNasCodec", "SMNasM"],
     "sp_nas": ["SpNasS", "SpNasP"],
     "sr_ea": ["SRCodec", "SRMutate", "SRRandom"],
-    "mfasc": ["search_algorithm:MFASC"]
+    "mfasc": ["search_algorithm:MFASC"],
+    "opt_nas": ["OperatorSearchSpace", "OperatorReplaceCallback"]
 })

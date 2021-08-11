@@ -173,10 +173,11 @@ class ClusterDaskDistributor(DistributorBaseClass):
         :param dict kwargs: Parameter of `func`.
 
         """
-        future = client.submit(func, **kwargs)
-        f = (pid, future)
-        self.future_set.add(f)
-        self.process_queue.put(pid)
+        with self._queue_lock:
+            future = client.submit(func, **kwargs)
+            f = (pid, future)
+            self.future_set.add(f)
+            self.process_queue.put(pid)
 
     def close(self, client):
         """Close the connection to the local Dask Scheduler.

@@ -84,7 +84,10 @@ class PruneEA(SearchAlgorithm):
             return self.random_count, desc
         records = ReportServer().get_pareto_front_records(self.step_name, self.num_individual)
         codes = [record.desc.get('backbone').get('encoding') for record in records]
-        logging.info("codes=%s", codes)
+        if len(codes) > 0:
+            logging.info("codes=%s", codes)
+        if len(codes) == 0:
+            return None
         if len(codes) < 2:
             encoding1, encoding2 = codes[0], codes[0]
         else:

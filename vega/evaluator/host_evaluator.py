@@ -11,8 +11,9 @@
 """HostEvaluator used to do evaluate process on gpu."""
 
 import time
-import os
+import copy
 import logging
+from statistics import mean
 import vega
 from vega.common import ClassFactory, ClassType
 from vega.common import init_log
@@ -55,6 +56,18 @@ class HostEvaluator(Evaluator):
         self.saved_folder = saved_folder
         self.saved_step_name = saved_step_name
 
+    def _call_model_batch(self, batch):
+        input, target = None, None
+        if isinstance(batch, dict):
+            logits = self.model(**batch)
+        elif isinstance(batch, list) and isinstance(batch[0], dict):
+            target = batch
+            logits = self.model(batch)
+        else:
+            input, target = batch
+            logits = self.model(input) if not isinstance(input, dict) else self.model(**input)
+        return logits, target
+
     def valid(self, valid_loader):
         """Validate one step of mode.
 
@@ -63,37 +76,31 @@ class HostEvaluator(Evaluator):
         if vega.is_torch_backend():
             import torch
             from vega.metrics.pytorch import Metrics
+            if vega.is_gpu_device():
+                self.model = self.model.cuda()
+            elif vega.is_npu_device():
+                self.model = self.model.to(vega.get_devices())
             metrics = Metrics(self.config.metric)
             self.model.eval()
-            data_num = 0
-            latency_sum = 0.0
+            latency_batch = None
+            cal_lantency_counts = 10
             with torch.no_grad():
                 for step, batch in enumerate(valid_loader):
-                    if isinstance(batch, list) or isinstance(batch, tuple):
-                        data = batch[0]
-                        target = batch[1]
-                    else:
-                        raise ValueError("The dataset format must be tuple or list,"
-                                         "but get {}.".format(type(batch)))
-                    if vega.is_gpu_device():
-                        data, target = data.cuda(), target.cuda()
-                        self.model = self.model.cuda()
-                    elif vega.is_npu_device():
-                        import torch.npu
-                        device = "npu:{}".format(os.environ.get('DEVICE_ID', 0))
-                        torch.npu.set_device(device)
-                        data, target = data.npu(), target.npu()
-                        self.model = self.model.npu()
-                    time_start = time.time()
-                    logits = self.model(data)
-                    latency_sum += time.time() - time_start
-                    metrics(logits, target)
-                    n = data.size(0)
-                    data_num += n
-                    if step % self.config.report_freq == 0:
-                        logging.info("step [{}/{}], valid metric [{}]".format(
-                            step + 1, len(valid_loader), str(metrics.results)))
-            latency = latency_sum / data_num
+                    batch = self._set_device(batch)
+                    if not latency_batch:
+                        latency_batch = copy.deepcopy(batch)
+                    logits, target = self._call_model_batch(batch)
+                    metrics_results = metrics(logits, target)
+                    if step % self.config.report_freq == 0 and metrics_results:
+                        logging.info(
+                            "step [{}/{}], valid metric [{}]".format(step + 1, len(valid_loader), metrics_results))
+                latency_pre_batch = []
+                for i in range(cal_lantency_counts):
+                    time_init = time.perf_counter()
+                    self._call_model_batch(latency_batch)
+                    latency_pre_batch.append((time.perf_counter() - time_init) * 1000)
+                latency = mean(latency_pre_batch)
+            logging.info("evaluator latency [{}]".format(latency))
         elif vega.is_tf_backend():
             from vega.metrics.tensorflow.metrics import Metrics
             metrics = Metrics(self.config.metric)
@@ -128,6 +135,21 @@ class HostEvaluator(Evaluator):
             pfms["latency"] = latency
         logging.info("evaluate performance: {}".format(pfms))
         return pfms
+
+    def _set_device(self, data):
+        import torch
+        if torch.is_tensor(data):
+            if vega.is_gpu_device():
+                return data.cuda()
+            else:
+                return data.to(vega.get_devices())
+        if isinstance(data, dict):
+            return {k: self._set_device(v) for k, v in data.items()}
+        elif isinstance(data, list):
+            return [self._set_device(v) for v in data]
+        elif isinstance(data, tuple):
+            return tuple([self._set_device(v) for v in data])
+        return data
 
     def _model_fn(self, features, labels, mode):
         """Model function of gpu evaluator."""

@@ -11,7 +11,6 @@
 """This is a base class of the dataset."""
 
 import importlib
-from types import MethodType
 from vega.common.task_ops import TaskOps
 from .utils.transforms import Transforms
 from vega.common import ClassFactory, ClassType
@@ -63,7 +62,6 @@ class Dataset(TaskOps):
         self.world_size = 1
         self.rank = 0
         self.collate_fn = None
-        self.loader = MethodType(_loader, self)
 
     def dataset_init(self):
         """Init Dataset before sampler."""
@@ -120,7 +118,7 @@ class Dataset(TaskOps):
         self.world_size = world_size
         self.rank = rank
 
-
-def _loader(self):
-    """Return dataloader."""
-    return Adapter(self).loader
+    @property
+    def loader(self):
+        """Return loader."""
+        return Adapter(self).loader

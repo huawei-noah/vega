@@ -43,6 +43,7 @@ class WorkerEnv(WorkerPlugin):
         self._backend_type = os.environ["BACKEND_TYPE"]
         self.device_category = os.environ['DEVICE_CATEGORY']
         self._npu_visible_devices = os.environ.get('NPU_VISIBLE_DEVICES', None)
+        self._npu_visible_devices = self._npu_visible_devices or os.environ.get('NPU-VISIBLE-DEVICES', None)
         self._batch_task_index = os.environ.get('BATCH_TASK_INDEX', None)
         self.temp_path = temp_path
         self.__worker_null_file__ = os.path.join(temp_path, '.vega_null')

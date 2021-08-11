@@ -32,10 +32,10 @@ def calc_forward_latency(model, input, sess_config=None, num=10):
     """
     if DeviceEvaluatorConfig.remote_host:
         return _calc_forward_latency_davinci(model, input, sess_config, num, DeviceEvaluatorConfig().to_dict())
-    return _calc_forward_latency_gpu(model, input, sess_config, num)
+    return calc_forward_latency_on_host(model, input, sess_config, num)
 
 
-def _calc_forward_latency_gpu(model, input, sess_config=None, num=100):
+def calc_forward_latency_on_host(model, input, sess_config=None, num=100):
     """Model forward latency calculation.
 
     :param model: network model
@@ -100,6 +100,7 @@ def _calc_forward_latency_davinci(model, input, sess_config=None, num=10, evalua
     # backend = evaluate_config.get("backend")
     hardware = evaluate_config.get("hardware")
     remote_host = evaluate_config.get("remote_host")
+    intermediate_format = evaluate_config.get("intermediate_format")
     worker_path = TaskOps().local_base_path
     save_data_file = os.path.join(worker_path, "input.bin")
 
@@ -116,7 +117,7 @@ def _calc_forward_latency_davinci(model, input, sess_config=None, num=10, evalua
         for index in range(num):
             reuse_model = False if index == 0 else True
             results = evaluate("pytorch", hardware, remote_host, model, None, save_data_file, input_shape,
-                               reuse_model, job_id)
+                               reuse_model, job_id, intermediate_format=intermediate_format)
             latency += np.float(results.get("latency"))
     elif vega.is_tf_backend():
         input_shape = input.shape.as_list()

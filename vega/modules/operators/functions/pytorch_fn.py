@@ -17,8 +17,6 @@ import torch.nn as nn
 from torch.functional import F
 import torch.nn.init as init
 from torch.nn.quantized import Conv2d as QuantConv2d
-from torch import Tensor
-from torch.nn import LayerNorm
 from torch.nn import Parameter as Torch_Parameter
 import vega
 from .serializable import OperatorSerializable
@@ -43,12 +41,64 @@ class Module(nn.Module):
         """Build network or params."""
         pass
 
-    def load_state_dict(self, state_dict=None, strict=None, file_path=None):
+    @classmethod
+    def remap_state_dict(self, own_state_dict, state_dict, head_prefix=None):
+        """Remap state dict from npu state files."""
+        if "state_dict" in state_dict.keys():
+            state_dict = state_dict["state_dict"]
+        own_keys = list(own_state_dict.keys())
+        input_keys = list(state_dict.keys())
+        if len(own_keys) != len(input_keys):
+            raise Exception("own_state_dict and state_dict have unmatched key length")
+
+        new_state_dict = {}
+        own_key_prefix_occurrence_map = {}
+        input_key_prefix_occurrence_map = {}
+
+        def _has_prefix(key, prefixes):
+            if not prefixes or not key:
+                return False
+            if isinstance(prefixes, str):
+                prefixes = [prefixes]
+            for prefix in prefixes:
+                if key.startswith(prefix):
+                    return True
+            return False
+
+        for i in range(len(own_keys)):
+            own_key = own_keys[i]
+            input_key = input_keys[i]
+            if _has_prefix(input_key, head_prefix):
+                continue
+
+            own_key_prefix = own_key[:own_key.rfind(".")] if own_key.rfind(".") != -1 else own_key
+            own_key_suffix = own_key[own_key.rfind("."):] if own_key.rfind(".") != -1 else own_key
+            input_key_prefix = input_key[:input_key.rfind(".")] if input_key.rfind(".") != -1 else input_key
+            input_key_suffix = input_key[input_key.rfind("."):] if input_key.rfind(".") != -1 else input_key
+            if own_key_prefix not in own_key_prefix_occurrence_map.keys():
+                own_key_prefix_occurrence_map[own_key_prefix] = \
+                    sum(s.startswith(own_key_prefix + ".") for s in own_keys)
+            if input_key_prefix not in input_key_prefix_occurrence_map.keys():
+                input_key_prefix_occurrence_map[input_key_prefix] = \
+                    sum(s.startswith(input_key_prefix + ".") for s in input_keys)
+            own_key_prefix_occurrence = own_key_prefix_occurrence_map[own_key_prefix]
+            input_key_prefix_occurrence = input_key_prefix_occurrence_map[input_key_prefix]
+            if own_key_prefix_occurrence == input_key_prefix_occurrence and own_key_suffix == input_key_suffix:
+                new_state_dict[own_key] = state_dict[input_key]
+            else:
+                raise Exception("unmatched own_key {} and input_key {}".format(own_key, input_key))
+
+        return new_state_dict
+
+    def load_state_dict(self, state_dict=None, strict=None, file_path=None,
+                        exclude_weight_prefix=None):
         """Load state dict from state_dict or file."""
         state_dict = torch.load(file_path) if file_path is not None else state_dict
         self.strict = strict if strict is not None else self.strict
         state_dict = self._exclude_checkpoint_by_prefix(state_dict)
         own_states = self.state_dict()
+        if vega.is_npu_device():
+            state_dict = self.remap_state_dict(own_states, state_dict, exclude_weight_prefix)
         not_swap_keys = []
         for own_key, own_state in own_states.items():
             state = state_dict.get(own_key)
@@ -87,7 +137,7 @@ class Module(nn.Module):
     def set_parameters(self, name, value):
         """Set Parameters."""
         if vega.is_npu_device():
-            self.register_parameter(name, nn.Parameter(value.npu()))
+            self.register_parameter(name, nn.Parameter(value.to(vega.get_devices())))
         elif vega.is_gpu_device():
             self.register_parameter(name, nn.Parameter(value.cuda()))
         else:
@@ -152,12 +202,31 @@ class QuantizeConv2d(QuantConv2d, Module, OperatorSerializable):
         input = torch.quantize_per_tensor(input, 1.0, 0, self._quant_type[self.quant_bit])
         output = super().forward(input)
         if vega.is_npu_device():
-            output = torch.dequantize(output).npu()
+            output = torch.dequantize(output).to(vega.get_devices())
         elif vega.is_gpu_device():
             output = torch.dequantize(output).cuda()
         else:
             output = torch.dequantize(output)
         return output
+
+
+@ClassFactory.register(ClassType.NETWORK)
+class ConvTranspose2d(nn.ConvTranspose2d, OperatorSerializable):
+    """MaxPool2d Module inherit nn.MaxPool2d."""
+
+    def __init__(self, in_channels, out_channels, kernel_size, stride=1,
+                 padding=0, output_padding=0, groups=1, bias=True,
+                 dilation=1, padding_mode='zeros'):
+        """Construct MaxPool2d class."""
+        if isinstance(padding, str):
+            padding = kernel_size // 2 if isinstance(kernel_size, int) else [v // 2 for v in kernel_size]
+        padding = padding if not isinstance(padding, str) else kernel_size // 2
+        super(ConvTranspose2d, self).__init__(in_channels, out_channels, kernel_size=kernel_size, stride=stride,
+                                              groups=groups, padding=padding, bias=bias, dilation=dilation)
+
+    def forward(self, x, output_size=None):
+        """Do an inference on Identity."""
+        return super().forward(x, output_size)
 
 
 @ClassFactory.register(ClassType.NETWORK)
@@ -205,7 +274,10 @@ class Conv2d(nn.Conv2d, OperatorSerializable):
 
     def set_weights(self, name, weight):
         """Set weights."""
-        self._parameters[name] = nn.Parameter(weight)
+        if name == 'weight':
+            self.weight.data = weight
+        elif name == 'bias':
+            self.bias.data = weight
 
 
 @ClassFactory.register(ClassType.NETWORK)
@@ -253,19 +325,6 @@ class BatchNorm2d(nn.BatchNorm2d, OperatorSerializable):
             self.weight.data = weight
         elif name == 'bias':
             self.bias.data = weight
-
-
-@ClassFactory.register(ClassType.NETWORK)
-class Pad(nn.ZeroPad2d, OperatorSerializable):
-    """Pad Module inherit nn.ZeroPad2d."""
-
-    def __init__(self, kernel_size=None, stride=1, padding=0):
-        """Construct MaxPool2d class."""
-        super(Pad, self).__init__(padding)
-
-    def forward(self, x):
-        """Do an inference on Identity."""
-        return x
 
 
 @ClassFactory.register(ClassType.NETWORK)
@@ -386,7 +445,10 @@ class Linear(nn.Linear, OperatorSerializable):
 
     def set_weights(self, name, weight):
         """Set weights."""
-        self._parameters[name] = nn.Parameter(weight)
+        if name == 'weight':
+            self.weight.data = weight
+        elif name == 'bias':
+            self.bias.data = weight
 
 
 @ClassFactory.register(ClassType.NETWORK)
@@ -624,6 +686,160 @@ class Embedding(nn.Embedding, OperatorSerializable):
         return super(Embedding, self).forward(x)
 
 
+@ClassFactory.register(ClassType.NETWORK)
+class Clip(nn.Module, OperatorSerializable):
+    """Clip of torch."""
+
+    def __init__(self, min=float("-inf"), max=float("inf")):
+        """Construct Clip class."""
+        super(Clip, self).__init__()
+        self.min = float(min)
+        self.max = float(max)
+
+    def forward(self, x):
+        """Do an inference on Clip.
+
+        :param x: input tensor
+        :return: output tensor
+        """
+        return torch.clamp(x, min=0, max=self.max)
+
+
+@ClassFactory.register(ClassType.NETWORK)
+class Shape(nn.Module, OperatorSerializable):
+    """Shape of torch."""
+
+    def __init__(self, start=0, end=None):
+        """Construct Shape class."""
+        super(Shape, self).__init__()
+        self.start = start
+        self.end = end
+
+    def forward(self, x):
+        """Do an inference on Shape.
+
+        :param x: input tensor
+        :return: output tensor
+        """
+        if self.end:
+            output = torch.tensor(x.shape)[self.start:self.end]
+        else:
+            output = torch.tensor(x.shape)[self.start:]
+        return output.to(vega.get_devices())
+
+
+@ClassFactory.register(ClassType.NETWORK)
+class Gather(nn.Module, OperatorSerializable):
+    """Gather block."""
+
+    def __init__(self, axis=0):
+        """Construct Gather class."""
+        super(Gather, self).__init__()
+        self.axis = axis  # compatible with dim in pytorch
+
+    def forward(self, x):
+        """Do an inference on Gather.
+
+        :param x: input tensor
+        :return: output tensor
+        """
+        return torch.gather(x, self.axis, torch.tensor(0))
+
+
+@ClassFactory.register(ClassType.NETWORK)
+class Unsqueeze(nn.Module, OperatorSerializable):
+    """Unsqueeze block."""
+
+    def __init__(self, axes):
+        """Construct Identity class."""
+        super(Unsqueeze, self).__init__()
+        self.axes = axes
+
+    def forward(self, x):
+        """Do an inference on Unsqueeze.
+
+        :param x: input tensor
+        :return: output tensor
+        """
+        if not isinstance(self.axes, list):
+            logging.error("Unsqueeze axes: {} must be list".format(self.axes))
+            return None
+        output = x
+        for axis in self.axes:
+            output = torch.unsqueeze(output, axis)
+        return output
+
+
+@ClassFactory.register(ClassType.NETWORK)
+class ConcatTensor(nn.Module, OperatorSerializable):
+    """ConcatTensor block."""
+
+    def __init__(self, axis=0):
+        """Construct ConcatTensor class."""
+        super(ConcatTensor, self).__init__()
+        self.axis = axis
+
+    def forward(self, x):
+        """Do an inference on ConcatTensor.
+
+        :param x: input tensor
+        :return: output tensor
+        """
+        return torch.cat((x, (torch.tensor([-1]).to(vega.get_devices()))), dim=self.axis)
+
+
+@ClassFactory.register(ClassType.NETWORK)
+class Mean(nn.Module, OperatorSerializable):
+    """Mean block."""
+
+    def __init__(self, axes=None, keepdims=False):
+        """Construct Mean class."""
+        super(Mean, self).__init__()
+        self.axes = axes
+        self.keepdims = keepdims
+
+    def forward(self, x):
+        """Do an inference on Mean.
+
+        :param x: input tensor
+        :return: output tensor
+        """
+        if self.axes:
+            return torch.mean(x, dim=self.axes, keepdim=self.keepdims)
+        return torch.mean(x, keepdim=self.keepdims)
+
+
+@ClassFactory.register(ClassType.NETWORK)
+class Pad(nn.Module, OperatorSerializable):
+    """Pad block."""
+
+    def __init__(self, mode="constant", padding=None):
+        self.mode = mode
+        self.padding = padding
+        super().__init__()
+
+    def forward(self, input, pads=None, value=0):
+        """Call forward."""
+        if self.padding is not None:
+            pads = self.padding
+        elif pads is None:
+            raise TypeError("forward() missing 1 required positional argument: 'pads'")
+        return F.pad(input, list(pads), mode=self.mode, value=value)
+
+
+@ClassFactory.register(ClassType.NETWORK)
+class Reshape(nn.Module, OperatorSerializable):
+    """Reshape class."""
+
+    def __init__(self, shape=[-1, 1024]):
+        super().__init__()
+        self.shape = shape
+
+    def forward(self, input: torch.Tensor):
+        """Forward function."""
+        return torch.reshape(input, tuple(self.shape))
+
+
 def concat(inputs, dim=1):
     """Call concat according to backends."""
     return torch.cat(inputs, dim=dim)
@@ -681,7 +897,9 @@ def mean_all(inputs):
 
 def pad(inputs, position):
     """Apply pad function."""
-    return F.pad(inputs, position)
+    # return F.pad(inputs, position)
+    dtype = inputs.dtype
+    return F.pad(inputs.cpu().float(), position).to(vega.get_devices()).to(dtype)
 
 
 def interpolate(input, size, mode='bilinear', align_corners=False):
@@ -1044,3 +1262,5 @@ class Parameter(Torch_Parameter):
 
 
 MSELoss = nn.MSELoss
+Tensor = torch.Tensor
+LayerNorm = torch.nn.LayerNorm

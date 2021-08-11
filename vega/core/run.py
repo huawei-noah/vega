@@ -12,6 +12,7 @@
 import sys
 import logging
 import json
+import vega
 from vega.common.utils import init_log, lazy
 from vega.common import Config, UserConfig
 from vega.common.task_ops import TaskOps
@@ -19,7 +20,6 @@ from .pipeline.pipeline import Pipeline
 from vega import set_backend
 from vega.common.general import General
 from vega.core.pipeline.conf import PipelineConfig
-from vega.core.quota import QuotaStrategy
 
 
 logger = logging.getLogger(__name__)
@@ -67,10 +67,7 @@ def _run_pipeline():
 
 
 def _adjust_config():
-    if General.quota.strategy.runtime is None:
-        return
-    adjust_strategy = QuotaStrategy()
-    adjust_strategy.adjust_pipeline_config(UserConfig().data)
+    vega.quota().adjuest_pipeline_by_runtime(UserConfig().data)
 
 
 @lazy

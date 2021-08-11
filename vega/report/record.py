@@ -255,7 +255,11 @@ class ReportRecord(object):
             for key, value in src_dic.items():
                 if key in ["original_rewards", "rewards"]:
                     continue
-                setattr(self, key, remove_np_value(value))
+                if isinstance(value, dict) and isinstance(getattr(self, key), dict):
+                    for value_key, value_value in value.items():
+                        getattr(self, key)[value_key] = value_value
+                else:
+                    setattr(self, key, remove_np_value(value))
         self._cal_rewards()
         return self
 

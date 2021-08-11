@@ -43,6 +43,9 @@ class ModelCheckpoint(Callback):
         """Be called after each epoch."""
         if not self.trainer.config.save_checkpoint:
             return
+        if not self.trainer.do_validation:
+            self._save_best_model()
+            return
         self._save_checkpoint(epoch)
         if self.trainer.multi_task:
             self._saved_multi_checkpoint(epoch)

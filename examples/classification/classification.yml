@@ -141,7 +141,7 @@ fully_train:
         models_folder: "{local_base_path}/output/nas/"
     trainer:
         ref: fine_tune.trainer
-        hps_folder: "{local_base_path}/output/hpo/"
+        hps_file: "{local_base_path}/output/hpo/"
     evaluator:
         ref: fine_tune.evaluator
     dataset:

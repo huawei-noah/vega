@@ -43,13 +43,26 @@ class Conv2dDoubleChannelArchitecture(Architecture):
                     continue
                 padding = [0, out_channels_diff]
             else:
-                in_channels_diff = int(inputs.shape[1]) - int(weight.shape[in_channels_axis])
+                groups = module.groups
+                # depthwise conv
+                if groups == module.in_channels and module.out_channels < groups:
+                    module.out_channels = groups
+                in_channels_diff = int(inputs.shape[1]) - int(weight.shape[in_channels_axis] * module.groups)
                 out_channels_diff = int(module.out_channels) - int(weight.shape[out_channels_axis])
                 if in_channels_diff == 0 and out_channels_diff == 0:
                     continue
                 padding = [0, 0, 0, 0, 0, 0, 0, 0]
-                if in_channels_diff != 0:
-                    padding[5] = in_channels_diff
+                # fit input channel
+                if groups == 1:
+                    if in_channels_diff != 0:
+                        padding[5] = in_channels_diff
+                        module.in_channels += in_channels_diff
+                else:
+                    if in_channels_diff > 0:
+                        in_channels_group_diff = int(in_channels_diff / groups)
+                        padding[5] = in_channels_group_diff
+                    elif in_channels_diff < 0:
+                        module.groups = int(abs(in_channels_diff) / weight.shape[in_channels_axis])
                     module.in_channels += in_channels_diff
                 if out_channels_diff != 0:
                     padding[-1] = out_channels_diff

@@ -37,6 +37,7 @@ ClassFactory.lazy_register("vega.networks", {
     "gcn": ["GCN"],
     "vit": ["VisionTransformer"],
     "mtm_sr": ["MtMSR"],
+    "unet": ["Unet"]
 })
 
 

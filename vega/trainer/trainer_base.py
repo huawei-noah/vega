@@ -10,6 +10,7 @@
 
 """Base Trainer."""
 
+import os
 import glob
 import logging
 import vega
@@ -22,6 +23,7 @@ from vega.trainer.distributed_worker import DistributedWorker
 from vega.trainer.utils import WorkerTypes
 from vega.datasets import Adapter
 from vega.common.general import General
+from vega.common.utils import update_dict
 
 
 class TrainerBase(DistributedWorker):
@@ -194,18 +196,11 @@ class TrainerBase(DistributedWorker):
         if hps is not None:
             pass
         elif self.config.hps_file is not None:
-            desc_file = self.config.hps_file.replace("{local_base_path}", self.local_base_path)
-            hps = Config(desc_file)
-            if "trainer" in hps:
-                if "epochs" in hps["trainer"]:
-                    hps["trainer"].pop("epochs")
-                if "checkpoint_path" in hps["trainer"]:
-                    hps["trainer"].pop("checkpoint_path")
-        elif self.config.hps_folder is not None:
-            folder = self.config.hps_folder.replace("{local_base_path}", self.local_base_path)
-            pattern = FileOps.join_path(folder, "hps_*.json")
-            desc_file = glob.glob(pattern)[0]
-            hps = Config(desc_file)
+            hps_file = self.config.hps_file.replace("{local_base_path}", self.local_base_path)
+            if os.path.isdir(hps_file):
+                pattern = os.path.join(hps_file, "hps_*.json")
+                hps_file = glob.glob(pattern)[0]
+            hps = Config(hps_file)
             if "trainer" in hps:
                 if "epochs" in hps["trainer"]:
                     hps["trainer"].pop("epochs")
@@ -215,8 +210,7 @@ class TrainerBase(DistributedWorker):
         if not self.hps:
             self.hps = hps
         elif hps:
-            hps.from_dict(self.hps)
-            self.hps = hps
+            self.hps = update_dict(self.hps, hps)
         # set config
         if self.hps and self.hps.get('trainer'):
             self.config.from_dict(self.hps.get('trainer'))

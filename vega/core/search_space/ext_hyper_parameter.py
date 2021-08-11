@@ -177,7 +177,10 @@ class CatHyperParameter(HyperParameter):
                 self.list_values.append(each)
             else:
                 key = each
-            self.cat_transform[key] = 0
+            if len(self.range) > 1:
+                self.cat_transform[key] = idx / (len(self.range) - 1)
+            else:
+                self.cat_transform[key] = 0
         self.range = [0.0, 1.0]
 
     def multi_sample(self, param_range):
@@ -396,7 +399,12 @@ class HalfCodeHyperParameter(HyperParameter):
         """
         individual = []
         size = self.range[0]
-        if random.uniform(0, 1) < 0.8:
+        # TODO: TEST ONLY
+        from vega.core.pipeline.conf import PipeStepConfig
+        ratio = 0.8
+        if hasattr(PipeStepConfig.search_space, "prune_ratio"):
+            ratio = 1 - float(PipeStepConfig.search_space.prune_ratio)
+        if random.uniform(0, 1) < ratio:
             return [1] * size
         if len(self.range) == 1:
             need_convert_code_size = size // 2

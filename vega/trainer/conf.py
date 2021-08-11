@@ -59,6 +59,7 @@ class TrainerConfig(ConfigSerializable):
     valid_interval = 1
     syncbn = False
     amp = False
+    opt_level = 'O1'
     lazy_built = False
     callbacks = None
     grad_clip = None
@@ -78,7 +79,6 @@ class TrainerConfig(ConfigSerializable):
     codec = None
     model_desc = None
     hps_file = None
-    hps_folder = None
     loss_scale = 1.
     save_steps = 500
     report_on_valid = False
@@ -152,7 +152,6 @@ class TrainerConfig(ConfigSerializable):
                                "codec": {"type": (str, dict, None)},
                                "model_desc": {"type": (str, dict, None)},
                                "hps_file": {"type": (str, None)},
-                               "hps_folder": {"type": (str, None)},
                                "loss_scale": {"type": (int, float)},
                                "save_steps": {"type": int},
                                "report_on_valid": {"type": bool},

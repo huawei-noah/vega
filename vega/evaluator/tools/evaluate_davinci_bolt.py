@@ -18,7 +18,7 @@ import numpy as np
 
 
 def evaluate(backend, hardware, remote_host, model, weight, test_data, input_shape=None, reuse_model=False,
-             job_id=None, quantize=False, repeat_times=1):
+             job_id=None, quantize=False, repeat_times=1, **kwargs):
     """Evaluate interface of the EvaluateService.
 
     :param backend: the backend can be one of "tensorflow", "caffe" and "pytorch"
@@ -48,7 +48,7 @@ def evaluate(backend, hardware, remote_host, model, weight, test_data, input_sha
     if not reuse_model:
         base_save_dir = os.path.dirname(test_data)
         model, weight, backend = preprocessing_model(backend, hardware, model, weight, input_shape,
-                                                     base_save_dir, quantize, test_data)
+                                                     base_save_dir, quantize, test_data, **kwargs)
         model_file = open(model, "rb")
         data_file = open(test_data, "rb")
         if backend == "caffe":
@@ -100,7 +100,7 @@ def evaluate(backend, hardware, remote_host, model, weight, test_data, input_sha
     return evaluate_result
 
 
-def preprocessing_model(backend, hardware, model, weight, input_shape, base_save_dir, quantize, test_data):
+def preprocessing_model(backend, hardware, model, weight, input_shape, base_save_dir, quantize, test_data, **kwargs):
     """Preprocess the model.
 
     :param backend: the backend can be one of "tensorflow", "caffe" , "pytorch" and "mindspore".
@@ -119,8 +119,8 @@ def preprocessing_model(backend, hardware, model, weight, input_shape, base_save
     if backend == "pytorch":
         if hardware == "Bolt":
             from .pytorch2onnx import pytorch2onnx
-            model = pytorch2onnx(model, input_shape)
-        else:
+            model = pytorch2onnx(model, input_shape, base_save_dir)
+        elif kwargs["intermediate_format"] == "caffe":
             model_file = os.path.join(base_save_dir, "torch_model.pkl")
             shape_file = os.path.join(base_save_dir, "input_shape.pkl")
             with open(model_file, "wb") as f:
@@ -140,6 +140,10 @@ def preprocessing_model(backend, hardware, model, weight, input_shape, base_save
             model = os.path.join(base_save_dir, "torch2caffe.prototxt")
             weight = os.path.join(base_save_dir, "torch2caffe.caffemodel")
             backend = "caffe"
+        else:
+            from .pytorch2onnx import pytorch2onnx
+            model = pytorch2onnx(model, input_shape, base_save_dir)
+            backend = "onnx"
     elif backend == "tensorflow":
         pb_model_file = os.path.join(base_save_dir, "tf_model.pb")
         if os.path.exists(pb_model_file):

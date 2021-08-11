@@ -12,8 +12,7 @@
 from collections import deque
 from vega.modules.operators import ops
 from vega.modules.connections import Add
-from vega.modules.connections import Sequential
-import vega
+from vega.modules.connections import Module
 
 
 class ConnectionsArchParamsCombiner(object):
@@ -54,13 +53,14 @@ class ConnectionsArchParamsCombiner(object):
             self.add_condition(module.name + '.num_features', self.pre_conv.name + '.out_channels')
         elif isinstance(module, ops.Linear):
             self.add_condition(module.name + '.in_features', self.pre_conv.name + '.out_channels')
-        elif isinstance(module, Sequential):
+        elif isinstance(module, Module):
             for child in module.children():
                 self._traversal(child)
 
     def _traversal_add_connections(self, module):
         last_convs = []
         last_bns = []
+        add_bns = []
         for child in module.children():
             if isinstance(child, ops.Conv2d):
                 add_convs = [child]
@@ -71,8 +71,8 @@ class ConnectionsArchParamsCombiner(object):
                 add_bns = [bn for name, bn in child.named_modules() if isinstance(bn, ops.BatchNorm2d)]
             if add_convs:
                 last_convs.append(add_convs[-1])
-                if vega.is_ms_backend():
-                    last_bns.append(add_bns[-1])
+            if add_bns:
+                last_bns.append(add_bns[-1])
         tmp_pre_conv = self.pre_conv
         for child in module.children():
             self.pre_conv = tmp_pre_conv
@@ -89,7 +89,7 @@ class ConnectionsArchParamsCombiner(object):
         if len(last_convs) == 1:
             self.add_forbidden(last_convs[0].name + '.out_channels')
             self.add_condition(last_convs[0].name + '.out_channels', self.pre_conv.name + '.out_channels')
-            if vega.is_ms_backend():
+            if len(last_bns) > 0:
                 self.add_condition(last_bns[-1].name + '.num_features', self.pre_conv.name + '.out_channels')
         else:
             for last_conv in last_convs:
@@ -99,7 +99,8 @@ class ConnectionsArchParamsCombiner(object):
                 self.add_condition(last_convs[0].name + '.out_channels', self.pre_conv.name + '.out_channels')
                 for k, v in [(k, v) for k, v in self.conditions if v == last_conv.name + '.out_channels']:
                     self.add_condition(k, self.pre_conv.name + '.out_channels')
-        self.pre_conv = last_convs[0]
+        if len(last_convs) > 0:
+            self.pre_conv = last_convs[0]
 
     def add_condition(self, name, value):
         """Add condition."""

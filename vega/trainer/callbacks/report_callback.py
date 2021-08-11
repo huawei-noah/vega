@@ -52,8 +52,9 @@ class ReportCallback(Callback):
     def _update_report(self, epoch=0):
         if self.trainer.standalone:
             return
-        if self.trainer.distributed and os.environ["DEVICE_ID"] != "0":
-            return
+        if self.trainer.distributed:
+            if "DEVICE_ID" in os.environ and os.environ.get("DEVICE_ID") != "0":
+                return
         try:
             record = ReportClient().get_record(self.trainer.step_name, self.trainer.worker_id)
         except Exception as e:

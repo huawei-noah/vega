@@ -1,9 +1,6 @@
 general:
     backend: pytorch  # pytorch | tensorflow | mindspore
-    quota:
-        restrict:
-            model_valid: True
-        filter_rules: "model_valid"
+    quota: "model_valid"
 
 
 pipeline: [block_nas, net_nas]
