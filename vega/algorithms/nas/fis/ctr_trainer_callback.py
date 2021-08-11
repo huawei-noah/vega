@@ -41,5 +41,5 @@ class CtrTrainerCallback(Callback):
         if vega.is_gpu_device():
             input, target = input.cuda(), target.cuda()
         elif vega.is_npu_device():
-            input, target = input.npu(), target.npu()
+            input, target = input.to(vega.get_devices()), target.to(vega.get_devices())
         return (input, target)

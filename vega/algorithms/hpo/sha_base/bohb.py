@@ -65,7 +65,7 @@ class BOHB(ShaBase):
 
     def __init__(self, search_space, num_samples, max_epochs, repeat_times,
                  min_epochs=1, eta=3, multi_obj=False, random_samples=None,
-                 prob_crossover=0.6, prob_mutatation=0.2, tuner="GP"):
+                 prob_crossover=0.6, prob_mutatation=0.2, tuner="RF"):
         """Init BOHB."""
         super().__init__(search_space, num_samples, max_epochs, min_epochs, eta)
         # init all the configs

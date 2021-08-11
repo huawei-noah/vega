@@ -49,6 +49,18 @@ class SearchSpaceType(Enum):
 
     CONNECTIONS = 'connections'
 
+    @classmethod
+    def contains(cls, item):
+        """Use the contains method to replace the in operation."""
+        for _item in cls:
+            if isinstance(item, str):
+                if _item.value == item:
+                    return True
+            else:
+                if _item.value == item.value:
+                    return True
+        return False
+
 
 class ClassFactory(object):
     """A Factory Class to manage all class need to register with config."""
@@ -78,7 +90,7 @@ class ClassFactory(object):
                     raise ValueError(
                         "Cannot register duplicate class ({})".format(t_cls_name))
                 cls.__registry__[type_name].update({t_cls_name: t_cls})
-            if type_name in SearchSpaceType:
+            if SearchSpaceType.contains(type_name):
                 cls.register_cls(t_cls, ClassType.NETWORK, t_cls_name)
             return t_cls
 
@@ -189,25 +201,39 @@ class ClassFactory(object):
             return t_cls(**_params) if _params else t_cls()
         # remove extra params
         params_sig = sig(t_cls.__init__).parameters
-        for k, v in params_sig.items():
+        instance = cls._create_instance_params(params_sig, _params, t_cls)
+        if not instance:
+            extra_param = {k: v for k, v in _params.items() if k not in params_sig}
+            _params = {k: v for k, v in _params.items() if k not in extra_param}
             try:
-                if '*' in str(v) and '**' not in str(v):
-                    return t_cls(*list(_params.values())) if list(_params.values()) else t_cls()
-                if '**' in str(v):
-                    return t_cls(**_params) if _params else t_cls()
+                instance = t_cls(**_params) if _params else t_cls()
             except Exception as ex:
                 logging.error("Failed to create instance:{}".format(t_cls))
                 raise ex
-        extra_param = {k: v for k, v in _params.items() if k not in params_sig}
-        _params = {k: v for k, v in _params.items() if k not in extra_param}
+            for k, v in extra_param.items():
+                setattr(instance, k, v)
+        return instance
+
+    @classmethod
+    def _create_instance_params(cls, params_sig, _params, t_cls):
         try:
-            instance = t_cls(**_params) if _params else t_cls()
+            has_args = any('*' in str(v) and not str(v).startswith('**') for v in params_sig.values())
+            has_kwargs = any('**' in str(v) for v in params_sig.values())
+            if has_args and not has_kwargs:
+                return t_cls(*list(_params.values())) if list(_params.values()) else t_cls()
+            if not has_args and has_kwargs:
+                return t_cls(**_params) if _params else t_cls()
+            if has_args and has_kwargs:
+                if _params and list(_params.values()):
+                    return t_cls(*list(_params.values()), **_params)
+                if _params and not list(_params.values()):
+                    return t_cls(**_params)
+                if not _params and list(_params.values()):
+                    return t_cls(*list(_params.values()))
+                return t_cls()
         except Exception as ex:
             logging.error("Failed to create instance:{}".format(t_cls))
             raise ex
-        for k, v in extra_param.items():
-            setattr(instance, k, v)
-        return instance
 
     @classmethod
     def lazy_register(cls, base_pkg, pkg_cls_dict):

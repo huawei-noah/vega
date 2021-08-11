@@ -47,6 +47,7 @@ class DeviceEvaluator(Evaluator):
         # self.backend = self.config.backend
         self.hardware = self.config.hardware
         self.remote_host = self.config.remote_host
+        self.intermediate_format = self.config.intermediate_format
         self.calculate_metric = self.config.calculate_metric
         self.quantize = self.config.quantize
         self.model = model
@@ -97,7 +98,8 @@ class DeviceEvaluator(Evaluator):
                 reuse_model = False if global_step == 0 else True
                 results = evaluate(backend="pytorch", hardware=self.hardware, remote_host=self.remote_host,
                                    model=self.model, weight=None, test_data=test_data, input_shape=data.shape,
-                                   reuse_model=reuse_model, job_id=job_id, repeat_times=repeat_times)
+                                   reuse_model=reuse_model, job_id=job_id, repeat_times=repeat_times,
+                                   intermediate_format=self.intermediate_format)
                 if results.get("status") != "sucess" and error_count <= error_threshold:
                     error_count += 1
                     break

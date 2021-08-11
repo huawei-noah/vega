@@ -28,13 +28,13 @@ class Davinci(object):
             self.davinci_environment_type = optional_params.get("davinci_environment_type")
 
     def convert_model(self, backend, model, weight, **kwargs):
-        """Convert the tf/caffe/mindspore model to om model in Davinci.
+        """Convert the tf/caffe/mindspore/onnx model to om model in Davinci.
 
-        :param backend: the backend can be one of "tensorflow", "caffe" and "mindspore"
+        :param backend: the backend can be one of "tensorflow", "caffe", "mindspore" and "onnx"
         :type backend: str
         :param model: the model file need to convert
         :type model: str
-        :param weight: the weight file need to converta
+        :param weight: the weight file need to convert
         :type weight: str
         """
         om_save_path = kwargs["save_dir"]

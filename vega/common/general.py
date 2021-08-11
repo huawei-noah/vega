@@ -36,13 +36,15 @@ class ClusterConfig(ConfigSerializable):
     master_ip = None
     listen_port = get_available_port()
     slaves = []
+    standalone_boot = False
+    num_workers = 0
 
 
 class Worker(ConfigSerializable):
     """Worker Config."""
 
     # distributed = False
-    timeout = 1000
+    timeout = 5 * 24 * 3600     # 5 days
     eval_count = 10
     evaluate_timeout = 0.1
 
@@ -86,16 +88,6 @@ class Strategy(ConfigSerializable):
     only_search = False
 
 
-class QuotaConfig(ConfigSerializable):
-    """Quota Config."""
-
-    strategy = Strategy
-    target = Target
-    restrict = Restrict
-    filter_rules = "(flops_params)"
-    affinity = Affinity
-
-
 class General(ConfigSerializable):
     """General Config."""
 
@@ -111,7 +103,7 @@ class General(ConfigSerializable):
     calc_params_each_epoch = False
     dft = False
     workers_num = 1
-    quota = QuotaConfig
+    quota = None
     data_format = "channels_first"
     # parallel
     parallel_search = False

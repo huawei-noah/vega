@@ -129,12 +129,12 @@ class Evaluator(DistributedWorker):
         use_evaluator = False
         cls_evaluator_set = []
         if EvaluatorConfig.host_evaluator_enable:
-            cls_host_evaluator = ClassFactory.get_cls(ClassType.HOST_EVALUATOR, "HostEvaluator")
+            cls_host_evaluator = ClassFactory.get_cls(ClassType.HOST_EVALUATOR, EvaluatorConfig.host_evaluator.type)
             use_evaluator = True
             cls_evaluator_set.append(cls_host_evaluator)
         if EvaluatorConfig.device_evaluator_enable:
-            cls_device_evaluator = ClassFactory.get_cls(
-                ClassType.DEVICE_EVALUATOR, "DeviceEvaluator")
+            cls_device_evaluator = ClassFactory.get_cls(ClassType.DEVICE_EVALUATOR,
+                                                        EvaluatorConfig.device_evaluator.type)
             use_evaluator = True
             cls_evaluator_set.append(cls_device_evaluator)
         # TODO HAVA_D_EVALUATOR
@@ -182,7 +182,6 @@ class Evaluator(DistributedWorker):
                 pattern = FileOps.join_path(folder, "desc_*.json")
                 desc_file = glob.glob(pattern)[0]
                 model_desc = Config(desc_file)
-
             elif PipeStepConfig.pipe_step.get("models_folder") is not None:
                 folder = PipeStepConfig.pipe_step.get("models_folder").replace("{local_base_path}",
                                                                                self.local_base_path)

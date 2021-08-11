@@ -12,13 +12,14 @@
 
 import psutil
 import json
+import time
 from psutil import _pprint_secs
 from vega.common import MessageServer, MessageClient, argment_parser
 
 
 __all__ = [
-    "get_task_info", "get_pid", "is_vega_process", "get_vega_pids",
-    "query_process", "query_processes", "print_process", "print_processes"
+    "query_task_info", "get_pid", "is_vega_process", "get_vega_pids",
+    "query_process", "query_processes", "print_process", "print_processes",
 ]
 
 
@@ -51,20 +52,21 @@ def get_vega_pids():
     return [_pid for (_pid, _ppid) in vega_pids]
 
 
-def get_task_info(pid):
+def get_task_id_path_port(pid):
     """Get task id."""
     try:
         p = psutil.Process(pid)
         for connection in p.connections():
             port = connection.laddr.port
+            ip = connection.laddr.ip
             if port in range(MessageServer().min_port, MessageServer().max_port):
-                client = MessageClient(ip="127.0.0.1", port=port, timeout=1)
+                client = MessageClient(ip=ip, port=port, timeout=1)
                 result = client.send(action="query_task_info")
                 if isinstance(result, dict) and "task_id" in result:
-                    return result.get("task_id"), result.get("base_path")
-        return None, None
+                    return result.get("task_id"), result.get("base_path"), ip, port
+        return None, None, None, None
     except Exception:
-        return None, None
+        return None, None, None, None
 
 
 def get_pid(task_id):
@@ -80,10 +82,10 @@ def is_vega_process(pid):
     """Is it vega process."""
     try:
         p = psutil.Process(pid)
+        if p.name().startswith("vega-main"):
+            return True
     except Exception:
         return False
-    if p.name().startswith("vega-main"):
-        return True
     return False
 
 
@@ -132,7 +134,7 @@ def query_process(pid):
     """Query process info."""
     try:
         p = psutil.Process(pid)
-        (task_id, base_path) = get_task_info(pid)
+        (task_id, base_path, ip, port) = get_task_id_path_port(pid)
         return {
             "PID": pid,
             "cmdline": p.cmdline()[2:],
@@ -141,12 +143,26 @@ def query_process(pid):
             "task_id": task_id if task_id is not None else "Unknown",
             "base_path": base_path if base_path is not None else "Unknown",
             "user": p.username(),
+            "ip": ip,
+            "port": port,
+            "running_seconds": int(time.time() - p.create_time()),
         }
     except Exception as e:
         return {
             "PID": pid,
             "message": str(e),
         }
+
+
+def query_task_info(task_id):
+    """Query task info."""
+    pids = get_vega_pids()
+    if pids:
+        for id, pid in enumerate(pids):
+            info = query_process(pid)
+            if isinstance(info, dict) and info.get("task_id", None) == task_id:
+                return info
+    return None
 
 
 def query_processes():

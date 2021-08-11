@@ -40,7 +40,7 @@ worker_id = cf_content.get('worker_id')
 ClassFactory.__registry__ = cf_content.get('registry')
 General.from_dict(cf_content.get('general_config'))
 PipeStepConfig.from_dict(cf_content.get('pipe_step_config'))
-cls_trainer = ClassFactory.get_cls('trainer')
+cls_trainer = ClassFactory.get_cls('trainer', "Trainer")
 # for record in records:
 trainer = cls_trainer(model_desc=model_desc, id=worker_id)
 trainer.train_process()

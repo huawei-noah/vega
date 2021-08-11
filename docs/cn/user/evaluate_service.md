@@ -269,9 +269,9 @@ from .my_hardware import MyHardware
 
 ## 6. FAQ
 
-### 6.1 Pytorch模型评估
+### 6.1 Pytorch模型转换caffe模型
 
-在评估服务的客户端需要进行`Pytorch`模型的转换，请下载[PytorchToCaffe](https://github.com/xxradon/PytorchToCaffe)获取并放在`./third_party`目录下(third_party目录与vega处于同一目录层级)。
+如果需要将pytorch模型转换为caffe模型,请下载[PytorchToCaffe](https://github.com/xxradon/PytorchToCaffe)获取并放在`./third_party`目录下(third_party目录与vega处于同一目录层级)。
 
 注意： 该第三方开源软件不支持pytorch1.1版本， 并且如果您使用原生torchvisoin中的模型， 当torchvision版本高于0.2.0时， 您需要做以下额外修改:
 修改`pytorch_to_caffe.py`文件， 增加以下内容：

@@ -36,10 +36,10 @@ def transform_architecture(model, pretrained_model_file=None):
         assert len(changed_name_list) == len(mask_weight_list)
         # change model and rebuild
         model_desc = model.desc
-        root_name = [name for name in list(model_desc.keys()) if name not in ('type', '_arch_params')]
+        # root_name = [name for name in list(model_desc.keys()) if name not in ('type', '_arch_params')]
         for changed_name, mask in zip(changed_name_list, mask_weight_list):
             name = changed_name.split('.')
-            name[0] = root_name[int(name[0])]
+            # name[0] = root_name[int(name[0])]
             assert len(name) <= 6
             if len(name) == 6:
                 model_desc[name[0]][name[1]][name[2]][name[3]][name[4]][name[5]] = sum(mask)
@@ -56,7 +56,7 @@ def transform_architecture(model, pretrained_model_file=None):
         model_desc.pop('_arch_params') if '_arch_params' in model_desc else model_desc
         model.desc = model_desc
         # change weight
-        if hasattr(model, "pretrained"):
+        if pretrained_model_file and hasattr(model, "pretrained"):
             pretrained_weight = model.pretrained(pretrained_model_file)
             load_checkpoint(pretrained_weight, net=model)
             os.remove(pretrained_weight)
@@ -66,11 +66,21 @@ def transform_architecture(model, pretrained_model_file=None):
             if not ClassFactory.is_exists(model._arch_params_type, module.model_name):
                 continue
             arch_cls = ClassFactory.get_cls(model._arch_params_type, module.model_name)
-
             decode_fn(module, arch_cls)
             module.register_forward_pre_hook(arch_cls.fit_weights)
-            module.register_forward_hook(module.clear_module_arch_params)
+            # module.register_forward_hook(module.clear_module_arch_params)
     return model
+
+
+def register_clear_module_arch_params_hooks(model):
+    """Register hooks."""
+    if not hasattr(model, "_arch_params") or not model._arch_params or \
+            PipeStepConfig.pipe_step.get("type") == "TrainPipeStep":
+        return
+    for name, module in model.named_modules():
+        if not ClassFactory.is_exists(model._arch_params_type, module.model_name):
+            continue
+        module.register_forward_hook(module.clear_module_arch_params)
 
 
 def decode_fn(module, arch_cls):

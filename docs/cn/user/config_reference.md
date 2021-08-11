@@ -61,12 +61,7 @@ my_fully_train:
 | logger / level | debug \| info \| warn \| error \| critical | info | 日志级别。 |
 | cluster / master_ip | - | ~ | 在集群场景下需要设置该参数，设置为master节点的IP地址。 |
 | cluster / slaves | - | [] | 在集群场景下需要设置该参数，设置为除了master节点外的其他节点的IP地址。 |
-| quota / restrict / flops | - | ~ | 过滤模型。设置采样模型的浮点计算量最大值或范围，单位为M。 |
-| quota / restrict / params | - | ~ | 过滤模型。设置采样模型的参数量最大值或范围，单位为K。 |
-| quota / restrict / latency | - | ~ | 过滤模型。设置采样模型的时延最大值或范围，单位为ms。 |
-| quota / target / type | accuracy \| IoUMetric \| PSNR | ~ | 过滤模型。设置模型的训练metric目标类型。 |
-| quota / target / value | - | ~ | 过滤模型。设置模型的训练metric目标值。 |
-| quota / runtime | - | ~ | 用户设定的Pipeline最大运行时间估计值，单位为h。 |
+| quota | - | ~ | 过滤模型。可设置采样模型的浮点计算量最大值或范围（单位为M），模型的参数量最大值或范围（单位为K），采样模型的时延最大值或范围（单位为ms），Pipeline最大运行时间（单位为h）。支持"<"、">"、"in"、"and" 四种操作。<br>eg: "flops < 10 and params in [100, 1000]" |
 
 ```yaml
 general:
@@ -81,15 +76,7 @@ general:
     cluster:
         master_ip: ~
         slaves: []
-    quota:
-        restrict:
-            flops: 10
-            params: [100, 1000]
-            latency: 100
-        target:
-            type: accuracy
-            value: 0.98
-        runtime: 10
+    quota: "flops < 10 and params in [100, 1000]"
 ```
 
 ## 2.1 并行和分布式
@@ -244,7 +231,7 @@ search_algorithm:
 | type | 搜索算法名称，包括RandomSearch、AshaHpo、BohbHpo、BossHpo、PBTHpo | `type: RandomSearch` |
 | objective_keys | 优化目标 | `objective_keys:  'accuracy'` |
 | policy.total_epochs | 搜索epoch配额。Vega简化了配置策略，只需要配置该参数。若需了解其他参数配置，可参考HPO和NAGO算法示例。 | `total_epochs: 2430` |
-| tuner | tuner类型，用于BOHB算法，包括gp（缺省）、rf、hebo | tuner: "gp" |
+| tuner | tuner类型，用于BOHB算法，包括gp、rf（缺省）、hebo | tuner: "rf" |
 
 注意：若参数tuner设置hebo，则需要安装"[HEBO](https://github.com/huawei-noah/noah-research/tree/master/HEBO)"，且需要注意gpytorch的版本为1.1.1，torch的版本设置为1.5.0，torchvision的版本为0.5.0。
 

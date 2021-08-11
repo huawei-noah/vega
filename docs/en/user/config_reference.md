@@ -60,12 +60,7 @@ The following public configuration items can be configured:
 | logger / level | debug \| info \| warn \| error \| critical | info | Log level |
 | cluster / master_ip | - | ~ | In the cluster scenario, this parameter needs to be set to the IP address of the master node. |
 | cluster / slaves | - | [] | In the cluster scenario, this parameter needs to be set to the IP address of other nodes except the master node. |
-| quota / restrict / flops | - | ~ | Models filter. Set maximum value or range of the floating-point calculation amount of the sampling model, in MB. |
-| quota / restrict / params | - | ~ | Models filter. Set maximum value or range of the parameter of the sampling model, in KB. |
-| quota / restrict / latency | - | ~ | Models filter. Set maximum value or range of the latency of the sampling model, in ms. |
-| quota / target / type | accuracy \| IoUMetric \| PSNR | ~ | Models filter. set training metric target type. |
-| quota / target / value | - | ~ | Models filter. Set target training metric of a model. |
-| quota / runtime | - | ~ | Max pipeline estimated running time set by user, in h. |
+| quota | - | ~ | Models filter. Set maximum value or range of the floating-point calculation amount of the sampling model (MB), the parameters of the sampling model (KB), the latency of the sampling model (ms), max pipeline estimated running time set by user (hour). The options are "<", ">", "in", and "and".<br>eg: "flops < 10 and params in [100, 1000]" |
 
 ```yaml
 general:
@@ -80,15 +75,7 @@ general:
     cluster:
         master_ip: ~
         slaves: []
-    quota:
-        restrict:
-            flops: 10
-            params: [100, 1000]
-            latency: 100
-        target:
-            type: accuracy
-            value: 0.98
-        runtime: 10
+    quota: "flops < 10 and params in [100, 1000]"
 ```
 
 ## 2.1 Parallel and distributed

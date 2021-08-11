@@ -49,4 +49,3 @@ fullytrain:
         epochs: 2
         # script: "./train.py"
         script: "./train_vega.py"
-        hps_folder: "{local_base_path}/output/hpo"

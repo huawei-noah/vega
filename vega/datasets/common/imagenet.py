@@ -19,7 +19,7 @@ from vega.datasets.conf.imagenet import ImagenetConfig
 
 
 @ClassFactory.register(ClassType.DATASET)
-class Imagenet(ImageFolder, Dataset):
+class Imagenet(Dataset):
     """This is a class for Imagenet dataset, wchich is the subclass of ImageNet and Dataset.
 
     :param mode: `train`,`val` or `test`, defaults to `train`
@@ -37,8 +37,7 @@ class Imagenet(ImageFolder, Dataset):
         self.args.data_path = FileOps.download_dataset(self.args.data_path)
         split = 'train' if self.mode == 'train' else 'val'
         local_data_path = FileOps.join_path(self.args.data_path, split)
-        delattr(self, 'loader')
-        ImageFolder.__init__(self, root=local_data_path, transform=Compose(self.transforms.__transform__))
+        self.image_folder = ImageFolder(root=local_data_path, transform=Compose(self.transforms.__transform__))
 
     @property
     def input_channels(self):
@@ -57,3 +56,11 @@ class Imagenet(ImageFolder, Dataset):
         :rtype: int
         """
         return self.shape[1]
+
+    def __len__(self):
+        """Get the length of the dataset."""
+        return self.image_folder.__len__()
+
+    def __getitem__(self, index):
+        """Get an item of the dataset according to the index."""
+        return self.image_folder.__getitem__(index)

@@ -15,11 +15,11 @@ import json
 import time
 from datetime import datetime
 from vega.common import Status, JsonEncoder, DatatimeFormatString, argment_parser
-from vega.tools.query_process import get_pid
+from vega.tools.query_process import query_task_info
+from vega.common import MessageClient
 
 
 __all__ = ["query_progress"]
-time_limit = 180
 
 
 def _parse_args(desc):
@@ -118,40 +118,46 @@ def _statistic_progress(progress):
     return progress
 
 
-def query_progress():
+def _query_report(task_info):
+    """Get task id."""
+    try:
+        port = task_info["port"]
+        ip = task_info["ip"]
+        client = MessageClient(ip=ip, port=port, timeout=1)
+        return client.send(action="query_report")
+    except Exception:
+        return None
+
+
+def query_progress(times=0):
     """Query vega progress."""
     args = _parse_args("Query Vega progress.")
-    is_running = get_pid(args.task_id)
-    report_path = _get_report_path(args.root_path, args.task_id)
+    task_info = query_task_info(args.task_id)
 
-    if not os.path.exists(report_path):
-        if is_running is None:
-            run_time = time.time() - is_running.create_time()
-            if run_time > 0 and run_time < time_limit:
-                return json.dumps({
-                    "status": Status.error,
-                    "message": "The task is being created, please query again."
-                }, cls=JsonEncoder, indent=4)
+    if not task_info:
+        report_path = _get_report_path(args.root_path, args.task_id)
+        if not os.path.exists(report_path):
+            times += 1
+            if times <= 3:
+                time.sleep(0.5)
+                query_progress(times)
             else:
                 return json.dumps({
                     "status": Status.error,
                     "message": "The task does not exist, please check root path and task id."
                 }, cls=JsonEncoder, indent=4)
-        else:
-            return json.dumps({
-                "status": Status.initializing,
-            }, cls=JsonEncoder, indent=4)
-
-    report = _load_report(report_path)
+        report = _load_report(report_path)
+    else:
+        report = _query_report(task_info)
     if not report:
         return json.dumps({
             "status": Status.error,
-            "message": "Failed to read report file."
+            "message": "Failed to query progress."
         }, cls=JsonEncoder, indent=4)
 
     progress = _parse_report(report)
     progress = _statistic_progress(progress)
-    if progress["status"] == Status.running and not is_running:
+    if progress["status"] == Status.running and not task_info:
         progress["status"] = Status.stopped
 
     return json.dumps(progress, cls=JsonEncoder, indent=4)

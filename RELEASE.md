@@ -1,4 +1,4 @@
-**Vega ver1.5.0 released:**
+**Vega ver1.6.0 released:**
 
 **Introduction**
 

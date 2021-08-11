@@ -146,7 +146,7 @@ class TunerBuilder(object):
             params = self.search_space.get_sample_space(gridding=True)
             LOG.info('Start to transform hyper-parameters')
             for param in params:
-                param = self.search_space.deocde(param)
+                param = self.search_space.decode(param)
                 # Remove duplicate hyper-parameters
                 if param not in params_list:
                     params_list.append(param)

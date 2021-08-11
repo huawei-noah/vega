@@ -9,6 +9,7 @@
 # MIT License for more details.
 
 """Import all torch operators."""
+import math
 from vega.common import ClassType, ClassFactory
 from vega.modules.operators import ops
 
@@ -124,7 +125,7 @@ class GAPConv1x1(ops.Module):
         super(GAPConv1x1, self).__init__()
         self.conv1x1 = conv_bn_relu(C_in, C_out, 1, stride=1, padding=0)
 
-    def call(self, x, *args, **kwargs):
+    def call(self, x=None, *args, **kwargs):
         """Call GAPConv1x1."""
         size = ops.get_shape(x)[2:]
         out = x
@@ -153,7 +154,7 @@ class FactorizedReduce(ops.Module):
         self.conv_2 = ops.Conv2d(C_in, C_out // 2, 1, stride=2, padding=0, bias=False)
         self.bn = ops.BatchNorm2d(C_out, affine=affine)
 
-    def call(self, x):
+    def call(self, x=None, *args, **kwargs):
         """Do an inference on FactorizedReduce."""
         x = self.relu(x)
         out = ops.concat((self.conv_1(x), self.conv_2(x[:, :, 1:, 1:])))
@@ -182,3 +183,34 @@ class Seq(ops.Module):
         super(Seq, self).__init__()
         for idx, model in enumerate(models):
             self.add_module(str(idx), model)
+
+
+@ClassFactory.register(ClassType.NETWORK)
+class GhostConv2d(ops.Module):
+    """Ghost Conv2d Module."""
+
+    def __init__(self, C_in, C_out, kernel_size=3, stride=1, affine=True, padding=0, ratio=2):
+        super(GhostConv2d, self).__init__()
+        self.C_out = C_out
+        init_channels = math.ceil(C_out / ratio)
+        new_channels = init_channels * (ratio - 1)
+
+        self.primary_conv = Seq(
+            ops.Relu(inplace=False),
+            ops.Conv2d(C_in, init_channels, kernel_size=1, stride=stride, padding=padding, bias=False),
+            ops.BatchNorm2d(init_channels, affine=affine)
+        )
+
+        self.cheap_operation = Seq(
+            ops.Relu(inplace=False),
+            ops.Conv2d(init_channels, new_channels, kernel_size=kernel_size, stride=1, padding=kernel_size // 2,
+                       groups=init_channels, bias=False),
+            ops.BatchNorm2d(new_channels, affine=affine)
+        )
+
+    def call(self, x=None, *args, **kwargs):
+        """Call function."""
+        x1 = self.primary_conv(x)
+        x2 = self.cheap_operation(x1)
+        out = ops.concat([x1, x2], dim=1)
+        return out[:, :self.C_out, :, :]

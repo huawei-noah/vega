@@ -46,9 +46,11 @@ class ReportServer(object):
         self._hist_records = OrderedDict()
         self.persistence = ReportPersistence()
         self._start_save_report_thread()
+        self.old_not_finished_workers = []
 
     def run(self):
         """Run report server."""
+        MessageServer().register_handler("query_report", query_report)
         MessageServer().register_handler("update_record", update_record)
         MessageServer().register_handler("get_record", get_record)
 
@@ -117,7 +119,8 @@ class ReportServer(object):
         if records:
             not_finished = [x.worker_id for x in records if not x.rewards_compeleted]
             records = [x for x in records if x.rewards_compeleted]
-            if not_finished:
+            if not_finished and set(not_finished) != set(self.old_not_finished_workers):
+                self.old_not_finished_workers = not_finished
                 logging.info(f"waiting for the workers {str(not_finished)} to finish")
         if not records:
             return []
@@ -240,26 +243,54 @@ class ReportServer(object):
             logging.error("Failed to load records from model folder, folder={}".format(model_folder))
             return []
         records = []
-        pattern = FileOps.join_path(model_folder, "desc_*.json")
-        files = glob.glob(pattern)
-        for _file in files:
+        pattern_model_desc = FileOps.join_path(model_folder, "desc_*.json")
+        pattern_hps = FileOps.join_path(model_folder, "hps_*.json")
+        model_desc_files = glob.glob(pattern_model_desc)
+        hps_files = glob.glob(pattern_hps)
+        for _file in model_desc_files:
             try:
                 with open(_file) as f:
-                    worker_id = _file.split(".")[-2].split("_")[-1]
-                    weights_file = os.path.join(os.path.dirname(_file), "model_{}".format(worker_id))
-                    if vega.is_torch_backend():
-                        weights_file = '{}.pth'.format(weights_file)
-                    elif vega.is_ms_backend():
-                        weights_file = '{}.ckpt'.format(weights_file)
-                    if not os.path.exists(weights_file):
-                        weights_file = None
-
-                    sample = dict(worker_id=worker_id, desc=json.load(f), weights_file=weights_file)
-                    record = ReportRecord().load_dict(sample)
-                    records.append(record)
+                    desc = json.load(f)
+                worker_id = _file.split(".")[-2].split("_")[-1]
+                weights_file = os.path.join(os.path.dirname(_file), "model_{}".format(worker_id))
+                if vega.is_torch_backend():
+                    weights_file = '{}.pth'.format(weights_file)
+                elif vega.is_ms_backend():
+                    weights_file = '{}.ckpt'.format(weights_file)
+                if not os.path.exists(weights_file):
+                    weights_file = None
+                hps_file = os.path.join(os.path.dirname(_file), os.path.basename(_file).replace("desc_", "hps_"))
+                hps = None
+                if hps_file in hps_files:
+                    hps = cls._load_hps(hps_file)
+                    hps_files.remove(hps_file)
+                sample = dict(worker_id=worker_id, desc=desc, weights_file=weights_file, hps=hps)
+                record = ReportRecord().load_dict(sample)
+                records.append(record)
             except Exception as ex:
                 logging.info('Can not read records from json because {}'.format(ex))
+        if len(hps_files) > 0:
+            for _file in hps_files:
+                try:
+                    hps = None
+                    hps = cls._load_hps(hps_file)
+                    sample = dict(worker_id=worker_id, hps=hps)
+                    record = ReportRecord().load_dict(sample)
+                    records.append(record)
+                except Exception as ex:
+                    logging.info('Can not read records from json because {}'.format(ex))
         return records
+
+    @classmethod
+    def _load_hps(cls, hps_file):
+        with open(hps_file) as f:
+            hps = json.load(f)
+        if "trainer" in hps:
+            if "epochs" in hps["trainer"]:
+                hps["trainer"].pop("epochs")
+            if "checkpoint_path" in hps["trainer"]:
+                hps["trainer"].pop("checkpoint_path")
+        return hps
 
     def _start_save_report_thread(self):
         _thread = Thread(target=_dump_report, args=(self, self.persistence,))
@@ -308,7 +339,7 @@ def _dump_report(report_server, persistence):
         with _records_lock:
             if not _modified:
                 continue
-            all_records = deepcopy(report_server.all_records)
+            all_records = report_server.all_records
             _modified = False
 
         try:
@@ -318,3 +349,10 @@ def _dump_report(report_server, persistence):
             report_server.backup_output_path()
         except Exception as e:
             logging.warning(f"Failed to dump reports, message={str(e)}")
+
+
+def query_report():
+    global _records_lock
+    with _records_lock:
+        all_records = ReportServer().all_records
+        return ReportServer().persistence.get_report(all_records)

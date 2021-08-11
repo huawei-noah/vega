@@ -20,18 +20,26 @@ from vega.modules.operators import ops
 class ConnectionsDecorator(Module):
     """Base class for Connections."""
 
-    def __init__(self, *models):
-        super(ConnectionsDecorator, self).__init__(*models)
-        for idx, model in enumerate(models):
-            if isinstance(model, OrderedDict):
-                for name, value in model.items():
-                    if not isinstance(value, Module) and isinstance(value, dict):
-                        value = self.from_desc(value)
-                    self.add_module(name, value)
-            else:
-                if not isinstance(model, Module) and isinstance(model, dict):
-                    model = self.from_desc(model)
-                self.add_module(str(idx), model)
+    def __init__(self, *models, **kwargs):
+        super(ConnectionsDecorator, self).__init__(*models, **kwargs)
+        # for key, model in kwargs.items():
+        if kwargs:
+            for key, model in kwargs.items():
+                self.__add_module(key, model)
+        else:
+            for idx, model in enumerate(models):
+                self.__add_module(str(idx), model)
+
+    def __add_module(self, key, model):
+        if isinstance(model, OrderedDict):
+            for name, value in model.items():
+                if not isinstance(value, Module) and isinstance(value, dict):
+                    value = self.from_desc(value)
+                self.add_module(name, value)
+        else:
+            if not isinstance(model, Module) and isinstance(model, dict):
+                model = self.from_desc(model)
+            self.add_module(key, model)
 
     def to_desc(self, recursion=True):
         """Convert module to desc."""
@@ -77,8 +85,8 @@ class Add(ConnectionsDecorator):
 class Sequential(ConnectionsDecorator):
     """Sequential SearchSpace."""
 
-    def __init__(self, *models):
-        super(Sequential, self).__init__(*models)
+    def __init__(self, *models, **kwargs):
+        super(Sequential, self).__init__(*models, **kwargs)
 
     def append(self, module, name=None):
         """Append new module."""
@@ -258,6 +266,32 @@ class ProcessList(ConnectionsDecorator):
                     inputs.append(model(inputs[idx]))
             output = inputs
         return output
+
+
+@ClassFactory.register(SearchSpaceType.CONNECTIONS)
+class Reshape(ConnectionsDecorator):
+    """Create Lambda for forward x."""
+
+    def __init__(self, *models):
+        super(Reshape, self).__init__(*models)
+
+    def call(self, x):
+        """Forward x."""
+        inputs = None
+        new_shape = None
+        for model in self.children():
+            if model is not None:
+                if inputs is None:
+                    inputs = model(x)
+                else:
+                    new_shape = model(x)
+        import torch
+        return torch.reshape(inputs, tuple(new_shape.to("cpu").numpy()))
+
+    @property
+    def out_channels(self):
+        """Get out channels."""
+        return [k.out_channels for k in self.children() if hasattr(k, 'out_channels')]
 
 
 @ClassFactory.register(ClassType.NETWORK)

@@ -51,8 +51,16 @@ class ReportPersistence(object):
         try:
             _file = FileOps.join_path(TaskOps().local_output_path, "reports.json")
             FileOps.make_base_dir(_file)
-            data = {"_steps_": []}
+            data = self.get_report(records)
+            with open(_file, "w") as f:
+                json.dump(data, f, indent=4, cls=JsonEncoder)
+        except Exception:
+            logging.warning(traceback.format_exc())
 
+    def get_report(self, records):
+        """Save report to `reports.json`."""
+        try:
+            data = {"_steps_": []}
             for step in self.step_names:
                 if step in self.steps:
                     data["_steps_"].append(self.steps[step])
@@ -61,14 +69,12 @@ class ReportPersistence(object):
                         "step_name": step,
                         "status": Status.unstarted
                     })
-
             for record in records:
                 if record.step_name in data:
                     data[record.step_name].append(record.to_dict())
                 else:
                     data[record.step_name] = [record.to_dict()]
-            with open(_file, "w") as f:
-                json.dump(data, f, indent=4, cls=JsonEncoder)
+            return data
         except Exception:
             logging.warning(traceback.format_exc())
 

@@ -1,4 +1,4 @@
-__version__ = "1.5.0"
+__version__ = "1.6.0"
 
 
 import sys
@@ -10,6 +10,7 @@ from .common.backend_register import *
 from .common.class_factory import ClassFactory, ClassType
 from .core import run, init_cluster_args, module_existed
 from .trainer.trial_agent import TrialAgent
+from .quota import *
 
 
 def network(name, **kwargs):
@@ -25,3 +26,8 @@ def dataset(name, **kwargs):
 def trainer(name="Trainer", **kwargs):
     """Return trainer."""
     return ClassFactory.get_cls(ClassType.TRAINER, name)(**kwargs)
+
+
+def quota(**kwargs):
+    """Return quota."""
+    return ClassFactory.get_cls(ClassType.QUOTA, "Quota")(**kwargs)

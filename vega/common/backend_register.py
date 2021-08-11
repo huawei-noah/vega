@@ -11,12 +11,13 @@
 """Backend Register."""
 
 import os
-
+import sys
 
 __all__ = [
     "set_backend",
     "is_cpu_device", "is_gpu_device", "is_npu_device",
-    "is_ms_backend", "is_tf_backend", "is_torch_backend"
+    "is_ms_backend", "is_tf_backend", "is_torch_backend",
+    "get_devices",
 ]
 
 
@@ -43,7 +44,7 @@ def set_backend(backend='pytorch', device_category='GPU'):
     if device_category is not None:
         os.environ['DEVICE_CATEGORY'] = device_category.upper()
         from vega.common.general import General
-        General.device_category == device_category
+        General.device_category = device_category
 
     # backend
     if backend.lower() in ['pytorch', "p"]:
@@ -71,6 +72,14 @@ def set_backend(backend='pytorch', device_category='GPU'):
     register_networks(backend)
     register_modelzoo(backend)
 
+    # register ext modules
+    vega_extension_path = os.environ.get("VEGA_EXTENSION_PATH")
+    if vega_extension_path:
+        sys.path.append(vega_extension_path)
+    try:
+        import vega_extension
+    except ImportError:
+        pass
     # backup config
     from vega.common.config_serializable import backup_configs
     backup_configs()
@@ -104,3 +113,12 @@ def is_tf_backend():
 def is_ms_backend():
     """Return whether is tensorflow backend or not."""
     return os.environ.get('BACKEND_TYPE', None) == 'MINDSPORE'
+
+
+def get_devices():
+    """Get devices."""
+    device_id = os.environ.get('DEVICE_ID', 0)
+    device_category = os.environ.get('DEVICE_CATEGORY', 'CPU')
+    if device_category == 'GPU':
+        device_category = 'cuda'
+    return "{}:{}".format(device_category.lower(), device_id)

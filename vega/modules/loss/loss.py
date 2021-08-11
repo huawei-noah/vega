@@ -44,8 +44,8 @@ class Loss(object):
             if vega.is_torch_backend():
                 if vega.is_gpu_device():
                     cls_obj = cls_obj.cuda()
-                elif vega.is_npu_device():
-                    cls_obj = cls_obj.npu()
+                elif vega.is_npu_device() and not cls_obj.__class__.__name__ == 'SumLoss':
+                    cls_obj = cls_obj.to(vega.get_devices())
             return cls_obj
         except Exception as ex:
             logging.error("Failed to call Loss name={}, params={}".format(self._cls.__name__, params))
@@ -54,15 +54,19 @@ class Loss(object):
 
 if vega.is_torch_backend():
     import torch.nn as torch_nn
+
     ClassFactory.register_from_package(torch_nn, ClassType.LOSS)
     try:
         import timm.loss as timm_loss
+
         ClassFactory.register_from_package(timm_loss, ClassType.LOSS)
     except Exception:
         pass
 elif vega.is_tf_backend():
     import tensorflow.compat.v1.losses as tf_loss
+
     ClassFactory.register_from_package(tf_loss, ClassType.LOSS)
 elif vega.is_ms_backend():
     import mindspore.nn.loss as ms_loss
+
     ClassFactory.register_from_package(ms_loss, ClassType.LOSS)

@@ -273,9 +273,9 @@ from .my_hardware import MyHardware
 
 ## 6. FAQ
 
-### 6.1 Pytorch Model Evaluation
+### 6.1 Convert pytorch model to caffe model
 
-The `Pytorch` model needs to be converted on the Appraisal client. Download [PytorchToCaffe](https://github.com/xxradon/PytorchToCaffe) and store it in the `./third_party` directory (the third_party directory and vega directory are at the same directory level).
+If you need to convert the pytorch model to caffe model,  download [PytorchToCaffe](https://github.com/xxradon/PytorchToCaffe) and store it in the `./third_party` directory (the third_party directory and vega directory are at the same directory level).
 
 Note: The third-party open-source software does not support pytorch1.1. If you use the model in the native torchvisoin and the torchvision version is later than 0.2.0, you need to make the following additional modifications:
 Add the following content to the `pytorch_to_caffe.py` file:

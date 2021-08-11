@@ -15,6 +15,7 @@ from vega.common import ConfigSerializable
 
 class MFASCConfig(ConfigSerializable):
     """MF-ASC Config."""
+
     sample_size = 5000
     batch_size = 1000
     prior_rho = 1.0
