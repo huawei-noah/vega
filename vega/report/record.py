@@ -255,7 +255,9 @@ class ReportRecord(object):
             for key, value in src_dic.items():
                 if key in ["original_rewards", "rewards"]:
                     continue
-                if isinstance(value, dict) and isinstance(getattr(self, key), dict):
+                update_flag = isinstance(value, dict) and isinstance(getattr(self, key), dict)
+                update_flag = update_flag and key not in ["desc"]
+                if update_flag:
                     for value_key, value_value in value.items():
                         getattr(self, key)[value_key] = value_value
                 else:
