@@ -18,7 +18,7 @@ class HostEvaluatorConfig(ConfigSerializable):
 
     _type_name = ClassType.HOST_EVALUATOR
     type = None
-    evaluate_latency = None
+    evaluate_latency = True
     cuda = True
     metric = {'type': 'accuracy'}
     report_freq = 10
