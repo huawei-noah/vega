@@ -9,14 +9,12 @@
 
 ---
 
-**Vega ver1.6.0 发布**
+**Vega ver1.6.1 发布**
 
-- 特性增强
+- Bug Fixes
 
-  - 支持简洁的quota设置，比如：`quota: flops < 11.2 and params in [34.0, 56.0]`。
-  - 支持在python虚拟环境下运行Vega。
-  - 支持运行环境：Python 3.8和PyTorch 1.9。
-  - 解决了并行训练和分布式搜索的一些bug。
+  - 日志打印中的评估时间错误。
+  - 更新Record时错误更新了模型描述。
 
 ---
 
