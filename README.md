@@ -8,14 +8,12 @@
 
 ---
 
-**Vega ver1.6.0 released**
+**Vega ver1.6.1 released**
 
-- Feature enhancement:
+- Bug Fixes:
 
-  - Supports simple quota settings, for example, `quota: flops < 11.2 and params in [34.0, 56.0]`.
-  - Supports running Vega in a Python virtual environment.
-  - Supported running environments: Python 3.8 and PyTorch 1.9.
-  - Fixed some bugs with parallel training and distributed search.
+  - Evaluation time error in log.
+  - Updating error model description while updating record.
 
 ---
 

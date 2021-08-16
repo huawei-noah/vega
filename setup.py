@@ -23,7 +23,7 @@ with open("RELEASE.md", "r") as fh:
 
 setuptools.setup(
     name="noah-vega",
-    version="1.6.0",
+    version="1.6.1",
     packages=["vega", "evaluate_service"],
     include_package_data=True,
     python_requires=">=3.6",
