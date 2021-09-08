@@ -473,6 +473,19 @@
         <td align="center"><a href="https://box.saas.huaweicloud.com/p/5b75df5d8c7192f5a1089768a98ab304">tar</a></td>
     </tr>
     <tr>
+        <td>D-Net-426</a></td>
+        <td>78.24</td>
+        <td>4.24</td>
+        <td>25.31</td>
+        <td>3.56</td>
+        <td>8.37</td>
+        <td>27.06</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td align="center"><a href="https://box.saas.huaweicloud.com/p/8f0e0f9be21cc93f8123f9a70ada18f8">tar</a></td>
+    </tr>
+    <tr>
         <td>D-Net-504</a></td>
         <td>78.96</td>
         <td>5.04</td>
