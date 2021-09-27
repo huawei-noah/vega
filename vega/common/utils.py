@@ -110,6 +110,13 @@ def init_log(level, log_path="./logs/", log_file="log.txt"):
     logging.getLogger().addHandler(fh)
     pil_logger = logging.getLogger('PIL')
     pil_logger.setLevel(logging.INFO)
+    return fh
+
+
+def close_log(fh: logging.Handler):
+    """Close log."""
+    fh.close()
+    logging.getLogger().removeHandler(fh)
 
 
 def lazy(func):

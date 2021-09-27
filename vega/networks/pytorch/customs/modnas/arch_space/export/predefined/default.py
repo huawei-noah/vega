@@ -14,20 +14,21 @@ import json
 import yaml
 from modnas.core.param_space import ParamSpace
 from modnas.registry.export import register, build
+from typing import Any, Dict, List, Optional, Union
 
 
 @register
 class DefaultToFileExporter():
     """Exporter that saves archdesc to file."""
 
-    def __init__(self, path, ext='yaml'):
+    def __init__(self, path: str, ext: str = 'yaml') -> None:
         path, pathext = os.path.splitext(path)
         ext = pathext or ext
         path = path + '.' + ext
         self.path = path
         self.ext = ext
 
-    def __call__(self, desc):
+    def __call__(self, desc: Any) -> None:
         """Run Exporter."""
         ext = self.ext
         if isinstance(desc, str):
@@ -58,18 +59,15 @@ class MergeExporter():
 class DefaultParamsExporter():
     """Exporter that outputs parameter values."""
 
-    def __init__(self, export_fmt=None, with_keys=True):
+    def __init__(self, export_fmt: Optional[str] = None, with_keys: bool = True) -> None:
         self.export_fmt = export_fmt
         self.with_keys = with_keys
 
-    def __call__(self, model):
+    def __call__(self, model: None) -> Union[Dict[str, Any], List[Any], str]:
         """Run Exporter."""
         if self.with_keys:
-            params = dict(ParamSpace().named_param_values())
+            params_dct = dict(ParamSpace().named_param_values())
+            return self.export_fmt.format(**params_dct) if self.export_fmt else params_dct
         else:
-            params = [p.value() for p in ParamSpace().params()]
-        if self.export_fmt:
-            if self.with_keys:
-                return self.export_fmt.format(**params)
-            return self.export_fmt.format(*params)
-        return params
+            params_list = [p.value() for p in ParamSpace().params()]
+            return self.export_fmt.format(*params_list) if self.export_fmt else params_list

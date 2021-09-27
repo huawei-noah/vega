@@ -100,6 +100,7 @@ def _calc_forward_latency_davinci(model, input, sess_config=None, num=10, evalua
     # backend = evaluate_config.get("backend")
     hardware = evaluate_config.get("hardware")
     remote_host = evaluate_config.get("remote_host")
+    opset_version = evaluate_config.get("opset_version")
     intermediate_format = evaluate_config.get("intermediate_format")
     worker_path = TaskOps().local_base_path
     save_data_file = os.path.join(worker_path, "input.bin")
@@ -114,18 +115,16 @@ def _calc_forward_latency_davinci(model, input, sess_config=None, num=10, evalua
         if torch.is_tensor(input):
             input = input.cpu().numpy()
         input.tofile(save_data_file)
-        for index in range(num):
-            reuse_model = False if index == 0 else True
-            results = evaluate("pytorch", hardware, remote_host, model, None, save_data_file, input_shape,
-                               reuse_model, job_id, intermediate_format=intermediate_format)
-            latency += np.float(results.get("latency"))
+        results = evaluate("pytorch", hardware, remote_host, model, None, save_data_file, input_shape,
+                           False, job_id, repeat_times=num, intermediate_format=intermediate_format,
+                           opset_version=opset_version)
+        latency = np.float(results.get("latency"))
     elif vega.is_tf_backend():
         input_shape = input.shape.as_list()
         test_data = np.random.random(input_shape).astype(np.float32)
         test_data.tofile(save_data_file)
-        for index in range(num):
-            reuse_model = False if index == 0 else True
-            results = evaluate("tensorflow", hardware, remote_host, model, None, save_data_file, input_shape,
-                               reuse_model, job_id)
-            latency += np.float(results.get("latency"))
-    return latency / num
+
+        results = evaluate("tensorflow", hardware, remote_host, model, None, save_data_file, input_shape,
+                           False, job_id, repeat_times=num)
+        latency = np.float(results.get("latency"))
+    return latency

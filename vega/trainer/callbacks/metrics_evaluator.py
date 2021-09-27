@@ -9,7 +9,7 @@
 # MIT License for more details.
 
 """ProgressLogger call defination."""
-import vega
+
 from copy import deepcopy
 from .callback import Callback
 from vega.common import ClassFactory, ClassType
@@ -26,7 +26,7 @@ class MetricsEvaluator(Callback):
 
     def before_train(self, logs=None):
         """Be called before the training process."""
-        self.do_validation = self.params.get('do_validation', False)
+        self.do_validation = self.trainer.do_validation
         self.cur_loss = None
         self.loss_avg = None
         self.cur_train_perfs = None
@@ -98,9 +98,8 @@ class MetricsEvaluator(Callback):
         if self.do_validation and self.valid_metrics is not None:
             # Get the summary of valid metrics
             metrics_results = self.valid_metrics.results
-            if vega.is_torch_backend() and self.trainer.distributed:
-                for key, value in metrics_results.items():
-                    metrics_results[key] = self.trainer._metric_average(value, key)
+            if hasattr(self.trainer, "_average_metrics"):
+                metrics_results = self.trainer._average_metrics(metrics_results)
             if 'loss' in metrics_results:
                 metrics_results.pop('loss')
             if 'global_step' in metrics_results:
@@ -116,7 +115,7 @@ class MetricsEvaluator(Callback):
                                                                   self.best_valid_perfs)
             logs.update({'cur_valid_perfs': self.cur_valid_perfs,
                          'best_valid_perfs': self.best_valid_perfs,
-                         'best_valid_perfs_changed': self.best_valid_changed})
+                         'best_changed': self.best_valid_changed})
 
     def after_epoch(self, epoch, logs=None):
         """Be called after each epoch."""
@@ -137,7 +136,7 @@ class MetricsEvaluator(Callback):
         if self.do_validation and self.valid_metrics is not None:
             self.summary_perfs.update({'cur_valid_perfs': self.cur_valid_perfs,
                                        'best_valid_perfs': self.best_valid_perfs,
-                                       'best_valid_perfs_changed': self.best_valid_changed})
+                                       'best_changed': self.best_valid_changed})
 
         logs.update({'summary_perfs': self.summary_perfs})
 

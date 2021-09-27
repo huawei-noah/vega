@@ -9,6 +9,7 @@
 # MIT License for more details.
 
 """The trainer program for SegmentationEA."""
+import vega
 import logging
 import torch
 from vega.common import ClassFactory, ClassType
@@ -25,7 +26,10 @@ class SegmentationEATrainerCallback(Callback):
     def before_train(self, logs=None):
         """Be called before the training process."""
         self.config = self.trainer.config
-        count_input = torch.FloatTensor(1, 3, 1024, 1024).cuda()
+        if vega.is_npu_device():
+            count_input = torch.FloatTensor(1, 3, 1024, 1024).npu()
+        else:
+            count_input = torch.FloatTensor(1, 3, 1024, 1024).cuda()
         flops_count, params_count = calc_model_flops_params(
             self.trainer.model, count_input)
         self.flops_count, self.params_count = flops_count * 1e-9, params_count * 1e-3

@@ -42,6 +42,7 @@ import datetime
 import traceback
 import argparse
 
+
 app = Flask(__name__)
 api = Api(app)
 
@@ -50,7 +51,7 @@ class Evaluate(Resource):
     """Evaluate Service for service."""
 
     def __init__(self):
-        self.result = {"latency": "9999", "out_data": [], "status": "sucess", "timestamp": ""}
+        self.result = {"latency": "9999", "out_data": [], "status": "sucess", "timestamp": "", "error_message": ""}
 
     @classmethod
     def _add_params(cls, work_path, optional_params):
@@ -70,9 +71,10 @@ class Evaluate(Resource):
             try:
                 self.hardware_instance.convert_model(backend=self.backend, model=self.model, weight=self.weight,
                                                      save_dir=self.share_dir, input_shape=self.input_shape,
-                                                     out_nodes=self.out_nodes)
+                                                     out_nodes=self.out_nodes, precision=self.precision)
             except Exception:
                 self.result["status"] = "Model convert failed."
+                self.result["error_message"] = traceback.format_exc()
                 logging.error("[ERROR] Model convert failed!")
                 traceback.print_exc()
         try:
@@ -85,6 +87,7 @@ class Evaluate(Resource):
             self.result["out_data"] = output
         except Exception:
             self.result["status"] = "Inference failed."
+            self.result["error_message"] = traceback.format_exc()
             logging.error("[ERROR] Inference failed! ")
             traceback.print_exc()
 
@@ -99,6 +102,7 @@ class Evaluate(Resource):
         self.input_shape = request.form.get("input_shape", type=str, default="")
         self.out_nodes = request.form.get("out_nodes", type=str, default="")
         self.repeat_times = int(request.form.get("repeat_times"))
+        self.precision = request.form.get("precision", type=str, default="FP32")
 
     def upload_files(self):
         """Upload the files from the client to the service."""
@@ -151,7 +155,7 @@ def _parse_args():
     parser.add_argument("-w", "--work_path", type=str, required=True, help="the work dir to save the file")
     parser.add_argument("-t", "--davinci_environment_type", type=str, required=False, default="ATLAS300",
                         help="the type the davinci hardwares")
-    parser.add_argument("-c", "--clean_interval", type=int, required=False, default=1 * 24 * 3600,
+    parser.add_argument("-c", "--clean_interval", type=int, required=False, default=1 * 6 * 3600,
                         help="the time interval to clean the temp folder")
     parser.add_argument("-u", "--ddk_user_name", type=str, required=False, default="user",
                         help="the user to acess ATLAS200200 DK")

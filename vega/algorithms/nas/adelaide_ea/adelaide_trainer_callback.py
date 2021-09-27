@@ -22,6 +22,7 @@ elif vega.is_tf_backend():
     import tensorflow as tf
 elif vega.is_ms_backend():
     import mindspore
+    from mindspore.train import Model as MsModel
 
 logger = logging.getLogger(__name__)
 
@@ -45,6 +46,12 @@ class AdelaideEATrainerCallback(Callback):
             count_input = tf.random.uniform(input_shape, dtype=tf.float32)
         elif vega.is_ms_backend():
             count_input = mindspore.Tensor(np.random.randn(*input_shape).astype(np.float32))
+            loss_fn = ClassFactory.get_cls(ClassType.LOSS, "CustomSoftmaxCrossEntropyWithLogits")()
+            self.trainer.ms_model = MsModel(network=self.trainer.model,
+                                            loss_fn=loss_fn,
+                                            optimizer=self.trainer.optimizer,
+                                            metrics=self.trainer.ms_metrics)
+
         flops_count, params_count = calc_model_flops_params(self.trainer.model, count_input)
         self.flops_count, self.params_count = flops_count * 1e-9, params_count * 1e-3
         logger.info("Flops: {:.2f} G, Params: {:.1f} K".format(self.flops_count, self.params_count))

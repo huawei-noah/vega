@@ -3,6 +3,7 @@
 > [MLSys 2021] ModularNAS: Towards Modularized and Reusable Neural Architecture Search
 
 [![Documentation Status](https://readthedocs.org/projects/modularnas/badge/?version=latest)](https://modularnas.readthedocs.io/en/latest/?badge=latest)
+[![Coverage Status](https://coveralls.io/repos/github/CreeperLin/modnas/badge.svg?branch=HEAD&t=kPmeuP)](https://coveralls.io/github/CreeperLin/modnas?branch=HEAD)
 
 [ModularNAS Docs](https://modularnas.readthedocs.io/)
 

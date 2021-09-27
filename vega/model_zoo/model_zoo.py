@@ -9,18 +9,15 @@
 # MIT License for more details.
 
 """Model zoo."""
-import vega
+
+import os
 import logging
 import glob
 import numpy
 from collections import OrderedDict
-import os
+import vega
 from vega.networks.network_desc import NetworkDesc
 from vega.common.general import General
-from vega.modules.graph_utils import graph2desc
-from vega.modules.module import Module
-from vega.modules.arch import transform_architecture
-from vega.common.searchable import SearchableRegister
 
 
 class ModelZoo(object):
@@ -37,7 +34,7 @@ class ModelZoo(object):
         General.model_zoo.model_zoo_path = location
 
     @classmethod
-    def get_model(cls, model_desc=None, pretrained_model_file=None, exclude_weight_prefix=None):
+    def get_model(cls, model_desc=None, pretrained_model_file=None, head=None, is_fusion=False, **kwargs):
         """Get model from model zoo.
 
         :param network_name: the name of network, eg. ResNetVariant.
@@ -50,23 +47,28 @@ class ModelZoo(object):
         :rtype: model.
 
         """
-        model = None
-        if model_desc is not None:
-            try:
-                network = NetworkDesc(model_desc)
-                model = network.to_model()
-            except Exception as e:
-                logging.error("Failed to get model, model_desc={}, msg={}".format(model_desc, str(e)))
-                raise e
+        from vega.modules.module import Module
+        from vega.modules.arch import transform_architecture
+        from vega.model_zoo.fusion import fuse
+        if not model_desc:
+            raise ValueError("model desc can't be None when create model.")
+        try:
+            model = NetworkDesc(model_desc).to_model()
+            # return model
+        except Exception as e:
+            logging.error("Failed to get model, model_desc={}, msg={}".format(model_desc, str(e)))
+            raise e
         logging.info("Model was created.")
+        for k, v in kwargs.items():
+            setattr(model, k, v)
         if not isinstance(model, Module):
             model = cls.to_module(model)
         if pretrained_model_file is not None:
-            if exclude_weight_prefix:
-                model.exclude_weight_prefix = exclude_weight_prefix
-            model = cls._load_pretrained_model(model, pretrained_model_file, exclude_weight_prefix)
+            model.exclude_weight_prefix = head
+            model = cls._load_pretrained_model(model, pretrained_model_file, head)
         model = transform_architecture(model, pretrained_model_file)
-        model = SearchableRegister().active_search_event(model)
+        if is_fusion:
+            model = fuse(model)
         if model is None:
             raise ValueError("Failed to get mode, model is None.")
         return model
@@ -75,10 +77,20 @@ class ModelZoo(object):
     def to_module(cls, model):
         """Build model desc before get model."""
         if vega.is_ms_backend():
-            from vega.networks.mindspore.backbones.ms2vega import transform_model
-            return transform_model(model)
+            if hasattr(model, "module_type"):
+                import mindspore
+                if isinstance(model, mindspore.nn.Cell):
+                    return model
+                return model()
+            else:
+                from vega.networks.mindspore.backbones.ms2vega import transform_model
+                return transform_model(model)
         if vega.is_torch_backend():
-            return model
+            import torch
+            if isinstance(model, torch.nn.Module):
+                return model
+            else:
+                return model()
         if vega.is_tf_backend():
             try:
                 model_desc = cls.parse_desc_from_pretrained_model(model)
@@ -92,6 +104,7 @@ class ModelZoo(object):
         """Parse desc from Petrained Model."""
         import tensorflow.compat.v1 as tf
         from tensorflow.python.framework import tensor_util
+        from vega.modules.graph_utils import graph2desc
         tf.reset_default_graph()
         data_shape = (1, 224, 224, 3)
         x = tf.ones(data_shape)
@@ -131,15 +144,18 @@ class ModelZoo(object):
             if not os.path.isfile(pretrained_model_file):
                 raise Exception(f"Pretrained model is not existed, model={pretrained_model_file}")
             if vega.is_npu_device():
+                from vega.common.task_ops import TaskOps
+                import time
                 device = int(os.environ.get('DEVICE_ID', 0))
-                target_model_file = "/tmp/checkpoint_{}.pth".format(device)
-                cmd = "/bin/cp -f {} {} && sed -i 's/npu:[0-9]/npu:{}/g' {}".format(pretrained_model_file,
-                                                                                    target_model_file,
-                                                                                    device,
-                                                                                    target_model_file)
+                target_model_file = "{}/checkpoint_{}_{}.pth".format(
+                    TaskOps().temp_path, device, round(time.time() * 1000))
+                cmd = "/bin/cp -f {} {} && sed -i 's/npu:[0-9]/npu:{}/g' {}".format(
+                    pretrained_model_file, target_model_file, device, target_model_file)
                 ret = os.system(cmd)
                 logging.info("modify weight file result: " + str(ret))
                 checkpoint = torch.load(target_model_file)
+                if os.path.exists(target_model_file):
+                    os.remove(target_model_file)
             else:
                 checkpoint = torch.load(pretrained_model_file)
             if exclude_weight_prefix:

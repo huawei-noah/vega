@@ -13,13 +13,21 @@ from ..base import CategoricalSpaceOptim
 from modnas.registry.score_model import build as build_score_model
 from modnas.registry.model_optim import build as build_model_optim
 from modnas.registry.optim import register
+from modnas.registry import SPEC_TYPE
+from collections import OrderedDict
+from modnas.core.param_space import ParamSpace
+from modnas.estim.base import EstimBase
+from typing import Optional
 
 
 @register
 class ModelBasedOptim(CategoricalSpaceOptim):
     """Model-based Optimizer class."""
 
-    def __init__(self, model_config, model_optim_config, greedy_e=0.05, n_next_pts=32, space=None):
+    def __init__(
+        self, model_config: SPEC_TYPE, model_optim_config: SPEC_TYPE, greedy_e: float = 0.05, n_next_pts: int = 32,
+        space: Optional[ParamSpace] = None
+    ) -> None:
         super().__init__(space)
         self.model = build_score_model(model_config, space=self.space)
         self.model_optim = build_model_optim(model_optim_config, space=self.space)
@@ -31,7 +39,7 @@ class ModelBasedOptim(CategoricalSpaceOptim):
         self.next_pt = 0
         self.train_ct = 0
 
-    def _next(self):
+    def _next(self) -> OrderedDict:
         while self.next_pt < len(self.next_xs):
             index = self.next_xs[self.next_pt]
             if not self.is_visited(index):
@@ -42,7 +50,7 @@ class ModelBasedOptim(CategoricalSpaceOptim):
         self.set_visited(index)
         return self.space.get_categorical_params(index)
 
-    def step(self, estim):
+    def step(self, estim: EstimBase) -> None:
         """Update Optimizer states using Estimator evaluation results."""
         inputs, results = estim.get_last_results()
         for inp, res in zip(inputs, results):

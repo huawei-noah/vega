@@ -14,14 +14,15 @@ import time
 import copy
 import logging
 from statistics import mean
+import traceback
 import vega
 from vega.common import ClassFactory, ClassType
-from vega.common import init_log
 from vega.common.general import General
+from vega.common.wrappers import train_process_wrapper
 from vega.report import ReportClient
+from vega.trainer.utils import WorkerTypes
 from .conf import HostEvaluatorConfig
 from .evaluator import Evaluator
-from vega.trainer.utils import WorkerTypes
 
 
 @ClassFactory.register(ClassType.HOST_EVALUATOR)
@@ -113,10 +114,10 @@ class HostEvaluator(Evaluator):
             from vega.metrics.mindspore.metrics import Metrics
             from mindspore.train import Model as MsModel
             from .utils import FakeLoss
+            self._init_ms_context()
             metrics = Metrics(self.config.metric)
             metric_name = self.config.metric().type
             ms_metric = metrics() if isinstance(metrics(), dict) else {metric_name: metrics()}
-            dataset_sink_mode = True if vega.is_npu_device() else False
             # when eval, the loss_fn is not needed actually, but when initilized, the loss_fn can't be None
             ms_model = MsModel(network=self.model,
                                loss_fn=FakeLoss(),
@@ -124,7 +125,7 @@ class HostEvaluator(Evaluator):
             time_start = time.time()
             eval_metrics = ms_model.eval(valid_dataset=valid_loader,
                                          callbacks=None,
-                                         dataset_sink_mode=dataset_sink_mode)
+                                         dataset_sink_mode=self.dataset_sink_mode)
             for batch in valid_loader.create_dict_iterator():
                 batch_size = batch["image"].shape[0]
                 break
@@ -170,17 +171,19 @@ class HostEvaluator(Evaluator):
                                         session_config=session_config)
         return tf.estimator.Estimator(model_fn=self._model_fn, config=config)
 
+    @train_process_wrapper
     def train_process(self):
         """Validate process for the model validate worker."""
-        init_log(level=General.logger.level,
-                 log_file=f"{self.step_name}_host_evaluator_{self.worker_id}.log",
-                 log_path=self.local_log_path)
         logging.info("start evaluate process")
-        self.load_model()
-        self.valid_loader = self._init_dataloader(mode='test')
-        performance = self.valid(self.valid_loader)
-        ReportClient().update(self.step_name, self.worker_id, performance=performance)
-        logging.info(f"finished host evaluation, id: {self.worker_id}, performance: {performance}")
+        try:
+            self.load_model()
+            self.valid_loader = self._init_dataloader(mode='test')
+            performance = self.valid(self.valid_loader)
+            ReportClient().update(self.step_name, self.worker_id, performance=performance)
+            logging.info(f"finished host evaluation, id: {self.worker_id}, performance: {performance}")
+        except Exception:
+            logging.error(traceback.format_exc())
+            logging.error("Failed to evalute on host.")
 
     def _init_session_config(self):
         import tensorflow as tf
@@ -196,3 +199,14 @@ class HostEvaluator(Evaluator):
             custom_op.name = "NpuOptimizer"
             custom_op.parameter_map["use_off_line"].b = True
             return sess_config
+
+    def _init_ms_context(self):
+        from mindspore import context
+        mode = General.ms_execute_mode
+        logging.info(f"Run evaluator in mode: {mode}.")
+        if vega.is_npu_device():
+            context.set_context(mode=mode, device_target="Ascend")
+        else:
+            context.set_context(mode=mode, device_target="CPU")
+        self.dataset_sink_mode = General.dataset_sink_mode
+        logging.info(f"Dataset_sink_mode:{self.dataset_sink_mode}.")

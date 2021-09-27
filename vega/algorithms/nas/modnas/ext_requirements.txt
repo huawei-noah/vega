@@ -1,0 +1,19 @@
+# Plotting
+matplotlib
+
+# Tensorboard
+tensorboardX
+
+
+# Bayesian optimization
+scikit-optimize
+
+# Score model
+xgboost
+scikit-learn
+
+# Distributed
+rpyc
+
+# NASBench
+tensorflow

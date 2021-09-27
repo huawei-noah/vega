@@ -20,9 +20,8 @@ class PbtTrainerCallback(Callback):
 
     def before_train(self, logs=None):
         """Be called before the training process."""
-        self.epochs = self.trainer.epochs
         self.params_list = self.trainer.hps.trainer.all_configs
-        self.load_para_interval = self.epochs // len(self.params_list.keys())
+        self.load_para_interval = self.trainer.epochs // len(self.params_list.keys())
 
     def before_epoch(self, epoch, logs=None):
         """Be called before epoch."""

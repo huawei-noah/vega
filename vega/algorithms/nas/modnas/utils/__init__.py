@@ -17,6 +17,9 @@ import hashlib
 from functools import partial
 from modnas.version import __version__
 from .logging import get_logger
+from modnas import backend as be
+from typing import Callable, Dict, List, Optional, Union, Any
+
 try:
     from tensorboardX import SummaryWriter
 except ImportError:
@@ -50,7 +53,7 @@ def exec_file(path):
     return globs
 
 
-def import_modules(modules):
+def import_modules(modules: List[str]) -> None:
     """Import modules by name."""
     if modules is None:
         return
@@ -77,36 +80,19 @@ def get_exp_name(config):
     return '{}.{}'.format(time.strftime('%Y%m%d', time.localtime()), hashlib.sha1(str(config).encode()).hexdigest()[:4])
 
 
-def merge_config(src, dest, extend_list=True, overwrite=True):
-    """Return merged config."""
-    if isinstance(src, dict) and isinstance(dest, dict):
-        for k, v in dest.items():
-            if k not in src:
-                src[k] = v
-                logger.debug('merge_config: add key %s' % k)
-            else:
-                src[k] = merge_config(src[k], v, extend_list, overwrite)
-    elif isinstance(src, list) and isinstance(dest, list) and extend_list:
-        logger.debug('merge_config: extend list: %s + %s' % (src, dest))
-        src.extend(dest)
-    elif overwrite:
-        logger.debug('merge_config: overwrite: %s -> %s' % (src, dest))
-        src = dest
-    return src
-
-
-def env_info():
+def env_info() -> str:
     """Return environment info."""
     info = {
         'platform': sys.platform,
         'python': sys.version.split()[0],
         'numpy': np.__version__,
         'modnas': __version__,
+        'backend': None if be.backend() is None else '{{{}}}'.format(getattr(be, 'version', lambda: None)()),
     }
     return 'env info: {}'.format(', '.join(['{k}={{{k}}}'.format(k=k) for k in info])).format(**info)
 
 
-def check_config(config, defaults=None):
+def check_config(config: Dict, defaults: Optional[Any] = None) -> None:
     """Check config and set default values."""
     def check_field(config, field, default):
         cur_key = ''
@@ -156,7 +142,7 @@ def check_config(config, defaults=None):
 class DummyWriter():
     """A no-op writer."""
 
-    def __getattr__(self, item):
+    def __getattr__(self, item: str) -> Callable:
         """Return no-op."""
         def noop(*args, **kwargs):
             pass
@@ -164,7 +150,7 @@ class DummyWriter():
         return noop
 
 
-def get_writer(log_dir, enabled=False):
+def get_writer(log_dir: str, enabled: bool = False) -> DummyWriter:
     """Return a new writer."""
     if enabled:
         if SummaryWriter is None:
@@ -175,9 +161,14 @@ def get_writer(log_dir, enabled=False):
     return writer
 
 
-def copy_members(dest, src, excepts=None, skip_private=True, method=True):
+def copy_members(
+    dest: Any, src: Any, includes: Optional[List[str]] = None, excepts: Optional[List[str]] = None,
+    skip_private: bool = True, method: bool = True
+) -> None:
     """Copy member methods from src to dest."""
     for attr, mem in inspect.getmembers(src):
+        if includes is not None and attr not in includes:
+            continue
         if excepts is not None and attr in excepts:
             continue
         if skip_private and attr.startswith('_'):
@@ -187,7 +178,7 @@ def copy_members(dest, src, excepts=None, skip_private=True, method=True):
         setattr(dest, attr, mem)
 
 
-def get_same_padding(kernel_size):
+def get_same_padding(kernel_size: int) -> int:
     """Return SAME padding size for convolutions."""
     if isinstance(kernel_size, tuple):
         assert len(kernel_size) == 2, 'invalid kernel size: %s' % kernel_size
@@ -202,17 +193,17 @@ def get_same_padding(kernel_size):
 class AverageMeter():
     """Compute and store the average and current value."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.reset()
 
-    def reset(self):
+    def reset(self) -> None:
         """Reset all statistics."""
-        self.val = 0
-        self.avg = 0
-        self.sum = 0
+        self.val = 0.
+        self.avg = 0.
+        self.sum = 0.
         self.count = 0
 
-    def update(self, val, n=1):
+    def update(self, val: float, n: int = 1) -> None:
         """Update statistics."""
         self.val = val
         self.sum += val * n
@@ -220,63 +211,68 @@ class AverageMeter():
         self.avg = self.sum / self.count
 
 
-def format_time(sec):
+def format_time(sec: float) -> str:
     """Return formatted time in seconds."""
     m, s = divmod(sec, 60)
     h, m = divmod(m, 60)
     return "%d h %d m %d s" % (h, m, s)
 
 
-def format_key(key, title=True):
+def format_key(key: str, title: bool = True) -> str:
     """Return formatted key."""
     key = ' '.join(key.split('_'))
     return key.title() if title and key.islower() else key
 
 
-def format_value(value, binary=False, div=None, factor=None, prec=2, unit=True, to_str=False):
+def format_value(
+    value: Union[str, float, int], binary: bool = False, div: Optional[int] = None,
+    factor: Optional[int] = None, prec: int = 2, unit: bool = True, to_str: bool = False
+) -> Union[str, float]:
     """Return formatted value."""
     if value is None:
         return None
     if not hasattr(value, '__truediv__'):
         return value
+    f_value = float(value)
     units = ['', 'K', 'M', 'G', 'T', 'P', 'E', 'Z', 'Y']
-    div = (1024. if binary else 1000.) if div is None else div
-    if factor is None:
-        factor = 0
-        tot_div = 1
-        while value > tot_div:
-            factor += 1
-            tot_div *= div
+    _div = (1024 if binary else 1000) if div is None else div
+    _factor = factor or 0
+    if _factor:
+        tot_div = _div ** _factor
     else:
-        tot_div = div ** factor
-    value = round(value / tot_div, prec)
+        tot_div = 1
+        while f_value > tot_div * _div:
+            _factor += 1
+            tot_div *= _div
+    f_value = round(f_value / tot_div, prec)
     if not to_str and not unit:
-        return value
-    return '{{:.{}f}}'.format(prec).format(value) + (units[factor] if unit else '')
+        return f_value
+    return '{{:.{}f}}'.format(prec).format(f_value) + (units[_factor] if unit else '')
 
 
-def format_dict(dct, sep=None, kv_sep=None, fmt_key=None, fmt_val=None):
+def format_dict(
+    dct: Dict[str, Union[float, str]], sep: str = ' | ', kv_sep: str = ': ',
+    fmt_key: Optional[Callable] = None, fmt_val: Optional[Callable] = None
+) -> str:
     """Return formatted dict."""
-    sep = sep or ' | '
-    kv_sep = kv_sep or ':'
     fmt_vals = None if fmt_val is False else (fmt_val if isinstance(fmt_val, dict) else {})
-    fmt_val = fmt_val if callable(fmt_val) else partial(format_value, unit=False, factor=0, prec=4, to_str=True)
-    fmt_key = fmt_key if callable(fmt_key) else None if fmt_key is False else format_key
-    val_dct = {k: v if fmt_vals is None else fmt_vals.get(k, fmt_val)(v) for k, v in dct.items()}
-    return sep.join(['{}{} {{{}}}'.format(fmt_key(k) if fmt_key else k, kv_sep, k) for k in dct]).format(**val_dct)
+    _fmt_val = fmt_val if callable(fmt_val) else partial(format_value, unit=False, factor=0, prec=4, to_str=True)
+    _fmt_key = fmt_key if callable(fmt_key) else None if fmt_key is False else format_key
+    val_dct = {k: v if fmt_vals is None else fmt_vals.get(k, _fmt_val)(v) for k, v in dct.items()}
+    return sep.join(['{}{}{{{}}}'.format(_fmt_key(k) if _fmt_key else k, kv_sep, k) for k in dct]).format(**val_dct)
 
 
 class ETAMeter():
     """ETA Meter."""
 
-    def __init__(self, total_steps, cur_steps=-1, time_fn=None):
+    def __init__(self, total_steps: int, cur_steps: int = -1, time_fn: Optional[Callable] = None) -> None:
         self.time_fn = time_fn or time.perf_counter
         self.total_steps = total_steps
         self.last_step = cur_steps
         self.last_time = self.time_fn()
-        self.speed = None
+        self.speed = 0.
 
-    def start(self):
+    def start(self) -> None:
         """Start timing."""
         self.last_time = self.time_fn()
 
@@ -286,18 +282,18 @@ class ETAMeter():
         self.last_step = step
         self.last_time = self.time_fn()
 
-    def step(self, n=1):
+    def step(self, n: int = 1) -> None:
         """Increment current step."""
         self.speed = n / (self.time_fn() - self.last_time + 1e-7)
         self.last_step += n
         self.last_time = self.time_fn()
 
-    def eta(self):
+    def eta(self) -> float:
         """Return ETA in seconds."""
-        if self.speed is None:
+        if self.speed < 1e-7:
             return 0
         return (self.total_steps - self.last_step) / (self.speed + 1e-7)
 
-    def eta_fmt(self):
+    def eta_fmt(self) -> str:
         """Return formatted ETA."""
         return format_time(self.eta())

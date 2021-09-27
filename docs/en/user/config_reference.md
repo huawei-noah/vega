@@ -80,17 +80,9 @@ general:
 
 ## 2.1 Parallel and distributed
 
-If there are multiple GPU|NUPs in the running environment, select a proper parallel or distributed configuration as required. The configuration items related to distributed deployment are general.parallel_search, general.parallel_fully_train, and trainer.distributed.
+During NAS/HPO search, one trainer corresponds to one GPU/NPU. If one trainer corresponds to multiple GPUs/NPUs, you can modify the `general.device_per_trainer` parameter.
 
-| general.parallel_search or<br>general.parallel_fully_train | general.devices_per_trainer | trainer.distributed | Distributed and parallel modes |
-| :--: | :--: | :--: | :-- |
-| False | 1 | False | (default) Serial search and training with one card |
-| False | >1 | False | Serial Search and Training Using Multiple Cards |
-| False |  >=1<br>(Number of cards assigned to each model) | True | Training with Horovod/HCCL |
-| True | 1 | Any value | Parallel search and training with one card per model |
-| True | >1<br>(Number of cards assigned to each model) | Any value | Parallel search and training with multiple cards per model |
-
-Here's how to train a model using 2 cards during the search phase and Horovod during the full training phase:
+Currently, this configuration works on PyTorch/GPU, as shown in the following:
 
 ```yaml
 general:
@@ -140,6 +132,30 @@ fully_train:
         distributed: True
     dataset:
         type: Cifar10
+```
+
+In the fully training phase, Horovod (GPU) or HCCL (NPU) can be used to provide distributed data model training.
+
+This is as follows:
+
+```yaml
+pipeline: [fully_train]
+
+fully_train:
+    pipe_step:
+        type: HorovodTrainStep  # HorovodTrainStep(GPU), HcclTrainStep(NPU)
+    trainer:
+        epochs: 160
+    model:
+        model_desc:
+            modules: ['backbone']
+            backbone:
+                type: ResNet
+                num_class: 10
+    dataset:
+        type: Cifar10
+        common:
+            data_path: /cache/datasets/cifar10/
 ```
 
 ## 3. NAS and HPO configuration items

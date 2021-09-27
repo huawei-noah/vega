@@ -63,7 +63,6 @@ fully_train:
             std: [0.229, 0.224, 0.225]
             workers: 8
         epochs: 300
-        distributed: True
         prefetcher: True
         model_name: effcientnet.pickle
         ckpt_name: efficientnet_fully_train.pth

@@ -81,20 +81,13 @@ general:
 
 ## 2.1 并行和分布式
 
-涉及到分布式的配置项有：general.parallel_search, general.parallel_fully_train 和 trainer.distributed，若有多张GPU|NUP，可根据需要选择合适的并行和分布式设置。
+在NAS/HPO搜索过程中，一般一个Trainer对应一个GPU/NPU，若需要一个Trainer对应多个GPU/NPU，可通过修改`general.device_per_trainer`参数。
 
-| general.parallel_search or<br>general.parallel_fully_train | general.devices_per_trainer | trainer.distributed | 分布式和并行方式 |
-| :--: | :--: | :--: | :-- |
-| False | 1 | False | (缺省设置)使用一张卡串行搜索和训练 |
-| False | >1 | False | 使用多张卡串行搜索和训练 |
-| False | >=1 (分配给每个模型的加速卡数量) | True | 使用Horovod/HCCL进行训练 |
-| True | 1 | 任意值 | 并行搜索和训练，每个模型使用一张卡 |
-| True | >1 (分配给每个模型的加速卡数量) | 任意值 | 并行搜索和训练，每个模型使用多张卡 |
-
-如以下是搜索阶段使用2张卡训练一个模型，在完整训练阶段使用Horovod进行训练。
+目前该配置仅支持PyTorch/GPU场景，如下所示。
 
 ```yaml
 general:
+    backend: pytroch
     parallel_search: True
     parallel_fully_train: False
     devices_per_trainer: 2
@@ -141,6 +134,30 @@ fully_train:
         distributed: True
     dataset:
         type: Cifar10
+```
+
+在完整训练阶段，可考虑使用Horovod（GPU）或者HCCL（NPU）两种方式来提供数据分布式模型训练。
+
+如下所示：
+
+```yaml
+pipeline: [fully_train]
+
+fully_train:
+    pipe_step:
+        type: HorovodTrainStep  # HorovodTrainStep(GPU), HcclTrainStep(NPU)
+    trainer:
+        epochs: 160
+    model:
+        model_desc:
+            modules: ['backbone']
+            backbone:
+                type: ResNet
+                num_class: 10
+    dataset:
+        type: Cifar10
+        common:
+            data_path: /cache/datasets/cifar10/
 ```
 
 ## 3. NAS和HPO配置项

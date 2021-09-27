@@ -104,6 +104,7 @@ class DefaultSlotTraversalConstructor():
         self.skip_exist = skip_exist
         if convert_fn:
             self.convert = get_convert_fn(convert_fn, **(args or {}))
+        self.visited = set()
 
     def convert(self, slot):
         """Return converted module from slot."""
@@ -111,6 +112,7 @@ class DefaultSlotTraversalConstructor():
 
     def __call__(self, model):
         """Run constructor."""
+        Slot.set_convert_fn(self.convert)
         gen = self.gen or Slot.gen_slots_model(model)
         all_slots = list(gen())
         for m in all_slots:
@@ -119,6 +121,7 @@ class DefaultSlotTraversalConstructor():
             ent = self.convert(m)
             if ent is not None:
                 m.set_entity(ent)
+        self.visited.clear()
         return model
 
 
@@ -134,7 +137,11 @@ class DefaultMixedOpConstructor(DefaultSlotTraversalConstructor):
 
     def convert(self, slot):
         """Return converted MixedOp from slot."""
-        cands = OrderedDict([(cand, build_module(cand, slot, **self.candidate_args)) for cand in self.candidates])
+        cand_args = self.candidate_args.copy()
+        candidates = self.candidates
+        if isinstance(candidates, (list, tuple)):
+            candidates = {k: k for k in candidates}
+        cands = OrderedDict([(k, build_module(v, slot=slot, **cand_args)) for k, v in candidates.items()])
         return build_module(self.mixed_op_conf, candidates=cands)
 
 

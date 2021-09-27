@@ -56,7 +56,7 @@ class CycleSRModel(TransModel):
     def __init__(self, **cfg):
         """Initialize method."""
         cfg = Config(cfg)
-        self.use_cuda = cfg.use_cuda
+        self.use_cuda = True
         self.use_distributed = cfg.use_distributed
         self.SR_lr = cfg.SR_lr
         self.cyc_lr = cfg.cyc_lr

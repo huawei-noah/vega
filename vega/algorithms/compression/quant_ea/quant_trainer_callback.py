@@ -57,7 +57,7 @@ class QuantTrainerCallback(Callback):
             elif vega.is_npu_device():
                 model = model.to(vega.get_devices())
                 count_input = torch.FloatTensor(*count_input).to(vega.get_devices())
-            self.trainer.optimizer = Optimizer()(model=self.trainer.model, distributed=self.trainer.distributed)
+            self.trainer.optimizer = Optimizer()(model=self.trainer.model, distributed=self.trainer.horovod)
             self.trainer.lr_scheduler = LrScheduler()(self.trainer.optimizer)
         elif vega.is_tf_backend():
             tf.compat.v1.reset_default_graph()

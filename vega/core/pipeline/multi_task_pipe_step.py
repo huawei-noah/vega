@@ -8,7 +8,8 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 # MIT License for more details.
 
-"""Fully Train PipeStep that used in Pipeline."""
+"""Multi-task pipe step."""
+
 import logging
 from vega.common.general import General
 from vega.common.class_factory import ClassFactory, ClassType
@@ -33,7 +34,6 @@ class MultiTaskPipeStep(TrainPipeStep):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._distributed_training = not General._parallel and TrainerConfig.distributed
         logger.info("init MultiTaskPipeStep...")
 
     def do(self):
@@ -56,10 +56,7 @@ class MultiTaskPipeStep(TrainPipeStep):
         logging.debug("update record=%s", str(record))
         trainer = cls_trainer(model_desc=model_desc, id=model_id, hps=hps, multi_task=multi_task)
         ReportClient().update(**record.to_dict())
-        if self._distributed_training:
-            self._do_distributed_fully_train(trainer)
-        else:
-            self._do_single_fully_train(trainer)
+        self.train_model(trainer)
 
     def _train_multi_task(self):
         from copy import deepcopy

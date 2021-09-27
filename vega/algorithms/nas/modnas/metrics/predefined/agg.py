@@ -12,19 +12,20 @@
 from functools import reduce
 from ..base import MetricsBase
 from modnas.registry.metrics import register, build
+from typing import Dict, Any
 
 
 @register
 class SumAggMetrics(MetricsBase):
     """Aggregate metrics by sum."""
 
-    def __init__(self, metrics_conf):
+    def __init__(self, metrics_conf: Dict) -> None:
         super().__init__()
         self.metrics = {k: build(conf) for k, conf in metrics_conf.items()}
         self.base = {k: conf.get('base', 1) for k, conf in metrics_conf.items()}
         self.weight = {k: conf.get('weight', 1) for k, conf in metrics_conf.items()}
 
-    def __call__(self, item):
+    def __call__(self, item: Any) -> Any:
         """Return metrics output."""
         mt_res = {k: (mt(item) or 0) for k, mt in self.metrics.items()}
         self.logger.info('SumAgg: {{{}}}'.format(', '.join(['{}: {}'.format(k, r) for k, r in mt_res.items()])))

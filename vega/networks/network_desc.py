@@ -25,7 +25,11 @@ class NetworkDesc(object):
     def to_model(self):
         """Transform a NetworkDesc to a special model."""
         logging.debug("Start to Create a Network.")
-        module = ClassFactory.get_cls(ClassType.NETWORK, "Module")
+        module_type = self._desc.get('type', None)
+        if module_type == "DagNetwork":
+            module = ClassFactory.get_cls(ClassType.NETWORK, module_type)
+        else:
+            module = ClassFactory.get_cls(ClassType.NETWORK, "Module")
         model = module.from_desc(self._desc)
         if not model:
             raise Exception("Failed to create model, model desc={}".format(self._desc))

@@ -14,7 +14,7 @@ import os
 import glob
 import logging
 import vega
-from vega.common import FileOps, init_log
+from vega.common import FileOps
 from vega.common.class_factory import ClassFactory, ClassType
 from vega.common.config import Config
 from vega.trainer.callbacks import CallbackList
@@ -24,13 +24,15 @@ from vega.trainer.utils import WorkerTypes
 from vega.datasets import Adapter
 from vega.common.general import General
 from vega.common.utils import update_dict
+from vega.common.wrappers import train_process_wrapper
 
 
 class TrainerBase(DistributedWorker):
     """Trainer base class."""
 
     def __init__(self, model=None, id=None, hps=None, load_ckpt_flag=False,
-                 model_desc=None, multi_task=None, **kwargs):
+                 model_desc=None, multi_task=None, horovod=False, hccl=False,
+                 **kwargs):
         super().__init__()
 
         self.config = TrainerConfig()
@@ -55,7 +57,7 @@ class TrainerBase(DistributedWorker):
         self.lr_scheduler = None
         self.loss = None
         self.use_syncbn = self.config.syncbn
-        self.use_amp = self.config.amp
+        self.use_amp = self.config.use_amp
         self.train_metrics = None
         self.valid_metrics = None
         self.call_metrics_on_train = self.config.call_metrics_on_train
@@ -83,17 +85,16 @@ class TrainerBase(DistributedWorker):
         self._start_epoch = 0
         self.visual_data = {}
         self.load_ckpt_flag = load_ckpt_flag
-        self.distributed = self.config.distributed
-        if vega.is_gpu_device():
-            self.distributed = not General._parallel and self.distributed
+        self.ddp = General._parallel and General.devices_per_trainer > 1 and vega.is_gpu_device()
+        self.horovod = horovod
+        self.hccl = hccl
+        self.num_workers = General.cluster.num_workers
+        self.sampler = None
         # Used by TimmTrainerCallbacks since it builds its trainer in
         # the before_train callback
         self.lazy_built = self.config.lazy_built
         # Indicate whether the necessary components of a trainer
         # has been built for running
-        self._world_size = 1
-        self._rank_id = 0
-        self._local_rank_id = 0
         self._next_rung = False
         self.config.kwargs = kwargs
         self.checkpoint_file_name = 'checkpoint.pth'
@@ -112,23 +113,22 @@ class TrainerBase(DistributedWorker):
             TrainerConfig.model_desc = model_desc
         self.standalone = General.cluster.master_ip is None or General.message_port is None
 
+    @train_process_wrapper
     def train_process(self):
         """Whole train process of the TrainWorker specified in config.
 
         After training, the model and validation results are saved to local_worker_path and s3_path.
         """
-        init_log(level=General.logger.level,
-                 log_file=f"{self.step_name}_worker_{self.worker_id}.log",
-                 log_path=self.local_log_path)
         if self.standalone:
             logging.info("Standalone mode. The result data will not be sent to server through report.")
-        self._set_default_funcs()
-        self._set_condition()
+        self.init_env()
         self._init_callbacks()
         self.callbacks.init_trainer()
+        self.set_training_settings()
         if not self.lazy_built:
             self.build()
         self._train_loop()
+        self.closeout()
         return self.model
 
     def build(self):
@@ -147,48 +147,27 @@ class TrainerBase(DistributedWorker):
         self.batch_num_train = len(self.train_loader)
         self.batch_num_valid = len(self.valid_loader)
 
-    def train(self, inputs, labels):
-        """Train model."""
+    def set_training_settings(self):
+        """Set training settings."""
         pass
 
-    def predict(self, input):
-        """Inference model."""
-        pass
-
-    def save(self, file_name):
-        """Save model."""
-        pass
-
-    def load(self, model_name, by_name):
-        """Load model."""
-        pass
-
-    def set_weights(self, weights):
-        """Set weight with memory tensor."""
-        pass
-
-    def get_weights(self):
-        """Get the weights."""
-        pass
-
-    def _train_epoch(self):
-        pass
-
-    def _valid_epoch(self):
-        pass
-
-    def _set_default_funcs(self):
-        pass
-
-    def _set_condition(self):
-        pass
-
-    def _init_tf_estimator(self):
-        pass
-
-    def _init_horovod_setting(self):
-        """Init horovod setting."""
-        self.is_chief = True
+    def init_env(self):
+        """Init trainer environment."""
+        self.num_workers = General.cluster.num_workers
+        if self.hccl:
+            self.rank_id = int(os.environ.get('RANK_ID', "0"))
+            self.device_id = int(os.environ.get('DEVICE_ID', "0"))
+            if not General.cluster.show_all_ranks:
+                self.is_chief = "-" not in str(self.worker_id)
+        elif self.horovod:
+            if vega.is_torch_backend():
+                import horovod.torch as hvd
+            elif vega.is_tf_backend():
+                import horovod.tensorflow as hvd
+                hvd.init()
+            self.rank_id = hvd.rank()
+            if not General.cluster.show_all_ranks:
+                self.is_chief = self.rank_id == 0
 
     def _init_hps(self, hps=None):
         """Load hps from file."""
@@ -216,20 +195,6 @@ class TrainerBase(DistributedWorker):
             self.config.from_dict(self.hps.get('trainer'))
             self.load_checkpoint = self.config.load_checkpoint
         self.epochs = self.config.epochs
-
-    def _init_minimize_op(self, loss, global_step, var_list=None):
-        """Init loss minimize operation, include loss scale method."""
-        loss_scale = self.config.loss_scale if self.use_amp else 1.
-        if loss_scale != 1:
-            scaled_grad_vars = self.optimizer.compute_gradients(loss * loss_scale, var_list=var_list)
-            unscaled_grad_vars = []
-            for grad, var in scaled_grad_vars:
-                unscaled_grad_vars.append((grad, var) if grad is None else (grad / loss_scale, var))
-            minimize_op = self.optimizer.apply_gradients(unscaled_grad_vars, global_step)
-        else:
-            grad_vars = self.optimizer.compute_gradients(loss, var_list=var_list)
-            minimize_op = self.optimizer.apply_gradients(grad_vars, global_step)
-        return minimize_op
 
     def _init_metrics(self, metrics=None):
         """Init metrics."""
@@ -266,10 +231,13 @@ class TrainerBase(DistributedWorker):
             dataset = dataset_cls(mode=mode)
         if transforms is not None:
             dataset.transforms = transforms
-        if self.distributed and mode == "train":
-            dataset.set_distributed(self._world_size, self._rank_id)
+        if (self.hccl or self.horovod) and mode == "train":
+            dataset.set_distributed(self.num_workers, self.rank_id)
         # adapt the dataset to specific backend
-        dataloader = Adapter(dataset).loader
+        adapter = Adapter(dataset)
+        if (self.hccl or self.horovod) and mode == "train" and hasattr(adapter, "sampler"):
+            self.sampler = adapter.sampler
+        dataloader = adapter.loader
         return dataloader
 
     def _train_loop(self):
@@ -294,17 +262,14 @@ class TrainerBase(DistributedWorker):
                 if self.do_validation:
                     epoch_logs.update({'valid_num_batches': self.batch_num_valid})
                 self.callbacks.before_epoch(epoch, epoch_logs)
-                if self.config.with_train:
+                if self.config.with_train and hasattr(self, "_train_epoch"):
                     self._train_epoch()
-                if self.do_validation and self._should_run_validation(epoch):
+                if self.do_validation and hasattr(self, "_valid_epoch") and self._should_run_validation(epoch):
                     self._valid_epoch()
                 self.callbacks.after_epoch(epoch)
             self.callbacks.after_train()
             if not self._next_rung:
                 break
-
-        if self.distributed:
-            self._shutdown_distributed()
 
     def _should_run_validation(self, epoch):
         # Zero valid_interval means doesn't run _valid_loop of the trainer
@@ -324,19 +289,6 @@ class TrainerBase(DistributedWorker):
         self.callbacks = CallbackList(customs, disables)
         self.callbacks.set_trainer(self)
 
-    def _metric_average(self, val, name):
-        """Do metric average.
-
-        :param val: input value
-        :param name: metric name
-        :return:
-        """
-        import torch
-        import horovod.torch as hvd
-        tensor = torch.tensor(val)
-        avg_tensor = hvd.allreduce(tensor, name=name)
-        return avg_tensor.item()
-
     def _backup(self):
         """Backup result worker folder."""
         if self.need_backup is True and self.backup_base_path is not None:
@@ -345,7 +297,6 @@ class TrainerBase(DistributedWorker):
             FileOps.copy_folder(
                 self.get_local_worker_path(self.step_name, self.worker_id), backup_worker_path)
 
-    def _shutdown_distributed(self):
-        if vega.is_npu_device() and self.distributed and vega.is_tf_backend():
-            self.sess.run(self.npu_shutdown)
-            self.sess.close()
+    def closeout(self):
+        """Closeout."""
+        pass

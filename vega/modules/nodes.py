@@ -124,7 +124,7 @@ class Conv2DNode(Node):
         self.in_channels = None
         self.stride = None
         self.padding = None
-        self.dilations = None
+        self.dilation = None
         self.bias = False
         self.bn = False
         super(Conv2DNode, self).__init__(*args, **kwargs)
@@ -158,7 +158,7 @@ class Conv2DNode(Node):
                 attr = op.node_def.attr
                 self.stride = list(attr.get('strides').list.i)[2]
                 self.padding = str(attr.get('padding').s, encoding='utf8')
-                self.dilations = list(attr.get('dilations').list.i)
+                self.dilation = list(attr.get('dilations').list.i)[1]
 
 
 class BatchNorm2dNode(Node):

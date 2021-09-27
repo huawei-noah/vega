@@ -13,12 +13,16 @@ import numpy as np
 import random
 from ..base import CategoricalSpaceOptim
 from modnas.registry.optim import register
+from modnas.core.param_space import ParamSpace
+from modnas.estim.base import EstimBase
+from collections import OrderedDict
+from typing import Callable, Dict, List, Union, Optional
 
 
 class GeneticOptim(CategoricalSpaceOptim):
     """Optimizer with genetic operators on a population."""
 
-    def __init__(self, pop_size, max_it=1000, space=None):
+    def __init__(self, pop_size: int, max_it: int = 1000, space: Optional[ParamSpace] = None) -> None:
         super().__init__(space)
         self.max_it = max_it
         self.pop_size = pop_size
@@ -29,22 +33,22 @@ class GeneticOptim(CategoricalSpaceOptim):
     def _initialize(self):
         raise NotImplementedError
 
-    def _mating(self, pop):
+    def _mating(self, pop: List[OrderedDict]) -> List[OrderedDict]:
         cur_pop = pop
         for op in self.operators:
             cur_pop = op(cur_pop)
         return cur_pop
 
-    def _next(self):
+    def _next(self) -> OrderedDict:
         params = self.population[len(self.metrics)]
         self.set_visited_params(params)
         return params
 
-    def add_operator(self, operator):
+    def add_operator(self, operator: Callable) -> None:
         """Add a genetic operator."""
         self.operators.append(operator)
 
-    def to_metrics(self, res):
+    def to_metrics(self, res: Union[float, Dict[str, float]]) -> float:
         """Return scalar metrics from evaluation results."""
         if isinstance(res, dict):
             return list(res.values())[0]
@@ -52,7 +56,7 @@ class GeneticOptim(CategoricalSpaceOptim):
             return res[0]
         return res
 
-    def step(self, estim):
+    def step(self, estim: EstimBase) -> None:
         """Update Optimizer states using Estimator evaluation results."""
         _, results = estim.get_last_results()
         results = [self.to_metrics(res) for res in results]
@@ -67,14 +71,14 @@ class EvolutionOptim(GeneticOptim):
     """Optimizer with Evolution algorithm."""
 
     def __init__(self,
-                 pop_size=100,
-                 n_parents=2,
-                 n_offsprings=1,
-                 n_select=10,
-                 n_eliminate=1,
-                 n_crossover=None,
-                 mutation_prob=0.01,
-                 space=None):
+                 pop_size: int = 100,
+                 n_parents: int = 2,
+                 n_offsprings: int = 1,
+                 n_select: int = 10,
+                 n_eliminate: int = 1,
+                 n_crossover: Optional[int] = None,
+                 mutation_prob: float = 0.01,
+                 space: Optional[ParamSpace] = None) -> None:
         super().__init__(space=space, pop_size=pop_size)
         self.add_operator(self._survival)
         self.add_operator(self._selection)
@@ -87,7 +91,7 @@ class EvolutionOptim(GeneticOptim):
         self.n_crossover = pop_size if n_crossover is None else n_crossover
         self.mutation_prob = mutation_prob
 
-    def _initialize(self):
+    def _initialize(self) -> List[OrderedDict]:
         return [self.get_random_params() for _ in range(self.pop_size)]
 
     def _survival(self, pop):
@@ -99,7 +103,7 @@ class EvolutionOptim(GeneticOptim):
         self.metrics = [metrics[i] for i in idx]
         return [pop[i] for i in idx]
 
-    def _selection(self, pop):
+    def _selection(self, pop: List[OrderedDict]) -> List[OrderedDict]:
         n_select = self.n_select
         if n_select >= len(pop):
             return pop
@@ -108,7 +112,7 @@ class EvolutionOptim(GeneticOptim):
         self.metrics = [metrics[i] for i in idx]
         return [pop[i] for i in idx]
 
-    def _crossover(self, pop):
+    def _crossover(self, pop: List[OrderedDict]) -> List[OrderedDict]:
         next_pop = []
         it = 0
         while len(next_pop) < self.n_crossover and it < self.max_it:
@@ -126,7 +130,7 @@ class EvolutionOptim(GeneticOptim):
             next_pop.append(self.get_random_params())
         return next_pop
 
-    def _mutation(self, pop):
+    def _mutation(self, pop: List[OrderedDict]) -> List[OrderedDict]:
         next_pop = []
         for gene in pop:
             it = 0
@@ -151,7 +155,7 @@ class EvolutionOptim(GeneticOptim):
 class RegularizedEvolutionOptim(EvolutionOptim):
     """Optimizer with Regularized Evolution algorithm."""
 
-    def _survival(self, pop):
+    def _survival(self, pop: List[OrderedDict]) -> List[OrderedDict]:
         s_idx = self.n_eliminate
         if s_idx <= 0:
             return pop

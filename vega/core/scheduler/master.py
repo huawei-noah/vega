@@ -88,24 +88,11 @@ class Master(MasterBase):
         """Set and start dask distributed cluster."""
         self.md = ClusterDaskDistributor(self.dask_env.master_address)
         self.client = self.md.get_client()
-        local_host = None
-        if "BATCH_CURRENT_HOST" in os.environ:
-            local_host = os.environ["BATCH_CURRENT_HOST"]
-        elif "BATCH_CUSTOM0_HOSTS" in os.environ:
-            local_host = os.environ["BATCH_CUSTOM0_HOSTS"]
-        if "CUDA_VISIBLE_DEVICES" in os.environ:
-            os.environ["ORIGIN_CUDA_VISIBLE_DEVICES"] = os.environ["CUDA_VISIBLE_DEVICES"]
+        os.environ["vega_python_command"] = General.python_command
+        os.environ["vega_timeout"] = str(General.worker.timeout)
         self._remove_worker_number_file()
-        plugin = WorkerEnv(self.dask_env.slave_proc_num,
-                           self.dask_env.slave_device_num_per_proc,
-                           local_host,
-                           os.getpid(),
-                           TaskOps().temp_path)
+        plugin = WorkerEnv(self.dask_env.slave_device_num_per_proc)
         self.client.register_worker_plugin(plugin)
-        if "ORIGIN_CUDA_VISIBLE_DEVICES" in os.environ:
-            os.environ["CUDA_VISIBLE_DEVICES"] = os.environ["ORIGIN_CUDA_VISIBLE_DEVICES"]
-        if "CUDA_VISIBLE_DEVICES" in os.environ and "ORIGIN_CUDA_VISIBLE_DEVICES" not in os.environ:
-            del os.environ["CUDA_VISIBLE_DEVICES"]
         return
 
     def _remove_worker_number_file(self):
@@ -138,10 +125,16 @@ class Master(MasterBase):
         if worker is None:
             return
 
-        workers = [worker]
+        if worker.worker_type == utils.WorkerTypes.EVALUATOR and evaluator is None:
+            workers = []
+            evaluator = worker
+        else:
+            workers = [worker]
+
         if evaluator and evaluator.worker_type == utils.WorkerTypes.EVALUATOR:
             for sub_worker in evaluator.sub_worker_list:
-                if sub_worker.worker_type == utils.WorkerTypes.DeviceEvaluator:
+                is_device_evaluator = sub_worker.worker_type == utils.WorkerTypes.DeviceEvaluator
+                if is_device_evaluator and General.device_evaluate_before_train:
                     workers.insert(0, sub_worker)
                 else:
                     workers.append(sub_worker)
@@ -182,7 +175,9 @@ class Master(MasterBase):
 
     def _update(self, step_name, worker_id):
         # Waiting report thread update all record
-        ReportClient().set_finished(step_name, worker_id)
+        # TODO
+        if not General.cluster.show_all_ranks and "-" not in worker_id:
+            ReportClient().set_finished(step_name, worker_id)
         if not self.update_func:
             return
         if self.update_func.__code__.co_varnames.index("step_name") == 1:

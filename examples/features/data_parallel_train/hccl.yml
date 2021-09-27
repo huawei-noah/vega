@@ -1,0 +1,27 @@
+# .
+# The configuration is as follows:
+
+
+pipeline: [fully_train]
+
+fully_train:
+    pipe_step:
+        type: HcclTrainStep
+    trainer:
+        epochs: 1
+    model:
+        model_desc:
+            modules: ['backbone']
+            backbone:
+                type: ResNet
+                num_class: 10
+    dataset:
+        type: Cifar10
+        common:
+            data_path: /cache/datasets/cifar10/
+    evaluator:
+        type: Evaluator
+        host_evaluator:                 # optional, evaluate the accuracy of the model on the host side
+            type: HostEvaluator
+            metric:
+                type: accuracy          # accuracy (classification) | psnr (super resolution)

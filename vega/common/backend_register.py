@@ -27,18 +27,26 @@ def set_backend(backend='pytorch', device_category='GPU'):
     :param backend: backend type, default pytorch
     :type backend: str
     """
-    # if "BACKEND_TYPE" in os.environ:
-    #     return
-    if 'NPU_VISIBLE_DEVICES' in os.environ:
-        os.environ['NPU-VISIBLE-DEVICES'] = os.environ['NPU_VISIBLE_DEVICES']
+    devices = os.environ.get("NPU_VISIBLE_DEVICES", None) or os.environ.get("NPU-VISIBLE-DEVICES", None)
+    if devices:
+        os.environ['NPU_VISIBLE_DEVICES'] = devices
     # CUDA visible
     if 'CUDA_VISIBLE_DEVICES' in os.environ:
         os.environ['DEVICE_CATEGORY'] = 'GPU'
-    elif 'NPU-VISIBLE-DEVICES' in os.environ:
+    elif 'NPU_VISIBLE_DEVICES' in os.environ:
         os.environ['DEVICE_CATEGORY'] = 'NPU'
-        if 'RANK_TABLE_FILE' in os.environ:
-            os.environ['ORIGIN_RANK_TABLE_FILE'] = os.environ['RANK_TABLE_FILE']
-        os.environ['ORIGIN_RANK_SIZE'] = os.environ['RANK_SIZE']
+
+    # CUDA_VISIBLE_DEVICES
+    if device_category.upper() == "GPU" and "CUDA_VISIBLE_DEVICES" not in os.environ:
+        if backend.lower() in ['pytorch', "p"]:
+            import torch
+            os.environ["CUDA_VISIBLE_DEVICES"] = ",".join(
+                [str(x) for x in list(range(torch.cuda.device_count()))])
+        elif backend.lower() in ['tensorflow', "t"]:
+            from tensorflow.python.client import device_lib
+            devices = device_lib.list_local_devices()
+            os.environ["CUDA_VISIBLE_DEVICES"] = ",".join(
+                [x.name.split(":")[2] for x in devices if x.device_type == "GPU"])
 
     # device
     if device_category is not None:
@@ -72,12 +80,12 @@ def set_backend(backend='pytorch', device_category='GPU'):
     register_networks(backend)
     register_modelzoo(backend)
 
-    # register ext modules
-    vega_extension_path = os.environ.get("VEGA_EXTENSION_PATH")
-    if vega_extension_path:
-        sys.path.append(vega_extension_path)
+    # register ascend automl modules
+    ascend_automl_path = os.environ.get("ASCEND_AUTOML_PATH")
+    if ascend_automl_path:
+        sys.path.append(ascend_automl_path)
     try:
-        import vega_extension
+        import ascend_automl
     except ImportError:
         pass
     # backup config
@@ -121,4 +129,6 @@ def get_devices():
     device_category = os.environ.get('DEVICE_CATEGORY', 'CPU')
     if device_category == 'GPU':
         device_category = 'cuda'
+        if "CUDA_VISIBLE_DEVICES" in os.environ:
+            device_id = int(os.environ["CUDA_VISIBLE_DEVICES"].split(",")[0])
     return "{}:{}".format(device_category.lower(), device_id)

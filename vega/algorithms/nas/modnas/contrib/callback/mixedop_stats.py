@@ -16,6 +16,10 @@ from modnas.registry.callback import register
 from modnas.arch_space.mixed_ops import MixedOp
 from modnas.callback.base import CallbackBase
 from matplotlib import pyplot as plt
+from modnas.estim.base import EstimBase
+from modnas.optim.base import OptimBase
+from typing import Dict, Optional, Any
+
 plt.switch_backend('Agg')
 
 
@@ -23,18 +27,20 @@ plt.switch_backend('Agg')
 class MixedOpStatsReporter(CallbackBase):
     """Mixed operator statistics reporter class."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__({
             'before:EstimBase.run_epoch': self.record_probs,
             'after:EstimBase.run': self.save_stats,
         })
         self.probs = []
 
-    def record_probs(self, estim, optim, epoch, tot_epochs):
+    def record_probs(
+        self, estim: EstimBase, optim: Optional[OptimBase], epoch: Optional[int], tot_epochs: Optional[int]
+    ) -> None:
         """Record mixed operator probabilities on each epoch."""
         self.probs.append([F.softmax(m.alpha().detach(), dim=-1).cpu().numpy() for m in MixedOp.gen(estim.model)])
 
-    def save_stats(self, ret, estim, optim):
+    def save_stats(self, ret: Dict[str, Any], estim: EstimBase, optim: OptimBase) -> Dict[str, Any]:
         """Save statistics on search end."""
         self.record_probs(estim, None, None, None)
         probs = self.probs
@@ -58,3 +64,4 @@ class MixedOpStatsReporter(CallbackBase):
             pickle.dump(save_probs, f)
             self.logger.info('mixed op probs saved to {}'.format(probs_path))
         self.probs = []
+        return ret

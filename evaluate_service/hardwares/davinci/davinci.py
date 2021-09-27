@@ -39,10 +39,11 @@ class Davinci(object):
         """
         om_save_path = kwargs["save_dir"]
         input_shape = kwargs["input_shape"]
+        precision = kwargs['precision']
         log_save_path = os.path.dirname(model)
 
         command_line = ["bash", self.current_path + "/model_convert.sh", self.davinci_environment_type, backend, model,
-                        weight, om_save_path, log_save_path, input_shape]
+                        weight, om_save_path, log_save_path, input_shape, precision]
         try:
             subprocess.check_output(command_line)
         except subprocess.CalledProcessError as exc:

@@ -407,7 +407,8 @@ class HalfCodeHyperParameter(HyperParameter):
         if random.uniform(0, 1) < ratio:
             return [1] * size
         if len(self.range) == 1:
-            need_convert_code_size = size // 2
+            need_convert_code_size = round(size * 0.5 / 16) * 16
+            need_convert_code_size = need_convert_code_size if need_convert_code_size > 16 else size
             change_ids = random.sample(range(size), need_convert_code_size)
             individual = [1 if i in change_ids else 0 for i in range(size)]
         return individual

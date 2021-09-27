@@ -11,6 +11,46 @@
 """Metric of segmentation task."""
 from mindspore.nn.metrics import Metric
 from vega.common import ClassFactory, ClassType
+import numpy as np
+
+
+def calc_confusion_matrix(output, mask, num_class):
+    """Calculate confusion matrix between output and mask.
+
+    :param output: predicted images
+    :type output: pytorch tensor
+    :param mask: images of ground truth
+    :type mask: pytorch tensor
+    :return: confusion matrix
+    :rtype: numpy matrix
+    """
+    confusion_matrix = np.zeros((num_class, num_class))
+    preds = output.argmax(axis=3).reshape(-1)
+    mask = mask.reshape(-1)
+    for predicted, label in zip(preds, mask):
+        if label < num_class:
+            confusion_matrix[predicted][label] += 1
+    return confusion_matrix
+
+
+def compute_iou(confusion_matrix):
+    """Compute IU from confusion matrix.
+
+    :param confusion_matrix: square confusion matrix.
+    :type confusion_matrix: numpy matrix
+    :return: IU vector.
+    :rtype: numpy vector
+    """
+    n_classes = confusion_matrix.shape[0]
+    IoU = np.zeros(n_classes)
+    for i in range(n_classes):
+        sum_columns = np.sum(confusion_matrix[:, i])
+        sum_rows = np.sum(confusion_matrix[i, :])
+        num_correct = confusion_matrix[i, i]
+        denom = sum_columns + sum_rows - num_correct
+        if denom > 0:
+            IoU[i] = num_correct / denom
+    return IoU
 
 
 @ClassFactory.register(ClassType.METRIC, alias='IoUMetric')
@@ -19,6 +59,7 @@ class IoUMetric(Metric):
 
     def __init__(self, num_class):
         self.num_class = num_class
+        self.confusion_sum = np.zeros((num_class, num_class))
 
     def update(self, *inputs):
         """Update the metric."""
@@ -38,8 +79,10 @@ class IoUMetric(Metric):
 
     def compute_metric(self, output, target):
         """Compute sr metric."""
-        # TODO
-        return 0
+        confusion = calc_confusion_matrix(output, target, self.num_class)
+        self.confusion_sum += confusion
+        iou = compute_iou(self.confusion_sum).mean()
+        return iou
 
     @property
     def objective(self):

@@ -176,11 +176,9 @@ class TimmTrainerCallback(Callback):
         self.config = self.trainer.config
         if self.trainer.hps and self.trainer.hps.get('trainer'):
             self.config.from_dict(self.trainer.hps.get('trainer'))
-        self.trainer._init_distributed_setting()
         if not vega.is_cpu_device():
             self.trainer._init_setting()
-        self.epochs = self.trainer.epochs
-        self.distributed = self.trainer.distributed
+        self.distributed = self.trainer.horovod
         self.trainer.model = self._init_model()
         self.model = self.trainer.model
         self.use_syncbn = self.config.syncbn
@@ -193,9 +191,7 @@ class TimmTrainerCallback(Callback):
             self.model_ema = self._init_model_ema()
         self.trainer.lr_scheduler = self._init_lr_scheduler()
         self.trainer.loss = self._init_loss()
-        if self.distributed:
-            self.trainer._init_horovod_setting()
-        self.use_amp = self.config.amp
+        self.use_amp = self.config.use_amp
         if self.use_amp:
             self.trainer.model, self.trainer.optimizer = amp.initialize(self.trainer.model,
                                                                         self.trainer.optimizer,

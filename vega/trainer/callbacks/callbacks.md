@@ -10,7 +10,7 @@
 | MetricsEvaluator          | 230   |   | √ | √ | √ |   |   |   |   |   |   | √ | √ | √ |   | √ | √ | √ |
 | ModelCheckpoint           | 240   |   | √ |   |   |   |   |   |   |   |   |   | √ |   |   |   |   |   |
 | PerformanceSaver          | 250   |   | √ |   |   |   |   |   |   |   |   |   | √ | √ |   |   |   |   |
-| DataParallel              | 260   |   | √ |   |   |   |   |   |   |   |   |   |   |   |   |   |   |   |
+| DdpTorch                  | 260   |   | √ |   |   |   |   |   |   |   |   |   |   |   |   |   |   |   |
 | ProgressLogger            | 270   |   | √ | √ | √ |   |   |   |   |   |   | √ |   | √ |   |   | √ | √ |
 | ReportCallback            | 280   |   | √ |   |   |   |   |   |   |   |   |   | √ | √ |   |   |   | √ |
 | VisualCallBack            | 290   |   | √ |   |   |   |   |   |   |   |   | √ | √ | √ | √ |   |   |   |

@@ -21,8 +21,9 @@ from vega.common.general import General
 from vega.common.task_ops import TaskOps
 from vega.report import ReportServer, ReportClient
 from vega.common.config import Config
-from vega.common import update_dict, SearchableRegister
+from vega.common import update_dict
 from vega.common.utils import remove_np_value
+from vega.common.parameter_sharing import ParameterSharing
 
 
 class Generator(object):
@@ -43,6 +44,7 @@ class Generator(object):
     def sample(self):
         """Sample a work id and model from search algorithm."""
         out = []
+        kwargs_list = []
         num_samples = 1
         for _ in range(10):
             res = self.search_alg.search()
@@ -54,44 +56,50 @@ class Generator(object):
             if num_samples == 0:
                 return None
             for sample in res:
-                if isinstance(sample, dict):
-                    id = sample["worker_id"]
-                    desc = sample["encoded_desc"]
-                    sample.pop("worker_id")
-                    sample.pop("encoded_desc")
-                    kwargs = sample
-                    sample = _split_sample((id, desc))
-                else:
-                    kwargs = {}
-                    sample = _split_sample(sample)
-                if hasattr(self, "objective_keys") and self.objective_keys:
-                    kwargs["objective_keys"] = self.objective_keys
-                (id, desc, hps) = sample
-                if SearchableRegister().has_searchable():
-                    hps = SearchableRegister().update(desc)
-                    desc = PipeStepConfig.model.model_desc
-                else:
-                    desc = self._decode_hps(desc)
-                    hps = self._decode_hps(hps)
-                if "modules" in desc:
-                    PipeStepConfig.model.model_desc = deepcopy(desc)
-                elif "network" in desc:
-                    origin_desc = PipeStepConfig.model.model_desc
-                    model_desc = update_dict(desc["network"], origin_desc)
-                    PipeStepConfig.model.model_desc = model_desc
-                    desc.pop('network')
-                    desc.update(model_desc)
-
-                (hps, desc) = self._split_hps_desc(hps, desc)
-
+                (id, desc, hps, kwargs) = self._get_hps_desc_from_sample(sample)
                 if not vega.quota().verify_sample(desc) or not vega.quota().verify_affinity(desc):
                     continue
-
-                ReportClient().update(General.step_name, id, desc=desc, hps=hps, **kwargs)
                 out.append((id, desc, hps))
+                kwargs_list.append(kwargs)
             if len(out) >= num_samples:
                 break
+        for i in range(num_samples):
+            ReportClient().update(General.step_name, out[i][0], desc=out[i][1], hps=out[i][2], **kwargs_list[i])
         return out[:num_samples]
+
+    def _get_hps_desc_from_sample(self, sample):
+        if isinstance(sample, dict):
+            id = sample["worker_id"]
+            desc = sample["encoded_desc"]
+            sample.pop("worker_id")
+            sample.pop("encoded_desc")
+            kwargs = sample
+            sample = _split_sample((id, desc))
+        else:
+            kwargs = {}
+            sample = _split_sample(sample)
+        if hasattr(self, "objective_keys") and self.objective_keys:
+            kwargs["objective_keys"] = self.objective_keys
+        (id, desc, hps) = sample
+        if hasattr(self.search_alg.search_space, "to_desc"):
+            desc = self.search_alg.search_space.to_desc(desc)
+        else:
+            desc = self._decode_hps(desc)
+            hps = self._decode_hps(hps)
+            network_desc = None
+            if "modules" in desc:
+                PipeStepConfig.model.model_desc = deepcopy(desc)
+            elif "network" in desc:
+                origin_desc = PipeStepConfig.model.model_desc
+                network_desc = update_dict(desc["network"], origin_desc)
+                PipeStepConfig.model.model_desc = network_desc
+                desc.pop('network')
+
+            (hps, desc) = self._split_hps_desc(hps, desc)
+            if network_desc is not None:
+                desc.update(network_desc)
+
+        return id, desc, hps, kwargs
 
     def _split_hps_desc(self, hps, desc):
         if "type" not in desc or desc.get("type") != "Sequential":
@@ -119,10 +127,11 @@ class Generator(object):
         record = ReportClient().get_record(step_name, worker_id)
         logging.debug("Get Record=%s", str(record))
         self.search_alg.update(record.serialize())
-        try:
-            self.dump()
-        except TypeError:
-            logging.warning("The Generator contains object which can't be pickled.")
+        ParameterSharing().remove()
+        # try:
+        #     self.dump()
+        # except Exception:
+        #     logging.warning("The Generator contains object which can't be pickled.")
         logging.info(f"Update Success. step_name={step_name}, worker_id={worker_id}")
         logging.info("Best values: %s", ReportServer().print_best(step_name=General.step_name))
 

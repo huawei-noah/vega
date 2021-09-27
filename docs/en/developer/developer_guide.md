@@ -293,8 +293,6 @@ The standard trainer training process is implemented in the train_process interf
                 self._valid_epoch()
             self.callbacks.after_epoch(epoch)
         self.callbacks.after_train()
-        if self.distributed:
-            self._shutdown_distributed()
 
     def _train_epoch(self):
         if vega.is_torch_backend():
@@ -712,28 +710,3 @@ class PipeStep(object):
         """Do the main task in this pipe step."""
         pass
 ```
-
-## 8. Fully Train
-
-On `Fully Train`, we support single-card training and multi-device multi-card distributed training based on `Horovod`. `Fully Train` corresponds to `TrainPipeStep` in `pipeline`.
-
-### 8.1 Configuration
-
-If you need to perform `Horovod` distributed training, add the configuration item `distributed` to the `trainer` configuration file of `TrainPipeStep` and set it to `True`. If this configuration item is not added, the default value is False, indicating that distributed training is not used.
-
-```yaml
-fullytrain:
-    pipe_step:
-        type: TrainPipeStep
-    trainer:
-        type: trainer
-        distributed: True
-```
-
-The `shell` is used to start the `Horovod` distributed training. The communication between different nodes has been configured in the image. Developers do not need to care about how the `vega` is started internally.
-
-### 8.2 Distributed Horovod Supported by Trainers
-
-In distributed training, the network model, optimizer, and data loading of the `trainer` need to be encapsulated into distributed objects using the `Horovod`.
-
-During the training, the code of single-card training is almost the same as that of distributed training. However, during the final calculation of verification indicators, the indicator values on different cards need to be combined to calculate the total average value.

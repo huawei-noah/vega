@@ -24,7 +24,6 @@ fully_train:
             save_in_memory: False
             pin_memory: False
             shuffle: True
-            distributed: False
             imgs_per_gpu: 4
             drop_last: True
         test:
@@ -34,7 +33,6 @@ fully_train:
             num_workers: 8
             shuffle: False
             pin_memory: False
-            distributed: False
             imgs_per_gpu: 4
             val_ps_offset: 10
             drop_last: False
@@ -51,7 +49,6 @@ fully_train:
         val_ps_offset: 10
         continue_train: !!null
         lr_policy: linear
-        distributed: False
         model_desc:
             modules: ["custom"]
             custom:

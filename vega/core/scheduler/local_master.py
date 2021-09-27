@@ -9,7 +9,9 @@
 # MIT License for more details.
 
 """The LocalMaster's method is same as Master, and the class is used on single node."""
-import os
+
+import traceback
+import logging
 from vega.trainer.utils import WorkerTypes
 from vega.common.general import General
 from vega.report import ReportClient
@@ -23,9 +25,6 @@ class LocalMaster(MasterBase):
         """Init master."""
         self.cfg = General
         self.update_func = update_func
-        if os.environ['DEVICE_CATEGORY'] == 'NPU':
-            os.environ['RANK_SIZE'] = '1'
-            os.environ.pop('RANK_TABLE_FILE', None)
 
     def run(self, worker, evaluator=None):
         """Run a worker, call the worker's train_prcess() method.
@@ -40,16 +39,26 @@ class LocalMaster(MasterBase):
         step_name = worker.step_name
         worker_id = worker.worker_id
 
-        workers = [worker]
+        if worker.worker_type == WorkerTypes.EVALUATOR and evaluator is None:
+            workers = []
+            evaluator = worker
+        else:
+            workers = [worker]
+
         if evaluator and evaluator.worker_type == WorkerTypes.EVALUATOR:
             for sub_worker in evaluator.sub_worker_list:
-                if sub_worker.worker_type == WorkerTypes.DeviceEvaluator:
+                is_device_evaluator = sub_worker.worker_type == WorkerTypes.DeviceEvaluator
+                if is_device_evaluator and General.device_evaluate_before_train:
                     workers.insert(0, sub_worker)
                 else:
                     workers.append(sub_worker)
 
         for worker in workers:
-            worker.train_process()
+            try:
+                worker.train_process()
+            except Exception:
+                logging.error(traceback.format_exc())
+                logging.error(f"Failed to run worker, id={worker.worker_id}")
 
         self._update(step_name, worker_id)
 

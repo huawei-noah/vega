@@ -25,8 +25,6 @@ class ModelConfig(ConfigSerializable):
     pretrained_model_file = None
     head = None
     models_folder = None
-    num_classes = None
-    getter = None
 
     @classmethod
     def from_dict(cls, data, skip_check=True):

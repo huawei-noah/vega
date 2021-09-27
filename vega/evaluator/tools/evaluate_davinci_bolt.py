@@ -10,15 +10,16 @@
 
 """The EvaluateService of client."""
 import os
-import requests
 import logging
 import subprocess
 import pickle
 import numpy as np
+from .rest import post
 
 
-def evaluate(backend, hardware, remote_host, model, weight, test_data, input_shape=None, reuse_model=False,
-             job_id=None, quantize=False, repeat_times=1, **kwargs):
+# flake8: noqa: C901
+def evaluate(backend, hardware, remote_host, model, weight, test_data, input_shape=None, reuse_model=False, job_id=None,
+             quantize=False, repeat_times=1, precision='FP32', **kwargs):
     """Evaluate interface of the EvaluateService.
 
     :param backend: the backend can be one of "tensorflow", "caffe" and "pytorch"
@@ -60,8 +61,8 @@ def evaluate(backend, hardware, remote_host, model, weight, test_data, input_sha
         data_file = open(test_data, "rb")
         upload_data = {"data_file": data_file}
 
-    evaluate_config = {"backend": backend, "hardware": hardware, "remote_host": remote_host,
-                       "reuse_model": reuse_model, "job_id": job_id, "repeat_times": repeat_times}
+    evaluate_config = {"backend": backend, "hardware": hardware, "remote_host": remote_host, "reuse_model": reuse_model,
+                       "job_id": job_id, "repeat_times": repeat_times, "precision": precision}
     if backend == 'tensorflow':
         shape_list = [str(s) for s in input_shape]
         shape_cfg = {"input_shape": "Placeholder:" + ",".join(shape_list)}
@@ -71,32 +72,44 @@ def evaluate(backend, hardware, remote_host, model, weight, test_data, input_sha
         out_node_cfg = {"out_nodes": out_node_name}
         evaluate_config.update(out_node_cfg)
 
-    evaluate_result = requests.post(remote_host, files=upload_data, data=evaluate_config,
-                                    proxies={"http": None}).json()
+    evaluate_result = post(host=remote_host, files=upload_data, data=evaluate_config)
     # evaluate_result = requests.get(remote_host, proxies={"http": None}).json()
     if evaluate_result.get("status") != "sucess":
-        logging.warning("Evaluate failed and will try again, the status is {}, the timestamp is {}".format(
-            evaluate_result.get("status"), evaluate_result.get("timestamp")))
+        logging.warning(
+            "Evaluate failed and will try again, the status is {}, the timestamp is {}, \
+            the error message is {}.".format(
+                evaluate_result.get("status"), evaluate_result.get("timestamp"), evaluate_result.get("error_message")))
         evaluate_config["reuse_model"] = True
         upload_data = {"data_file": open(test_data, "rb")}
         retry_times = 4
         for i in range(retry_times):
-            evaluate_result = requests.post(remote_host, files=upload_data, data=evaluate_config,
-                                            proxies={"http": None}).json()
+            evaluate_result = post(host=remote_host, files=upload_data, data=evaluate_config)
             if evaluate_result.get("status") == "sucess":
                 logging.info("Evaluate sucess! The latency is {}.".format(evaluate_result["latency"]))
                 break
             else:
                 if i == 3:
                     logging.error(
-                        "Evaluate failed, the status is {},the timestamp is {}, the retry times is {}.".format(
-                            evaluate_result.get("status"), evaluate_result.get("timestamp"), i + 1))
+                        "Evaluate failed, the status is {},the timestamp is {}, the retry times is {}, the error \
+                        message is {}.".format(evaluate_result.get("status"), evaluate_result.get("timestamp"),
+                                               i + 1, evaluate_result.get("error_message")))
                 else:
                     logging.warning(
-                        "Evaluate failed, the status is {},the timestamp is {}, the retry times is {}.".format(
-                            evaluate_result.get("status"), evaluate_result.get("timestamp"), i + 1))
+                        "Evaluate failed, the status is {},the timestamp is {}, the retry times is {}, the error \
+                        message is {}.".format(evaluate_result.get("status"), evaluate_result.get("timestamp"), i + 1,
+                                               evaluate_result.get("error_message")))
     else:
         logging.info("Evaluate sucess! The latency is {}.".format(evaluate_result["latency"]))
+
+    if not kwargs.get("save_intermediate_file", False):
+        # clean intermediate file
+        if os.path.exists(model):
+            os.remove(model)
+        if weight and os.path.isfile(weight) and os.path.exists(weight):
+            os.remove(weight)
+        if os.path.exists(test_data):
+            os.remove(test_data)
+
     return evaluate_result
 
 
@@ -118,8 +131,9 @@ def preprocessing_model(backend, hardware, model, weight, input_shape, base_save
     """
     if backend == "pytorch":
         if hardware == "Bolt":
+            opset_version = kwargs["opset_version"]
             from .pytorch2onnx import pytorch2onnx
-            model = pytorch2onnx(model, input_shape, base_save_dir)
+            model = pytorch2onnx(model, input_shape, base_save_dir, opset_version)
         elif kwargs["intermediate_format"] == "caffe":
             model_file = os.path.join(base_save_dir, "torch_model.pkl")
             shape_file = os.path.join(base_save_dir, "input_shape.pkl")
@@ -142,7 +156,8 @@ def preprocessing_model(backend, hardware, model, weight, input_shape, base_save
             backend = "caffe"
         else:
             from .pytorch2onnx import pytorch2onnx
-            model = pytorch2onnx(model, input_shape, base_save_dir)
+            opset_version = kwargs["opset_version"]
+            model = pytorch2onnx(model, input_shape, base_save_dir, opset_version)
             backend = "onnx"
     elif backend == "tensorflow":
         pb_model_file = os.path.join(base_save_dir, "tf_model.pb")

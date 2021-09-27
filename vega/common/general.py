@@ -34,16 +34,23 @@ class ClusterConfig(ConfigSerializable):
     """Cluster Config."""
 
     master_ip = None
-    listen_port = get_available_port()
+    listen_port = get_available_port(min_port=28000, max_port=28999)
     slaves = []
     standalone_boot = False
     num_workers = 0
+    num_nodes = 1
+    num_workers_per_node = 1
+    horovod = False         # read-only
+    hccl = False            # read-only
+    hccl_port = get_available_port(min_port=29000, max_port=29999)
+    hccl_server_ip = None   # read-only
+    enable_broadcast_buffers = False
+    show_all_ranks = False
 
 
 class Worker(ConfigSerializable):
     """Worker Config."""
 
-    # distributed = False
     timeout = 5 * 24 * 3600     # 5 days
     eval_count = 10
     evaluate_timeout = 0.1
@@ -115,3 +122,7 @@ class General(ConfigSerializable):
     requires = []
     message_port = None
     python_command = sys.executable or "python3"
+    device_evaluate_before_train = True
+    ms_execute_mode = 0  # 0-GRAPH_MODE 1-PYNATIVE_MODE
+    dataset_sink_mode = True
+    security_setting = None

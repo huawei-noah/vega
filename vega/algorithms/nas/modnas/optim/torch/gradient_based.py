@@ -16,6 +16,14 @@ from ..base import GradientBasedOptim
 from modnas.core.param_space import ParamSpace
 from modnas.arch_space.mixed_ops import MixedOp
 from modnas.registry.optim import register
+from modnas.estim.base import EstimBase
+from torch import Tensor
+from torch.nn.modules.module import Module
+from torch.optim.optimizer import Optimizer
+from typing import Any, List, Optional, Tuple, Dict
+
+
+OPTIM_CONF_TYPE = Optional[Dict[str, Any]]
 
 
 @register
@@ -25,13 +33,16 @@ class DARTSOptim(GradientBasedOptim):
     modified from https://github.com/khanrc/pt.darts
     """
 
-    def __init__(self, a_optim=None, w_momentum=0.9, w_weight_decay=0.0003, space=None):
+    def __init__(
+        self, a_optim: OPTIM_CONF_TYPE = None, w_momentum: float = 0.9, w_weight_decay: float = 0.0003,
+        space: Optional[ParamSpace] = None
+    ) -> None:
         super().__init__(space, a_optim)
         self.v_net = None
         self.w_momentum = w_momentum
         self.w_weight_decay = w_weight_decay
 
-    def _virtual_step(self, trn_batch, lr, optimizer, estim):
+    def _virtual_step(self, trn_batch: Any, lr: float, optimizer: Optimizer, estim: EstimBase) -> None:
         # forward & calc loss
         model = estim.model
         loss = estim.loss(trn_batch, mode='train')  # L_trn(w)
@@ -43,7 +54,7 @@ class DARTSOptim(GradientBasedOptim):
                 m = optimizer.state[w].get('momentum_buffer', 0.) * self.w_momentum
                 vw.copy_(w - lr * (m + g + self.w_weight_decay * w))
 
-    def step(self, estim):
+    def step(self, estim: EstimBase) -> None:
         """Update Optimizer states using Estimator."""
         self.optim_reset()
         trn_batch = estim.get_cur_train_batch()
@@ -58,20 +69,19 @@ class DARTSOptim(GradientBasedOptim):
         # calc unrolled loss
         loss = estim.loss(val_batch, model=self.v_net, mode='valid')  # L_val(w`)
         # compute gradient
-        alphas = ParamSpace().tensor_values()
-        v_alphas = tuple(alphas)
+        v_alphas = tuple(ParamSpace().tensor_values())
         v_weights = tuple(self.v_net.parameters())
         v_grads = torch.autograd.grad(loss, v_alphas + v_weights)
         dalpha = v_grads[:len(v_alphas)]
-        dw = v_grads[len(v_alphas):]
+        dw = list(v_grads[len(v_alphas):])
         hessian = self._compute_hessian(dw, trn_batch, estim)
         # update final gradient = dalpha - lr*hessian
         with torch.no_grad():
-            for a, da, h in zip(alphas, dalpha, hessian):
+            for a, da, h in zip(v_alphas, dalpha, hessian):
                 a.grad = da - lr * h
         self.optim_step()
 
-    def _compute_hessian(self, dw, trn_batch, estim):
+    def _compute_hessian(self, dw: List[Tensor], trn_batch: Tuple[Tensor, Tensor], estim: EstimBase) -> List[Any]:
         """Compute Hessian matrix.
 
         dw = dw` { L_val(w`, alpha) }
@@ -81,9 +91,9 @@ class DARTSOptim(GradientBasedOptim):
         eps = 0.01 / ||dw||
         """
         model = estim.model
-        alphas = ParamSpace().tensor_values()
+        alphas = tuple(ParamSpace().tensor_values())
         norm = torch.cat([w.view(-1) for w in dw]).norm()
-        eps = 0.01 / norm
+        eps = (0.01 / norm).item()
         # w+ = w + eps*dw`
         with torch.no_grad():
             for p, d in zip(model.parameters(), dw):
@@ -100,7 +110,7 @@ class DARTSOptim(GradientBasedOptim):
         with torch.no_grad():
             for p, d in zip(model.parameters(), dw):
                 p += eps * d
-        hessian = [(p - n) / 2. * eps.item() for p, n in zip(dalpha_pos, dalpha_neg)]
+        hessian = [(p - n) / 2. * eps for p, n in zip(dalpha_pos, dalpha_neg)]
         return hessian
 
 
@@ -117,13 +127,16 @@ class BinaryGateOptim(GradientBasedOptim):
         }
     }
 
-    def __init__(self, a_optim=None, n_samples=2, renorm=True, space=None):
+    def __init__(
+        self, a_optim: OPTIM_CONF_TYPE = None, n_samples: int = 2, renorm: bool = True,
+        space: Optional[ParamSpace] = None
+    ) -> None:
         super().__init__(space, a_optim or BinaryGateOptim._default_optimizer_conf)
         self.n_samples = n_samples
         self.sample = (self.n_samples != 0)
         self.renorm = renorm and self.sample
 
-    def step(self, estim):
+    def step(self, estim: EstimBase) -> None:
         """Update Optimizer states using Estimator."""
         self.optim_reset()
         model = estim.model
@@ -175,10 +188,10 @@ class BinaryGateOptim(GradientBasedOptim):
 class DirectGradOptim(GradientBasedOptim):
     """Optimizer by backwarding training loss."""
 
-    def __init__(self, a_optim=None, space=None):
+    def __init__(self, a_optim: OPTIM_CONF_TYPE = None, space: Optional[ParamSpace] = None) -> None:
         super().__init__(space, a_optim)
 
-    def step(self, estim):
+    def step(self, estim: EstimBase) -> None:
         """Update Optimizer states using Estimator."""
         self.optim_step()
         self.optim_reset()
@@ -188,10 +201,10 @@ class DirectGradOptim(GradientBasedOptim):
 class DirectGradBiLevelOptim(GradientBasedOptim):
     """Optimizer by backwarding validating loss."""
 
-    def __init__(self, a_optim=None, space=None):
+    def __init__(self, a_optim: OPTIM_CONF_TYPE = None, space: Optional[ParamSpace] = None) -> None:
         super().__init__(space, a_optim)
 
-    def step(self, estim):
+    def step(self, estim: EstimBase) -> None:
         """Update Optimizer states using Estimator."""
         self.optim_reset()
         loss = estim.loss(estim.get_next_valid_batch(), mode='valid')
@@ -206,13 +219,16 @@ class REINFORCEOptim(GradientBasedOptim):
     modified from https://github.com/mit-han-lab/proxylessnas
     """
 
-    def __init__(self, a_optim=None, batch_size=10, space=None):
+    def __init__(
+        self, a_optim: OPTIM_CONF_TYPE = None, batch_size: int = 10,
+        space: Optional[ParamSpace] = None
+    ) -> None:
         super().__init__(space, a_optim)
         self.batch_size = batch_size
         self.baseline = None
         self.baseline_decay_weight = 0.99
 
-    def step(self, estim):
+    def step(self, estim: EstimBase) -> None:
         """Update Optimizer states using Estimator."""
         model = estim.model
         self.optim_reset()
@@ -264,23 +280,21 @@ class GumbelAnnealingOptim(GradientBasedOptim):
     """Optimizer with Gumbel Annealing (SNAS) algorithm."""
 
     def __init__(self,
-                 a_optim=None,
-                 init_temp=1e4,
-                 exp_anneal_rate=0.0015,
-                 anneal_interval=1,
-                 restart_period=None,
-                 space=None):
+                 a_optim: OPTIM_CONF_TYPE = None,
+                 init_temp: float = 1e4,
+                 exp_anneal_rate: float = 0.0015,
+                 anneal_interval: int = 1,
+                 restart_period: Optional[int] = None,
+                 space: Optional[ParamSpace] = None) -> None:
         super().__init__(space, a_optim)
         self.init_temp = init_temp
         self.exp_anneal_rate = exp_anneal_rate
         self.temp = self.init_temp
-        if restart_period is None:
-            restart_period = 0
-        self.restart_period = int(restart_period)
+        self.restart_period = restart_period or 0
         self.anneal_interval = anneal_interval
         self.cur_step = 0
 
-    def step(self, estim):
+    def step(self, estim: EstimBase) -> None:
         """Update Optimizer states using Estimator."""
         self.optim_reset()
         model = estim.model
@@ -295,6 +309,6 @@ class GumbelAnnealingOptim(GradientBasedOptim):
         if self.cur_step % intv == 0:
             self.temp = self.init_temp * math.exp(-self.exp_anneal_rate * self.cur_step / intv)
 
-    def _apply_temp(self, model):
+    def _apply_temp(self, model: Module) -> None:
         for m in MixedOp.gen(model):
             m.set_temperature(self.temp)

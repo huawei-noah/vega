@@ -183,9 +183,10 @@ class BasicNode:
                 continue
             try:
                 self.nodes, self.input_nodes, self.output_nodes = get_graph_info(self.graph)
-                break
+                return graph
             except Exception:
                 continue
+        self.nodes, self.input_nodes, self.output_nodes = ([], [], [])
         return graph
 
 

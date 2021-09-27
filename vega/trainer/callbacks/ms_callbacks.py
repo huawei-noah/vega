@@ -9,7 +9,7 @@
 # MIT License for more details.
 
 """Custom callbacks used in mindspore."""
-import os
+
 import logging
 from mindspore.train.callback import Callback
 from vega.report import ReportClient
@@ -40,7 +40,7 @@ class EvalCallBack(Callback):
             cb_params.cur_epoch_num, cb_params.epoch_num, metric))
 
         self.trainer.performance.update(metric)
-        if self.trainer.distributed and os.environ["DEVICE_ID"] != "0":
+        if not self.trainer.is_chief:
             return
         else:
             ReportClient().update(

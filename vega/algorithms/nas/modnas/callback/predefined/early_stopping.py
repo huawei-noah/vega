@@ -11,6 +11,13 @@
 """Early stopping."""
 from modnas.registry.callback import register
 from ..base import CallbackBase
+from collections import OrderedDict
+from modnas.estim.base import EstimBase
+from modnas.optim.base import OptimBase
+from typing import Any, Dict, Optional
+
+
+_ret_type = Optional[Dict[str, Any]]
 
 
 @register
@@ -19,7 +26,7 @@ class EarlyStopping(CallbackBase):
 
     priority = -10
 
-    def __init__(self, threshold=10):
+    def __init__(self, threshold: int = 10) -> None:
         super().__init__({
             'before:EstimBase.run': self.reset,
             'after:EstimBase.step_done': self.on_step_done,
@@ -29,19 +36,21 @@ class EarlyStopping(CallbackBase):
         self.last_opt = -1
         self.stop = False
 
-    def reset(self, estim, optim):
+    def reset(self, estim: EstimBase, optim: OptimBase) -> None:
         """Reset callback states."""
         self.last_opt = -1
         self.stop = False
 
-    def on_step_done(self, ret, estim, params, value, arch_desc=None):
+    def on_step_done(
+        self, ret: _ret_type, estim: EstimBase, params: OrderedDict, value: float, arch_desc: Optional[Any] = None
+    ) -> _ret_type:
         """Check early stop in each step."""
         ret = ret or {}
         if ret.get('is_opt'):
             self.last_opt = -1
         return ret
 
-    def on_epoch(self, ret, estim, optim, epoch, tot_epochs):
+    def on_epoch(self, ret: _ret_type, estim: EstimBase, optim: OptimBase, epoch: int, tot_epochs: int) -> _ret_type:
         """Check early stop in each epoch."""
         self.last_opt += 1
         if self.last_opt >= self.threshold:

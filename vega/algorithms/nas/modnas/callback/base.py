@@ -11,6 +11,10 @@
 """Base callback."""
 from modnas.core.event import event_on, event_off
 from modnas.utils.logging import get_logger
+from typing import Callable, Dict, Optional, Tuple, Union
+
+
+_HANDLER_CONF_TYPE = Dict[str, Union[Tuple[Callable, int], Callable]]
 
 
 class CallbackBase():
@@ -19,11 +23,12 @@ class CallbackBase():
     logger = get_logger('callback')
     priority = 0
 
-    def __init__(self, handler_conf=None) -> None:
-        self.handlers = None
-        self.bind_handlers(handler_conf)
+    def __init__(self, handler_conf: Optional[_HANDLER_CONF_TYPE] = None) -> None:
+        self.handlers = {}
+        if handler_conf is not None:
+            self.bind_handlers(handler_conf)
 
-    def bind_handlers(self, handler_conf):
+    def bind_handlers(self, handler_conf: _HANDLER_CONF_TYPE) -> None:
         """Bind event handlers."""
         handlers = {}
         for ev, conf in handler_conf.items():

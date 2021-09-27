@@ -20,9 +20,8 @@ class PbaTrainerCallback(Callback):
 
     def before_train(self, logs=None):
         """Be called before the training process."""
-        self.epochs = self.trainer.epochs
         self.transforms = self.trainer.hps.dataset.transforms
-        self.transform_interval = self.epochs // len(self.transforms[0]['all_para'].keys())
+        self.transform_interval = self.trainer.epochs // len(self.transforms[0]['all_para'].keys())
         self.hps = self.trainer.hps
 
     def before_epoch(self, epoch, logs=None):

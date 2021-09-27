@@ -14,13 +14,15 @@ import pickle
 import numpy as np
 from ..base import MetricsBase
 from modnas.registry.metrics import register, build
+from modnas.registry import SPEC_TYPE
+from typing import List, Any, Optional
 
 
 @register
 class StatsLUTMetrics(MetricsBase):
     """Statistical metrics using look-up table (LUT)."""
 
-    def __init__(self, lut_path, head=None):
+    def __init__(self, lut_path: str, head: List[str]) -> None:
         super().__init__()
         with open(lut_path, 'r') as f:
             self.lut = yaml.load(f, Loader=yaml.Loader)
@@ -29,7 +31,7 @@ class StatsLUTMetrics(MetricsBase):
         self.head = head
         self.warned = set()
 
-    def __call__(self, stats):
+    def __call__(self, stats: Any) -> float:
         """Return metrics output."""
         key = '#'.join([str(stats[k]) for k in self.head if not stats.get(k, None) is None])
         val = self.lut.get(key, None)
@@ -48,7 +50,7 @@ class StatsLUTMetrics(MetricsBase):
 class StatsRecordMetrics(MetricsBase):
     """Statistical metrics using recorded results."""
 
-    def __init__(self, metrics, head=None, save_path=None):
+    def __init__(self, metrics: SPEC_TYPE, head: List[str], save_path: Optional[str] = None) -> None:
         super().__init__()
         self.head = head
         self.metrics = build(metrics)
@@ -58,7 +60,7 @@ class StatsRecordMetrics(MetricsBase):
         if save_path is not None:
             self.save_file = open(save_path, 'w')
 
-    def __call__(self, stats):
+    def __call__(self, stats: Any) -> float:
         """Return metrics output."""
         key = '#'.join([str(stats[k]) for k in self.head if stats[k] is not None])
         if key in self.record:

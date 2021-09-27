@@ -42,7 +42,7 @@ class AutoGateGrdaS2TrainerCallback(CtrTrainerCallback):
         logging.info("loading stage1_hpo_result \n{}".format(hpo_result))
 
         self.selected_pairs = hpo_result['feature_interaction']
-        logging.info('feature_interaction:', self.selected_pairs)
+        logging.info(f'feature_interaction: {self.selected_pairs}')
 
         # add selected_pairs
         setattr(ModelConfig.model_desc['custom'], 'selected_pairs', self.selected_pairs)

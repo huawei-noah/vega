@@ -28,8 +28,6 @@ class PerformanceSaver(Callback):
 
     def before_train(self, logs=None):
         """Be called before the training process."""
-        self.is_chief = self.params['is_chief']
-        self.do_validation = self.params['do_validation']
         self.summary_perfs = logs.get('summary_perfs', {})
         self.step_name = self.trainer.step_name
         self.worker_id = self.trainer.worker_id
@@ -43,7 +41,7 @@ class PerformanceSaver(Callback):
     def after_epoch(self, epoch, logs=None):
         """Be called after the training epoch."""
         logging.debug("train record: saver performance after epoch run successes.")
-        if not (self.is_chief and self.save_after_epoch):
+        if not (self.trainer.is_chief and self.save_after_epoch):
             return
         self._update_pfm(logs)
 
@@ -54,7 +52,7 @@ class PerformanceSaver(Callback):
     def _update_pfm(self, logs):
         self.summary_perfs = logs.get('summary_perfs', {})
 
-        best_changed = self.summary_perfs.get('best_valid_perfs_changed', False)
+        best_changed = self.summary_perfs.get('best_changed', False)
         if self.save_best and best_changed:
             pfm = self._get_best_perf(self.summary_perfs)
             self.trainer.best_performance = pfm

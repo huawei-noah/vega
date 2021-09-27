@@ -9,12 +9,13 @@
 
 ---
 
-**Vega ver1.6.1 发布**
+**Vega ver1.7.0 发布**
 
-- Bug Fixes
+- 特性增强
 
-  - 日志打印中的评估时间错误。
-  - 更新Record时错误更新了模型描述。
+  - 提供用于Ascend MindStudio的发布版本。
+  - 提供Horovod（GPU）和HCCL（NPU）的数据并行训练能力。
+  - 修复BUG：BOHB算法在超过3轮后可能会无法自动停止。
 
 ---
 

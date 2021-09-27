@@ -69,7 +69,7 @@ class CyclesrTrainerCallback(Callback):
         :rtype: tuple of torch.utils.data.Dataset
         """
         dataset = Dataset(mode=mode)
-        if self.cfg.distributed:
+        if self.trainer.horovod:
             sampler = torch.utils.data.distributed.DistributedSampler(
                 dataset, num_replicas=hvd.size(), rank=hvd.rank())
             dataset.sampler = sampler
@@ -87,7 +87,7 @@ class CyclesrTrainerCallback(Callback):
             _file = FileOps.join_path(self.worker_path, "model_desc_{}.json".format(self._worker_id))
             with open(_file, "w") as f:
                 json.dump(self.cfg.model_desc, f)
-            if self.cfg.distributed:
+            if self.trainer.horovod:
                 hvd.join()
             model_desc = self.cfg.model_desc
             net_desc = NetworkDesc(model_desc)
@@ -292,7 +292,7 @@ class CyclesrTrainerCallback(Callback):
         if not vega.is_cpu_device():
             self.trainer._init_setting()
         self.model = self._init_model()
-        if self.cfg.distributed:
+        if self.trainer.horovod:
             self._horovod_init_optimizer()
             self._init_horovod_setting()
         self.train_data = self._init_dataloader('train')

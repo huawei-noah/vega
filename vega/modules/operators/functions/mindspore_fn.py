@@ -137,7 +137,7 @@ class Module(nn.Cell):
                         ms_pretrained_weight = os.path.join(pretrained_model_file, file)
                         break
         if self.need_adjust:
-            from .pytorch_to_ms import adaptive_weight
+            from .adaptive_weight_ms import adaptive_weight
             ms_pretrained_weight = adaptive_weight(ms_pretrained_weight, self)
         return ms_pretrained_weight
 

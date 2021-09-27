@@ -22,6 +22,7 @@ class HostEvaluatorConfig(ConfigSerializable):
     cuda = True
     metric = {'type': 'accuracy'}
     report_freq = 10
+    is_fusion = False
 
     @classmethod
     def rules(cls):
@@ -38,12 +39,17 @@ class DeviceEvaluatorConfig(ConfigSerializable):
     hardware = "Davinci"
     remote_host = ""
     intermediate_format = "onnx"  # for torch model convert
+    opset_version = 9  # for torch model convert
+    precision = 'FP32'
     cuda = False
     evaluate_latency = True
     metric = {'type': 'accuracy'}
     calculate_metric = False
     report_freq = 10
     quantize = False
+    is_fusion = False
+    reshape_batch_size = 1
+    save_intermediate_file = False
 
 
 class EvaluatorConfig(ConfigSerializable):

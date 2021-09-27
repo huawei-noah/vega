@@ -1,0 +1,19 @@
+general:
+    backend: mindspore   #pytorch | tensorflow | mindspore
+    device_category: NPU
+    dft: True
+
+pipeline: [fully_train]
+
+
+fully_train:
+    pipe_step:
+        type: TrainPipeStep  # distributed: HcclTrainStep
+    model:
+        model_desc:
+            modules: ['bert']
+            bert:
+                type: Bert
+    trainer:
+        type: BertTrainerCallback
+        epochs: 40

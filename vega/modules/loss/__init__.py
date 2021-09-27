@@ -9,4 +9,5 @@ ClassFactory.lazy_register("vega.modules.loss", {
     "mean_loss": ["trainer.loss:MeanLoss"],
     "ProbOhemCrossEntropy2d": ["trainer.loss:ProbOhemCrossEntropy2d"],
     "gan_loss": ["trainer.loss:GANLoss"],
+    "ms_custom_loss": ["trainer.loss:CustomSoftmaxCrossEntropyWithLogits"],
 })

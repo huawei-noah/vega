@@ -21,4 +21,5 @@ ClassFactory.lazy_register("vega.algorithms.hpo", {
     "pbt_hpo": ["PBTHpo"],
     "pbt_trainer_callback": ["PbtTrainerCallback"],
     "sha_base.hebo_adaptor": ["HeboAdaptor"],
+    "bayes": ["BayesSearch"],
 })

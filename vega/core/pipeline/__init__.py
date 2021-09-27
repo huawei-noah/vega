@@ -9,4 +9,6 @@ ClassFactory.lazy_register("vega.core.pipeline", {
     "train_pipe_step": ["TrainPipeStep"],
     "benchmark_pipe_step": ["BenchmarkPipeStep"],
     "multi_task_pipe_step": ["MultiTaskPipeStep"],
+    "horovod_train_step": ["HorovodTrainStep"],
+    "hccl_train_step": ["HcclTrainStep"],
 })

@@ -13,13 +13,19 @@ import itertools
 from ..base import EstimBase
 from modnas.core.param_space import ParamSpace
 from modnas.registry.estim import register
+from modnas.optim.base import OptimBase
+from collections import OrderedDict
+from typing import Dict, Optional, Any
 
 
 @register
 class UnifiedEstim(EstimBase):
     """Unified Estimator class."""
 
-    def __init__(self, train_epochs=1, train_steps=-1, reset_training=False, eval_steps=1, *args, **kwargs):
+    def __init__(
+        self, train_epochs: int = 1, train_steps: int = -1, reset_training: bool = False, eval_steps: int = 1,
+        *args, **kwargs
+    ) -> None:
         super().__init__(*args, **kwargs)
         if train_steps != 0:
             train_epochs = 1
@@ -29,7 +35,7 @@ class UnifiedEstim(EstimBase):
         self.eval_steps = eval_steps
         self.cur_step = -1
 
-    def step(self, params):
+    def step(self, params: OrderedDict) -> Dict[str, Any]:
         """Return evaluation results of a parameter set."""
         ParamSpace().update_params(params)
         n_train_batch = self.get_num_train_batch()
@@ -60,7 +66,7 @@ class UnifiedEstim(EstimBase):
         self.logger.info('Evaluate: {} -> {}'.format(arch_desc, ret))
         return ret
 
-    def run_epoch(self, optim, epoch, tot_epochs):
+    def run_epoch(self, optim: OptimBase, epoch: int, tot_epochs: int) -> Optional[Dict[str, Any]]:
         """Run Estimator routine for one epoch."""
         logger = self.logger
         config = self.config
@@ -85,10 +91,11 @@ class UnifiedEstim(EstimBase):
             self.stepped(params)
         self.wait_done()
         if (epoch + 1) % n_epoch_steps != 0:
-            return
+            return None
         self.cur_epoch += 1
+        return None
 
-    def run(self, optim):
+    def run(self, optim: OptimBase) -> None:
         """Run Estimator routine."""
         self.reset_trainer()
         config = self.config

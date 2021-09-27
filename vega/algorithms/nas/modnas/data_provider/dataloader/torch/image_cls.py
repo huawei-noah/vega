@@ -11,16 +11,19 @@
 """Dataloader for Image classification."""
 import random
 import numpy as np
-from torch.utils.data import DataLoader
+from torch.utils.data.dataloader import DataLoader
+from torch.utils.data.dataset import Dataset
 from torch.utils.data.sampler import SubsetRandomSampler
 from modnas.registry.data_loader import register
 from modnas.utils.logging import get_logger
+from typing import Any, Dict, List, Optional, Tuple, Union, Callable
 
 
+CLASSES_TYPE = Union[int, List[Union[str, int]]]
 logger = get_logger('data_loader')
 
 
-def get_label_class(label):
+def get_label_class(label: int) -> int:
     """Return class index of given label."""
     if isinstance(label, float):
         label_cls = int(label)
@@ -33,7 +36,7 @@ def get_label_class(label):
     return label_cls
 
 
-def get_dataset_label(data):
+def get_dataset_label(data: Dataset) -> List[int]:
     """Return label of given data."""
     if hasattr(data, 'targets'):
         return [c for c in data.targets]
@@ -53,12 +56,14 @@ def get_dataset_class(data):
     return []
 
 
-def filter_index_class(data_idx, labels, classes):
+def filter_index_class(data_idx: List[int], labels: List[int], classes: List[int]) -> List[int]:
     """Return data indices from given classes."""
     return [idx for idx in data_idx if get_label_class(labels[idx]) in classes]
 
 
-def train_valid_split(trn_idx, train_labels, class_size):
+def train_valid_split(
+    trn_idx: List[int], train_labels: List[int], class_size: Dict[int, int]
+) -> Tuple[List[int], List[int]]:
     """Return split train and valid data indices."""
     random.shuffle(trn_idx)
     train_idx, valid_idx = [], []
@@ -87,7 +92,7 @@ def map_data_label(data, mapping):
         data.test_labels = [mapping.get(get_label_class(c), c) for c in labels]
 
 
-def select_class(trn_data, classes):
+def select_class(trn_data: Dataset, classes: Optional[CLASSES_TYPE] = None) -> List[int]:
     """Return train data class list selected from given classes."""
     all_classes = list(set([get_label_class(c) for c in get_dataset_label(trn_data)]))
     if isinstance(classes, int):
@@ -111,20 +116,22 @@ def select_class(trn_data, classes):
 
 
 @register
-def ImageClsDataLoader(trn_data,
-                       val_data,
-                       classes=None,
-                       trn_batch_size=64,
-                       val_batch_size=64,
-                       workers=2,
-                       collate_fn=None,
-                       parallel_multiplier=1,
-                       train_size=0,
-                       train_ratio=1.,
-                       train_seed=1,
-                       valid_size=0,
-                       valid_ratio=0.,
-                       valid_seed=1):
+def ImageClsDataLoader(
+        trn_data: Dataset,
+        val_data: Optional[Dataset],
+        classes: Optional[CLASSES_TYPE] = None,
+        trn_batch_size: int = 64,
+        val_batch_size: int = 64,
+        workers: int = 2,
+        collate_fn: Optional[Callable] = None,
+        parallel_multiplier: int = 1,
+        train_size: int = 0,
+        train_ratio: float = 1.,
+        train_seed: int = 1,
+        valid_size: int = 0,
+        valid_ratio: Union[float, int] = 0.,
+        valid_seed: int = 1
+) -> Tuple[Optional[DataLoader], Optional[DataLoader]]:
     """Return image classification DataLoader."""
     # classes
     trn_labels = get_dataset_label(trn_data)
@@ -175,7 +182,7 @@ def ImageClsDataLoader(trn_data,
     trn_batch_size *= parallel_multiplier
     val_batch_size *= parallel_multiplier
     workers *= parallel_multiplier
-    extra_kwargs = {
+    extra_kwargs: Dict[str, Any] = {
         'num_workers': workers,
         'pin_memory': True,
     }

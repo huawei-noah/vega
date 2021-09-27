@@ -16,8 +16,9 @@ import traceback
 import os
 import pickle
 import glob
-from vega.common import init_log, Config
+from vega.common import Config
 from vega.common.general import General
+from vega.common.wrappers import train_process_wrapper
 from vega.trainer.distributed_worker import DistributedWorker
 from vega.trainer.conf import TrainerConfig
 from vega.common.class_factory import ClassFactory, ClassType
@@ -38,16 +39,18 @@ class ScriptRunner(DistributedWorker):
         self.hps = self._get_hps(hps)
         self.worker_type = WorkerTypes.TRAINER
 
+    @train_process_wrapper
     def train_process(self):
         """Whole train process of the TrainWorker specified in config.
 
         After training, the model and validation results are saved to local_worker_path and s3_path.
         """
-        init_log(level=General.logger.level,
-                 log_file=f"{self.step_name}_worker_{self.worker_id}.log",
-                 log_path=self.local_log_path)
-        self._dump_trial_config()
-        self._run_script()
+        try:
+            self._dump_trial_config()
+            self._run_script()
+        except Exception:
+            logger.error(traceback.format_exc())
+            logger.error("Failed to run script.")
 
     def _run_script(self):
         """Run script."""

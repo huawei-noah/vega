@@ -8,7 +8,7 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 # MIT License for more details.
 
-"""Run example."""
+"""Run pipeline."""
 
 import os
 import sys
@@ -35,7 +35,7 @@ def _parse_args():
                         help="Pipeline config file name")
     group_backend = parser.add_argument_group(
         title="set backend and device, priority: specified in the command line > "
-        "specified in the configuration file > default settings(pytorch and GPU)")
+              "specified in the configuration file > default settings(pytorch and GPU)")
     group_backend.add_argument("-b", "--backend", default=None, type=str,
                                choices=["pytorch", "p", "tensorflow", "t", "mindspore", "m"],
                                help="set training platform")

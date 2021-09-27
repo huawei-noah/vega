@@ -14,6 +14,9 @@ import time
 import copy
 import logging
 import logging.config
+from modnas.utils.config import merge_config
+from logging import Logger
+from typing import Optional, Dict, Any
 
 
 DEFAULT_LOGGING_CONF = {
@@ -45,18 +48,17 @@ DEFAULT_LOGGING_CONF = {
 }
 
 
-def get_logger(name=None):
+def get_logger(name: Optional[str] = None) -> Logger:
     """Return logger of given name."""
     root = 'modnas'
     return logging.getLogger(root if name is None else (name if name.startswith(root) else root + '.' + name))
 
 
-def configure_logging(config=None, log_dir=None):
+def configure_logging(config: Optional[Dict[str, Any]] = None, log_dir: Optional[str] = None) -> None:
     """Config loggers."""
-    from . import merge_config
     config_fn = logging.config.dictConfig
-    conf = copy.deepcopy(DEFAULT_LOGGING_CONF)
-    conf['handlers']['file']['filename'] = os.path.join(log_dir, '%d.log' % (int(time.time())))
+    conf: Dict[str, Any] = copy.deepcopy(DEFAULT_LOGGING_CONF)
+    conf['handlers']['file']['filename'] = os.path.join(log_dir or '', '%d.log' % (int(time.time())))
     merge_config(conf, config or {})
     config_fn(conf)
 

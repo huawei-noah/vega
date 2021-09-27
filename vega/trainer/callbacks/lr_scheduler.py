@@ -38,5 +38,6 @@ class LearningRateScheduler(Callback):
     def after_train_step(self, batch_index, logs=None):
         """Call after_train_step of the managed callbacks."""
         if self.lr_scheduler and not self.lr_scheduler.by_epoch:
-            step = self.trainer.batch_num_train * self.epoch + self.epoch + batch_index
+            # step = self.trainer.batch_num_train * self.epoch + self.epoch + batch_index
+            step = self.trainer.batch_num_train * self.epoch + batch_index
             self.lr_scheduler.step(epoch=step)

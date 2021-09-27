@@ -13,9 +13,11 @@ import random
 import numpy as np
 from .base import Param
 from modnas.registry.params import register
+from modnas.core.param_space import ParamSpace
+from typing import Callable, List, Optional, Union, Any
 
 
-def _default_categorical_sampler(dim):
+def _default_categorical_sampler(dim: int) -> int:
     return np.random.randint(dim)
 
 
@@ -33,14 +35,17 @@ class Categorical(Param):
 
     TYPE = 'C'
 
-    def __init__(self, choices, sampler=None, name=None, space=None, on_update=None):
+    def __init__(
+        self, choices: List[Any], sampler: Optional[Callable[[int], int]] = None, name: Optional[str] = None,
+        space: Optional[ParamSpace] = None, on_update: Optional[Callable[[int], None]] = None
+    ) -> None:
         super().__init__(name, space, on_update)
         self.sample = _default_categorical_sampler if sampler is None else sampler
         self.choices = choices
-        self._length = None
-        self.val = None
+        self._length = -1
+        self.val = 0
 
-    def extra_repr(self):
+    def extra_repr(self) -> str:
         """Return extra representation string."""
         return 'choices={}'.format(self.choices)
 
@@ -48,26 +53,26 @@ class Categorical(Param):
         """Return if the value is valid."""
         return value in self.choices
 
-    def get_value(self, index):
+    def get_value(self, index: int) -> Any:
         """Return value for given index."""
         return self.choices[index]
 
-    def set_value(self, value, index=None):
+    def set_value(self, value: Any, index: Optional[int] = None) -> None:
         """Set parameter value."""
         index = self.get_index(value) if index is None else index
         self.val = index
 
-    def value(self):
+    def value(self) -> Any:
         """Return parameter value."""
         return self.choices[self.index()]
 
-    def index(self):
+    def index(self) -> int:
         """Return parameter index."""
         if self.val is None:
             self.val = self.sample(len(self.choices))
         return self.val
 
-    def get_index(self, value):
+    def get_index(self, value: Any) -> int:
         """Return parameter index for given value."""
         return self.choices.index(value)
 
@@ -75,9 +80,9 @@ class Categorical(Param):
         """Set parameter index."""
         self.set_value(index=index)
 
-    def __len__(self):
+    def __len__(self) -> int:
         """Return choice size."""
-        if self._length is None:
+        if self._length == -1:
             self._length = len(self.choices)
         return self._length
 

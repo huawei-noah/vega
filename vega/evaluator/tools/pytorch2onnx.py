@@ -16,7 +16,7 @@ import logging
 from vega.common.general import General
 
 
-def pytorch2onnx(model, input_shape, base_save_dir):
+def pytorch2onnx(model, input_shape, base_save_dir, opset_version=9):
     """Convert the pytorch model to onnx model.
 
     :param model: pytorch model class
@@ -29,7 +29,7 @@ def pytorch2onnx(model, input_shape, base_save_dir):
     # model.load_state_dict(torch.load(weight))
     # Export the trained model to ONNX
     dump_input = Variable(torch.randn(input_shape))
-    torch.onnx.export(model, dump_input, "{}/torch_model.onnx".format(base_save_dir))
+    torch.onnx.export(model, dump_input, "{}/torch_model.onnx".format(base_save_dir), opset_version=opset_version)
     # try:
     #     subprocess.call(
     #         f"{General.python_command} -m onnxsim {base_save_dir}/torch_model.onnx "

@@ -41,10 +41,10 @@ class DataProviderBase():
         """Reset validate iterator."""
         raise NotImplementedError
 
-    def get_num_train_batch(self):
+    def get_num_train_batch(self, epoch: int):
         """Return number of train batches in current epoch."""
         raise NotImplementedError
 
-    def get_num_valid_batch(self):
+    def get_num_valid_batch(self, epoch: int):
         """Return number of validate batches in current epoch."""
         raise NotImplementedError

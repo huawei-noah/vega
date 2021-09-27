@@ -16,7 +16,6 @@ from datetime import datetime
 from vega.common.utils import remove_np_value
 from vega.common import Status, JsonEncoder, DatatimeFormatString
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -178,12 +177,6 @@ class ReportRecord(object):
             value = json.loads(value)
         if isinstance(value, dict):
             self._performance.update(value)
-            for key in value:
-                if key not in self.objectives:
-                    if key in ["flops", "params", "latency"]:
-                        self.objectives[key] = "MIN"
-                    else:
-                        self.objectives[key] = 'MAX'
         elif value is not None:
             logger.warn(f"Invalid record performance value: {value}")
 
@@ -224,6 +217,9 @@ class ReportRecord(object):
             self._objective_keys = list(self.performance.keys())
         res = []
         res_ori = []
+        for k in self.performance.keys():
+            if k not in self.objectives and k in ['flops', 'params', 'latency']:
+                self._objectives.update({k: 'MIN'})
         for obj in self.objective_keys:
             if isinstance(obj, int):
                 obj = list(self.performance.keys())[obj]
@@ -259,7 +255,7 @@ class ReportRecord(object):
                 update_flag = update_flag and key not in ["desc"]
                 if update_flag:
                     for value_key, value_value in value.items():
-                        getattr(self, key)[value_key] = value_value
+                        getattr(self, key)[value_key] = remove_np_value(value_value)
                 else:
                     setattr(self, key, remove_np_value(value))
         self._cal_rewards()

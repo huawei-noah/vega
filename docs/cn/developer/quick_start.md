@@ -171,7 +171,6 @@ nas:
             type: accuracy
         epochs: 3
         save_steps: 250
-        distributed: False
         num_class: 10
     dataset:
         type: Cifar10
