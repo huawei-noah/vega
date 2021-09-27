@@ -9,26 +9,15 @@
 # MIT License for more details.
 
 """Manage LrScheduler class."""
+
+from types import MethodType
 import logging
 import vega
 from vega.common import ClassFactory, ClassType
 from ..config_bakcend_map import ConfigBackendMapping
 from ..conf.optim import OptimConfig, OptimMappingDict
 from vega.common.config import Config
-
-if vega.is_gpu_device():
-    try:
-        if vega.is_torch_backend():
-            import horovod.torch as hvd
-        elif vega.is_tf_backend():
-            import horovod.tensorflow as hvd
-    except Exception:
-        pass
-elif vega.is_npu_device() and vega.is_tf_backend():
-    from npu_bridge.estimator.npu.npu_optimizer import NPUDistributedOptimizer
-
-if vega.is_tf_backend():
-    from vega.trainer.modules.optimizer.optimizer import dynamic_optimizer, dynamic_distributed_optimizer
+from vega.common.general import General
 
 
 class Optimizer(object):
@@ -72,11 +61,31 @@ class Optimizer(object):
                 if distributed:
                     optimizer = self.set_distributed(optimizer, model)
             elif vega.is_tf_backend():
+                from vega.trainer.modules.optimizer.optimizer import dynamic_optimizer
                 optimizer = dynamic_optimizer(self.optim_cls, **params)
             elif vega.is_ms_backend():
                 if "dynamic_lr" in kwargs:
                     params.update({"learning_rate": kwargs["dynamic_lr"]})
                 learnable_params = [param for param in model.trainable_params() if param.requires_grad]
+                if 'no_decay_params' in kwargs and len(kwargs['no_decay_params']) > 0:
+                    logging.info(f"no_decay_params is {kwargs['no_decay_params']}.")
+                    decayed_params = []
+                    no_decayed_params = []
+                    for param in learnable_params:
+                        decay_flag = True
+                        for no_decay in kwargs['no_decay_params']:
+                            if no_decay in param.name:
+                                no_decayed_params.append(param)
+                                decay_flag = False
+                                break
+                        if decay_flag:
+                            decayed_params.append(param)
+
+                    learnable_params = [{'params': decayed_params, 'weight_decay': params['weight_decay']},
+                                        {'params': no_decayed_params},
+                                        {'order_params': model.trainable_params()}]
+                if 'no_decay_params' in params:
+                    params.pop('no_decay_params')
                 optimizer = self.optim_cls(learnable_params, **params)
             return optimizer
         except Exception as ex:
@@ -86,13 +95,26 @@ class Optimizer(object):
     @classmethod
     def set_distributed(cls, optimizer, model=None):
         """Set distributed optimizer."""
-        if vega.is_torch_backend():
+        if General.cluster.horovod and vega.is_torch_backend():
+            import horovod.torch as hvd
             optimizer = hvd.DistributedOptimizer(optimizer,
                                                  named_parameters=model.named_parameters(),
                                                  compression=hvd.Compression.none)
-        elif vega.is_tf_backend():
-            optim_class = hvd.DistributedOptimizer if vega.is_gpu_device() else NPUDistributedOptimizer
-            optimizer = dynamic_distributed_optimizer(optim_class, optimizer)
+        elif General.cluster.horovod and vega.is_tf_backend():
+            import horovod.tensorflow as hvd
+            from vega.trainer.modules.optimizer.optimizer import OptimizerStep
+            base_lr = optimizer.base_lr
+            weight_decay = optimizer.weight_decay
+            optimizer = hvd.DistributedOptimizer(optimizer)
+            setattr(optimizer, "base_lr", base_lr)
+            setattr(optimizer, "weight_decay", weight_decay)
+            optimizer.step = MethodType(OptimizerStep.step, optimizer)
+            optimizer.set_lr = MethodType(OptimizerStep.set_lr, optimizer)
+            optimizer.regularize_loss = MethodType(OptimizerStep.regularize_loss, optimizer)
+        elif General.cluster.hccl and vega.is_tf_backend():
+            from npu_bridge.estimator.npu.npu_optimizer import NPUDistributedOptimizer
+            from vega.trainer.modules.optimizer.optimizer import dynamic_distributed_optimizer
+            optimizer = dynamic_distributed_optimizer(NPUDistributedOptimizer, optimizer)
         return optimizer
 
 
@@ -103,6 +125,7 @@ if vega.is_torch_backend():
     if vega.is_npu_device():
         try:
             from apex.optimizers import NpuFusedSGD
+
             ClassFactory.register_cls(NpuFusedSGD, ClassType.OPTIMIZER)
         except Exception:
             pass

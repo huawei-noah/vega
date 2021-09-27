@@ -24,24 +24,6 @@ def _get_worker_config(worker):
     from vega.evaluator.conf import EvaluatorConfig
     from vega.core.pipeline.conf import PipeStepConfig
 
-    env = {
-        "LOCAL_RANK": os.environ.get("LOCAL_RANK", None),
-        "PYTHONPATH": os.environ.get("PYTHONPATH", None),
-        "LD_LIBRARY_PATH": os.environ.get("LD_LIBRARY_PATH", None),
-        "PWD": os.environ.get("PWD", None),
-        "DLS_JOB_ID": os.environ.get("DLS_JOB_ID", None),
-        "RANK_TABLE_FILE": os.environ.get("RANK_TABLE_FILE", None),
-        "RANK_SIZE": os.environ.get("RANK_SIZE", None),
-        "DEVICE_ID": os.environ.get("DEVICE_ID", None),
-        "RANK_ID": os.environ.get("RANK_ID", None),
-        "DLS_TASK_NUMBER": os.environ.get("DLS_TASK_NUMBER", None),
-        "NPU-VISIBLE-DEVICES": os.environ.get("NPU-VISIBLE-DEVICES", None),
-        "NPU_VISIBLE_DEVICES": os.environ.get("NPU_VISIBLE_DEVICES", None),
-        "PATH": os.environ.get("PATH", None),
-        "ASCEND_OPP_PATH": os.environ.get("ASCEND_OPP_PATH", None),
-        "DEVICE_CATEGORY": os.environ.get("DEVICE_CATEGORY", None),
-        "BACKEND_TYPE": os.environ.get("BACKEND_TYPE", None),
-    }
     worker_config = {
         "class_factory": deepcopy(ClassFactory.__registry__),
         "general": General().to_dict(),
@@ -49,12 +31,6 @@ def _get_worker_config(worker):
         "model": ModelConfig().to_dict(),
         "trainer": worker.config.to_dict(),
         "evaluator": EvaluatorConfig().to_dict(),
-
-        "worker_nccl_port": worker.worker_nccl_port,
-        "world_size": worker.world_size,
-        "timeout": worker.timeout,
-
-        "env": env,
         "pipe_step": PipeStepConfig().to_dict()
     }
     return worker_config
@@ -63,11 +39,10 @@ def _get_worker_config(worker):
 def pickle_worker(workers, id):
     """Pickle worker to file."""
     for index, worker in enumerate(workers):
-        # pickle config
+        worker_config = _get_worker_config(worker)
         config_file = os.path.join(
             worker.get_local_worker_path(),
             f".{str(id)}.{str(index)}.config.pkl")
-        worker_config = _get_worker_config(worker)
         with open(config_file, "wb") as f:
             pickle.dump(worker_config, f)
         # pickle worker
@@ -80,17 +55,10 @@ def pickle_worker(workers, id):
 
 def load_config(config_file):
     """Load config from file."""
-    import os
     import pickle
-    import vega
 
     with open(config_file, 'rb') as f:
         config = pickle.load(f)
-    for (key, value) in config["env"].items():
-        if value is not None:
-            os.environ[key] = value
-
-    vega.set_backend(os.environ['BACKEND_TYPE'].lower(), os.environ["DEVICE_CATEGORY"])
 
     from vega.common.class_factory import ClassFactory
     from vega.common.general import General

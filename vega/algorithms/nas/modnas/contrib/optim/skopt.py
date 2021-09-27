@@ -13,8 +13,12 @@ import time
 import numpy as np
 from collections import OrderedDict
 from modnas.registry.optim import register
+from modnas.estim.base import EstimBase
 from modnas.optim.base import OptimBase
 from modnas.core.params import Categorical as ParamCategorical, Numeric
+from modnas.core.param_space import ParamSpace
+from typing import List, Dict, Optional
+
 try:
     import skopt
     from skopt import Optimizer
@@ -27,7 +31,7 @@ except ImportError:
 class SkoptOptim(OptimBase):
     """Scikit-optimize Optimizer class."""
 
-    def __init__(self, skopt_args=None, space=None):
+    def __init__(self, skopt_args: Optional[Dict] = None, space: Optional[ParamSpace] = None) -> None:
         super().__init__(space)
         if skopt is None:
             raise ValueError('scikit-optimize is not installed')
@@ -52,17 +56,19 @@ class SkoptOptim(OptimBase):
         self.param_names = param_names
         self.skoptim = Optimizer(**skopt_args)
 
-    def has_next(self):
+    def has_next(self) -> bool:
         """Return True if Optimizer has the next set of parameters."""
         return True
 
-    def convert_param(self, p):
+    def convert_param(self, p: float) -> float:
         """Return value converted from scikit-optimize space."""
-        if isinstance(p, np.float):
+        if isinstance(p, (np.float, np.float64)):
             return float(p)
+        if isinstance(p, (np.int, np.int64)):
+            return int(p)
         return p
 
-    def _next(self):
+    def _next(self) -> OrderedDict:
         """Return the next set of parameters."""
         next_pt = self.skoptim.ask()
         next_params = OrderedDict()
@@ -70,7 +76,7 @@ class SkoptOptim(OptimBase):
             next_params[n] = self.convert_param(p)
         return next_params
 
-    def next(self, batch_size):
+    def next(self, batch_size: int) -> List[OrderedDict]:
         """Return the next batch of parameter sets."""
         if batch_size == 1:
             return [self._next()]
@@ -83,7 +89,7 @@ class SkoptOptim(OptimBase):
             next_params.append(params)
         return next_params
 
-    def step(self, estim):
+    def step(self, estim: EstimBase) -> None:
         """Update Optimizer states using Estimator evaluation results."""
         def to_metrics(res):
             if isinstance(res, dict):

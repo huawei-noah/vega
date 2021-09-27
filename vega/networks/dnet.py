@@ -169,6 +169,7 @@ class ConcatBlock(Module):
         return x
 
 
+@ClassFactory.register(ClassType.NETWORK)
 class EncodedBlock(Module):
     """Encode block."""
 

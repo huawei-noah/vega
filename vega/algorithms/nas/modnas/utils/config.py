@@ -12,10 +12,32 @@
 # modified from https://github.com/HarryVolek/PyTorch_Speaker_Verification
 import yaml
 import copy
-from . import merge_config
+import logging
+from typing import Dict, Optional, Any
 
 
-def load_config_file(filename):
+logger = logging.getLogger('modnas.config')
+
+
+def merge_config(src: Any, dest: Any, extend_list: bool = True, overwrite: bool = True) -> Any:
+    """Return merged config."""
+    if isinstance(src, dict) and isinstance(dest, dict):
+        for k, v in dest.items():
+            if k not in src:
+                src[k] = v
+                logger.debug('merge_config: add key %s' % k)
+            else:
+                src[k] = merge_config(src[k], v, extend_list, overwrite)
+    elif isinstance(src, list) and isinstance(dest, list) and extend_list:
+        logger.debug('merge_config: extend list: %s + %s' % (src, dest))
+        src.extend(dest)
+    elif overwrite:
+        logger.debug('merge_config: overwrite: %s -> %s' % (src, dest))
+        src = dest
+    return src
+
+
+def load_config_file(filename: str) -> Dict[str, Any]:
     """Load configuration from YAML file."""
     docs = yaml.load_all(open(filename, 'r'), Loader=yaml.SafeLoader)
     config_dict = dict()
@@ -32,7 +54,7 @@ class Config(dict):
     __setattr__ = dict.__setitem__
     __delattr__ = dict.__delitem__
 
-    def __init__(self, dct=None, file=None):
+    def __init__(self, dct: Optional[Dict] = None, file: Optional[str] = None) -> None:
         super().__init__()
         dct = {} if dct is None else dct
         if file is not None:
@@ -48,7 +70,7 @@ class Config(dict):
         yaml.add_representer(Config,
                              lambda dumper, data: dumper.represent_mapping('tag:yaml.org,2002:map', data.items()))
 
-    def to_dict(self):
+    def to_dict(self) -> Dict[str, Any]:
         """Return dict converted from Config."""
         dct = {}
         for k, v in self.items():
@@ -57,11 +79,11 @@ class Config(dict):
             dct[k] = v
         return dct
 
-    def __deepcopy__(self, memo):
+    def __deepcopy__(self, memo: Dict[int, Any]) -> Any:
         """Return deepcopy."""
         return Config(copy.deepcopy(dict(self)))
 
-    def __str__(self):
+    def __str__(self) -> str:
         """Return config string."""
         return yaml.dump(dict(self), default_flow_style=False)
 
@@ -77,7 +99,7 @@ class Config(dict):
         return Config.get_value(val, '.'.join(keywords[1:]))
 
     @staticmethod
-    def set_value(config, key, value):
+    def set_value(config: Any, key: str, value: Any) -> None:
         """Set config value by path."""
         keywords = key.split('.')
         val = config.get(keywords[0], None)
@@ -90,7 +112,7 @@ class Config(dict):
         Config.set_value(val, '.'.join(keywords[1:]), value)
 
     @staticmethod
-    def apply(config, spec):
+    def apply(config: Any, spec: Any) -> None:
         """Apply items to a configuration."""
         if isinstance(spec, dict):
             spec = Config(dct=spec)
@@ -106,7 +128,7 @@ class Config(dict):
             raise ValueError('unsupported apply type: {}'.format(type(spec)))
 
     @staticmethod
-    def load(conf):
+    def load(conf: Any) -> Any:
         """Load configuration."""
         if isinstance(conf, Config):
             config = conf

@@ -24,7 +24,7 @@ class DetectionProgressLogger(ProgressLogger):
 
     def after_train_step(self, batch_index, logs=None):
         """Be called before each batch training."""
-        if self.train_verbose >= 2 and self.is_chief \
+        if self.train_verbose >= 2 and self.trainer.is_chief \
                 and batch_index % self.train_report_steps == 0:
             try:
                 out_buffer = OrderedDict(
@@ -47,8 +47,8 @@ class DetectionProgressLogger(ProgressLogger):
 
     def after_valid_step(self, batch_index, logs=None):
         """Be called after each batch of the validation."""
-        if self.valid_verbose >= 2 and self.is_chief \
-                and self.do_validation and batch_index % self.valid_report_steps == 0:
+        if self.valid_verbose >= 2 and self.trainer.is_chief \
+                and self.trainer.do_validation and batch_index % self.valid_report_steps == 0:
             metrics_results = logs.get('valid_step_metrics', None)
             if metrics_results is not None:
                 out_buffer = OrderedDict(
@@ -63,7 +63,7 @@ class DetectionProgressLogger(ProgressLogger):
 
     def after_valid(self, logs=None):
         """Be called after validation."""
-        if (self.valid_verbose >= 1 and self.is_chief and self.do_validation):
+        if (self.valid_verbose >= 1 and self.trainer.is_chief and self.trainer.do_validation):
             cur_valid_perfs = logs.get('cur_valid_perfs', None)
             if cur_valid_perfs is not None:
                 log_info = "epoch [{}/{}], current valid perfs {}".format(

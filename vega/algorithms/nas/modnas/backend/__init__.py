@@ -9,18 +9,20 @@
 # MIT License for more details.
 
 import importlib
+import traceback
 from modnas.registry.backend import build
 from . import predefined
+from typing import Optional
 
 _backend = None
 
 _backend_keys = []
 
 
-def use(backend, *args, imported=False, **kwargs):
+def use(backend: Optional[str], *args, imported=False, **kwargs) -> None:
     """Switch to backend by name."""
     global _backend, _backend_keys
-    if backend == _backend or backend in ['none', None]:
+    if backend == _backend or backend == 'none' or backend is None:
         return
     try:
         if imported:
@@ -28,6 +30,7 @@ def use(backend, *args, imported=False, **kwargs):
         else:
             bk_mod = build(backend, *args, **kwargs)
     except ImportError:
+        traceback.print_exc()
         return
     bk_vars = vars(bk_mod)
     bk_keys = bk_vars.keys()
@@ -38,7 +41,7 @@ def use(backend, *args, imported=False, **kwargs):
         if k.startswith('__'):
             continue
         ns[k] = bk_vars[k]
-    _backend_keys = bk_keys
+    _backend_keys = list(bk_keys)
     _backend = backend
 
 
@@ -47,6 +50,6 @@ def backend():
     return _backend
 
 
-def is_backend(backend):
+def is_backend(backend: str) -> bool:
     """Return if the current backend is the given one."""
     return _backend == backend

@@ -13,7 +13,9 @@
 import os
 from mindspore import context
 from mindspore.train import Model as MsModel
-from mindspore.train.callback import ModelCheckpoint, CheckpointConfig, LossMonitor
+from mindspore.train.callback import ModelCheckpoint, CheckpointConfig, LossMonitor, TimeMonitor
+from mindspore.train.loss_scale_manager import FixedLossScaleManager
+from mindspore import save_checkpoint
 from vega.trainer.callbacks.ms_callbacks import EvalCallBack
 import vega
 from vega.trainer.trainer_base import TrainerBase
@@ -22,8 +24,7 @@ from vega.trainer.modules.lr_schedulers import LrScheduler
 from vega.modules.loss import Loss
 from vega.common import ClassFactory, ClassType
 import logging
-from mindspore.communication.management import init as hccl_init
-from mindspore.context import ParallelMode
+from vega.common.general import General
 
 
 @ClassFactory.register(ClassType.TRAINER)
@@ -33,14 +34,17 @@ class TrainerMs(TrainerBase):
     def build(self):
         """Build the trainer by assembling the necessary components."""
         super().build()
+        no_decay_params = self.config.optimizer.params.get("no_decay_params", [])
         if self.config.lr_scheduler.params:
             self.lr_scheduler = LrScheduler()
             dynamic_lr = self.lr_scheduler()(base_lr=self.config.optimizer.params["lr"],
                                              global_step=self.config.epochs * len(self.train_loader),
                                              total_epoch=self.config.epochs)
-            self.optimizer = Optimizer()(model=self.model, dynamic_lr=dynamic_lr)
+
+            self.optimizer = Optimizer()(model=self.model, dynamic_lr=dynamic_lr, no_decay_params=no_decay_params)
         else:
-            self.optimizer = Optimizer()(model=self.model)
+            self.optimizer = Optimizer()(model=self.model, no_decay_params=no_decay_params)
+        logging.info(f"The optimizer is {self.optimizer}.")
         if hasattr(self.model, 'add_loss'):
             loss_cls = Loss()()
             self.model.add_loss(loss_cls)
@@ -55,14 +59,33 @@ class TrainerMs(TrainerBase):
         self.ms_metrics = self.valid_metrics() if isinstance(self.valid_metrics(), dict) else {
             self.metric_name: self.valid_metrics()}
 
-        self.ms_model = MsModel(network=self.model,
-                                loss_fn=self.loss,
-                                optimizer=self.optimizer,
-                                metrics=self.ms_metrics)
+        if self.use_amp:
+            loss_scale = FixedLossScaleManager(self.config.loss_scale, drop_overflow_update=False)
+            logging.info(f"Use auto mix precision, and loss scale is {self.config.loss_scale},"
+                         f"loss_scale_manager is {loss_scale}.")
+            self.ms_model = MsModel(network=self.model,
+                                    loss_fn=self.loss,
+                                    optimizer=self.optimizer,
+                                    metrics=self.ms_metrics,
+                                    loss_scale_manager=loss_scale,
+                                    amp_level=self.config.opt_level,
+                                    keep_batchnorm_fp32=self.config.keep_batchnorm_fp32)
+        else:
+            self.ms_model = MsModel(network=self.model,
+                                    loss_fn=self.loss,
+                                    optimizer=self.optimizer,
+                                    metrics=self.ms_metrics)
 
-    def _set_condition(self):
+        if not self.config.with_train:
+            save_path = self.get_local_worker_path(self.step_name, self.worker_id)
+            ckpt_file_name = os.path.join(save_path, "model_" + str(self.worker_id) + ".ckpt")
+            save_checkpoint(self.model, ckpt_file_name)
+            logging.info("Save checkpoint file without training.")
+
+    def init_env(self):
+        """Init mindspore trainer environment."""
+        super().init_env()
         self._init_ms_context()
-        self._init_distributed_setting()
 
     def _train_epoch(self):
         config_ck = CheckpointConfig(save_checkpoint_steps=self.config.save_steps, keep_checkpoint_max=1)
@@ -70,8 +93,12 @@ class TrainerMs(TrainerBase):
         save_path = self.get_local_worker_path(self.step_name, self.worker_id)
         ckpoint_cb = ModelCheckpoint(config=config_ck, directory=save_path)
         loss_cb = LossMonitor(per_print_times=1)
-        eval_cb = EvalCallBack(self.ms_model, self.valid_loader, self.dataset_sink_mode, self)
-        callback_list = [ckpoint_cb, loss_cb] if self.config.mixup else [ckpoint_cb, loss_cb, eval_cb]
+        time_cb = TimeMonitor(data_size=self.train_loader.get_dataset_size())
+        callback_list = [ckpoint_cb, loss_cb, time_cb]
+        if self.config.eval_per_epoch and not self.config.mixup:
+            eval_cb = EvalCallBack(self.ms_model, self.valid_loader, self.dataset_sink_mode, self)
+            callback_list.append(eval_cb)
+
         try:
             self.ms_model.train(epoch=self.epochs,
                                 train_dataset=self.train_loader,
@@ -102,22 +129,17 @@ class TrainerMs(TrainerBase):
             logging.warning("RuntimeError occurred when eval the model. Skip eval this model.")
             logging.warning("The RuntimeError message is : {}.".format(exc))
 
-    def _init_distributed_setting(self):
-        if not self.distributed:
-            return
-        else:
-            logging.info("init hccl ...")
-            context.set_auto_parallel_context(parallel_mode=ParallelMode.DATA_PARALLEL, gradients_mean=True)
-            hccl_init()
-
     def _init_ms_context(self):
-        if hasattr(self.config, "execute_mode"):
-            mode = context.PYNATIVE_MODE if self.config.execute_mode == "PYNATIVE_MODE" else context.GRAPH_MODE
-        else:
-            mode = context.GRAPH_MODE
+        mode = General.ms_execute_mode
+        logging.info(f"Run train/val in mode: {mode}.")
         if vega.is_npu_device():
-            context.set_context(mode=mode, device_target="Ascend", device_id=int(os.environ["DEVICE_ID"]))
+            logging.info(f"minspore context, mode: {context.get_context('mode')}, "
+                         f"target: {context.get_context('device_target')}, "
+                         f"device_id: {context.get_context('device_id')}")
+            logging.info(f"DEVICE_ID: {os.environ['DEVICE_ID']}")
+            context.set_context(mode=mode, device_target="Ascend")
         else:
             context.set_context(mode=mode, device_target="CPU")
 
-        self.dataset_sink_mode = True if vega.is_npu_device() else False
+        self.dataset_sink_mode = General.dataset_sink_mode
+        logging.info(f"Dataset_sink_mode:{self.dataset_sink_mode}.")

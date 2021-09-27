@@ -17,6 +17,7 @@ from modnas.metrics import build_metrics_all
 from modnas.registry.export import build as build_exporter
 from modnas.core.event import event_hooked_subclass
 from modnas.utils.logging import get_logger
+from modnas.registry import streamline_spec
 
 
 def build_criterions_all(crit_configs, device_ids=None):
@@ -25,11 +26,7 @@ def build_criterions_all(crit_configs, device_ids=None):
     crits_train = []
     crits_eval = []
     crits_valid = []
-    if crit_configs is None:
-        crit_configs = []
-    if not isinstance(crit_configs, list):
-        crit_configs = [crit_configs]
-    for crit_conf in crit_configs:
+    for crit_conf in streamline_spec(crit_configs):
         crit = backend.get_criterion(crit_conf, device_ids=device_ids)
         crit_mode = crit_conf['mode'] if isinstance(crit_conf, dict) and 'mode' in crit_conf else 'all'
         if not isinstance(crit_mode, list):

@@ -19,4 +19,5 @@ ClassFactory.lazy_register("vega.networks.mindspore", {
     "backbones.load_official_model": ["OffcialModelLoader"],
     "backbones.resnet_ms": ["ResNetMs"],
     "losses.mix_auxiliary_loss": ["MixAuxiliaryLoss"],
+    "faster_rcnn.faster_rcnn_resnet": ["Faster_Rcnn_MD"]
 })

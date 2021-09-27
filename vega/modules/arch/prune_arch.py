@@ -116,6 +116,21 @@ class LinearPruneArchitecture(Architecture):
         return None
 
 
+@ClassFactory.register('Prune', 'Reshape')
+class ReshapePruneArchitecture(Architecture):
+    """Prune Reshape ops."""
+
+    @staticmethod
+    def decode(value, org_value):
+        """Decode arch params."""
+        return [org_value[0], sum(value)]
+
+    @staticmethod
+    def fit_weights(module, x):
+        """Do nothing."""
+        return None
+
+
 def freeze(module):
     """Freeze parameter."""
     if not is_torch_backend():

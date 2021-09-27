@@ -11,4 +11,4 @@ elif vega.is_tf_backend():
     from .step_lr import StepLR
     from .ca_restart_tf import CosineAnnealingRestartLR
 elif vega.is_ms_backend():
-    from .ms_lr_scheduler import MultiStepLR, StepLR, CosineAnnealingLR
+    from .ms_lr_scheduler import MultiStepLR, StepLR, CosineAnnealingLR, PolyLR, WarmupScheduler

@@ -13,19 +13,21 @@ import time
 import torch
 from modnas.registry.metrics import register
 from modnas.metrics.base import MetricsBase
+from typing import Optional
+from rasp.profiler.tree import StatTreeNode
 
 
 @register
 class LocalProfilerMetrics(MetricsBase):
     """Local network hardware performance profiler metrics class."""
 
-    def __init__(self, device=None, rep=50, warmup=10):
+    def __init__(self, device: Optional[str] = None, rep: int = 50, warmup: int = 10) -> None:
         super().__init__()
         self.rep = rep
         self.warmup = warmup
         self.device = device
 
-    def __call__(self, node):
+    def __call__(self, node: StatTreeNode) -> float:
         """Return metrics output."""
         in_shape = node['in_shape']
         op = node.module

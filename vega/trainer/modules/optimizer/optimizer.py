@@ -9,10 +9,6 @@
 # MIT License for more details.
 
 """TF Adam."""
-import vega
-
-if vega.is_tf_backend():
-    import tensorflow as tf
 
 
 class OptimizerStep(object):
@@ -45,6 +41,7 @@ class OptimizerStep(object):
 
     def regularize_loss(self, loss):
         """Compute and return l2 loss."""
+        import tensorflow as tf
         l2_loss_list = [tf.nn.l2_loss(v) for v in tf.compat.v1.trainable_variables()
                         if 'batch_normalization' not in v.name]
         loss = loss + self.weight_decay * tf.add_n(l2_loss_list)

@@ -1,0 +1,21 @@
+# .
+# The configuration is as follows:
+
+
+pipeline: [fully_train]
+
+fully_train:
+    pipe_step:
+        type: HorovodTrainStep
+    trainer:
+        epochs: 1
+    model:
+        model_desc:
+            modules: ['backbone']
+            backbone:
+                type: ResNet
+                num_class: 10
+    dataset:
+        type: Cifar10
+        common:
+            data_path: /cache/datasets/cifar10/

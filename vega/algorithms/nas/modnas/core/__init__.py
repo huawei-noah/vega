@@ -9,9 +9,10 @@
 # MIT License for more details.
 
 from functools import wraps, partial
+from typing import Callable, Type, List, Any
 
 
-def make_decorator(func):
+def make_decorator(func: Callable) -> Callable:
     """Return wrapped function that acts as decorator if no extra positional args are given."""
 
     @wraps(func)
@@ -23,9 +24,9 @@ def make_decorator(func):
     return wrapped
 
 
-def singleton(cls):
+def singleton(cls: Type) -> Callable:
     """Return wrapped class that has only one instance."""
-    inst = []
+    inst: List[Any] = []
 
     @wraps(cls)
     def get_instance(*args, **kwargs):

@@ -9,6 +9,8 @@ fine_tune:
     pipe_step:
         type: TrainPipeStep
     model:
+        pretrained_model_file: "/cache/models/resnet50-19c8e357.pth"
+        need_adjust: True
         model_desc:
             modules: ['backbone']
             backbone:
@@ -16,8 +18,6 @@ fine_tune:
                 depth: 50
                 num_class: 10
                 small_input: False
-                need_adjust: True
-        pretrained_model_file: "/cache/models/resnet50-19c8e357.pth"
 
     trainer:
         type: Trainer
@@ -50,31 +50,31 @@ fine_tune:
             batch_size: 128
         train:
             transforms:
-                - type: Resize
-                  size: [256, 256]
-                - type: RandomCrop
-                  size: [224, 224]
-                - type: RandomHorizontalFlip
-                - type: ToTensor
-                - type: Normalize
-                  mean: [0.50, 0.5, 0.5]
-                  std: [0.50, 0.5, 0.5]
+                -   type: Resize
+                    size: [256, 256]
+                -   type: RandomCrop
+                    size: [224, 224]
+                -   type: RandomHorizontalFlip
+                -   type: ToTensor
+                -   type: Normalize
+                    mean: [0.50, 0.5, 0.5]
+                    std: [0.50, 0.5, 0.5]
         val:
             transforms:
-                - type: Resize
-                  size: [224, 224]
-                - type: ToTensor
-                - type: Normalize
-                  mean: [0.50, 0.5, 0.5]
-                  std: [0.50, 0.5, 0.5]
+                -   type: Resize
+                    size: [224, 224]
+                -   type: ToTensor
+                -   type: Normalize
+                    mean: [0.50, 0.5, 0.5]
+                    std: [0.50, 0.5, 0.5]
         test:
             transforms:
-                - type: Resize
-                  size: [224, 224]
-                - type: ToTensor
-                - type: Normalize
-                  mean: [0.50, 0.5, 0.5]
-                  std: [0.50, 0.5, 0.5]
+                -   type: Resize
+                    size: [224, 224]
+                -   type: ToTensor
+                -   type: Normalize
+                    mean: [0.50, 0.5, 0.5]
+                    std: [0.50, 0.5, 0.5]
 
 
 nas:
@@ -92,15 +92,15 @@ nas:
             min_sample: 10
     search_space:
         hyperparameters:
-            - key: network.backbone.depth
-              type: CATEGORY
-              range: [50]
-            - key: network.backbone.doublechannel
-              type: CATEGORY
-              range: [3, 4]
-            - key: network.backbone.downsample
-              type: CATEGORY
-              range: [3, 4]
+            -   key: network.backbone.depth
+                type: CATEGORY
+                range: [50]
+            -   key: network.backbone.doublechannel
+                type: CATEGORY
+                range: [3, 4]
+            -   key: network.backbone.downsample
+                type: CATEGORY
+                range: [3, 4]
     model:
         model_desc:
             modules: ['backbone']

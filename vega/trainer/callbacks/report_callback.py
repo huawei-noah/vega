@@ -9,7 +9,7 @@
 # MIT License for more details.
 
 """Report callback defination."""
-import os
+
 import logging
 from .callback import Callback
 from vega.report import ReportClient
@@ -52,9 +52,8 @@ class ReportCallback(Callback):
     def _update_report(self, epoch=0):
         if self.trainer.standalone:
             return
-        if self.trainer.distributed:
-            if "DEVICE_ID" in os.environ and os.environ.get("DEVICE_ID") != "0":
-                return
+        if not self.trainer.is_chief:
+            return
         try:
             record = ReportClient().get_record(self.trainer.step_name, self.trainer.worker_id)
         except Exception as e:
@@ -62,7 +61,10 @@ class ReportCallback(Callback):
             return
         if hasattr(self.trainer.model, '_arch_params_type') and self.trainer.model._arch_params_type:
             if vega.is_ms_backend():
-                record.desc = self.trainer.model_desc
+                if hasattr(self.trainer.model, "to_desc"):
+                    record.desc = self.trainer.model.to_desc()
+                else:
+                    record.desc = self.trainer.model_desc
             else:
                 record.desc = self.trainer.model.to_desc()
         if not record.desc:
@@ -94,6 +96,8 @@ class ReportCallback(Callback):
 
     def _next_rung(self, record):
         if self.trainer.standalone:
+            return
+        if not self.trainer.is_chief:
             return
         result = ReportClient().request(action="next_rung", **record.to_dict())
         logging.debug(f"next rung result: {result}")

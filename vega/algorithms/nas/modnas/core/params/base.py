@@ -12,17 +12,19 @@
 from collections import OrderedDict
 from modnas.core.event import event_emit, event_on
 from modnas.core.param_space import ParamSpace
+from typing import Any, Dict, Optional, Union, Callable
 
 
 class Param():
     """Base parameter class."""
 
-    def __init__(self, name=None, space=None, on_update=None):
+    def __init__(
+        self, name: Optional[str] = None, space: Optional[ParamSpace] = None, on_update: Optional[Callable] = None
+    ) -> None:
         self.name = None
         self._parent = None
         self._children = OrderedDict()
-        space = space or ParamSpace()
-        space.register(self, name)
+        (space or ParamSpace()).register(self, name)
         self.event_name = 'update:{}'.format(self.name)
         if on_update is not None:
             event_on(self.event_name, on_update)
@@ -33,7 +35,7 @@ class Param():
             self.on_update()
         self.set_value = set_value_hooked
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         """Return representation string."""
         return '{}(name={}, {})'.format(self.__class__.__name__, self.name, self.extra_repr())
 
@@ -55,11 +57,11 @@ class Param():
             raise ValueError('Invalid parameter value')
         self.val = value
 
-    def on_update(self):
+    def on_update(self) -> None:
         """Trigger parameter update event."""
         event_emit(self.event_name, self)
 
-    def __deepcopy__(self, memo):
+    def __deepcopy__(self, memo: Dict[Union[int, str], Any]) -> Any:
         """Return deepcopy."""
         # disable deepcopy
         return self

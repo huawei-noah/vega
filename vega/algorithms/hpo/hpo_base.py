@@ -9,6 +9,7 @@
 # MIT License for more details.
 
 """Defined AshaHpo class."""
+
 import logging
 import copy
 from threading import Lock
@@ -94,6 +95,9 @@ def next_rung(**kwargs):
         return {"result": "success", "data": {"rung_id": None, "message": "do not has next_rung method"}}
 
     record = ReportRecord().load_dict(kwargs)
+    if None in record.rewards:
+        return {"result": "success", "data": {"rung_id": None, "message": "part of rewards is missing"}}
+
     _instance.update(record.serialize())
     result = _instance.search(config_id=record.worker_id)
     if result is not None and "encoded_desc" in result and "trainer.epochs" in result["encoded_desc"]:

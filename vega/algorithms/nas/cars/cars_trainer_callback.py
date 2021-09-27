@@ -103,7 +103,7 @@ class CARSTrainerCallback(Callback):
         if mode == tf.estimator.ModeKeys.TRAIN:
             global_step = tf.compat.v1.train.get_global_step()
             epoch = tf.cast(global_step, tf.float32) / tf.cast(len(self.trainer.train_loader), tf.float32)
-            self.trainer.optimizer = Optimizer()(distributed=self.trainer.distributed)
+            self.trainer.optimizer = Optimizer()(distributed=self.trainer.horovod)
             self.trainer.lr_scheduler = LrScheduler()(self.trainer.optimizer)
             self.trainer.lr_scheduler.step(epoch)
             self.trainer.model.training = True

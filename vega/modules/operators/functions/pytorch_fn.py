@@ -46,11 +46,9 @@ class Module(nn.Module):
         """Remap state dict from npu state files."""
         if "state_dict" in state_dict.keys():
             state_dict = state_dict["state_dict"]
-        own_keys = list(own_state_dict.keys())
+        own_keys = [k for k in own_state_dict.keys() if not k.startswith(head_prefix)] if head_prefix else list(
+            own_state_dict.keys())
         input_keys = list(state_dict.keys())
-        if len(own_keys) != len(input_keys):
-            raise Exception("own_state_dict and state_dict have unmatched key length")
-
         new_state_dict = {}
         own_key_prefix_occurrence_map = {}
         input_key_prefix_occurrence_map = {}
@@ -177,6 +175,24 @@ class Module(nn.Module):
         if inputs is None and kwargs:
             return self.call(**kwargs)
         return self.call(inputs, *args, **kwargs)
+
+
+@ClassFactory.register(ClassType.NETWORK)
+class Pad(nn.Module, OperatorSerializable):
+    """Pad block."""
+
+    def __init__(self, mode="constant", padding=None):
+        self.mode = mode
+        self.padding = padding
+        super().__init__()
+
+    def forward(self, input, pads=None, value=0):
+        """Call forward."""
+        if self.padding is not None:
+            pads = self.padding
+        elif pads is None:
+            raise TypeError("forward() missing 1 required positional argument: 'pads'")
+        return F.pad(input, list(pads), mode=self.mode, value=value)
 
 
 @ClassFactory.register(ClassType.NETWORK)
@@ -684,160 +700,6 @@ class Embedding(nn.Embedding, OperatorSerializable):
     def forward(self, x):
         """Call embedding."""
         return super(Embedding, self).forward(x)
-
-
-@ClassFactory.register(ClassType.NETWORK)
-class Clip(nn.Module, OperatorSerializable):
-    """Clip of torch."""
-
-    def __init__(self, min=float("-inf"), max=float("inf")):
-        """Construct Clip class."""
-        super(Clip, self).__init__()
-        self.min = float(min)
-        self.max = float(max)
-
-    def forward(self, x):
-        """Do an inference on Clip.
-
-        :param x: input tensor
-        :return: output tensor
-        """
-        return torch.clamp(x, min=0, max=self.max)
-
-
-@ClassFactory.register(ClassType.NETWORK)
-class Shape(nn.Module, OperatorSerializable):
-    """Shape of torch."""
-
-    def __init__(self, start=0, end=None):
-        """Construct Shape class."""
-        super(Shape, self).__init__()
-        self.start = start
-        self.end = end
-
-    def forward(self, x):
-        """Do an inference on Shape.
-
-        :param x: input tensor
-        :return: output tensor
-        """
-        if self.end:
-            output = torch.tensor(x.shape)[self.start:self.end]
-        else:
-            output = torch.tensor(x.shape)[self.start:]
-        return output.to(vega.get_devices())
-
-
-@ClassFactory.register(ClassType.NETWORK)
-class Gather(nn.Module, OperatorSerializable):
-    """Gather block."""
-
-    def __init__(self, axis=0):
-        """Construct Gather class."""
-        super(Gather, self).__init__()
-        self.axis = axis  # compatible with dim in pytorch
-
-    def forward(self, x):
-        """Do an inference on Gather.
-
-        :param x: input tensor
-        :return: output tensor
-        """
-        return torch.gather(x, self.axis, torch.tensor(0))
-
-
-@ClassFactory.register(ClassType.NETWORK)
-class Unsqueeze(nn.Module, OperatorSerializable):
-    """Unsqueeze block."""
-
-    def __init__(self, axes):
-        """Construct Identity class."""
-        super(Unsqueeze, self).__init__()
-        self.axes = axes
-
-    def forward(self, x):
-        """Do an inference on Unsqueeze.
-
-        :param x: input tensor
-        :return: output tensor
-        """
-        if not isinstance(self.axes, list):
-            logging.error("Unsqueeze axes: {} must be list".format(self.axes))
-            return None
-        output = x
-        for axis in self.axes:
-            output = torch.unsqueeze(output, axis)
-        return output
-
-
-@ClassFactory.register(ClassType.NETWORK)
-class ConcatTensor(nn.Module, OperatorSerializable):
-    """ConcatTensor block."""
-
-    def __init__(self, axis=0):
-        """Construct ConcatTensor class."""
-        super(ConcatTensor, self).__init__()
-        self.axis = axis
-
-    def forward(self, x):
-        """Do an inference on ConcatTensor.
-
-        :param x: input tensor
-        :return: output tensor
-        """
-        return torch.cat((x, (torch.tensor([-1]).to(vega.get_devices()))), dim=self.axis)
-
-
-@ClassFactory.register(ClassType.NETWORK)
-class Mean(nn.Module, OperatorSerializable):
-    """Mean block."""
-
-    def __init__(self, axes=None, keepdims=False):
-        """Construct Mean class."""
-        super(Mean, self).__init__()
-        self.axes = axes
-        self.keepdims = keepdims
-
-    def forward(self, x):
-        """Do an inference on Mean.
-
-        :param x: input tensor
-        :return: output tensor
-        """
-        if self.axes:
-            return torch.mean(x, dim=self.axes, keepdim=self.keepdims)
-        return torch.mean(x, keepdim=self.keepdims)
-
-
-@ClassFactory.register(ClassType.NETWORK)
-class Pad(nn.Module, OperatorSerializable):
-    """Pad block."""
-
-    def __init__(self, mode="constant", padding=None):
-        self.mode = mode
-        self.padding = padding
-        super().__init__()
-
-    def forward(self, input, pads=None, value=0):
-        """Call forward."""
-        if self.padding is not None:
-            pads = self.padding
-        elif pads is None:
-            raise TypeError("forward() missing 1 required positional argument: 'pads'")
-        return F.pad(input, list(pads), mode=self.mode, value=value)
-
-
-@ClassFactory.register(ClassType.NETWORK)
-class Reshape(nn.Module, OperatorSerializable):
-    """Reshape class."""
-
-    def __init__(self, shape=[-1, 1024]):
-        super().__init__()
-        self.shape = shape
-
-    def forward(self, input: torch.Tensor):
-        """Forward function."""
-        return torch.reshape(input, tuple(self.shape))
 
 
 def concat(inputs, dim=1):

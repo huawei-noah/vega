@@ -1,0 +1,50 @@
+general:
+    backend: pytorch
+    parallel_search: True
+    devices_per_trainer: 2
+
+pipeline: [hpo]
+
+hpo:
+    pipe_step:
+        type: SearchPipeStep
+    dataset:
+        type: Cifar10
+        common:
+            data_path: /cache/datasets/cifar10/
+            batch_size: 256
+    search_algorithm:
+        type: BohbHpo
+        policy:
+            total_epochs: 100
+    search_space:
+        type: SearchSpace
+        hyperparameters:
+            -   key: dataset.batch_size
+                type: CATEGORY
+                range: [64, 128, 256]
+            -   key: trainer.optimizer.params.lr
+                type: CATEGORY
+                range: [0.001, 0.003, 0.007, 0.01, 0.03, 0.07, 0.1]
+            -   key: trainer.optimizer.type
+                type: CATEGORY
+                range: ['Adam', 'SGD']
+            -   key: trainer.optimizer.params.momentum
+                type: FLOAT
+                range: [0.8, 0.99]
+        condition:
+            -   key: condition_for_sgd_momentum
+                child: trainer.optimizer.params.momentum
+                parent: trainer.optimizer.type
+                type: EQUAL
+                range: ["SGD"]
+    model:
+        model_desc:
+            modules: ["backbone"]
+            backbone:
+                type: ResNet
+                depth: 18
+                num_class: 10
+    trainer:
+        type: Trainer
+        epochs: 1

@@ -182,13 +182,13 @@ def _init_dask_scheduler(args):
     global _port
     _port = str(get_available_port())
     try:
-        result = _popen(["dask-scheduler", "--port", _port])
+        result = _popen(["dask-scheduler", "--no-dashboard", "--no-show", "--port", _port])
     except Exception:
         raise Exception("Failed to start dask scheduler.")
     if not isinstance(result, subprocess.Popen):
         _print("Failed to start dask scheduler.")
         _print("Please run the command in CLI, and resovlue the problems.")
-        _print(f"dask-scheduler --port {_port}")
+        _print(f"dask-scheduler --no-dashboard --no-show --port {_port}")
         raise Exception("Failed to start dask scheduler.")
     time.sleep(5)
     _print("Pass.")

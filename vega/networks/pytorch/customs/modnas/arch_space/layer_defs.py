@@ -9,8 +9,10 @@
 # MIT License for more details.
 
 """Dataflow defining components in Layers."""
-import itertools
 import torch
+from itertools import combinations
+from torch import Tensor
+from typing import Iterator, List, Tuple, Union
 from modnas.registry.layer_def import register
 
 
@@ -34,19 +36,19 @@ class MergerBase():
 class ConcatMerger(MergerBase):
     """Merger that outputs concatenation of inputs."""
 
-    def __init__(self, start=0):
+    def __init__(self, start: int = 0) -> None:
         super().__init__()
         self.start = start
 
-    def chn_out(self, chn_states):
+    def chn_out(self, chn_states: List[int]) -> int:
         """Return number of channels in merged output."""
         return sum(chn_states[self.start:])
 
-    def merge(self, states):
+    def merge(self, states: List[Tensor]) -> Tensor:
         """Return merged output from inputs."""
         return torch.cat(states[self.start:], dim=1)
 
-    def merge_range(self, num_states):
+    def merge_range(self, num_states: int) -> range:
         """Return indices of merged inputs."""
         return range(self.start, num_states)
 
@@ -76,15 +78,15 @@ class AvgMerger(MergerBase):
 class SumMerger(MergerBase):
     """Merger that outputs sum of inputs."""
 
-    def __init__(self, start=0):
+    def __init__(self, start: int = 0) -> None:
         super().__init__()
         self.start = start
 
-    def chn_out(self, chn_states):
+    def chn_out(self, chn_states: List[int]) -> int:
         """Return number of channels in merged output."""
         return chn_states[-1]
 
-    def merge(self, states):
+    def merge(self, states: List[Tensor]) -> Union[Tensor, int]:
         """Return merged output from inputs."""
         return sum(states[self.start:])
 
@@ -130,13 +132,13 @@ class EnumeratorBase():
 class CombinationEnumerator(EnumeratorBase):
     """Enumerator that enums all combinations of inputs."""
 
-    def enum(self, n_states, n_inputs):
+    def enum(self, n_states: int, n_inputs: int) -> Iterator[Tuple[int, ...]]:
         """Return enumerated indices from all inputs."""
-        return itertools.combinations(range(n_states), n_inputs)
+        return combinations(range(n_states), n_inputs)
 
     def len_enum(self, n_states, n_inputs):
         """Return number of enumerated inputs."""
-        return len(list(itertools.combinations(range(n_states), n_inputs)))
+        return len(list(combinations(range(n_states), n_inputs)))
 
 
 @register
@@ -198,7 +200,7 @@ class ReverseEnumerator(EnumeratorBase):
 class AllocatorBase():
     """Base layer dataflow input allocator class."""
 
-    def __init__(self, n_inputs, n_states):
+    def __init__(self, n_inputs: int, n_states: int) -> None:
         self.n_inputs = n_inputs
         self.n_states = n_states
 
@@ -248,10 +250,10 @@ class EvenSplitAllocator(AllocatorBase):
 class ReplicateAllocator(AllocatorBase):
     """Allocator that replicate states for each input."""
 
-    def alloc(self, states, sidx, cur_state):
+    def alloc(self, states: List[Tensor], sidx: Tuple[int], cur_state: int) -> List[Tensor]:
         """Return allocated input from previous states."""
         return states
 
-    def chn_in(self, chn_states, sidx, cur_state):
+    def chn_in(self, chn_states: List[int], sidx: Tuple[int], cur_state: int) -> List[int]:
         """Return number of channels of allocated input."""
         return chn_states

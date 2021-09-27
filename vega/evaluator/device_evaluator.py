@@ -10,19 +10,19 @@
 
 """HostEvaluator used to do evaluate process on gpu."""
 
-import logging
-import numpy as np
-import vega
-from vega.common import ClassFactory, ClassType
-from vega.common.general import General
-from vega.common.utils import init_log
-from .tools.evaluate_davinci_bolt import evaluate
-from .conf import DeviceEvaluatorConfig
-from vega.report import ReportClient
-from .evaluator import Evaluator
-from vega.trainer.utils import WorkerTypes
 import os
 import datetime
+import logging
+import numpy as np
+import traceback
+import vega
+from vega.common import ClassFactory, ClassType
+from vega.common.wrappers import train_process_wrapper
+from vega.report import ReportClient
+from vega.trainer.utils import WorkerTypes
+from .tools.evaluate_davinci_bolt import evaluate
+from .conf import DeviceEvaluatorConfig
+from .evaluator import Evaluator
 
 
 @ClassFactory.register(ClassType.DEVICE_EVALUATOR)
@@ -48,6 +48,8 @@ class DeviceEvaluator(Evaluator):
         self.hardware = self.config.hardware
         self.remote_host = self.config.remote_host
         self.intermediate_format = self.config.intermediate_format
+        self.opset_version = self.config.opset_version
+        self.precision = self.config.precision.upper()
         self.calculate_metric = self.config.calculate_metric
         self.quantize = self.config.quantize
         self.model = model
@@ -87,8 +89,10 @@ class DeviceEvaluator(Evaluator):
                                      "but get {}.".format(type(batch)))
                 if not self.calculate_metric:
                     repeat_times = 10
-                    data = data[0:1]
-                    target = target[0:1]
+                    reshape_batch_size = self.config.reshape_batch_size
+                    if reshape_batch_size and isinstance(reshape_batch_size, int):
+                        data = data[0:reshape_batch_size]
+                        target = target[0:reshape_batch_size]
 
                 if not self.calculate_metric and global_step >= 1:
                     break
@@ -99,15 +103,18 @@ class DeviceEvaluator(Evaluator):
                 results = evaluate(backend="pytorch", hardware=self.hardware, remote_host=self.remote_host,
                                    model=self.model, weight=None, test_data=test_data, input_shape=data.shape,
                                    reuse_model=reuse_model, job_id=job_id, repeat_times=repeat_times,
-                                   intermediate_format=self.intermediate_format)
-                if results.get("status") != "sucess" and error_count <= error_threshold:
+                                   precision=self.precision, intermediate_format=self.intermediate_format,
+                                   opset_version=self.opset_version,
+                                   save_intermediate_file=self.config.save_intermediate_file)
+                if self.calculate_metric and results.get("status") != "sucess" and error_count <= error_threshold:
                     error_count += 1
                     break
                 latency = np.float(results.get("latency"))
-                data_num += data.shape[0]
+                data_num += 1
                 latency_sum += latency
 
-                if global_step == 0:
+                if global_step == 0 and self.calculate_metric:
+                    self.model.eval()
                     real_output = self.model(torch.Tensor(data))
                     real_output = real_output.detach().numpy()
 
@@ -147,15 +154,16 @@ class DeviceEvaluator(Evaluator):
                 target = batch[1]
                 if not self.calculate_metric:
                     repeat_times = 10
-                    data = data[0:1]
-                    target = target[0:1]
-                input_shape = data.shape
+                    reshape_batch_size = self.config.reshape_batch_size
+                    if reshape_batch_size and isinstance(reshape_batch_size, int):
+                        data = data[0:reshape_batch_size]
+                        target = target[0:reshape_batch_size]
 
                 if not self.calculate_metric and global_step >= 1:
                     break
                 data.tofile(test_data)
 
-                if global_step == 0:
+                if global_step == 0 and self.calculate_metric:
                     input_tf = tf.placeholder(tf.float32, shape=data.shape, name='input_tf')
                     self.model.training = False
                     output = self.model(input_tf)
@@ -168,12 +176,13 @@ class DeviceEvaluator(Evaluator):
                 results = evaluate(backend="tensorflow", hardware=self.hardware, remote_host=self.remote_host,
                                    model=self.model, weight=weight_file, test_data=test_data, input_shape=data.shape,
                                    reuse_model=reuse_model, job_id=job_id, quantize=self.quantize,
-                                   repeat_times=repeat_times)
-                if results.get("status") != "sucess" and error_count <= error_threshold:
+                                   repeat_times=repeat_times, precision=self.precision,
+                                   save_intermediate_file=self.config.save_intermediate_file)
+                if self.calculate_metric and results.get("status") != "sucess" and error_count <= error_threshold:
                     error_count += 1
                     break
                 latency = np.float(results.get("latency"))
-                data_num += input_shape[0]
+                data_num += 1
                 latency_sum += latency
 
                 if self.calculate_metric:
@@ -213,8 +222,10 @@ class DeviceEvaluator(Evaluator):
                 target = batch["label"]
                 if not self.calculate_metric:
                     repeat_times = 10
-                    data = data[0:1]
-                    target = target[0:1]
+                    reshape_batch_size = self.config.reshape_batch_size
+                    if reshape_batch_size and isinstance(reshape_batch_size, int):
+                        data = data[0:reshape_batch_size]
+                        target = target[0:reshape_batch_size]
 
                 if not self.calculate_metric and global_step >= 1:
                     break
@@ -223,12 +234,13 @@ class DeviceEvaluator(Evaluator):
                 reuse_model = False if global_step == 0 else True
                 results = evaluate(backend="mindspore", hardware=self.hardware, remote_host=self.remote_host,
                                    model=self.model, weight=None, test_data=test_data, input_shape=data.shape,
-                                   reuse_model=reuse_model, job_id=job_id, repeat_times=repeat_times)
+                                   reuse_model=reuse_model, job_id=job_id, repeat_times=repeat_times,
+                                   precision=self.precision, save_intermediate_file=self.config.save_intermediate_file)
                 latency = np.float(results.get("latency"))
                 latency_sum += latency
-                data_num += data.shape[0]
+                data_num += 1
 
-                if global_step == 0:
+                if global_step == 0 and self.calculate_metric:
                     real_output = self.model(mindspore.Tensor(data))
                     real_output = real_output.asnumpy()
                     if isinstance(real_output, tuple):
@@ -257,14 +269,15 @@ class DeviceEvaluator(Evaluator):
         logging.info("valid performance: {}".format(pfms))
         return pfms
 
+    @train_process_wrapper
     def train_process(self):
         """Validate process for the model validate worker."""
-        init_log(level=General.logger.level,
-                 log_file=f"{self.step_name}_device_evaluator_{self.worker_id}.log",
-                 log_path=self.local_log_path)
-        logging.info("start Davinci or mobile evaluate process")
-        self.load_model()
-        self.valid_loader = self._init_dataloader(mode='test')
-        performance = self.valid()
-        ReportClient().update(self.step_name, self.worker_id, performance=performance)
-        logging.info(f"finished device evaluation, id: {self.worker_id}, performance: {performance}")
+        try:
+            self.load_model()
+            self.valid_loader = self._init_dataloader(mode='test')
+            performance = self.valid()
+            ReportClient().update(self.step_name, self.worker_id, performance=performance)
+            logging.info(f"finished device evaluation, id: {self.worker_id}, performance: {performance}")
+        except Exception:
+            logging.error(traceback.format_exc())
+            logging.error("Failed to evalute on device.")

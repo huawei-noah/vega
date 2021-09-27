@@ -12,7 +12,6 @@
 import time
 import yaml
 import traceback
-import queue
 import threading
 import multiprocessing as mp
 from ..base import EstimBase
@@ -26,7 +25,7 @@ def _mp_step_runner(conn, step_conf):
 
 
 def _mp_runner(step_conf):
-    ctx = mp.get_context('spawn')
+    ctx = mp.get_context(step_conf.get('mp_context', 'spawn'))
     p_con, c_con = ctx.Pipe()
     proc = ctx.Process(target=_mp_step_runner, args=(c_con, yaml.dump(step_conf)))
     time.sleep(step_conf.get('delay', 0))
@@ -51,9 +50,11 @@ class PipelineEstim(EstimBase):
         self.return_res = return_res
         self.runner = _mp_runner if use_multiprocessing else _default_runner
         self.step_results = dict()
-        self.pending = queue.Queue()
+        self.pending = []
         self.finished = set()
+        self.failed = set()
         self.cond_all_finished = threading.Lock()
+        self.lock_schedule = threading.Lock()
 
     def exec_runner(self, pname):
         """Execute runner in a thread."""
@@ -61,6 +62,7 @@ class PipelineEstim(EstimBase):
             ret = self.runner(self.config.pipeline[pname])
         except RuntimeError:
             self.logger.info('pipeline step failed with error: {}'.format(traceback.format_exc()))
+            self.failed.add(pname)
             ret = None
         self.step_done(pname, ret, None)
 
@@ -73,7 +75,10 @@ class PipelineEstim(EstimBase):
             inp_val = self.step_results
             for k in keys:
                 if not inp_val or k not in inp_val:
-                    raise RuntimeError('input key {} not found in return {}'.format(inp_idx, self.step_results))
+                    self.logger.error('input key {} not found in return {}'.format(inp_idx, self.step_results))
+                    self.failed.add(pname)
+                    self.step_done(pname, None, None)
+                    return
                 inp_val = inp_val[k]
             pconf[inp_kw] = inp_val
         self.logger.info('pipeline: running {}'.format(pname))
@@ -87,27 +92,40 @@ class PipelineEstim(EstimBase):
         self.logger.info('pipeline: finished {}, results={}'.format(pname, value))
         self.step_results[pname] = value
         self.finished.add(pname)
-        self._schedule()
+        if len(self.finished) == len(self.config.pipeline):
+            self.cond_all_finished.release()
+        else:
+            self._schedule()
         return {'no_opt': True}
 
     def _schedule(self):
         """Scheduler available jobs."""
-        if len(self.finished) == len(self.config.pipeline):
-            self.cond_all_finished.release()
-            return
-        while not self.pending.empty():
-            pname = self.pending.get()
+        self.lock_schedule.acquire()
+        new_pending = []
+        for pname in self.pending:
             pconf = self.config.pipeline.get(pname)
             dep_sat = True
+            failed = False
             deps = pconf.get('depends', []) + list(set([v.split('.')[0] for v in pconf.get('inputs', {}).values()]))
             for dep in deps:
+                if dep in self.failed:
+                    failed = True
+                    self.failed.add(pname)
+                    self.finished.add(pname)
+                    break
                 if dep not in self.finished:
                     dep_sat = False
                     break
+            if failed:
+                continue
             if not dep_sat:
-                self.pending.put(pname)
+                new_pending.append(pname)
                 continue
             self.stepped(pname)
+        self.pending = new_pending
+        self.lock_schedule.release()
+        if len(self.finished) == len(self.config.pipeline):
+            self.cond_all_finished.release()
 
     def run(self, optim):
         """Run Estimator routine."""
@@ -116,11 +134,14 @@ class PipelineEstim(EstimBase):
         config = self.config
         pipeconf = config.pipeline
         for pn in pipeconf.keys():
-            self.pending.put(pn)
+            self.pending.append(pn)
         self.cond_all_finished.acquire()
         self._schedule()
         self.cond_all_finished.acquire()
         self.cond_all_finished.release()
+        if self.failed:
+            if len(self.failed) == len(self.finished):
+                raise RuntimeError('pipeline: all failed')
         logger.info('pipeline: all finished: {}'.format(self.step_results))
         if self.return_res:
             return {'step_results': self.step_results}

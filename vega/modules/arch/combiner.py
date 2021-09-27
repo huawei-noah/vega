@@ -15,6 +15,14 @@ from vega.modules.connections import Add
 from vega.modules.connections import Module
 
 
+def is_depth_wise_conv(module):
+    """Determine Conv2d."""
+    if hasattr(module, "groups"):
+        return module.groups != 1 and module.in_channels == module.out_channels
+    elif hasattr(module, "group"):
+        return module.group != 1 and module.in_channels == module.out_channels
+
+
 class ConnectionsArchParamsCombiner(object):
     """Get ConnectionsArchParamsCombiner."""
 
@@ -48,11 +56,15 @@ class ConnectionsArchParamsCombiner(object):
         elif isinstance(module, ops.Conv2d):
             if self.pre_conv:
                 self.add_condition(module.name + '.in_channels', self.pre_conv.name + '.out_channels')
+                if is_depth_wise_conv(module):
+                    self.add_condition(module.name + '.out_channels', module.name + '.in_channels')
             self.pre_conv = module
         elif isinstance(module, ops.BatchNorm2d):
             self.add_condition(module.name + '.num_features', self.pre_conv.name + '.out_channels')
         elif isinstance(module, ops.Linear):
             self.add_condition(module.name + '.in_features', self.pre_conv.name + '.out_channels')
+        elif module.__class__.__name__ == "Reshape":
+            self.add_condition(module.name + '.shape', self.pre_conv.name + '.out_channels')
         elif isinstance(module, Module):
             for child in module.children():
                 self._traversal(child)

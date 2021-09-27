@@ -12,20 +12,22 @@
 import numpy as np
 from modnas.core.param_space import ParamSpace
 from modnas.core.params import Categorical
-from modnas.registry.estim import RegressionEstim
+from modnas.estim.predefined.regression import RegressionEstim
 from modnas.registry.construct import register as register_constructor
 from modnas.registry.estim import register as register_estim
+from modnas.optim.base import OptimBase
+from typing import Dict, List, Union
 
 
 @register_constructor
 class FakeDataSpaceConstructor():
     """Fake data space constructor class."""
 
-    def __init__(self, n_params=2**5, dim=2**1):
+    def __init__(self, n_params: int = 2**5, dim: int = 2**1) -> None:
         self.n_params = n_params
         self.dim = dim
 
-    def __call__(self, model):
+    def __call__(self, model: None) -> None:
         """Construct search space."""
         del model
         _ = [Categorical(list(range(self.dim))) for _ in range(self.n_params)]
@@ -34,7 +36,9 @@ class FakeDataSpaceConstructor():
 class FakeDataPredictor():
     """Fake data regression predictor class."""
 
-    def __init__(self, score_dim=1, seed=11235, random_score=False, noise_scale=0.01):
+    def __init__(
+        self, score_dim: int = 1, seed: int = 11235, random_score: bool = False, noise_scale: float = 0.01
+    ) -> None:
         super().__init__()
         self.rng = np.random.RandomState(seed)
         self.score_dim = score_dim
@@ -42,7 +46,7 @@ class FakeDataPredictor():
         self.noise_scale = noise_scale
         self.scores = {'dim_{}'.format(i): {} for i in range(score_dim)}
 
-    def get_score(self, params, scores):
+    def get_score(self, params: Dict[str, int], scores: Dict[str, Union[List[float]]]) -> float:
         """Return score of given parameters."""
         score = 0
         for pn, v in params.items():
@@ -52,7 +56,7 @@ class FakeDataPredictor():
             if pn not in scores:
                 if self.random_score:
                     p_score = self.rng.rand(dim)
-                    p_score = p_score / np.max(p_score)
+                    p_score = (p_score / np.max(p_score)).tolist()
                 else:
                     p_score = list(range(dim))
                 scores[pn] = p_score
@@ -61,7 +65,7 @@ class FakeDataPredictor():
         score += 0 if self.noise_scale is None else self.rng.normal(loc=0, scale=self.noise_scale)
         return score
 
-    def predict(self, params):
+    def predict(self, params: Dict[str, int]) -> Union[float, Dict[str, float]]:
         """Return predicted evaluation results."""
         scores = {k: self.get_score(params, v) for k, v in self.scores.items()}
         if len(scores) == 1:
@@ -73,10 +77,10 @@ class FakeDataPredictor():
 class FakeDataEstim(RegressionEstim):
     """Fake data regression estimator class."""
 
-    def __init__(self, *args, pred_conf=None, **kwargs):
+    def __init__(self, *args, pred_conf=None, **kwargs) -> None:
         super().__init__(*args, predictor=FakeDataPredictor(**(pred_conf or {})), **kwargs)
 
-    def run(self, optim):
+    def run(self, optim: OptimBase) -> None:
         """Run Estimator routine."""
         ret = super().run(optim)
         scores = self.predictor.scores

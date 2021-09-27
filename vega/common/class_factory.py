@@ -200,37 +200,30 @@ class ClassFactory(object):
         if type_name != ClassType.NETWORK:
             return t_cls(**_params) if _params else t_cls()
         # remove extra params
-        params_sig = sig(t_cls.__init__).parameters
-        instance = cls._create_instance_params(params_sig, _params, t_cls)
-        if not instance:
-            extra_param = {k: v for k, v in _params.items() if k not in params_sig}
-            _params = {k: v for k, v in _params.items() if k not in extra_param}
-            try:
-                instance = t_cls(**_params) if _params else t_cls()
-            except Exception as ex:
-                logging.error("Failed to create instance:{}".format(t_cls))
-                raise ex
-            for k, v in extra_param.items():
-                setattr(instance, k, v)
-        return instance
+        params_sig = sig(t_cls).parameters if isfunction(t_cls) else sig(t_cls.__init__).parameters
+        extra_param = {k: v for k, v in _params.items() if k not in params_sig}
+        return cls._create_instance_params(params_sig, _params, extra_param, t_cls)
 
     @classmethod
-    def _create_instance_params(cls, params_sig, _params, t_cls):
+    def _create_instance_params(cls, params_sig, _params, extra_param, t_cls):
         try:
             has_args = any('*' in str(v) and not str(v).startswith('**') for v in params_sig.values())
             has_kwargs = any('**' in str(v) for v in params_sig.values())
+            filter_params = {k: v for k, v in _params.items() if k not in extra_param}
             if has_args and not has_kwargs:
+                # fun(*args)
                 return t_cls(*list(_params.values())) if list(_params.values()) else t_cls()
-            if not has_args and has_kwargs:
-                return t_cls(**_params) if _params else t_cls()
             if has_args and has_kwargs:
-                if _params and list(_params.values()):
-                    return t_cls(*list(_params.values()), **_params)
-                if _params and not list(_params.values()):
-                    return t_cls(**_params)
-                if not _params and list(_params.values()):
-                    return t_cls(*list(_params.values()))
-                return t_cls()
+                # for connection module: fun(*args, **kwargs)
+                return t_cls(*list(extra_param.values()), **filter_params)
+            if not has_args and has_kwargs:
+                # fun(**kwargs)
+                return t_cls(**_params)
+            # fun(a, b, c=None)
+            instance = t_cls(**filter_params) if filter_params else t_cls()
+            for k, v in extra_param.items():
+                setattr(instance, k, v)
+            return instance
         except Exception as ex:
             logging.error("Failed to create instance:{}".format(t_cls))
             raise ex

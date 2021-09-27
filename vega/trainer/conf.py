@@ -7,7 +7,10 @@
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 # MIT License for more details.
+
 """Default configs."""
+
+import os
 from .modules.conf.loss import LossConfig
 from .modules.conf.lr_scheduler import LrSchedulerConfig
 from .modules.conf.optim import OptimConfig
@@ -58,8 +61,9 @@ class TrainerConfig(ConfigSerializable):
     epochs = 1
     valid_interval = 1
     syncbn = False
-    amp = False
-    opt_level = 'O1'
+    use_amp = False
+    keep_batchnorm_fp32 = False
+    opt_level = 'O2'
     lazy_built = False
     callbacks = None
     grad_clip = None
@@ -103,6 +107,9 @@ class TrainerConfig(ConfigSerializable):
     mixup = False
     multi_task = False
     adaptive_muti_loss = False
+    eval_per_epoch = True
+    # script runner
+    script = None
 
     @classmethod
     def set_task(cls, task):
@@ -118,6 +125,8 @@ class TrainerConfig(ConfigSerializable):
         """Restore config from a dictionary or a file."""
         if "task" in data.keys() and data["task"] != cls.task and data["task"] is not None:
             cls.set_task(data["task"])
+        if "script" in data.keys() and data["script"] is not None:
+            data["script"] = os.path.abspath(data["script"])
         return super(TrainerConfig, cls).from_dict(data, skip_check)
 
     @classmethod

@@ -27,7 +27,7 @@ class TrainerTorch(TrainerBase):
         """Build the trainer by assembling the necessary components."""
         super().build()
         if self.optimizer is None:
-            self.optimizer = Optimizer()(model=self.model, distributed=self.distributed)
+            self.optimizer = Optimizer()(model=self.model, distributed=self.horovod)
         if hasattr(self.model, 'add_loss'):
             loss_cls = Loss()()
             self.model.add_loss(loss_cls)
@@ -38,7 +38,9 @@ class TrainerTorch(TrainerBase):
             self.loss.adaptive_muti_loss(save_path=self.get_local_worker_path(self.step_name, self.worker_id),
                                          weight=self.config.loss_weight)
         if self.lr_scheduler is None:
-            self.lr_scheduler = LrScheduler()(self.optimizer)
+            self.lr_scheduler = LrScheduler()(self.optimizer,
+                                              steps=len(self.train_loader) if self.train_loader is not None else None,
+                                              epochs=self.config.epochs)
         if self.actions_list is not None:
             self.total_optimizer = self.optimizer
             self.total_loss = self.loss
@@ -46,13 +48,13 @@ class TrainerTorch(TrainerBase):
         # Some trainer has different train batch size from valid batch
         self.train_metrics = self._init_metrics()
         self.valid_metrics = self._init_metrics()
-        self._init_horovod_setting()
         if self.use_amp:
             from apex import amp
             self.model, self.optimizer = amp.initialize(
                 self.model, self.optimizer, opt_level=self.config.opt_level, loss_scale=64, combine_grad=True)
 
-    def _set_default_funcs(self):
+    def set_training_settings(self):
+        """Set trainer training setting."""
         self.make_batch = self._default_make_batch
         if isinstance(self.config.optimizer, list):
             self.train_step = self._multi_train_step
@@ -60,8 +62,9 @@ class TrainerTorch(TrainerBase):
             self.train_step = self._default_train_step
         self.valid_step = self._default_valid_step
 
-    def _set_condition(self):
-        self._init_distributed_setting()
+    def init_env(self):
+        """Init trainer environment."""
+        super().init_env()
         torch.manual_seed(self.config.seed)
         self._init_setting()
 
@@ -70,8 +73,6 @@ class TrainerTorch(TrainerBase):
         if vega.is_gpu_device():
             import torch.cuda
             self.config.device = vega.is_gpu_device() if vega.is_gpu_device() is not True else 0
-            if self.distributed:
-                torch.cuda.set_device(self._local_rank_id)
             torch.cuda.manual_seed(self.config.seed)
         elif vega.is_npu_device():
             import torch.npu
@@ -82,25 +83,6 @@ class TrainerTorch(TrainerBase):
             return
         else:
             raise ValueError('Set a correct device: cuda or npu.')
-
-    def _init_distributed_setting(self):
-        if self.distributed:
-            import horovod.torch as hvd
-            self._world_size = hvd.size()
-            self._rank_id = hvd.rank()
-            self._local_rank_id = hvd.local_rank()
-
-    def _init_horovod_setting(self):
-        """Init horovod setting."""
-        self.is_chief = True
-        if self.distributed:
-            import horovod.torch as hvd
-            hvd.broadcast_parameters(self.model.state_dict(), root_rank=0)
-            hvd.broadcast_optimizer_state(self.optimizer, root_rank=0)
-            if hvd.rank() != 0:
-                self.is_chief = False
-            else:
-                self.is_chief = True
 
     def _train_epoch(self):
         self.model.train()

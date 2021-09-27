@@ -66,7 +66,7 @@ class PruneTrainerCallback(Callback):
                      self.flops_count * 1e-6, self.params_count * 1e-3, self.latency_count * 1000)
         self.trainer.model = self._generate_init_model()
         if vega.is_torch_backend():
-            self.trainer.optimizer = Optimizer()(model=self.trainer.model, distributed=self.trainer.distributed)
+            self.trainer.optimizer = Optimizer()(model=self.trainer.model, distributed=self.trainer.horovod)
             self.trainer.lr_scheduler = LrScheduler()(self.trainer.optimizer)
 
     def after_epoch(self, epoch, logs=None):

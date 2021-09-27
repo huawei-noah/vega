@@ -40,7 +40,8 @@ class OptimMappingDict(object):
     """Optimizer Mapping Dictionary."""
 
     type_mapping_dict = dict(
-        SGD=dict(torch='SGD', tf='MomentumOptimizer', ms='Momentum'),
+        SGD=dict(torch='SGD', tf='MomentumOptimizer', ms='SGD'),
+        Momentum=dict(torch='SGD', tf='MomentumOptimizer', ms='Momentum'),
         Adam=dict(torch='Adam', tf='AdamOptimizer', ms='Adam'),
         RMSProp=dict(torch='RMSProp', tf='RMSPropOptimizer', ms='RMSProp')
     )
@@ -50,13 +51,26 @@ class OptimMappingDict(object):
             lr=dict(torch='lr', tf='learning_rate', ms='learning_rate'),
             momentum=dict(torch='momentum', tf='momentum', ms='momentum'),
             weight_decay=dict(torch='weight_decay', tf='weight_decay', ms='weight_decay'),
+            no_decay_params=dict(torch=None, tf=None, ms='no_decay_params'),
+            loss_scale=dict(torch=None, tf=None, ms='loss_scale'),
+        ),
+        Momentum=dict(
+            lr=dict(torch='lr', tf='learning_rate', ms='learning_rate'),
+            momentum=dict(torch='momentum', tf='momentum', ms='momentum'),
+            weight_decay=dict(torch='weight_decay', tf='weight_decay', ms='weight_decay'),
+            no_decay_params=dict(torch=None, tf=None, ms='no_decay_params'),
+            loss_scale=dict(torch=None, tf=None, ms='loss_scale'),
         ),
         Adam=dict(
             lr=dict(torch='lr', tf='learning_rate', ms='learning_rate'),
             weight_decay=dict(torch='weight_decay', tf='weight_decay', ms='weight_decay'),
+            no_decay_params=dict(torch=None, tf=None, ms='no_decay_params'),
+            loss_scale=dict(torch=None, tf=None, ms='loss_scale'),
         ),
         RMSProp=dict(
             lr=dict(torch='lr', tf='learning_rate', ms='learning_rate'),
             weight_decay=dict(torch='weight_decay', tf='weight_decay', ms='weight_decay'),
+            no_decay_params=dict(torch=None, tf=None, ms='no_decay_params'),
+            loss_scale=dict(torch=None, tf=None, ms='loss_scale'),
         )
     )

@@ -67,7 +67,6 @@ nas:
         type: Trainer
         callbacks: SegmentationEATrainerCallback
         cuda: true
-        distributed: false
         seed: 1
         epochs: 5
         call_metrics_on_train: false

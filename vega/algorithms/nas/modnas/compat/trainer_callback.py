@@ -23,7 +23,7 @@ from modnas.data_provider.predefined.default import DefaultDataProvider
 from modnas.trainer.base import TrainerBase
 from modnas.utils.wrapper import init_all
 from modnas.utils.logging import get_logger
-from modnas.utils import merge_config
+from modnas.utils.config import merge_config
 
 
 logger = get_logger('compat')
@@ -238,9 +238,10 @@ class ModNasTrainerCallback(Callback):
         self.config['expman'] = self.config.get('expman', {})
         self.config['expman']['root_dir'] = FileOps.join_path(self.trainer.get_local_worker_path(), 'exp')
         self.config = merge_config(self.config, self.model.config)
-        ctx = init_all(config=self.config, base_model=self.model.net)
+        ctx = init_all(config=self.config, base_model=None)
         self.__dict__.update(ctx)
-        self.model.net = list(self.estims.values())[0].model
+        if self.model.net is None:
+            self.model.net = list(self.estims.values())[0].model
         if self.optim:
             self.search_alg.set_optim(self.optim)
         self.wrp_trainer = VegaTrainerWrapper(self.trainer)
@@ -255,7 +256,7 @@ class ModNasTrainerCallback(Callback):
         self.config = copy.deepcopy(self.trainer_config.modnas)
         self.model = self.trainer.model
         self.search_alg = None
-        if not self.config.get('fully_train'):
+        if self.config.get('vega_train', False) is False:
             self.search_alg = SearchAlgorithm(SearchSpace())
         self.trainer.train_loader = self.trainer._init_dataloader(mode='train')
         self.trainer.valid_loader = self.trainer._init_dataloader(mode='val')

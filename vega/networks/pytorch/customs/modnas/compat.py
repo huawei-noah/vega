@@ -26,25 +26,17 @@ class ModNasArchSpace(Module):
     """ModularNAS Architecture Space."""
 
     def __init__(self,
-                 construct=None,
-                 desc_construct=None,
                  net=None,
                  **kwargs):
         super().__init__()
         use_backend('torch')
         config = Config(kwargs)
-        fully_train = config.get('arch_desc', config.get('fully_train')) or False
-        config['construct'] = (desc_construct if fully_train is not False else construct) or {}
         self.config = config
-        self.constructor = None
         self.net = None
-        if fully_train is not False:
-            self.build_net()
-
-    def build_net(self):
-        """Build network with constructors."""
-        self.constructor = get_default_constructors(self.config)
-        self.net = self.constructor(self.net)
+        is_augment = True if config.get('arch_desc') is not None else False
+        if not config.get('vega_no_construct', False) and is_augment:
+            Config.apply(config, config.pop('augment', {}))
+            self.net = get_default_constructors(self.config)(self.net)
 
     def forward(self, *args, **kwargs):
         """Compute forward output."""

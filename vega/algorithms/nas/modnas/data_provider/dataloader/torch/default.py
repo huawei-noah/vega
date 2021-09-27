@@ -10,28 +10,33 @@
 
 """Default DataLoader."""
 import random
-from torch.utils.data import DataLoader
+from torch.utils.data.dataloader import DataLoader
+from torch.utils.data.dataset import Dataset
 from torch.utils.data.sampler import SubsetRandomSampler
 from modnas.registry.data_loader import register
 from modnas.utils.logging import get_logger
+from typing import Any, Dict, Optional, Tuple, Union, Callable
 
 
 logger = get_logger('data_loader')
 
 
 @register
-def DefaultDataLoader(trn_data,
-                      val_data,
-                      parallel_multiplier=1,
-                      trn_batch_size=64,
-                      val_batch_size=64,
-                      workers=2,
-                      train_size=0,
-                      train_ratio=1.,
-                      train_seed=1,
-                      valid_size=0,
-                      valid_ratio=0.,
-                      valid_seed=1):
+def DefaultDataLoader(
+        trn_data: Dataset,
+        val_data: Optional[Dataset],
+        trn_batch_size: int = 64,
+        val_batch_size: int = 64,
+        workers: int = 2,
+        collate_fn: Optional[Callable] = None,
+        parallel_multiplier: int = 1,
+        train_size: int = 0,
+        train_ratio: float = 1.,
+        train_seed: int = 1,
+        valid_size: int = 0,
+        valid_ratio: Union[float, int] = 0.,
+        valid_seed: int = 1,
+) -> Tuple[Optional[DataLoader], Optional[DataLoader]]:
     """Return default DataLoader."""
     # index
     n_train_data = len(trn_data)
@@ -65,10 +70,12 @@ def DefaultDataLoader(trn_data,
     trn_batch_size *= parallel_multiplier
     val_batch_size *= parallel_multiplier
     workers *= parallel_multiplier
-    extra_kwargs = {
+    extra_kwargs: Dict[str, Any] = {
         'num_workers': workers,
         'pin_memory': True,
     }
+    if collate_fn is not None:
+        extra_kwargs['collate_fn'] = collate_fn
     if len(trn_idx) > 0:
         trn_sampler = SubsetRandomSampler(trn_idx)
         trn_loader = DataLoader(trn_data, batch_size=trn_batch_size, sampler=trn_sampler, **extra_kwargs)

@@ -15,6 +15,8 @@ import numpy as np
 from .base import ModelOptim
 from modnas.registry.model_optim import register
 from modnas.utils.logging import get_logger
+from collections import OrderedDict
+from typing import Any, List, Set, Union
 
 
 logger = get_logger('model_optim')
@@ -43,7 +45,7 @@ class SimulatedAnnealingModelOptim(ModelOptim):
         self.keep_history = keep_history
         self.history = None
 
-    def disturb(self, params):
+    def disturb(self, params: OrderedDict) -> OrderedDict:
         """Return randomly disturbed parameter."""
         pname = list(params)[random.randint(0, len(params) - 1)]
         p = self.space.get_param(pname)
@@ -54,14 +56,14 @@ class SimulatedAnnealingModelOptim(ModelOptim):
         new_params[pname] = p.get_value(nidx)
         return new_params
 
-    def get_optimums(self, model, size, excludes):
+    def get_optimums(self, model: Any, size: int, excludes: Set[int]) -> List[int]:
         """Return optimums in score model."""
         topq = []
         for _ in range(self.n_iter):
             self.run_sa(model, size, excludes, topq)
         return [item[-1] for item in topq[::1]]
 
-    def run_sa(self, model, size, excludes, topq):
+    def run_sa(self, model: Any, size: int, excludes: Set[int], topq: List[Any]) -> None:
         """Run SA algorithm."""
         if self.history is None:
             params = [self.get_random_params(excludes) for _ in range(self.batch_size)]

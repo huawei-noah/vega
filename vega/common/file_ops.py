@@ -237,3 +237,16 @@ class FileOps(object):
         :rtype: bool
         """
         return os.path.isdir(path) or os.path.isfile(path)
+
+    @classmethod
+    def remove(cls, path):
+        """Remove file."""
+        if not os.path.exists(path):
+            return
+        try:
+            if os.path.isdir(path):
+                shutil.rmtree(path)
+            else:
+                os.remove(path)
+        except Exception:
+            logger.warn(f"Failed to remove file/dir: {path}")

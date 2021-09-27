@@ -41,6 +41,9 @@ ClassFactory.__registry__ = cf_content.get('registry')
 General.from_dict(cf_content.get('general_config'))
 PipeStepConfig.from_dict(cf_content.get('pipe_step_config'))
 cls_trainer = ClassFactory.get_cls('trainer', "Trainer")
-# for record in records:
-trainer = cls_trainer(model_desc=model_desc, id=worker_id)
+
+device_id = os.environ["CUDA_VISIBLE_DEVICES"].split(",")[hvd.local_rank()]
+os.environ["CUDA_VISIBLE_DEVICES"] = device_id
+
+trainer = cls_trainer(model_desc=model_desc, id=worker_id, horovod=True)
 trainer.train_process()

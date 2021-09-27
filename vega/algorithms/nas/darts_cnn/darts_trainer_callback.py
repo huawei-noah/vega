@@ -65,7 +65,10 @@ class DartsTrainerCallback(Callback):
         except Exception:
             self.valid_loader_iter = iter(self.trainer.valid_loader)
             valid_input, valid_target = next(self.valid_loader_iter)
-        valid_input, valid_target = valid_input.to(self.device), valid_target.to(self.device)
+        if vega.is_npu_device():
+            valid_input, valid_target = valid_input.to(int(self.device)), valid_target.to(int(self.device))
+        else:
+            valid_input, valid_target = valid_input.to(self.device), valid_target.to(self.device)
         # Call arch search step
         self._train_arch_step(train_input, train_target, valid_input, valid_target)
 
@@ -110,7 +113,7 @@ class DartsTrainerCallback(Callback):
             labels, valid_labels = labels['train'], labels['valid']
             # update arch
             epoch = tf.cast(global_step, tf.float32) / tf.cast(len(self.trainer.train_loader), tf.float32)
-            self.trainer.optimizer = Optimizer()(distributed=self.trainer.distributed)
+            self.trainer.optimizer = Optimizer()(distributed=self.trainer.horovod)
             self.trainer.lr_scheduler = LrScheduler()(self.trainer.optimizer)
             self.trainer.lr_scheduler.step(epoch)
             update_ops = tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.UPDATE_OPS)

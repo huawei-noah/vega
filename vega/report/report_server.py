@@ -132,21 +132,6 @@ class ReportServer(object):
         else:
             return pareto
 
-    # def _select_one_record(self, outs, choice='normal'):
-    #     """Select one record."""
-    #     if outs.size == 1:
-    #         return outs.astype(int).tolist()
-    #     if choice == 'normal':
-    #         data = outs[:, 1:].reshape(-1, 1).tolist()
-    #         prob = [round(np.log(i + 1e-2), 2) for i in range(1, len(data[0]) + 1)]
-    #         prob_temp = prob
-    #         for idx, out in enumerate(data):
-    #             sorted_ind = np.argsort(out)
-    #             for idx, ind in enumerate(sorted_ind):
-    #                 prob[ind] += prob_temp[idx]
-    #         normalization = [float(i) / float(sum(prob)) for i in prob]
-    #         return [np.random.choice(len(data[0]), p=normalization)]
-
     @classmethod
     def restore(cls):
         """Transfer cvs_file to records."""
@@ -302,34 +287,35 @@ def update_record(step_name=None, worker_id=None, **kwargs):
     """Update record."""
     if step_name is None or worker_id is None:
         return {"result": "failed", "message": "request message missing step_name or worker id."}
-    if kwargs:
-        kwargs["step_name"] = step_name
-        kwargs["worker_id"] = worker_id
-        uid = "{}_{}".format(step_name, worker_id)
-        global _records_lock, _modified
-        with _records_lock:
-            _modified = True
-            records = ReportServer()._hist_records
-            if uid in records:
-                records[uid].load_dict(kwargs)
-                logging.debug("update record: {}".format(records[uid].to_dict()))
-            else:
-                records[uid] = ReportRecord().load_dict(kwargs)
-                logging.debug("new record: {}".format(records[uid].to_dict()))
-    return {"result": "success", "data": records[uid].to_dict()}
+    kwargs["step_name"] = step_name
+    kwargs["worker_id"] = worker_id
+    uid = "{}_{}".format(step_name, worker_id)
+    global _records_lock, _modified
+    with _records_lock:
+        _modified = True
+        records = ReportServer()._hist_records
+        if uid in records:
+            records[uid].load_dict(kwargs)
+            logging.debug("update record: {}".format(records[uid].to_dict()))
+        else:
+            records[uid] = ReportRecord().load_dict(kwargs)
+            logging.debug("new record: {}".format(records[uid].to_dict()))
+        return {"result": "success", "data": records[uid].to_dict()}
 
 
 def get_record(step_name=None, worker_id=None, **kwargs):
     """Get record."""
     if step_name is None or worker_id is None:
         return {"result": "failed", "message": "require message missing step_name or worker id."}
-    uid = "{}_{}".format(step_name, worker_id)
-    records = ReportServer()._hist_records
-    if uid in records:
-        data = records[uid].to_dict()
-    else:
-        data = ReportRecord().to_dict()
-    return {"result": "success", "data": data}
+    global _records_lock, _modified
+    with _records_lock:
+        uid = "{}_{}".format(step_name, worker_id)
+        records = ReportServer()._hist_records
+        if uid in records:
+            data = records[uid].to_dict()
+        else:
+            data = ReportRecord().to_dict()
+        return {"result": "success", "data": data}
 
 
 def _dump_report(report_server, persistence):
@@ -342,13 +328,13 @@ def _dump_report(report_server, persistence):
             all_records = report_server.all_records
             _modified = False
 
-        try:
-            persistence.save_report(all_records)
-            # TODO
-            # persistence.pickle_report(report_server._hist_records, report_server.__instances__)
-            report_server.backup_output_path()
-        except Exception as e:
-            logging.warning(f"Failed to dump reports, message={str(e)}")
+            try:
+                persistence.save_report(all_records)
+                # TODO
+                # persistence.pickle_report(report_server._hist_records, report_server.__instances__)
+                report_server.backup_output_path()
+            except Exception as e:
+                logging.warning(f"Failed to dump reports, message={str(e)}")
 
 
 def query_report():

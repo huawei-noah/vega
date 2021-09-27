@@ -110,6 +110,21 @@ class Sequential(ConnectionsDecorator):
             model.append(module, name)
         return model
 
+    def to_desc(self, recursion=True):
+        """Convert module to desc."""
+        if not recursion:
+            return self.desc
+        desc = {"type": self.__class__.__name__}
+        modules = []
+        for name, module in self.named_children():
+            if hasattr(module, 'to_desc'):
+                sub_desc = module.to_desc()
+                desc[name] = sub_desc
+                modules.append(name)
+        if modules:
+            desc["modules"] = modules
+        return desc
+
 
 class ModuleList(Module):
     """Class of LeakyReLU."""
@@ -266,32 +281,6 @@ class ProcessList(ConnectionsDecorator):
                     inputs.append(model(inputs[idx]))
             output = inputs
         return output
-
-
-@ClassFactory.register(SearchSpaceType.CONNECTIONS)
-class Reshape(ConnectionsDecorator):
-    """Create Lambda for forward x."""
-
-    def __init__(self, *models):
-        super(Reshape, self).__init__(*models)
-
-    def call(self, x):
-        """Forward x."""
-        inputs = None
-        new_shape = None
-        for model in self.children():
-            if model is not None:
-                if inputs is None:
-                    inputs = model(x)
-                else:
-                    new_shape = model(x)
-        import torch
-        return torch.reshape(inputs, tuple(new_shape.to("cpu").numpy()))
-
-    @property
-    def out_channels(self):
-        """Get out channels."""
-        return [k.out_channels for k in self.children() if hasattr(k, 'out_channels')]
 
 
 @ClassFactory.register(ClassType.NETWORK)

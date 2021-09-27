@@ -12,22 +12,28 @@
 from ..base import MetricsBase
 from modnas.registry.metrics import register, build
 from modnas.arch_space.mixed_ops import MixedOp
+from modnas.registry import SPEC_TYPE
+from torch.nn.modules.module import Module
+from typing import List, Any, Union
+
 try:
     import rasp
     import rasp.frontend as F
+    from rasp.profiler.tree import StatTreeNode
 except ImportError:
     rasp = None
+    StatTreeNode = None
 
 
 @register
 class RASPStatsMetrics(MetricsBase):
     """RASP node statistics metrics class."""
 
-    def __init__(self, item):
+    def __init__(self, item: str) -> None:
         super().__init__()
         self.item = item
 
-    def __call__(self, node):
+    def __call__(self, node: StatTreeNode) -> int:
         """Return metrics output."""
         return node[self.item]
 
@@ -37,14 +43,14 @@ class RASPTraversalMetrics(MetricsBase):
     """RASP model traversal metrics class."""
 
     def __init__(self,
-                 input_shape,
-                 metrics,
-                 compute=True,
-                 timing=False,
-                 device='cuda',
-                 mixed_only=False,
-                 keep_stats=True,
-                 traversal_type='tape_nodes'):
+                 input_shape: List[int],
+                 metrics: SPEC_TYPE,
+                 compute: bool = True,
+                 timing: bool = False,
+                 device: str = 'cuda',
+                 mixed_only: bool = False,
+                 keep_stats: bool = True,
+                 traversal_type: str = 'tape_nodes') -> None:
         super().__init__()
         if rasp is None:
             raise ValueError('package RASP is not found')
@@ -63,7 +69,7 @@ class RASPTraversalMetrics(MetricsBase):
             raise ValueError('invalid traversal type')
         self.excluded = set()
 
-    def _traverse_tape_nodes(self, node):
+    def _traverse_tape_nodes(self, node: StatTreeNode) -> Union[float, int]:
         ret = 0
         if node in self.excluded:
             return ret
@@ -82,7 +88,7 @@ class RASPTraversalMetrics(MetricsBase):
             ret += n_ret
         return ret
 
-    def _traverse_tape_leaves(self, node):
+    def _traverse_tape_leaves(self, node: StatTreeNode) -> Union[float, int]:
         ret = 0
         for cur_node in node.tape.items_all:
             if cur_node in self.excluded:
@@ -93,7 +99,7 @@ class RASPTraversalMetrics(MetricsBase):
             ret += n_ret
         return ret
 
-    def _stat(self, module, input_shape):
+    def _stat(self, module: Module, input_shape: List[int]) -> None:
         """Run profiling on given module."""
         if self.eval_compute:
             F.hook_compute(module)
@@ -103,14 +109,14 @@ class RASPTraversalMetrics(MetricsBase):
         F.unhook_compute(module)
         F.unhook_timing(module)
 
-    def __call__(self, net):
+    def __call__(self, net: Module) -> Any:
         """Return metrics output."""
         self.excluded.clear()
         root = F.get_stats_node(net)
         if root is None:
             root = F.reg_stats_node(net)
             self._stat(net, self.input_shape)
-        mt = 0
+        mt = 0.
         for m in net.modules():
             if not isinstance(m, MixedOp):
                 continue

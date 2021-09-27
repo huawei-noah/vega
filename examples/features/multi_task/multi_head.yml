@@ -92,7 +92,6 @@ fully_train:
             type: Trainer
             multi_task: True
             cuda: true
-            distributed: False
             seed: 0
             epochs: 1
             optimizer:

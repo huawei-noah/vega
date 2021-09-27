@@ -230,7 +230,7 @@ class ASHA(ShaBase):
             return False
 
         max_rung_id = self.sieve_board['rung_id'].max()
-        if max_rung_id == self.total_rungs - 1:
+        if max_rung_id == self.total_rungs:
             return True
 
         candidate_ids = self._get_top_k_config_ids(max_rung_id)
@@ -261,7 +261,7 @@ class ASHA(ShaBase):
             if num_next_rung >= k:
                 return None
 
-            if isinstance(df.iloc[0]["score"], float):
+            if isinstance(df.iloc[0]["score"], float) or isinstance(df.iloc[0]["score"], int):
                 ids = df.sort_values("score", ascending=False).iloc[:k]["config_id"].tolist()
             elif isinstance(df.iloc[0]["score"], list):
                 data = df[["config_id", "score"]].to_numpy()

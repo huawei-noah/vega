@@ -11,12 +11,12 @@
 """Message Server."""
 
 import logging
-import zmq
 import ast
 import os
 from threading import Thread
 from vega.common.utils import singleton
 from vega.common import JsonEncoder
+from vega.common.zmq_op import listen
 
 
 __all__ = ["MessageServer"]
@@ -30,8 +30,8 @@ class MessageServer(object):
     def __init__(self):
         """Initialize message server."""
         self.handlers = {}
-        self.min_port = 5000
-        self.max_port = 7000
+        self.min_port = 27000
+        self.max_port = 27999
         self.port = None
         self.register_handler("query_task_info", query_task_info)
 
@@ -41,10 +41,8 @@ class MessageServer(object):
             return
 
         try:
-            context = zmq.Context()
-            socket = context.socket(zmq.REP)
-            self.port = socket.bind_to_random_port(
-                f"tcp://{ip}", min_port=self.min_port, max_port=self.max_port, max_tries=100)
+            (socket, self.port) = listen(
+                ip=ip, min_port=self.min_port, max_port=self.max_port, max_tries=100)
             logging.debug("Start message monitor thread.")
             monitor_thread = Thread(target=_monitor_socket, args=(socket, self.handlers))
             monitor_thread.daemon = True

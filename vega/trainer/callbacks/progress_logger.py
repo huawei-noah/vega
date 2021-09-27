@@ -52,8 +52,7 @@ class ProgressLogger(Callback):
         self.total_time_pre_reports = []
         self.time_total_reports = []
         logging.debug("Start the unified trainer ... ")
-        self.is_chief = self.params['is_chief']
-        self.do_validation = self.params['do_validation']
+        self.do_validation = self.trainer.do_validation
 
     def before_train_step(self, batch_index, logs=None):
         """Be called before a batch training."""
@@ -69,7 +68,7 @@ class ProgressLogger(Callback):
     def after_train_step(self, batch_index, logs=None):
         """Be called before each batch training."""
         self.total_time_pre_reports.append(time.perf_counter() - self.step_start_time)
-        if self.train_verbose >= 2 and self.is_chief \
+        if self.train_verbose >= 2 and self.trainer.is_chief \
                 and batch_index % self.train_report_steps == 0:
             metrics_results = logs.get('train_step_metrics', None)
             lr = logs['lr']
@@ -82,8 +81,11 @@ class ProgressLogger(Callback):
                 logging.warning("Cant't get the loss, maybe the loss doesn't update in the metric evaluator.")
 
             time_pre_batch = statistics.mean(self.total_time_pre_reports)
-            self.time_total_reports.append(sum(self.total_time_pre_reports))
-            time_pre_report = statistics.mean(self.time_total_reports) / self.train_report_steps
+            if batch_index == 0:
+                time_pre_report = time_pre_batch
+            else:
+                self.time_total_reports.append(sum(self.total_time_pre_reports))
+                time_pre_report = statistics.mean(self.time_total_reports) / self.train_report_steps
             self.total_time_pre_reports.clear()
 
             if metrics_results is not None:
@@ -110,7 +112,7 @@ class ProgressLogger(Callback):
 
     def after_valid_step(self, batch_index, logs=None):
         """Be called after each batch of the validation."""
-        if self.valid_verbose >= 2 and self.is_chief \
+        if self.valid_verbose >= 2 and self.trainer.is_chief \
                 and self.do_validation and batch_index % self.valid_report_steps == 0:
             metrics_results = logs.get('valid_step_metrics', None)
             if metrics_results is not None:
@@ -124,7 +126,7 @@ class ProgressLogger(Callback):
 
     def after_valid(self, logs=None):
         """Be called after validation."""
-        if (self.valid_verbose >= 1 and self.is_chief and self.do_validation):
+        if (self.valid_verbose >= 1 and self.trainer.is_chief and self.do_validation):
             cur_valid_perfs = logs.get('cur_valid_perfs', None)
             best_valid_perfs = logs.get('best_valid_perfs', None)
             if cur_valid_perfs is not None:

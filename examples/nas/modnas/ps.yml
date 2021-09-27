@@ -71,6 +71,7 @@ nas:
                                     -   type: DefaultTorchCheckpointLoader
                                         args:
                                             path: '{local_worker_path}/exp/default/chkpt/model_teacher_best.pt'
+                                crit_conf: CrossEntropySoftTargetLoss
                     args:
                         stages:
                             -   sequential: [1.0, 0.75, 0.5]

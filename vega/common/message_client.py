@@ -13,6 +13,7 @@
 import logging
 import zmq
 from vega.common.json_coder import JsonEncoder
+from vega.common.zmq_op import connect
 
 
 __all__ = ["MessageClient"]
@@ -31,9 +32,7 @@ class MessageClient(object):
 
     def _init_socket(self):
         try:
-            context = zmq.Context()
-            self.socket = context.socket(zmq.REQ)
-            self.socket.connect(f"tcp://{self.ip}:{self.port}")
+            self.socket = connect(ip=self.ip, port=self.port)
             self.poller = zmq.Poller()
             self.poller.register(self.socket, zmq.POLLIN)
         except Exception as e:

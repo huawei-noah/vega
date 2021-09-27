@@ -9,7 +9,8 @@
 # MIT License for more details.
 
 """Torch data providers."""
-from modnas.utils import merge_config
+import copy
+from modnas.utils.config import merge_config
 from modnas.registry.data_provider import build
 from modnas.registry.dataloader import build as build_dataloader
 from modnas.registry.dataset import build as build_dataset
@@ -21,7 +22,7 @@ def get_data(configs):
     for conf in configs:
         if conf is None:
             continue
-        config = conf if config is None else merge_config(config, conf)
+        config = copy.deepcopy(conf) if config is None else merge_config(config, conf)
     if config is None:
         return None
     return build_dataset(config)

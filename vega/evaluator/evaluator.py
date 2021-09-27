@@ -115,10 +115,10 @@ class Evaluator(DistributedWorker):
             elif vega.is_tf_backend():
                 self.weights_file = FileOps.join_path(self.saved_folder, 'model_{}'.format(self.worker_id))
         if self.weights_file is not None and os.path.exists(self.weights_file):
-            self.model = ModelZoo.get_model(self.model_desc, self.weights_file)
+            self.model = ModelZoo.get_model(self.model_desc, self.weights_file, is_fusion=self.config.is_fusion)
         else:
             logger.info("evalaute model without loading weights file")
-            self.model = ModelZoo.get_model(self.model_desc)
+            self.model = ModelZoo.get_model(self.model_desc, is_fusion=self.config.is_fusion)
 
     def _use_evaluator(self):
         """Check if use evaluator and get the evaluators.
@@ -153,6 +153,14 @@ class Evaluator(DistributedWorker):
         for cls in cls_evaluator_set:
             evaluator = cls(worker_info=self.worker_info)
             self.add_evaluator(evaluator)
+        self._disable_host_latency()
+
+    def _disable_host_latency(self):
+        if len(self.sub_worker_list) < 2:
+            return
+        for sub_evaluator in self.sub_worker_list:
+            if sub_evaluator.worker_type == WorkerTypes.HOST_EVALUATOR:
+                sub_evaluator.config.evaluate_latency = False
 
     def _get_model_desc(self):
         model_desc = self.model_desc

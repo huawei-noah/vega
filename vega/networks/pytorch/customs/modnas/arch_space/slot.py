@@ -187,12 +187,13 @@ class Slot(nn.Module):
 
     def build_from_arch_desc(self, *args, **kwargs):
         """Convert Slot to module from archdesc."""
-        if self.ent is None:
-            ent = Slot._convert_fn(self, *args, **kwargs)
-            if ent is not None:
-                self.set_entity(ent)
-        else:
-            logger.warning('slot {} already built'.format(self.sid))
+        convert_fn = Slot._convert_fn
+        if convert_fn is None:
+            logger.warning('slot {} has no constructor'.format(self.sid))
+            return
+        ent = convert_fn(self, *args, **kwargs)
+        if ent is not None:
+            self.set_entity(ent)
 
     def extra_repr(self):
         """Return extra string representation."""
@@ -240,8 +241,8 @@ def get_slot_builder(builder, args_fmt=None, kwargs_fmt=None):
         kwargs = slot.kwargs if kwargs_fmt == '*' else {k: slot.kwargs[k] for k in (kwargs_fmt or [])}
         return args, kwargs
 
-    def bld(s, *args, **kwargs):
-        s_args, s_kwargs = get_slot_args(s, args_fmt, kwargs_fmt)
+    def bld(slot, *args, **kwargs):
+        s_args, s_kwargs = get_slot_args(slot, args_fmt, kwargs_fmt)
         return builder(*s_args, *args, **s_kwargs, **kwargs)
 
     return bld

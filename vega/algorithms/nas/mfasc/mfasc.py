@@ -115,7 +115,8 @@ class MFASC(SearchAlgorithm):
         desc = self.choices[i]
         self.budget_spent += train_epochs
         self.cur_i = i
-        return {"worker_id": self.budget_spent, "encoded_desc": desc, 'trainer': {'epochs': train_epochs}}
+        desc["trainer.epochs"] = train_epochs
+        return {"worker_id": self.budget_spent, "encoded_desc": desc}
 
     def update(self, report):
         """Update function.

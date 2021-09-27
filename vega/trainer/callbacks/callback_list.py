@@ -27,7 +27,6 @@ class CallbackList(object):
         self.model_fn = None
         self.train_input_fn = None
         self.valid_input_fn = None
-        self.params = {}
         self.callbacks = self._get_callbacks(customs, disables)
         for callback in self.callbacks:
             # Get make_batch if callback has defined one
@@ -72,13 +71,13 @@ class CallbackList(object):
         if vega.is_torch_backend():
             defaults = ["ModelStatistics", "MetricsEvaluator", "ModelCheckpoint", "ModelBuilder", "PerformanceSaver",
                         "RuntimeCallback", "LearningRateScheduler", "ProgressLogger", "ReportCallback",
-                        "DataParallel"]
+                        "DdpTorch", "Horovod", "Hccl"]
         elif vega.is_tf_backend():
             defaults = ["ModelStatistics", "MetricsEvaluator", "ModelCheckpoint", "ModelBuilder", "PerformanceSaver",
-                        "RuntimeCallback", "ProgressLogger", "ReportCallback", ]
+                        "RuntimeCallback", "ProgressLogger", "ReportCallback", "Horovod", "Hccl"]
         elif vega.is_ms_backend():
             defaults = ["ModelStatistics", "MetricsEvaluator", "ModelCheckpoint", "ModelBuilder", "PerformanceSaver",
-                        "ProgressLogger", "ReportCallback"]
+                        "ProgressLogger", "ReportCallback", "Hccl"]
 
         custom_disables = []
         disables = disables if disables else []
@@ -109,16 +108,7 @@ class CallbackList(object):
         return callbacks
 
     def _set_params(self, trainer):
-        params = {
-            'epochs': trainer.epochs,
-            'is_chief': trainer.is_chief,
-            'use_cuda': vega.is_gpu_device(),
-            'do_validation': trainer.do_validation,
-            'is_detection_trainer': trainer.config.is_detection_trainer
-        }
-        self.params = params
-        for callback in self.callbacks:
-            callback.set_params(params)
+        pass
 
     def set_trainer(self, trainer):
         """Set the trainer object for callback container."""
@@ -153,7 +143,8 @@ class CallbackList(object):
         # Replace the default model_fn of Trainer
         if self.model_fn is not None:
             self.trainer.model_fn = self.model_fn
-            self.trainer._init_tf_estimator()
+            if hasattr(self.trainer, "_init_tf_estimator"):
+                self.trainer._init_tf_estimator()
         # Replace the default train_input_fn of Trainer
         if self.train_input_fn is not None:
             self.trainer.train_input_fn = self.train_input_fn

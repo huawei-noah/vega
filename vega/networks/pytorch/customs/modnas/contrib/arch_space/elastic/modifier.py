@@ -9,6 +9,9 @@
 # MIT License for more details.
 
 """Module states modifier."""
+from torch.nn.modules.module import Module
+from torch import Tensor
+from typing import Callable, Union
 
 
 def get_ori_param(module, name):
@@ -16,7 +19,7 @@ def get_ori_param(module, name):
     return module._params_ori[name]
 
 
-def get_ori_buffer(module, name):
+def get_ori_buffer(module: Module, name: str) -> Tensor:
     """Return original module buffer."""
     return module._buffers_ori[name]
 
@@ -26,7 +29,7 @@ def get_ori_attr(module, name):
     return module._attrs_ori[name]
 
 
-def backup_param(module, name):
+def backup_param(module: Module, name: str) -> None:
     """Backup module parameter."""
     if not hasattr(module, '_params_ori'):
         module._params_ori = dict()
@@ -36,7 +39,7 @@ def backup_param(module, name):
     module._params_ori[name] = val
 
 
-def backup_buffer(module, name):
+def backup_buffer(module: Module, name: str) -> None:
     """Backup module buffer."""
     if not hasattr(module, '_buffers_ori'):
         module._buffers_ori = dict()
@@ -46,7 +49,7 @@ def backup_buffer(module, name):
     module._buffers_ori[name] = val
 
 
-def backup_attr(module, name):
+def backup_attr(module: Module, name: str) -> None:
     """Backup module attribute."""
     if not hasattr(module, '_attrs_ori'):
         module._attrs_ori = dict()
@@ -113,46 +116,46 @@ def restore_attr(module, name):
     object.__setattr__(module, name, val)
 
 
-def modify_param(module, name, value):
+def modify_param(module: Module, name: str, value: Tensor) -> None:
     """Modify module parameter."""
     backup_param(module, name)
     module._parameters[name] = value
 
 
-def modify_buffer(module, name, value):
+def modify_buffer(module: Module, name: str, value: Tensor) -> None:
     """Modify module buffer."""
     backup_buffer(module, name)
     module._buffers[name] = value
 
 
-def modify_attr(module, name, value):
+def modify_attr(module: Module, name: str, value: Union[Callable, int]) -> None:
     """Modify module attribute."""
     backup_attr(module, name)
     object.__setattr__(module, name, value)
 
 
-def restore_module_parameters(module):
+def restore_module_parameters(module: Module) -> None:
     """Restore module parameters."""
     if hasattr(module, '_params_ori'):
         module._parameters.update(module._params_ori)
         module._params_ori.clear()
 
 
-def restore_module_buffers(module):
+def restore_module_buffers(module: Module) -> None:
     """Restore module buffers."""
     if hasattr(module, '_buffers_ori'):
         module._buffers.update(module._buffers_ori)
         module._buffers_ori.clear()
 
 
-def restore_module_attrs(module):
+def restore_module_attrs(module: Module) -> None:
     """Restore module attributes."""
     if hasattr(module, '_attrs_ori'):
         module.__dict__.update(module._attrs_ori)
         module._attrs_ori.clear()
 
 
-def restore_module_states(module):
+def restore_module_states(module: Module) -> None:
     """Restore all module states."""
     restore_module_parameters(module)
     restore_module_buffers(module)

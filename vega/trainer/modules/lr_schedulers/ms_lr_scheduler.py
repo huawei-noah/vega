@@ -112,6 +112,24 @@ class CosineAnnealingLR():
 
 
 @ClassFactory.register(ClassType.LR_SCHEDULER)
+class PolyLR():
+    """Applies polynomial decay to generate learning rate array."""
+
+    def __init__(self, optimizer=None, lr_max=0.1):
+        super(PolyLR, self).__init__()
+        self.lr_max = lr_max
+
+    def __call__(self, base_lr, global_step, total_epoch):
+        """Call lr scheduler class."""
+        lr_each_step = []
+        for cur_step in range(global_step):
+            base = 1 - cur_step / global_step
+            lr = self.lr_max * base * base
+            lr_each_step.append(lr)
+        return lr_each_step
+
+
+@ClassFactory.register(ClassType.LR_SCHEDULER)
 class WarmupScheduler():
     """WarmupScheduler learning rate."""
 

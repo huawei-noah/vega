@@ -35,8 +35,6 @@ class PipeStep(object):
         self.end_time = None
         self.num_epochs = None
         self.num_models = None
-        # TODO
-        # ReportServer().restore()
 
     def __new__(cls, *args, **kwargs):
         """Create pipe step instance by ClassFactory."""
@@ -45,7 +43,6 @@ class PipeStep(object):
 
     def do(self, *args, **kwargs):
         """Do the main task in this pipe step."""
-        # set self.num_models, self.epochs and self.status=running/finished
         pass
 
     def save_info(self):

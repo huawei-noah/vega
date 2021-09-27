@@ -34,7 +34,3 @@ def run_dask_worker(master_ip, port, num_workers):
         raise Exception("Failed to start dask-worker. Gave up.")
     else:
         print("dask-worker running.")
-
-
-if __name__ == "__main__":
-    run_dask_worker()

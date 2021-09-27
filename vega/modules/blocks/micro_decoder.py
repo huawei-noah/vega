@@ -13,13 +13,13 @@ import sys
 from vega.common import ClassFactory, ClassType
 from vega.modules.module import Module
 from vega.modules.connections import ProcessList, Sequential
-from vega.modules.operators import conv_bn_relu, conv3x3
+from vega.modules.operators import conv_bn_relu, conv3x3, conv_bn_relu6
 from vega.modules.operators import AggregateCell, ContextualCell_v1
 from vega.modules.operators import ops
 
 
 @ClassFactory.register(ClassType.NETWORK)
-class InvertedConv(Module):
+class InvertedConv(Sequential):
     """Create InvertedConv SearchSpace."""
 
     def __init__(self, inp, oup, stride, kernel=3, expand_ratio=1):
@@ -31,26 +31,20 @@ class InvertedConv(Module):
         :param kernel: kernel
         :param expand_ratio: channel increase multiplier
         """
-        super(InvertedConv, self).__init__()
         hidden_dim = round(inp * expand_ratio)
         conv = []
         if expand_ratio > 1:
             conv = [
-                ops.Conv2d(in_channels=inp, out_channels=hidden_dim,
-                           kernel_size=1, stride=1, padding=0, bias=False),
-                ops.BatchNorm2d(num_features=hidden_dim),
-                ops.Relu6(inplace=True)
+                conv_bn_relu6(C_in=inp, C_out=hidden_dim, kernel_size=1, stride=1, padding=0, inplace=True),
             ]
         conv = conv + [
-            ops.Conv2d(in_channels=hidden_dim, out_channels=hidden_dim, kernel_size=kernel,
-                       stride=stride, padding=kernel // 2, groups=hidden_dim, bias=False, depthwise=True),
-            ops.BatchNorm2d(num_features=hidden_dim),
-            ops.Relu6(inplace=True),
+            conv_bn_relu6(C_in=hidden_dim, C_out=hidden_dim, kernel_size=kernel, stride=stride, padding=kernel // 2,
+                          groups=hidden_dim, depthwise=True, inplace=True),
             ops.Conv2d(in_channels=hidden_dim, out_channels=oup,
                        kernel_size=1, stride=1, padding=0, bias=False),
             ops.BatchNorm2d(num_features=oup)
         ]
-        self.models = Sequential(*conv)
+        super(InvertedConv, self).__init__(*conv)
 
 
 @ClassFactory.register(ClassType.NETWORK)

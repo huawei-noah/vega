@@ -289,8 +289,6 @@ trainer的主要函数是train_process()，该函数定义如下：
                 self._valid_epoch()
             self.callbacks.after_epoch(epoch)
         self.callbacks.after_train()
-        if self.distributed:
-            self._shutdown_distributed()
 
     def _train_epoch(self):
         if vega.is_torch_backend():
@@ -707,28 +705,3 @@ class PipeStep(object):
         """Do the main task in this pipe step."""
         pass
 ```
-
-## 8. Fully Train
-
-在`Fully Train`上，我们支持单卡训练和基于`Horovod`的多机多卡分布式训练，`Fully Train`对应于`pipeline`的`TrainPipeStep`部分。
-
-### 8.1 配置
-
-如果需要进行`Horovod`分布式训练，需要在`TrainPipeStep`的`trainer`部分的配置文件里加上一个配置项`distributed`，并设置成`True`，如果没有这一项，默认是False，即不使用分布式训练。
-
-```yaml
-fullytrain:
-    pipe_step:
-        type: TrainPipeStep
-    trainer:
-        type: trainer
-        distributed: True
-```
-
-我们通过`shell`启动`Horovod`分布式训练，已经在镜像里完成不同节点之间的通信配置，开发者可以不用关心`vega`内部是如何启动的。
-
-### 8.2 Trainer支持Horovod分布式
-
-在使用分布式训练时，相对于单卡的训练，`trainer`的网络模型、优化器、数据加载等需要使用`Horovod`封装成分布式的对象。
-
-在训练的过程中，单卡和分布式训练的代码几乎是一致的，只是在最后计算验证指标时，需要将不同卡上的指标值综合起来，计算总的平均值。

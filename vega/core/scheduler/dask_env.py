@@ -13,16 +13,17 @@
 The DaskEnv Class which used in Master to init and set basic dask-distributed
 environment.
 """
+
+import json
 import os
-import subprocess
 import logging
 import time
 from datetime import datetime
-from distributed import Client
 from vega.trainer import utils
 from vega.common.file_ops import FileOps
 from vega.common.general import General
-import shutil
+from vega.core.scheduler.run_dask import get_client, run_scheduler,\
+    run_local_worker, run_remote_worker, get_address
 
 
 class DaskEnv(object):
@@ -77,6 +78,9 @@ class DaskEnv(object):
         self.world_size = self.slave_num * self.slave_proc_num
         if General.cluster.standalone_boot:
             self.world_size = General.cluster.num_workers
+        General.cluster.num_workers = self.world_size
+        General.cluster.num_nodes = self.slave_num
+        General.cluster.num_workers_per_node = self.slave_proc_num
         return
 
     def _get_slave_device_num(self):
@@ -92,7 +96,7 @@ class DaskEnv(object):
                 pass
         elif device_category == 'NPU':
             try:
-                system_device_num = len(os.environ['NPU-VISIBLE-DEVICES'].split(','))
+                system_device_num = len(os.environ['NPU_VISIBLE_DEVICES'].split(','))
             except Exception:
                 pass
         else:
@@ -142,18 +146,18 @@ class DaskEnv(object):
             address = "--node-ip-address={}".format(the_ip)
             port = "--port={}".format(the_port)
             try:
-                Client("{}:{}".format(the_ip, the_port))
+                get_client(get_address(the_ip, the_port))
                 logging.info("Reusing previous cluster:{}:{}".format(the_ip, the_port))
                 return
             except Exception:
                 logging.info("Dask-scheduler not start. Start dask-scheduler in master {}".format(the_ip))
-            scheduler_p = subprocess.Popen(["dask-scheduler", port], env=os.environ)
+            scheduler_p = run_scheduler(port=port)
             self._cluster_pid.append(scheduler_p.pid)
         time.sleep(10)
 
         master_host, master_port = utils.get_master_address(self.args)
         address = "tcp://{0}:{1}".format(master_host, master_port)
-        self.master_address = "{}:{}".format(master_host, master_port)
+        self.master_address = get_address(master_host, master_port)
         logging.info("master host({}), address({}).".format(master_host, address))
 
         self._check_dask_scheduler()
@@ -169,20 +173,18 @@ class DaskEnv(object):
             return
         # run dask-worker in master
         for _ in range(self.slave_proc_num):
-            worker_p = subprocess.Popen(["dask-worker", address, '--nthreads=1', '--nprocs=1',
-                                         '--memory-limit=0', local_dir], env=os.environ)
+            worker_p = run_local_worker(address=address, local_dir=local_dir)
             self._cluster_pid.append(worker_p.pid)
         # run dask-worker in each slaves.
         for slave_ip in self.slaves:
             for _ in range(self.slave_proc_num):
-                worker_p = subprocess.Popen(["ssh", slave_ip, shutil.which("dask-worker"), address, '--nthreads=1',
-                                             '--nprocs=1', '--memory-limit=0', local_dir], env=os.environ)
+                worker_p = run_remote_worker(slave_ip=slave_ip, address=address, local_dir=local_dir)
                 self._cluster_pid.append(worker_p.pid)
 
     def _check_dask_scheduler(self):
         """Check masker is start."""
         try:
-            Client(self.master_address)
+            get_client(self.master_address)
         except TimeoutError as ex:
             raise ex
 
@@ -194,7 +196,7 @@ class DaskEnv(object):
         :rtype: int
 
         """
-        self.client = Client(self.master_address)
+        self.client = get_client(self.master_address)
         logging.debug("client scheduler info: {}".format(self.client.scheduler_info()))
         if int(self.world_size) <= 1:
             self.worker_portion = 1
@@ -207,8 +209,15 @@ class DaskEnv(object):
             if n_workers >= worker_count_min:
                 workers = self.client.scheduler_info()["workers"]
                 workers_list = []
+                workers_port = {}
                 for k, _ in workers.items():
                     workers_list.append(k)
+                    (ip, port) = k.replace("//", "").split(":")[1:]
+                    if ip in workers_port:
+                        workers_port[ip].append(port)
+                    else:
+                        workers_port[ip] = [port]
+                os.environ["vega_workers_list"] = json.dumps(workers_port)
                 logging.info("worker list: {}".format(workers_list))
                 slave_ips = list(set([item[6:].split(":")[0] for item in workers_list]))
                 slave_ips.remove(General.cluster.master_ip)

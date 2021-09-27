@@ -15,6 +15,7 @@ Classes for distribution.
 Distributor Base Class, Dask Distributor Class and local Evaluator Distributor
 Class. Distributor Classes are used in Master to init and maintain the cluster.
 """
+
 import time
 import multiprocessing
 from threading import Lock
@@ -80,9 +81,9 @@ class ClusterDaskDistributor(DistributorBaseClass):
         :rtype: distributed.Cient
 
         """
-        from dask.distributed import Client
+        from .run_dask import get_client
         from dask.distributed import Queue
-        client = Client(address=self.address)
+        client = get_client(address=self.address)
         self.n_workers = len(client.scheduler_info()["workers"])
         self.process_queue = Queue(client=client, maxsize=self.n_workers)
         self.result_queue = Queue(client=client)

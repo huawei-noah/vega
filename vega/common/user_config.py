@@ -71,7 +71,7 @@ class UserConfig(object):
         ref_dict = deepcopy(UserConfig().data)
         for key in ref.split('.'):
             ref_dict = ref_dict.get(key)
-        not_merge_keys = ['callbacks', 'lazy_built']
+        not_merge_keys = ['callbacks', 'lazy_built', 'max_train_steps', 'with_train', 'with_vaild']
         for key in not_merge_keys:
             if key in ref_dict:
                 ref_dict.pop(key)

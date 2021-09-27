@@ -2,7 +2,7 @@ from .criterion import get_criterion
 from .optimizer import get_optimizer
 from .lr_scheduler import get_lr_scheduler
 from .data_provider import get_data_provider
-from .utils import init_device, get_dev_mem_used, model_summary,\
+from .utils import version, init_device, get_device, set_device, get_dev_mem_used, model_summary,\
     clear_bn_running_statistics, recompute_bn_running_statistics
 import modnas.core.params.torch
 import modnas.arch_space.construct.torch

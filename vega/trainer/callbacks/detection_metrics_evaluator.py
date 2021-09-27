@@ -36,7 +36,7 @@ class DetectionMetricsEvaluator(MetricsEvaluator):
 
     def after_train_step(self, batch_index, logs=None):
         """Be called after each train batch."""
-        input, target = self.train_batch
+        input, _ = self.train_batch
         batch_size = input.size(0)
         self.cur_loss = logs['loss']
         self.loss_avg = self._average_loss_during_train_period(batch_size, self.cur_loss)
@@ -44,8 +44,8 @@ class DetectionMetricsEvaluator(MetricsEvaluator):
 
     def after_valid_step(self, batch_index, logs=None):
         """Be called after each batch of validation."""
-        if self.do_validation and self.valid_metrics is not None:
-            input, target = self.valid_batch
+        if self.trainer.do_validation and self.valid_metrics is not None:
+            _, target = self.valid_batch
             output = logs['valid_batch_output']
             self.valid_metrics(output, target)
 

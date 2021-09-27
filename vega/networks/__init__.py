@@ -13,11 +13,10 @@
 from vega.common.class_factory import ClassFactory
 from .network_desc import NetworkDesc
 
-
 ClassFactory.lazy_register("vega.networks", {
     "adelaide": ["AdelaideFastNAS"],
     "bert": ["BertClassification", "TinyBertForPreTraining", "BertClassificationHeader"],
-    "dnet": ["DNet", "DNetBackbone"],
+    "dnet": ["DNet", "DNetBackbone", "EncodedBlock"],
     "erdb_esr": ["ESRN"],
     "faster_backbone": ["FasterBackbone"],
     "faster_rcnn": ["FasterRCNN"],

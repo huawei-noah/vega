@@ -10,6 +10,9 @@
 
 """Evaluation score prediction model."""
 import numpy as np
+from collections import OrderedDict
+from numpy import ndarray
+from typing import List, Union
 
 
 class ScoreModel():
@@ -26,7 +29,7 @@ class ScoreModel():
         """Return predicted evaluation score from model."""
         raise NotImplementedError
 
-    def _process_input(self, inp):
+    def _process_input(self, inp: OrderedDict) -> List[int]:
         ret = []
         for n, v in inp.items():
             p = self.space.get_param(n)
@@ -35,14 +38,13 @@ class ScoreModel():
             ret.extend(one_hot)
         return ret
 
-    def to_feature(self, inputs):
+    def to_feature(self, inputs: Union[OrderedDict, List[OrderedDict]]) -> ndarray:
         """Return feature variables from inputs."""
         if not isinstance(inputs, list):
             inputs = [inputs]
-        inputs = [self._process_input(inp) for inp in inputs]
-        return np.array(inputs)
+        return np.array([self._process_input(inp) for inp in inputs])
 
-    def to_target(self, results):
+    def to_target(self, results: List[float]) -> ndarray:
         """Return target variables from results."""
         def to_metrics(res):
             if isinstance(res, dict):

@@ -42,45 +42,58 @@ def conv7x7(inchannel, outchannel, stride=1, bias=False, dilation=1):
 
 
 @ClassFactory.register(ClassType.NETWORK)
-def conv_bn_relu6(C_in, C_out, kernel_size=3, stride=1, padding=0, affine=True):
+def conv_bn_relu6(C_in, C_out, kernel_size=3, stride=1, padding=0, affine=True,
+                  groups=1, depthwise=False, inplace=False):
     """Create group of Convolution + BN + Relu6 function."""
-    return ConvBnRelu(C_in, C_out, kernel_size, stride, padding, affine=affine, use_relu6=True)
+    return ConvBnRelu(C_in, C_out, kernel_size, stride, padding, affine=affine, use_relu6=True,
+                      groups=groups, depthwise=depthwise, inplace=False)
 
 
 @ClassFactory.register(ClassType.NETWORK)
-def conv_bn_relu(C_in, C_out, kernel_size, stride, padding, affine=True):
+def conv_bn_relu(C_in, C_out, kernel_size, stride, padding, affine=True, groups=1, depthwise=False, inplace=False):
     """Create group of Convolution + BN + Relu function."""
-    return ConvBnRelu(C_in, C_out, kernel_size, stride, padding, affine=affine)
+    return ConvBnRelu(C_in, C_out, kernel_size, stride, padding, affine=affine,
+                      groups=groups, depthwise=depthwise, inplace=False)
 
 
 @ClassFactory.register(ClassType.NETWORK)
 class ConvBnRelu(ops.Module):
     """Create group of Convolution + BN + Relu."""
 
-    def __init__(self, C_in, C_out, kernel_size, stride, padding, Conv2d='Conv2d', affine=True, use_relu6=False,
-                 norm_layer='BN',
+    def __init__(self, C_in, C_out, kernel_size, stride, padding, groups=1, depthwise=False,
+                 Conv2d='Conv2d', affine=True, use_relu6=False, inplace=False, norm_layer='BN',
                  has_bn=True, has_relu=True, **kwargs):
         """Construct ConvBnRelu class."""
         super(ConvBnRelu, self).__init__()
+        features = []
+        conv2d = None
         if Conv2d == 'Conv2d':
-            self.conv2d = ops.Conv2d(
-                C_in, C_out, kernel_size, stride=stride, padding=padding, bias=False)
+            conv2d = ops.Conv2d(C_in, C_out, kernel_size, stride=stride, padding=padding, bias=False,
+                                groups=groups, depthwise=depthwise)
         elif Conv2d == 'ConvWS2d':
-            self.conv2d = ops.ConvWS2d(
-                C_in, C_out, kernel_size, stride=stride, padding=padding, bias=False)
+            conv2d = ops.ConvWS2d(C_in, C_out, kernel_size, stride=stride, padding=padding, bias=False,
+                                  groups=groups, depthwise=depthwise)
+        if conv2d:
+            features.append(conv2d)
         if has_bn:
+            batch_norm2d = None
             if norm_layer == 'BN':
-                self.batch_norm2d = ops.BatchNorm2d(C_out, affine=affine)
+                batch_norm2d = ops.BatchNorm2d(C_out, affine=affine)
             elif norm_layer == 'GN':
                 num_groups = kwargs.pop('num_groups')
-                self.batch_norm2d = ops.GroupNorm(num_groups, C_out, affine=affine)
+                batch_norm2d = ops.GroupNorm(num_groups, C_out, affine=affine)
             elif norm_layer == 'Sync':
-                self.batch_norm2d = ops.SyncBatchNorm(C_out, affine=affine)
+                batch_norm2d = ops.SyncBatchNorm(C_out, affine=affine)
+            if batch_norm2d:
+                features.append(batch_norm2d)
         if has_relu:
             if use_relu6:
-                self.relu = ops.Relu6(inplace=False)
+                relu = ops.Relu6(inplace=inplace)
             else:
-                self.relu = ops.Relu(inplace=False)
+                relu = ops.Relu(inplace=inplace)
+            features.append(relu)
+        for idx, model in enumerate(features):
+            self.add_module(str(idx), model)
 
 
 @ClassFactory.register(ClassType.NETWORK)

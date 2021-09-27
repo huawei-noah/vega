@@ -22,7 +22,8 @@ from vega.core.scheduler import shutdown_cluster
 from vega.common.general import General
 from .conf import PipeStepConfig, PipelineConfig
 from vega.report import ReportServer
-from vega.common import MessageServer
+from vega.common.message_server import MessageServer
+from vega.common.parameter_sharing import ParameterSharing
 
 logger = logging.getLogger(__name__)
 

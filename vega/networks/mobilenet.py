@@ -102,7 +102,7 @@ class MobileNetV2Tiny(Module):
                 features.append(InvertedResidual(
                     inp=input_channel, oup=output_channel, stride=stride, expand_ratio=t))
                 input_channel = output_channel
-        self.block = OutlistSequential(*features[:18], out_list=[3, 6, 13, 17])
+        self.features = OutlistSequential(*features[:18], out_list=[3, 6, 13, 17])
         if load_path is not None and is_torch_backend():
             import torch
             self.load_state_dict(torch.load(load_path), strict=False)

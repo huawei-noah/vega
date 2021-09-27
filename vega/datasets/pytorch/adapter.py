@@ -44,11 +44,11 @@ class TorchAdapter(object):
         :rtype: an object or None
         """
         if self.dataset.world_size > 1:
-            self.args.shuffle = False
             sampler = DistributedSampler(self.dataset,
                                          num_replicas=self.dataset.world_size,
                                          rank=self.dataset.rank,
                                          shuffle=self.args.shuffle)
+            self.args.shuffle = False
         elif not hasattr(self.args, "train_portion"):
             sampler = None
         elif self.dataset.mode == 'test' or self.args.train_portion == 1:

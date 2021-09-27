@@ -21,7 +21,6 @@ from dag import DAG, DAGValidationError
 from vega.common.class_factory import ClassFactory, ClassType
 from vega.core.pipeline.conf import SearchSpaceConfig
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -38,8 +37,11 @@ class SearchSpace(dict):
         super(SearchSpace, self).__init__()
         if desc is None:
             desc = SearchSpaceConfig().to_dict()
-            if desc.type is not None:
-                desc = ClassFactory.get_cls(ClassType.SEARCHSPACE, desc.type).get_space(desc)
+            if desc.type is not None and desc.type != 'SearchSpace':
+                cls = ClassFactory.get_cls(ClassType.SEARCHSPACE, desc.type)
+                desc = cls.get_space(desc)
+                if hasattr(cls, "to_desc"):
+                    self.to_desc = cls.to_desc
         for name, item in desc.items():
             self.__setattr__(name, item)
             self.__setitem__(name, item)
@@ -97,9 +99,9 @@ class SearchSpace(dict):
         """Verify condition."""
         for condition in self.get("condition", []):
             _type = condition["type"]
-            child = condition["child"]      # eg. trainer.optimizer.params.momentum
-            parent = condition["parent"]    # eg. trainer.optimizer.type
-            _range = condition["range"]     # eg. range': ['SGD']
+            child = condition["child"]  # eg. trainer.optimizer.params.momentum
+            parent = condition["parent"]  # eg. trainer.optimizer.type
+            _range = condition["range"]  # eg. range': ['SGD']
             if _type == "EQUAL" or _type == "IN":
                 if parent in sample and sample[parent] in _range:
                     if child not in sample:
@@ -223,6 +225,7 @@ class SearchSpace(dict):
 
         :return: List[str]
         :rtype: list
+
 
         """
         return list(self._params.keys())

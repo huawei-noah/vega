@@ -9,6 +9,7 @@
 # MIT License for more details.
 
 """Hyperparameter constructor."""
+from typing import Dict, List, Union
 from modnas.registry.construct import register
 from modnas.core.params import Numeric, Categorical
 
@@ -17,14 +18,13 @@ from modnas.core.params import Numeric, Categorical
 class DefaultHParamSpaceConstructor():
     """Constructor that generates parameters from config."""
 
-    def __init__(self, params):
+    def __init__(self, params: Union[Dict, List]) -> None:
         if isinstance(params, dict):
-            params = params.items()
+            self.params = params.items()
         elif isinstance(params, list):
-            params = [(None, p) for p in params]
-        self.params = params
+            self.params = [(None, p) for p in params]
 
-    def __call__(self, model):
+    def __call__(self, model: None) -> None:
         """Run constructor."""
         del model
         for k, v in self.params:

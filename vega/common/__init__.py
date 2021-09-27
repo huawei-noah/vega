@@ -1,4 +1,4 @@
-from .utils import init_log, module_existed, update_dict, copy_search_file
+from .utils import init_log, close_log, module_existed, update_dict, copy_search_file
 from .utils import update_dict_with_flatten_keys, switch_directory
 from .config import Config
 from .file_ops import FileOps

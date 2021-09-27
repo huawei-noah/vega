@@ -9,6 +9,7 @@
 # MIT License for more details.
 
 """ModelCheckpoint callback defination."""
+
 import os
 import glob
 import logging
@@ -35,7 +36,6 @@ class ModelCheckpoint(Callback):
 
     def before_train(self, logs=None):
         """Be called before the training process."""
-        self.is_chief = self.params['is_chief']
         if self.trainer.load_checkpoint:
             self._load_checkpoint()
 
@@ -49,7 +49,7 @@ class ModelCheckpoint(Callback):
         self._save_checkpoint(epoch)
         if self.trainer.multi_task:
             self._saved_multi_checkpoint(epoch)
-        if self.is_chief and logs.get('summary_perfs').get('best_valid_perfs_changed', False):
+        if self.trainer.is_chief and logs.get('summary_perfs').get('best_changed', False):
             self._save_best_model()
 
     def _save_best_model(self):
@@ -178,7 +178,7 @@ class ModelCheckpoint(Callback):
         from mindspore.train.serialization import export
         from mindspore import Tensor
         import subprocess
-        for step, batch in enumerate(self.trainer.valid_loader.create_dict_iterator()):
+        for _, batch in enumerate(self.trainer.valid_loader.create_dict_iterator()):
             data = batch["image"]
         input_shape = data.shape
         fake_input = np.random.random(input_shape).astype(np.float32)

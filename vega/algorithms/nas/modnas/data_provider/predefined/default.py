@@ -8,26 +8,25 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 # MIT License for more details.
 
-"""Default DataProvider with dataloader."""
+"""Default DataProvider with Iterable."""
 from ..base import DataProviderBase
 from modnas.registry.data_provider import register
+from typing import List, Optional, Any, Collection, Iterator
 
 
 @register
 class DefaultDataProvider(DataProviderBase):
     """Default DataProvider with dataloader."""
 
-    def __init__(self, train_loader, valid_loader):
+    def __init__(self, train_loader: Collection, valid_loader: Optional[Collection]) -> None:
         super().__init__()
         self.train_loader = train_loader
         self.valid_loader = valid_loader
-        self.train_iter = None
-        self.valid_iter = None
         self.no_valid_warn = True
         self.reset_train_iter()
         self.reset_valid_iter()
 
-    def get_next_train_batch(self):
+    def get_next_train_batch(self) -> List[Any]:
         """Return the next train batch."""
         if self.train_loader is None:
             self.logger.error('no train loader')
@@ -39,7 +38,7 @@ class DefaultDataProvider(DataProviderBase):
             trn_batch = next(self.get_train_iter())
         return trn_batch
 
-    def get_next_valid_batch(self):
+    def get_next_valid_batch(self) -> List[Any]:
         """Return the next validate batch."""
         if self.valid_loader is None:
             if self.no_valid_warn:
@@ -53,26 +52,26 @@ class DefaultDataProvider(DataProviderBase):
             val_batch = next(self.get_valid_iter())
         return val_batch
 
-    def get_train_iter(self):
+    def get_train_iter(self) -> Iterator:
         """Return train iterator."""
-        return self.train_iter
+        return self.train_iter or iter([])
 
-    def get_valid_iter(self):
+    def get_valid_iter(self) -> Iterator:
         """Return validate iterator."""
-        return self.valid_iter
+        return self.valid_iter or iter([])
 
-    def reset_train_iter(self):
+    def reset_train_iter(self) -> None:
         """Reset train iterator."""
         self.train_iter = None if self.train_loader is None else iter(self.train_loader)
 
-    def reset_valid_iter(self):
+    def reset_valid_iter(self) -> None:
         """Reset validate iterator."""
         self.valid_iter = None if self.valid_loader is None else iter(self.valid_loader)
 
-    def get_num_train_batch(self, epoch):
+    def get_num_train_batch(self, epoch: int) -> int:
         """Return number of train batches in current epoch."""
         return 0 if self.train_loader is None else len(self.train_loader)
 
-    def get_num_valid_batch(self, epoch):
+    def get_num_valid_batch(self, epoch: int) -> int:
         """Return number of validate batches in current epoch."""
         return 0 if self.valid_loader is None else len(self.valid_loader)

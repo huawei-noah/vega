@@ -14,12 +14,8 @@ import os
 import logging
 import pickle
 import vega
-from vega.common import init_log
-from vega.common.task_ops import TaskOps
 from vega.common.general import General
 from vega.report.report_client import ReportClient
-
-logger = logging.getLogger(__name__)
 
 
 class TrialAgent(object):
@@ -28,9 +24,6 @@ class TrialAgent(object):
     def __init__(self):
         self._load_config()
         vega.set_backend(General.backend, General.device_category)
-        init_log(level=General.logger.level,
-                 log_file=f"{General.step_name}_worker_{self.worker_id}.log",
-                 log_path=TaskOps().local_log_path)
         self.report_client = ReportClient()
 
     def _load_config(self):

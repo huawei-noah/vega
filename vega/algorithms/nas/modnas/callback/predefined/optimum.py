@@ -9,6 +9,7 @@
 # MIT License for more details.
 
 """Search optimum statistics reporter."""
+from functools import partial
 from modnas.utils import format_value
 from modnas.registry.callback import register
 from modnas.callback.base import CallbackBase
@@ -34,7 +35,7 @@ class OptimumReporter(CallbackBase):
 
     priority = 0
 
-    def __init__(self, cmp_keys=None, cmp_fn=None, cmp_th=None, score_fn=None, stat_epoch=True):
+    def __init__(self, cmp_keys=None, cmp_fn=None, cmp_th=None, score_fn=None, format_fn=None, stat_epoch=True):
         handlers = {
             'before:EstimBase.run': self.reset,
             'after:EstimBase.step_done': self.on_step_done,
@@ -50,6 +51,7 @@ class OptimumReporter(CallbackBase):
         self.cmp_fn = cmp_fn or {}
         self.cmp_th = cmp_th or {}
         self.score_fn = score_fn
+        self.format_fn = format_fn or partial(format_value, unit=False, factor=0, prec=4)
         self.results = []
         self.opt_results = []
         self.ep_opt_results = []
@@ -118,7 +120,7 @@ class OptimumReporter(CallbackBase):
         if not opts:
             return None
         met = [r[1] for r in opts]
-        met = [{k: format_value(v, unit=False, factor=0, prec=4) for k, v in m.items()} for m in met]
+        met = [{k: self.format_fn(v) for k, v in m.items()} for m in met]
         met = [(list(m.values())[0] if len(m) == 1 else m) for m in met]
         if len(met) == 1:
             met = met[0]

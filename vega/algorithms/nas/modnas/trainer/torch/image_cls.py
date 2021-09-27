@@ -44,14 +44,12 @@ class ImageClsTrainer(TrainerBase):
     def __init__(self,
                  writer=None,
                  expman=None,
-                 device='cuda',
                  data_provider=None,
                  optimizer=None,
                  lr_scheduler=None,
                  criterion='CrossEntropyLoss',
                  w_grad_clip=0):
         super().__init__(writer)
-        self.device = device
         self.w_grad_clip = w_grad_clip
         self.expman = expman
         self.optimizer = None
@@ -77,7 +75,7 @@ class ImageClsTrainer(TrainerBase):
             self.data_provider = backend.get_data_provider(self.config['data_provider'])
         if self.config['criterion']:
             self.criterion = backend.get_criterion(self.config['criterion'], getattr(model, 'device_ids', None))
-        self.device = self.config.get('device', self.device)
+        self.device = self.config.get('device', backend.get_device())
 
     def get_num_train_batch(self, epoch):
         """Return number of train batches."""

@@ -13,7 +13,8 @@ import inspect
 from functools import wraps
 from . import singleton, make_decorator
 from modnas.utils.logging import get_logger
-from modnas.utils import merge_config
+from modnas.utils.config import merge_config
+from typing import Any, Callable, Optional, Type, Union
 
 
 logger = get_logger(__name__)
@@ -95,14 +96,17 @@ class EventManager():
 
 
 @make_decorator
-def event_hooked(func, name=None, before=True, after=True, pass_ret=True, qual=True, module=False, **emit_args):
+def event_hooked(
+    func: Callable, name: Union[str, bool] = True, before: Union[str, bool] = True, after: Union[str, bool] = True,
+    pass_ret: bool = True, qual: Union[str, bool] = True, module: Union[str, bool] = False, **emit_args
+) -> Callable:
     """Return wrapped function with hooked event triggers."""
-    qual = func.__qualname__.split('.')[0] if qual is True else (None if qual is False else qual)
-    module = func.__module__ if module is True else (None if module is False else module)
-    name = func.__name__ if name is None else (None if name is False else name)
-    ev = (module + '.' if module else '') + (qual + '.' if qual else '') + name
-    ev_before = None if before is False else (('before' if before is True else before) + ':' + ev)
-    ev_after = None if after is False else (('after' if after is True else after) + ':' + ev)
+    _qual = qual if isinstance(qual, str) else (func.__qualname__.split('.')[0] if qual else '')
+    _module = module if isinstance(module, str) else (func.__module__ if module else '')
+    _name = name if isinstance(name, str) else (func.__name__ if name else '')
+    ev = '.'.join(filter(lambda x: x, [_module, _qual, _name]))
+    ev_before = None if before is False else '{}:{}'.format('before' if before is True else before, ev)
+    ev_after = None if after is False else '{}:{}'.format('after' if after is True else after, ev)
 
     @wraps(func)
     def wrapped(*args, **kwargs):
@@ -128,7 +132,7 @@ def event_hooked(func, name=None, before=True, after=True, pass_ret=True, qual=T
 
 
 @make_decorator
-def event_unhooked(func, remove_all=False, before=False, after=False):
+def event_unhooked(func: Callable, remove_all: bool = False, before: bool = False, after: bool = False) -> Callable:
     """Return function with event hooks removed."""
     func.ev_before = None if before is False else func.ev_before
     func.ev_after = None if after is False else func.ev_after
@@ -138,7 +142,9 @@ def event_unhooked(func, remove_all=False, before=False, after=False):
 
 
 @make_decorator
-def event_hooked_method(obj, attr=None, method=None, *args, base_qual=True, **kwargs):
+def event_hooked_method(obj: Any, attr: Optional[str] = None, method: Optional[Callable] = None, *args,
+                        base_qual=True, **kwargs
+                        ) -> Any:
     """Return object with event hooked for given method."""
     if attr is None and inspect.ismethod(obj):
         attr = obj.__name__
@@ -161,7 +167,7 @@ def event_hooked_method(obj, attr=None, method=None, *args, base_qual=True, **kw
 
 
 @make_decorator
-def event_hooked_members(obj, *args, methods=None, is_method=False, is_function=False, **kwargs):
+def event_hooked_members(obj: Any, *args, methods=None, is_method=False, is_function=False, **kwargs) -> Any:
     """Return object with event hooked for member methods."""
     for attr, mem in inspect.getmembers(obj):
         if methods is not None and attr not in methods:
@@ -175,7 +181,7 @@ def event_hooked_members(obj, *args, methods=None, is_method=False, is_function=
 
 
 @make_decorator
-def event_hooked_inst(cls, *args, **kwargs):
+def event_hooked_inst(cls: Type, *args, **kwargs) -> Callable:
     """Return object factory with event hooked for member methods in instances."""
     @wraps(cls)
     def wrapped(*cls_args, **cls_kwargs):
@@ -186,17 +192,18 @@ def event_hooked_inst(cls, *args, **kwargs):
 
 
 @make_decorator
-def event_hooked_class(cls, *args, **kwargs):
+def event_hooked_class(cls: Type, *args, **kwargs) -> Type:
     """Return class with event hooked for member methods."""
     event_hooked_members(cls, *args, is_function=True, **kwargs)
     return cls
 
 
 @make_decorator
-def event_hooked_subclass(cls, *args, **kwargs):
+def event_hooked_subclass(cls: Type, *args, **kwargs) -> Type:
     """Return class with event hooked for member methods in all subclasses."""
     ori_new = cls.__new__
 
+    @wraps(ori_new)
     def mod_new(cls, *fn_args, **fn_kwargs):
         if not mod_new.hooked.get(cls, False):
             event_hooked_class(cls, *args, **kwargs)
@@ -208,7 +215,7 @@ def event_hooked_subclass(cls, *args, **kwargs):
 
 
 @make_decorator
-def event_hooked_subclass_inst(cls, *args, **kwargs):
+def event_hooked_subclass_inst(cls: Type, *args, **kwargs) -> Type:
     """Return class with event hooked for member methods in all subclass instances."""
     ori_init = cls.__init__
 

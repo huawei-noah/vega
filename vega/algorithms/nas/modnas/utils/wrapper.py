@@ -23,6 +23,7 @@ from modnas.registry.optim import build as build_optim
 from modnas.registry.estim import build as build_estim
 from modnas.registry.trainer import build as build_trainer
 from modnas.registry import parse_spec, to_spec
+from modnas.utils.config import merge_config
 from modnas import utils
 from .logging import configure_logging, get_logger
 from modnas import backend as be
@@ -111,7 +112,7 @@ def load_config(conf):
     config = None
     for cfg in conf:
         loaded_cfg = Config.load(cfg)
-        config = loaded_cfg if config is None else utils.merge_config(config, loaded_cfg)
+        config = loaded_cfg if config is None else merge_config(config, loaded_cfg)
     return config
 
 
@@ -129,8 +130,7 @@ def get_init_constructor(config, device):
         default_conf = {'type': 'DefaultInitConstructor'}
     else:
         raise NotImplementedError
-    default_conf.update(config)
-    return default_conf
+    return merge_config(default_conf, config)
 
 
 def get_model_constructor(config):
@@ -256,15 +256,16 @@ def get_default_constructors(config):
     else:
         device_ids = device_conf.get('device', device_ids)
     con_config['init'] = get_init_constructor(config.get('init', {}), device_ids)
+    con_user_config = config.get('construct', {})
     if 'ops' in config:
         con_config['init']['args']['ops_conf'] = config['ops']
     if 'model' in config:
         con_config['model'] = get_model_constructor(config['model'])
     if 'mixed_op' in config:
         con_config['mixed_op'] = get_mixed_op_constructor(config['mixed_op'])
-    if arch_desc is not None:
+    if arch_desc is not None and 'arch_desc' not in con_user_config:
         con_config['arch_desc'] = get_arch_desc_constructor(arch_desc)
-    con_config = utils.merge_config(con_config, config.get('construct', {}))
+    con_config = merge_config(con_config, con_user_config)
     if be.is_backend('torch'):
         con_config['device'] = {'type': 'TorchToDevice', 'args': device_conf}
     if config.get('chkpt'):
@@ -328,7 +329,6 @@ def init_all(**kwargs):
     configure_logging(config=config.get('logging', None), log_dir=expman.subdir('logs'))
     writer = utils.get_writer(expman.subdir('writer'), **config.get('writer', {}))
     logger.info('Name: {} Routine: {} Config:\n{}'.format(name, routine, config))
-    logger.info(utils.env_info())
     # imports
     imports = config.get('import', [])
     if not isinstance(imports, list):
@@ -337,6 +337,7 @@ def init_all(**kwargs):
         imports.insert(0, 'modnas.utils.predefined')
     utils.import_modules(imports)
     be.use(config.get('backend'))
+    logger.info(utils.env_info())
     # data
     data_provider_conf = get_data_provider_config(config)
     # construct
@@ -412,7 +413,7 @@ def run(*args, parse=False, **kwargs):
     """Run routine."""
     if parse or (not args and not kwargs):
         parsed_kwargs = parse_routine_args()
-        parsed_kwargs = utils.merge_config(parsed_kwargs, kwargs)
+        parsed_kwargs = merge_config(parsed_kwargs, kwargs)
     else:
         parsed_kwargs = kwargs
     return run_default(*args, **parsed_kwargs)

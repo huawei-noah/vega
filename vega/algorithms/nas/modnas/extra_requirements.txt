@@ -9,6 +9,7 @@ git+git://github.com/creeperlin/rasp
 
 # Bayesian optimization
 scikit-optimize
+hyperopt
 
 # Score model
 xgboost

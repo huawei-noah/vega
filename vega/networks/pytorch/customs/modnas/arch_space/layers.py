@@ -16,6 +16,9 @@ from .slot import register_slot_ccs
 from . import layer_defs
 from modnas.registry.layer_def import build as build_layer_def
 from modnas.utils.logging import get_logger
+from torch import Tensor
+from torch.nn.modules.module import Module
+from typing import Dict, List, Optional, Tuple, Type, Union, Any
 
 
 logger = get_logger('arch_space')
@@ -26,18 +29,18 @@ class DAGLayer(nn.Module):
     """Directed Acyclic Graph Layer."""
 
     def __init__(self,
-                 chn_in,
-                 chn_out,
-                 stride,
-                 n_nodes,
-                 allocator,
-                 merger_state,
-                 merger_out,
-                 enumerator,
-                 preproc=None,
-                 edge_cls=Slot,
-                 edge_kwargs=None,
-                 name=None):
+                 chn_in: Tuple[int, int],
+                 chn_out: None,
+                 stride: int,
+                 n_nodes: int,
+                 allocator: str,
+                 merger_state: str,
+                 merger_out: str,
+                 enumerator: str,
+                 preproc: Optional[List[Type[Module]]] = None,
+                 edge_cls: Type[Slot] = Slot,
+                 edge_kwargs: Optional[Dict[str, Any]] = None,
+                 name: Optional[str] = None) -> None:
         super().__init__()
         self.n_nodes = n_nodes
         self.stride = stride
@@ -92,7 +95,7 @@ class DAGLayer(nn.Module):
         self.chn_out = self.merger_out.chn_out(chn_states)
         self.chn_states = chn_states
 
-    def forward(self, x):
+    def forward(self, x: Union[Tensor, List[Tensor]]) -> Tensor:
         """Compute Layer output."""
         states = x if isinstance(x, list) else [x]
         if self.preprocs is not None:
@@ -113,7 +116,7 @@ class DAGLayer(nn.Module):
         out = self.merger_out.merge(states)
         return out
 
-    def to_arch_desc(self, k=2):
+    def to_arch_desc(self, k: Union[int, List[int]] = 2) -> Any:
         """Return archdesc from Layer."""
         desc = []
         edge_k = 1
@@ -134,8 +137,6 @@ class DAGLayer(nn.Module):
                 try:
                     w_edge = torch.max(edges[eidx].ent.prob().detach()[:-1])
                 except AttributeError:
-                    w_edge = -1
-                if w_edge < 0:
                     continue
                 g_edge = [g_edge_child, list(sidx), n_states]
                 if len(topk_edges) < k_states[nidx]:
@@ -149,7 +150,7 @@ class DAGLayer(nn.Module):
             desc.append([g for w, g in topk_edges])
         return desc
 
-    def build_from_arch_desc(self, desc, *args, **kwargs):
+    def build_from_arch_desc(self, desc: Any, *args, **kwargs) -> None:
         """Build layer ops from desc."""
         chn_states = self.chn_states[:self.n_input]
         num_edges = 0

@@ -12,9 +12,12 @@
 import torch
 from .base import Param
 from modnas.registry.params import register
+from modnas.core.param_space import ParamSpace
+from torch.nn.parameter import Parameter
+from typing import Optional, Callable
 
 
-def _default_tensor_sampler(shape, init_ratio=1e-3):
+def _default_tensor_sampler(shape: int, init_ratio: float = 1e-3) -> Parameter:
     return torch.nn.Parameter(init_ratio * torch.randn(shape))
 
 
@@ -24,14 +27,17 @@ class TorchTensor(Param):
 
     TYPE = 'T'
 
-    def __init__(self, shape, sampler=None, name=None, space=None, on_update=None):
+    def __init__(
+        self, shape: int, sampler: Optional[Callable] = None, name: Optional[str] = None,
+        space: Optional[ParamSpace] = None, on_update: Optional[Callable] = None
+    ) -> None:
         super().__init__(name, space, on_update)
         self.sample = _default_tensor_sampler if sampler is None else sampler
         self.shape = shape
         self.val = self.sample(self.shape)
         self._length = None
 
-    def extra_repr(self):
+    def extra_repr(self) -> str:
         """Return extra representation string."""
         return 'shape={}'.format(self.shape)
 
@@ -39,12 +45,12 @@ class TorchTensor(Param):
         """Return if the value is valid."""
         return isinstance(value, torch.Tensor)
 
-    def value(self):
+    def value(self) -> Parameter:
         """Return parameter value."""
         if self.val is None:
             self.val = self.sample(self.shape)
         return self.val
 
-    def set_value(self, value):
+    def set_value(self, value: Parameter) -> None:
         """Set parameter value."""
         self.val = value

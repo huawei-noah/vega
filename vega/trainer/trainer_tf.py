@@ -12,7 +12,6 @@
 
 import logging
 import tensorflow as tf
-from vega.common.general import General
 import vega
 from vega.trainer.trainer_base import TrainerBase
 from vega.modules.loss import Loss
@@ -28,18 +27,15 @@ class TrainerTf(TrainerBase):
     def build(self):
         """Build the trainer by assembling the necessary components."""
         super().build()
-
         # Some trainer has different train batch size from valid batch
         self.train_metrics = None
         self.valid_metrics = self._init_metrics()
-        self._init_horovod_setting()
 
-    def _set_default_funcs(self):
+    def set_training_settings(self):
+        """Set trainer training settings."""
         self.model_fn = self._default_model_fn
         self.train_input_fn = self._default_train_input_fn
         self.valid_input_fn = self._default_valid_input_fn
-
-    def _set_condition(self):
         self._init_tf_session()
         self._init_distributed_setting()
         self._init_tf_estimator()
@@ -68,29 +64,13 @@ class TrainerTf(TrainerBase):
         self.callbacks.after_valid(valid_logs)
 
     def _init_distributed_setting(self):
-        if not self.distributed:
-            return
-
-        if vega.is_npu_device():
+        if self.hccl:
             sess_config = self._init_session_config()
             self.sess = tf.compat.v1.Session(config=sess_config)
             from npu_bridge.estimator import npu_ops
             self.npu_init = npu_ops.initialize_system()
             self.npu_shutdown = npu_ops.shutdown_system()
             self.sess.run(self.npu_init)
-
-        if vega.is_gpu_device():
-            import horovod.tensorflow as hvd
-            self._world_size = hvd.size()
-            self._rank_id = hvd.rank()
-            self._local_rank_id = hvd.local_rank()
-        elif vega.is_npu_device():
-            from hccl.manage.api import get_local_rank_id
-            from hccl.manage.api import get_rank_size
-            from hccl.manage.api import get_rank_id
-            self._world_size = get_rank_size()
-            self._rank_id = get_rank_id()
-            self._local_rank_id = get_local_rank_id()
 
     def _default_train_input_fn(self):
         return self.train_loader.input_fn()
@@ -135,10 +115,11 @@ class TrainerTf(TrainerBase):
         if mode == tf.estimator.ModeKeys.TRAIN:
             global_step = tf.compat.v1.train.get_or_create_global_step()
             epoch = tf.cast(global_step, tf.float32) / tf.cast(len(self.train_loader), tf.float32)
-            self.optimizer = Optimizer()(distributed=self.distributed)
+            distributed = self.horovod or self.hccl
+            self.optimizer = Optimizer()(distributed=distributed)
             self.lr_scheduler = LrScheduler()(optimizer=self.optimizer)
             self.lr_scheduler.step(epoch)
-            if self.distributed:
+            if distributed:
                 self.optimizer = Optimizer.set_distributed(self.optimizer)
 
             update_ops = tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.UPDATE_OPS)
@@ -195,7 +176,7 @@ class TrainerTf(TrainerBase):
 
     def _init_logging_hook(self):
         logging_hook = []
-        if vega.is_gpu_device() and self.distributed:
+        if self.horovod:
             import horovod.tensorflow as hvd
             logging_hook += [hvd.BroadcastGlobalVariablesHook(0)]
         return logging_hook
@@ -203,7 +184,7 @@ class TrainerTf(TrainerBase):
     def _init_gpu_estimator(self, sess_config):
         """Init tensorflow estimator."""
         distribution = None
-        if not self.distributed and General._parallel and General.devices_per_trainer > 1:
+        if self.horovod:
             distribution = tf.contrib.distribute.MirroredStrategy()
         config = tf.estimator.RunConfig(model_dir=self.get_local_worker_path(),
                                         save_checkpoints_steps=self.config.save_steps,
@@ -228,9 +209,9 @@ class TrainerTf(TrainerBase):
     def _init_gpu_session_config(self):
         sess_config = tf.compat.v1.ConfigProto()
         sess_config.gpu_options.allow_growth = True
-        if self.distributed:
-            import horovod.tensorflow as hvd
-            sess_config.gpu_options.visible_device_list = str(hvd.local_rank())
+        # if self.horovod:
+        #     import horovod.tensorflow as hvd
+        #     sess_config.gpu_options.visible_device_list = str(hvd.local_rank())
         return sess_config
 
     def _init_npu_session_config(self):
@@ -242,5 +223,4 @@ class TrainerTf(TrainerBase):
         if self.use_amp:
             custom_op.parameter_map["precision_mode"].s = tf.compat.as_bytes("allow_mix_precision")
         custom_op.parameter_map["use_off_line"].b = True
-
         return sess_config

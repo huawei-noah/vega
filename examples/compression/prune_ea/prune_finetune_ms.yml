@@ -12,7 +12,7 @@ fine_tune:
             type: ResNetMs
             resnet_size: 50
             num_classes: 10
-            need_adjust: True
+        need_adjust: True
         pretrained_model_file: "/cache/models/resnet50-19c8e357.pth"
     trainer:
         type: Trainer
