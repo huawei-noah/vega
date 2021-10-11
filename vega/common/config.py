@@ -15,6 +15,8 @@ import json
 import copy
 import os.path as osp
 import sys
+import logging
+import traceback
 from importlib import import_module
 
 
@@ -35,7 +37,7 @@ class Config(dict):
             if isinstance(arg, str):
                 if arg.endswith('.yaml') or arg.endswith('.yml'):
                     with open(arg) as f:
-                        raw_dict = yaml.load(f, Loader=yaml.FullLoader)
+                        raw_dict = yaml.safe_load(f)
                         _dict2config(self, raw_dict)
                 elif arg.endswith('.py'):
                     module_name = osp.basename(arg)[:-3]
@@ -108,6 +110,16 @@ class Config(dict):
         else:
             raise AttributeError(key)
 
+    def dump_yaml(self, output_file, **kwargs):
+        """Dump data to a yaml file."""
+        try:
+            with open(output_file, "w") as f:
+                data = json.loads(json.dumps(self))
+                yaml.dump(data, f, indent=4, Dumper=SafeDumper, sort_keys=False, **kwargs)
+        except Exception:
+            logging.error(f"Failed to dump config to file: {output_file}.")
+            logging.error(traceback.format_exc())
+
     def __setattr__(self, key, value):
         """Get a object attr `key` with `value`.
 
@@ -176,3 +188,11 @@ def build_tree(data):
         else:
             result[key] = value
     return result
+
+
+class SafeDumper(yaml.SafeDumper):
+    """Redefine SafeDumper."""
+
+    def increase_indent(self, flow=False, *args, **kwargs):
+        """Fix indent error."""
+        return super().increase_indent(flow=flow, indentless=False)

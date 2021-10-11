@@ -12,9 +12,11 @@
 
 import configparser
 import getpass
+import logging
 import re
 import os
 import ssl
+import stat
 import gevent
 from gevent import pywsgi
 
@@ -68,7 +70,27 @@ def load_security_setting():
             return False
         cert_pem_file = https_config['cert_pem_file']
         secret_key_file = https_config['secret_key_file']
+
+        if not check_cert_key_file(cert_pem_file, secret_key_file):
+            return False
     return True
+
+
+def check_cert_key_file(cert_file, key_file):
+    """Check if cert and key file are risky."""
+    res = True
+    for file in (cert_file, key_file):
+        if not os.stat(file).st_uid == os.getuid():
+            logging.error("File <{}> is not owned by current user".format(file))
+            res = False
+        if os.path.islink(file):
+            logging.error("File <{}> should not be soft link".format(file))
+            res = False
+        if os.stat(file).st_mode & 0o0077:
+            logging.error("file <{}> is accessible by group/other users".format(file))
+            res = False
+
+    return res
 
 
 def get_white_list():

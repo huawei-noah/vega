@@ -60,10 +60,16 @@ class Evaluate(Resource):
 
     def post(self):
         """Interface to response to the post request of the client."""
-        self.parse_paras()
-        self.upload_files()
-
-        self.hardware_instance = ClassFactory.get_cls(self.hardware)(self.optional_params)
+        try:
+            self.parse_paras()
+            self.upload_files()
+            self.hardware_instance = ClassFactory.get_cls(self.hardware)(self.optional_params)
+        except Exception:
+            self.result["status"] = "Params error."
+            self.result["error_message"] = traceback.format_exc()
+            logging.error("[ERROR] Params error!")
+            traceback.print_exc()
+            return self.result
 
         if self.reuse_model == "True":
             logging.warning("Reuse the model, no need to convert the model.")
@@ -77,9 +83,10 @@ class Evaluate(Resource):
                 self.result["error_message"] = traceback.format_exc()
                 logging.error("[ERROR] Model convert failed!")
                 traceback.print_exc()
+                return self.result
         try:
             latency_sum = 0
-            for repeat in range(self.repeat_times):
+            for repeat in range(min(self.repeat_times, 10)):
                 latency, output = self.hardware_instance.inference(converted_model=self.share_dir,
                                                                    input_data=self.input_data)
                 latency_sum += float(latency)
@@ -90,7 +97,6 @@ class Evaluate(Resource):
             self.result["error_message"] = traceback.format_exc()
             logging.error("[ERROR] Inference failed! ")
             traceback.print_exc()
-
         return self.result
 
     def parse_paras(self):

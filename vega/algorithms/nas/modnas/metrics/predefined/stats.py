@@ -9,6 +9,7 @@
 # MIT License for more details.
 
 """Statistical metrics."""
+
 import yaml
 import pickle
 import numpy as np
@@ -25,7 +26,7 @@ class StatsLUTMetrics(MetricsBase):
     def __init__(self, lut_path: str, head: List[str]) -> None:
         super().__init__()
         with open(lut_path, 'r') as f:
-            self.lut = yaml.load(f, Loader=yaml.Loader)
+            self.lut = yaml.safe_load(f)
         if self.lut is None:
             raise ValueError('StatsLUT: Error loading LUT: {}'.format(lut_path))
         self.head = head

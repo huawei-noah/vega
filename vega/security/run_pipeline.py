@@ -12,6 +12,7 @@
 import configparser
 import logging
 import os
+import stat
 import sys
 import vega
 from copy import deepcopy
@@ -20,7 +21,6 @@ from vega.common.general import General
 from vega.common.config import Config
 from vega.common.utils import verify_requires
 from vega.common import argment_parser
-from vega.core.pipeline.conf import PipeStepConfig
 
 
 def _append_env():
@@ -206,15 +206,42 @@ def load_security_setting():
             return True
         _check_config_validation(config)
         _parse_config(config)
-    except LoadConfigException:
-        logging.warning("load_security_setting failed")
+    except LoadConfigException as e:
+        logging.warning("load_security_setting failed: {}".format(e))
         return False
     return True
+
+
+def _check_cert_key_file(config, key, field):
+    file = _get_config_key(config, key, field)
+    if not os.stat(file).st_uid == os.getuid():
+        raise Exception("File <{}> is not owned by current user".format(file))
+    if os.path.islink(file):
+        raise Exception("File <{}> should not be soft link".format(file))
+    if os.stat(file).st_mode & 0o0077:
+        raise Exception("file <{}> is accessible by group/other users".format(file))
 
 
 def _check_config_validation(config):
     https_config = _get_config_field(config, "https")
     _check_if_file_config_correct(https_config, "cert_pem_file", "https")
+    _check_cert_key_file(https_config, "cert_pem_file", "https")
+
+
+def _file_exist(path):
+    return os.access(path, os.F_OK)
+
+
+def _file_belong_to_current_user(path):
+    return os.stat(path).st_uid == os.getuid()
+
+
+def _file_other_writable(path):
+    return os.stat(path).st_mode & stat.S_IWOTH
+
+
+def _file_is_link(path):
+    return os.path.islink(path)
 
 
 def check_env():
@@ -224,36 +251,98 @@ def check_env():
     return True
 
 
-def contained_pth_file(config):
-    """Get contained pth file."""
-    file_list = []
-    if isinstance(config, Config):
-        for value in config.values():
-            if isinstance(value, str) and (str(value).endswith(".pth") or str(value).endswith(".pth.tar")):
-                file_list.append(value)
-            file_list.extend(contained_pth_file(value))
-    return file_list
+def _get_risky_files_by_suffix(suffixes, path):
+    risky_files = []
+    non_current_user_files = []
+    others_writable_files = []
+    link_files = []
+    for suffix in suffixes:
+        if not path.endswith(suffix):
+            continue
+        abs_path = os.path.abspath(path)
+        if _file_exist(abs_path):
+            risky_files.append(abs_path)
+            if not _file_belong_to_current_user(abs_path):
+                non_current_user_files.append(abs_path)
+            if _file_other_writable(abs_path):
+                others_writable_files.append(abs_path)
+            if _file_is_link(abs_path):
+                link_files.append(abs_path)
+
+    return risky_files, non_current_user_files, others_writable_files, link_files
 
 
-def check_pth_file(args, config):
-    """Check pth file."""
+def get_risky_files(config):
+    """Get contained risky file (.pth/.pth.tar/.onnx/.py)."""
+    risky_files = []
+    non_current_user_files = []
+    others_writable_files = []
+    link_files = []
+
+    if not isinstance(config, Config):
+        return risky_files, non_current_user_files, others_writable_files, link_files
+
+    for value in config.values():
+        if isinstance(value, Config) and value.get("type") == "DeepLabNetWork":
+            value = value.get("dir").rstrip("/") + "/" + value.get("name").lstrip("/") + ".py"
+        if isinstance(value, str):
+            temp_risky_files, temp_non_current_user_files, temp_other_writable_files, temp_link_files \
+                = _get_risky_files_by_suffix([".pth", ".pth.tar", ".py"], value)
+            risky_files.extend(temp_risky_files)
+            non_current_user_files.extend(temp_non_current_user_files)
+            others_writable_files.extend(temp_other_writable_files)
+            link_files.extend(temp_link_files)
+        temp_risky_files, temp_non_current_user_files, temp_other_writable_files, temp_link_files \
+            = get_risky_files(value)
+        risky_files.extend(temp_risky_files)
+        non_current_user_files.extend(temp_non_current_user_files)
+        others_writable_files.extend(temp_other_writable_files)
+        link_files.extend(temp_link_files)
+
+    return risky_files, non_current_user_files, others_writable_files, link_files
+
+
+def check_risky_file(args, config):
+    """Check risky file (.pth/.pth.tar/.py)."""
     if args.force:
         return True
-    file_list = contained_pth_file(config)
-    if len(file_list) > 0:
-        print("There are pth files: ")
-        print(file_list)
-        user_confirm = input("It is possible to construct malicious pickle data "
-                             "which will execute arbitrary code during unpickling pth file. "
-                             "\nPlease ensure the safety and consistency of the model file. "
-                             "\nDo you want to continue? (yes/no) ")
-        while user_confirm != "yes" and user_confirm != "no":
-            user_confirm = input("Please enter yes or no! ")
-        if user_confirm == "yes":
-            return True
-        elif user_confirm == "no":
-            return False
-    return True
+    risky_files, non_current_user_files, others_writable_files, link_files = get_risky_files(config)
+    if len(risky_files) == 0:
+        return True
+
+    print("\033[1;33m"
+          "WARNING: The following executable files will be loaded:"
+          "\033[0m")
+    for file in risky_files:
+        print(file)
+    if len(non_current_user_files) > 0:
+        print("\033[1;33m"
+              "WARNING: The following executable files that will be loaded do not belong to the current user:"
+              "\033[0m")
+        for file in non_current_user_files:
+            print(file)
+    if len(others_writable_files) > 0:
+        print("\033[1;33m"
+              "WARNING: The following executable files that will be loaded have others write permission:"
+              "\033[0m")
+        for file in others_writable_files:
+            print(file)
+    if len(link_files) > 0:
+        print("\033[1;33m"
+              "WARNING: The following executable files that will be loaded is soft link file:"
+              "\033[0m")
+        for file in link_files:
+            print(file)
+    user_confirm = input("It is possible to construct malicious pickle data "
+                         "which will execute arbitrary code during unpickling .pth/.pth.tar/.py files. "
+                         "\nPlease ensure the safety and consistency of the loaded executable files. "
+                         "\nDo you want to continue? (yes/no) ").strip(" ")
+    while user_confirm != "yes" and user_confirm != "no":
+        user_confirm = input("Please enter yes or no! ").strip(" ")
+    if user_confirm == "yes":
+        return True
+    elif user_confirm == "no":
+        return False
 
 
 def run_pipeline(load_special_lib_func=None):
@@ -273,7 +362,7 @@ def run_pipeline(load_special_lib_func=None):
     # check env
     if not check_env():
         return
-    if not check_pth_file(args, config):
+    if not check_risky_file(args, config):
         return
     if General.requires and not verify_requires(General.requires):
         return

@@ -9,13 +9,13 @@
 
 ---
 
-**Vega ver1.7.0 发布**
+**Vega ver1.7.1 released**
 
-- 特性增强
+- Bug修复:
 
-  - 提供用于Ascend MindStudio的发布版本。
-  - 提供Horovod（GPU）和HCCL（NPU）的数据并行训练能力。
-  - 修复BUG：BOHB算法在超过3轮后可能会无法自动停止。
+  - 增加评估服务最大尝试次数限制.
+  - 使用SafeLoader加载YAML文件.
+  - 增加评估服务输入参数异常处理.
 
 ---
 

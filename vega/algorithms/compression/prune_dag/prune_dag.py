@@ -10,8 +10,10 @@
 """This is Operator SearchSpace."""
 import copy
 import logging
+import os
 import vega
 from vega.common import ClassFactory, ClassType
+from vega.common.general import TaskConfig
 from vega.trainer.callbacks import Callback
 from vega.core.search_space import SearchSpace
 from vega.core.pipeline.conf import PipeStepConfig
@@ -61,6 +63,8 @@ class SCOPDAGSearchSpace(SearchSpace):
             arch_type_range = item.get("range")
             search_space.extend([dict(key=arch_params_key.format(name), type=arch_type, range=arch_type_range)
                                  for name, module in self.model.named_modules() if is_conv2d(module)])
+        # first conv not pruned.
+        search_space.pop(0)
         return {"hyperparameters": search_space}
 
     @classmethod
@@ -76,6 +80,9 @@ class SCOPDAGSearchSpace(SearchSpace):
     @classmethod
     def _decode_fn(self, model, desc):
         mask_code_desc = {}
+        kf_scale_dict = self._load_kf_scale()
+        if kf_scale_dict:
+            logging.info("Start prune with kf scale.")
         for name, rate in desc.items():
             node_name = '.'.join(name.split('.')[:-1])
             arch_type = name.split('.')[-1]
@@ -87,9 +94,29 @@ class SCOPDAGSearchSpace(SearchSpace):
                 select_idx = select_idx if select_idx > 16 else node_channels
             else:
                 select_idx = node_channels * rate // 100
-            idx_code = [1 if idx < select_idx else 0 for idx in range(node_channels)]
+            if kf_scale_dict:
+                beta = kf_scale_dict.get(node_name + ".kf_scale").cpu()
+                next_node = model.module_map[node_name].child_nodes[0]
+                bn_weight = 1
+                if next_node.module_type == "BatchNorm2d":
+                    bn_weight = next_node.module.weight.data.abs().cpu()
+                score = bn_weight * (beta - (1 - beta)).squeeze()
+                _, idx = score.sort()
+                pruned_idx = idx[select_idx:].numpy().tolist()
+                idx_code = [1 if idx in pruned_idx else 0 for idx in range(node_channels)]
+            else:
+                idx_code = [1 if idx < select_idx else 0 for idx in range(node_channels)]
             mask_code_desc[node_name + '.out_channels'] = idx_code
         return mask_code_desc
+
+    @classmethod
+    def _load_kf_scale(cls):
+        if not PipeStepConfig.model.kf_sacle_file:
+            return
+        import torch
+        file_path = PipeStepConfig.model.kf_sacle_file
+        file_path = file_path.replace("{local_base_path}", os.path.join(TaskConfig.local_base_path, TaskConfig.task_id))
+        return torch.load(file_path)
 
 
 @ClassFactory.register(ClassType.CALLBACK)

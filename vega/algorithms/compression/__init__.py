@@ -16,5 +16,6 @@ ClassFactory.lazy_register("vega.algorithms.compression", {
     "prune_ea": ["PruneCodec", "PruneEA", "PruneSearchSpace", "PruneTrainerCallback"],
     "prune_ea_mobilenet": ["PruneMobilenetCodec", "PruneMobilenetTrainerCallback"],
     "quant_ea": ["QuantCodec", "QuantEA", "QuantTrainerCallback"],
-    "prune_dag": ["PruneDAGSearchSpace", "AdaptiveBatchNormalizationCallback", "SCOPDAGSearchSpace"],
+    "prune_dag": ["PruneDAGSearchSpace", "AdaptiveBatchNormalizationCallback", "SCOPDAGSearchSpace",
+                  "KnockoffFeaturesCallback"],
 })

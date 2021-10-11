@@ -25,11 +25,11 @@ mkdir -p build/intermediates/device
 mkdir -p build/intermediates/host
 
 cd build/intermediates/device
-cmake ../../../src -Dtype=device -Dtarget=RC -DCMAKE_CXX_COMPILER=aarch64-linux-gnu-g++
+cmake ../../../src -Dtype=device -Dtarget=RC -DCMAKE_CXX_COMPILER=aarch64-linux-gnu-g++ -DCMAKE_CXX_FLAGS="-s"  -DCMAKE_C_FLAGS="-s"
 make install
 echo "[INFO] build the device sucess"
 cd ../host
-cmake ../../../src -Dtype=host -Dtarget=RC -DCMAKE_CXX_COMPILER=aarch64-linux-gnu-g++
+cmake ../../../src -Dtype=host -Dtarget=RC -DCMAKE_CXX_COMPILER=aarch64-linux-gnu-g++ -DCMAKE_CXX_FLAGS="-s"  -DCMAKE_C_FLAGS="-s"
 make install 
 echo "[INFO] build the host sucess"
 
