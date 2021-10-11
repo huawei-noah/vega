@@ -17,6 +17,7 @@ try:
     import flask_restful
     import flask_limiter
     import werkzeug
+    import gevent
 except Exception:
     logging.warning(
         "The dependencies [Flask==1.1.2,Flask-RESTful==0.3.8, Werkzeug==1.0.1 ] have not been install, \
@@ -25,8 +26,9 @@ except Exception:
     os.system("pip3 install Flask-RESTful==0.3.8")
     os.system("pip3 install Flask-Limiter==1.4")
     os.system("pip3 install Werkzeug==1.0.1")
+    os.system("pip3 install gevent")
 
-from flask import abort, Flask, request
+from flask import abort, Flask, request, Response
 from flask_restful import Resource, Api
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
@@ -57,6 +59,9 @@ limiter = Limiter(
 )
 
 
+MAX_EVAL_EPOCHS = 10000
+
+
 @app.before_request
 def limit_remote_addr():
     """Set limit remote address."""
@@ -81,10 +86,16 @@ class Evaluate(Resource):
 
     def post(self):
         """Interface to response to the post request of the client."""
-        self.parse_paras()
-        self.upload_files()
-
-        self.hardware_instance = ClassFactory.get_cls(self.hardware)(self.optional_params)
+        try:
+            self.parse_paras()
+            self.upload_files()
+            self.hardware_instance = ClassFactory.get_cls(self.hardware)(self.optional_params)
+        except Exception:
+            self.result["status"] = "Params error."
+            self.result["error_message"] = traceback.format_exc()
+            logging.error("[ERROR] Params error!")
+            traceback.print_exc()
+            return self.result
 
         if self.reuse_model == "True":
             logging.warning("Reuse the model, no need to convert the model.")
@@ -98,9 +109,10 @@ class Evaluate(Resource):
                 self.result["error_message"] = traceback.format_exc()
                 logging.error("[ERROR] Model convert failed!")
                 traceback.print_exc()
+                return self.result
         try:
             latency_sum = 0
-            for repeat in range(self.repeat_times):
+            for repeat in range(min(self.repeat_times, 10)):
                 latency, output = self.hardware_instance.inference(converted_model=self.share_dir,
                                                                    input_data=self.input_data)
                 latency_sum += float(latency)
@@ -111,7 +123,6 @@ class Evaluate(Resource):
             self.result["error_message"] = traceback.format_exc()
             logging.error("[ERROR] Inference failed! ")
             traceback.print_exc()
-
         return self.result
 
     def parse_paras(self):
@@ -119,11 +130,34 @@ class Evaluate(Resource):
         self.backend = request.form["backend"]
         self.hardware = request.form["hardware"]
         self.reuse_model = request.form["reuse_model"]
-        self.job_id = request.form["job_id"]
+        self.job_id = self._check_get_job_id(request.form["job_id"])
         self.input_shape = request.form.get("input_shape", type=str, default="")
         self.out_nodes = request.form.get("out_nodes", type=str, default="")
-        self.repeat_times = int(request.form.get("repeat_times"))
+        self.repeat_times = self._check_get_repeat_times(request.form.get("repeat_times"))
         self.precision = request.form.get("precision", type=str, default="FP32")
+
+    @staticmethod
+    def _check_get_repeat_times(repeat_times):
+        """Check validation of input repeat_times."""
+        _repeat_times = repeat_times
+        try:
+            _repeat_times = int(_repeat_times)
+        except ValueError:
+            logging.warning("repeat_times {} is not a valid integer".format(_repeat_times))
+            abort(400, "repeat_times {} is not a valid integer".format(_repeat_times))
+        if not 0 < _repeat_times <= MAX_EVAL_EPOCHS:
+            logging.warning("repeat_times {} is not in valid range (1-{})".format(_repeat_times, MAX_EVAL_EPOCHS))
+            abort(400, "repeat_times {} is not in valid range (1-{})".format(_repeat_times, MAX_EVAL_EPOCHS))
+        return _repeat_times
+
+    @staticmethod
+    def _check_get_job_id(job_id):
+        """Check validation of params."""
+        import re
+        if len(re.compile("[^_A-Za-z0-9]").findall(job_id)) > 0:
+            logging.warning("job_id {} contains invalid characters".format(job_id))
+            abort(400, "job_id {} contains invalid characters".format(job_id))
+        return job_id
 
     def upload_files(self):
         """Upload the files from the client to the service."""
@@ -189,6 +223,7 @@ def _parse_args():
 
 def run():
     """Run the evaluate service."""
+    os.umask(0o027)
     args = _parse_args()
     ip_address = args.host_ip
     listen_port = args.port

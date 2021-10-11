@@ -9,6 +9,7 @@
 # MIT License for more details.
 
 """Run hyperparameter tuning on python programs."""
+
 import sys
 import yaml
 import argparse
@@ -21,7 +22,7 @@ def tune_prog(progname=None, funcname=None, config=None, options=None, hparams=N
     """Run hyperparameter tuning on python programs."""
     prog_args = [] if prog_args is None else prog_args
     if isinstance(hparams, str):
-        hparams = yaml.load(hparams, Loader=yaml.FullLoader)
+        hparams = yaml.safe_load(hparams)
     hp_dict = hparams if hparams is not None else {}
     sys.argv[:] = prog_args[:]
     if progname is None:

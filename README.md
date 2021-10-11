@@ -8,13 +8,13 @@
 
 ---
 
-**Vega ver1.7.0 released**
+**Vega ver1.7.1 released**
 
-- Feature enhancement:
+- Bug fixes:
 
-  - Releases Ascend MindStudio version.
-  - Provides data parallel training capabilities for Horovod (GPU) and HCCL (NPU).
-  - Fixed bug: The BOHB algorithm may not automatically stop after more than three rounds.
+  - Maximum number of evaluation service attempts.
+  - Use SafeLoader to load the YAML file.
+  - Catch evaluation service input parameter exceptions.
 
 ---
 

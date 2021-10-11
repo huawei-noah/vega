@@ -47,7 +47,6 @@ def run_scheduler(port):
 def run_local_worker(address, local_dir):
     """Run dask-worker on local node."""
     work_port = get_available_port(min_port=31000, max_port=31999)
-    nanny_port = get_available_port(min_port=32000, max_port=32999)
     dashboard_address = get_available_port(min_port=33000, max_port=33999)
     return subprocess.Popen(
         [
@@ -59,7 +58,7 @@ def run_local_worker(address, local_dir):
             local_dir,
             "--no-dashboard",
             f'--listen-address=tcp://127.0.0.1:{work_port}',
-            f'--nanny-port={nanny_port}',
+            '--nanny-port=32000:32999',
             f'--dashboard-address={dashboard_address}'
         ],
         env=os.environ

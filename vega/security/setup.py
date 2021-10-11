@@ -57,7 +57,7 @@ cmd_class = dict(install=install)
 setuptools.setup(
     name="noah-vega",
     cmdclass=cmd_class,
-    version="1.7.0.mindstudio",
+    version="1.8.0.mindstudio",
     packages=["vega", "evaluate_service"],
     include_package_data=True,
     python_requires=">=3.6",
