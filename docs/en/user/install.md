@@ -19,7 +19,7 @@ pip3 install --user --upgrade noah-vega
 
 **Important:**
 
-1. Before installing the VGA, run the following command to upgrade the PIP:
+1. Before installing the Vega, run the following command to upgrade the PIP:
 
     ```bash
     pip3 install --user --upgrade pip
