@@ -73,9 +73,9 @@ class Metrics(object):
         """Calculate all supported metrics by using output and target.
 
         :param output: predicted output by networks
-        :type output: torch tensor
+        :type output: mindspore tensor
         :param target: target label data
-        :type target: torch tensor
+        :type target: mindspore tensor
         :return: performance of metrics
         :rtype: list
         """
@@ -105,4 +105,8 @@ class Metrics(object):
         :type metrics: dict
         """
         for key in metrics:
-            self.metric_results[key] = metrics[key]
+            if not isinstance(metrics[key], (int, float)):
+                value = metrics[key].item()
+            else:
+                value = metrics[key]
+            self.metric_results[key] = value

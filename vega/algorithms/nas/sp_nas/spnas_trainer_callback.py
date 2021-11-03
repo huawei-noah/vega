@@ -114,12 +114,14 @@ class SpNasTrainerCallback(TrainerMs):
             self.valid_loader = valid()
         self.batch_num_train = self.train_loader.get_dataset_size()
         self.batch_num_valid = self.valid_loader.get_dataset_size()
+        self.valid_metrics = self._init_metrics()
 
     def _train_epoch(self):
         """Construct the trainer of SpNas."""
         dataset = self.train_loader
         dataset_size = dataset.get_dataset_size()
         self.model = self.model.set_train()
+        self.ori_model = self.model
         self.model.to_float(mstype.float16)
         self.loss = LossNet()
         lr = Tensor(dynamic_lr(config, dataset_size), mstype.float32)
@@ -135,7 +137,7 @@ class SpNasTrainerCallback(TrainerMs):
         callback_list = [ckpoint_cb, loss_cb]
         self.ms_model = MsModel(self.model)
         try:
-            self.ms_model.train(epoch=self.trainer.epochs,
+            self.ms_model.train(epoch=self.config.epochs,
                                 train_dataset=dataset,
                                 callbacks=callback_list,
                                 dataset_sink_mode=False)
@@ -145,9 +147,9 @@ class SpNasTrainerCallback(TrainerMs):
     def _valid_epoch(self):
         """Construct the trainer of SpNas."""
         dataset = self.valid_loader
-        self.model.set_train(False)
+        self.ori_model.set_train(False)
         outputs = []
-        dataset_coco = COCO(config.ann_file)
+        dataset_coco = COCO(self.config.metric.params.anno_path)
 
         max_num = 128
         for data in dataset.create_dict_iterator(num_epochs=1):
@@ -157,7 +159,7 @@ class SpNasTrainerCallback(TrainerMs):
             gt_bboxes = data['box']
             gt_labels = data['label']
             gt_num = data['valid_num']
-            output = self.model(img_data, img_metas, gt_bboxes, gt_labels, gt_num)
+            output = self.ori_model(img_data, img_metas, gt_bboxes, gt_labels, gt_num)
             all_bbox = output[0]
             all_label = output[1]
             all_mask = output[2]

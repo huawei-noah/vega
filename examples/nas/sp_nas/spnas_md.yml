@@ -1,3 +1,7 @@
+general:
+    backend: mindspore
+    device_category: NPU
+
 pipeline: [serial]
 
 serial:
