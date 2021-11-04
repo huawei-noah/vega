@@ -121,21 +121,20 @@ class SpNasTrainerCallback(TrainerMs):
         dataset = self.train_loader
         dataset_size = dataset.get_dataset_size()
         self.model = self.model.set_train()
-        self.ori_model = self.model
         self.model.to_float(mstype.float16)
         self.loss = LossNet()
         lr = Tensor(dynamic_lr(config, dataset_size), mstype.float32)
         self.optimizer = SGD(params=self.model.trainable_params(), learning_rate=lr, momentum=config.momentum,
                              weight_decay=config.weight_decay, loss_scale=config.loss_scale)
         net_with_loss = WithLossCell(self.model, self.loss)
-        self.model = TrainOneStepCell(net_with_loss, self.optimizer, sens=config.loss_scale)
+        net = TrainOneStepCell(net_with_loss, self.optimizer, sens=config.loss_scale)
 
         config_ck = CheckpointConfig(save_checkpoint_steps=self.config.save_steps, keep_checkpoint_max=1)
         save_path = self.get_local_worker_path(self.step_name, self.worker_id)
         ckpoint_cb = ModelCheckpoint(config=config_ck, directory=save_path)
         loss_cb = LossMonitor(per_print_times=1)
         callback_list = [ckpoint_cb, loss_cb]
-        self.ms_model = MsModel(self.model)
+        self.ms_model = MsModel(net)
         try:
             self.ms_model.train(epoch=self.config.epochs,
                                 train_dataset=dataset,
@@ -147,7 +146,8 @@ class SpNasTrainerCallback(TrainerMs):
     def _valid_epoch(self):
         """Construct the trainer of SpNas."""
         dataset = self.valid_loader
-        self.ori_model.set_train(False)
+        self.model.set_train(False)
+        self.model.to_float(mstype.float16)
         outputs = []
         dataset_coco = COCO(self.config.metric.params.anno_path)
 
@@ -159,7 +159,7 @@ class SpNasTrainerCallback(TrainerMs):
             gt_bboxes = data['box']
             gt_labels = data['label']
             gt_num = data['valid_num']
-            output = self.ori_model(img_data, img_metas, gt_bboxes, gt_labels, gt_num)
+            output = self.model(img_data, img_metas, gt_bboxes, gt_labels, gt_num)
             all_bbox = output[0]
             all_label = output[1]
             all_mask = output[2]
