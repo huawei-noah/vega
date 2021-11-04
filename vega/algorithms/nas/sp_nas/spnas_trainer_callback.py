@@ -114,6 +114,7 @@ class SpNasTrainerCallback(TrainerMs):
             self.valid_loader = valid()
         self.batch_num_train = self.train_loader.get_dataset_size()
         self.batch_num_valid = self.valid_loader.get_dataset_size()
+        self.valid_metrics = self._init_metrics()
 
     def _train_epoch(self):
         """Construct the trainer of SpNas."""
@@ -126,16 +127,16 @@ class SpNasTrainerCallback(TrainerMs):
         self.optimizer = SGD(params=self.model.trainable_params(), learning_rate=lr, momentum=config.momentum,
                              weight_decay=config.weight_decay, loss_scale=config.loss_scale)
         net_with_loss = WithLossCell(self.model, self.loss)
-        self.model = TrainOneStepCell(net_with_loss, self.optimizer, sens=config.loss_scale)
+        net = TrainOneStepCell(net_with_loss, self.optimizer, sens=config.loss_scale)
 
         config_ck = CheckpointConfig(save_checkpoint_steps=self.config.save_steps, keep_checkpoint_max=1)
         save_path = self.get_local_worker_path(self.step_name, self.worker_id)
         ckpoint_cb = ModelCheckpoint(config=config_ck, directory=save_path)
         loss_cb = LossMonitor(per_print_times=1)
         callback_list = [ckpoint_cb, loss_cb]
-        self.ms_model = MsModel(self.model)
+        self.ms_model = MsModel(net)
         try:
-            self.ms_model.train(epoch=self.trainer.epochs,
+            self.ms_model.train(epoch=self.config.epochs,
                                 train_dataset=dataset,
                                 callbacks=callback_list,
                                 dataset_sink_mode=False)
@@ -146,8 +147,9 @@ class SpNasTrainerCallback(TrainerMs):
         """Construct the trainer of SpNas."""
         dataset = self.valid_loader
         self.model.set_train(False)
+        self.model.to_float(mstype.float16)
         outputs = []
-        dataset_coco = COCO(config.ann_file)
+        dataset_coco = COCO(self.config.metric.params.anno_path)
 
         max_num = 128
         for data in dataset.create_dict_iterator(num_epochs=1):
