@@ -1,6 +1,7 @@
 """The second stage of SMNAS."""
 
 import logging
+import random
 from vega.common import ClassFactory, ClassType
 from vega.core.search_algs import SearchAlgorithm
 import numpy as np
@@ -29,9 +30,14 @@ class SpNasP(SearchAlgorithm):
         pareto_records = ReportServer().get_pareto_front_records(choice='normal')
         best_record = pareto_records[0] if pareto_records else None
         desc = self.search_space.sample()
-        if best_record:
+        if best_record and best_record.desc:
             desc['network.neck.code'] = self._mutate_parallelnet(best_record.desc.get("neck").get('code'))
         self.sample_count += 1
+        if self.search_space_list:
+            backbone = random.choice(self.search_space_list)
+            desc['network.backbone.type'] = backbone.get("backbone").get('type')
+            desc['network.backbone.code'] = backbone.get("backbone").get('code')
+            desc['network.backbone.weight_file'] = backbone.get("backbone").get('weight_file')
         logging.info("desc:{}".format(desc))
         return dict(worker_id=self.sample_count, encoded_desc=desc)
 

@@ -26,15 +26,13 @@ class ParallelFPN(Module):
         """
         super(ParallelFPN, self).__init__()
         self.code = code
-        self.lateral_convs = ModuleList()
-        self.fpn_convs = ModuleList()
+        self.inner_blocks = ModuleList()
+        self.layer_blocks = ModuleList()
         self.weight_file = weight_file
         self.weights_prefix = weights_prefix
         for in_channel in in_channels:
-            # l_conv = Sequential(ops.Conv2d(in_channel, out_channels, 1), ops.BatchNorm2d(out_channels))
-            # fpn_conv = Sequential(ops.Conv2d(out_channels, out_channels, 3, padding=1), ops.BatchNorm2d(out_channels))
-            self.lateral_convs.append(ops.Conv2d(in_channel, out_channels, 1, bias=False))
-            self.fpn_convs.append(ops.Conv2d(out_channels, out_channels, 3, padding=1, bias=False))
+            self.inner_blocks.append(ops.Conv2d(in_channel, out_channels, 1, bias=False))
+            self.layer_blocks.append(ops.Conv2d(out_channels, out_channels, 3, padding=1, bias=False))
 
     def call(self, inputs):
         """Forward compute.
@@ -42,24 +40,10 @@ class ParallelFPN(Module):
         :param inputs: input feature map
         :return: tuple of feature map
         """
-        laterals = [conv(inputs[i]) for i, conv in enumerate(self.lateral_convs)]
+        laterals = [conv(inputs[i]) for i, conv in enumerate(self.inner_blocks)]
         num_stage = len(laterals)
         for i in range(num_stage - 1, 0, -1):
             laterals[i - 1] += ops.InterpolateScale(size=laterals[i - 1].size()[2:], mode='nearest')(laterals[i])
-        outs = [self.fpn_convs[i](laterals[i]) for i in self.code or range(num_stage)]
+        outs = [self.layer_blocks[i](laterals[i]) for i in self.code or range(num_stage)]
         outs.append(ops.MaxPool2d(1, stride=2)(outs[-1]))
         return {idx: out for idx, out in enumerate(outs)}
-
-    def load_state_dict(self, state_dict=None, strict=None):
-        """Load state dict."""
-        own_states = self.state_dict()
-        not_swap_keys = []
-        for own_key, own_state in own_states.items():
-            state = state_dict.get("{}.{}".format(self.weights_prefix, own_key))
-            if state is None or own_state.shape != state.shape:
-                if 'num_batches_tracked' in own_key:
-                    continue
-                not_swap_keys.append(own_key)
-            else:
-                own_states[own_key] = state
-        super().load_state_dict(own_states, strict)

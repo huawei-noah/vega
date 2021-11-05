@@ -38,81 +38,104 @@ This method has two phases:
 
 ## Usage Guide
 
-### Example 1: Serial phase
-
+### fine tune：convert torchvision weights into spnas backbone.
 ```yaml
-search_algorithm:
-    type: SpNas
-    codec: SpNasCodec
-    total_list: 'total_list_s.csv'  # Record the search result.
-    sample_level: 'serial'          # Serial search: 'serial', parallel search: 'parallel'
-    max_sample: 10      # Maximum number of adopted structures
-    max_optimal: 5      # The top 5 seed networks are reserved in the serial phase and start to mutate, set the number of parallel phases to 1
-    serial_settings:
-         num_mutate: 3
-         addstage_ratio: 0.05   # Probability of the number of new feature layers
-         expend_ratio: 0.3      # Probability of the number of new blocks
-         max_stages: 6          # Maximum number of allowed feature layers
-    regnition: False            # Whether ImageNet has been performed. regnite#
-#    last_search_result: # Whether to search for the config epoch of the
-search_space:
-    type: SearchSpace
-    config_template_file: ./faster_rcnn_r50_fpn_1x.py   # starting point network based on the existing search records
-    epoch: 1        # Number of fast trainings for each sampling structure
+
+fine_tune:
+    pipe_step:
+        type: TrainPipeStep
+
+    model:
+        pretrained_model_file: /cache/models/fasterrcnn_resnet50_fpn_coco-258fb6c6.pth  # torchvision weights file
+        model_desc:
+            type: FasterRCNN
+            convert_pretrained: True     # convert weights into SerialBackbone
+            backbone:
+                type: SerialBackbone     # backbone type
+
 ```
 
-### Example 2: Parallel phase
+### step1: Serial-level
 
 ```yaml
-search_algorithm:
-    type: SpNas
-    codec: SpNasCodec
-    total_list: 'total_list_p.csv'  # Record the search result.
-    sample_level: 'parallel'        # Serial search:'serial', parallel search: 'parallel'
-    max_sample: 10      # Maximum number of structures
-    max_optimal: 1
-    serial_settings:
-         last_search_result: 'total_list_s.csv'     # Search based on existing search records.
-         regnition: False   # Whether the ImageNet regnite
-search_space:
-    type: SearchSpace
-    config_template_file: ./faster_rcnn_r50_fpn_1x.py   # start point network is configured. config
-    epoch: 1        # Each sampling Fast training data of structure
+    search_algorithm:
+        type: SpNasS
+        max_sample: 20              # Maximum number of adopted structures
+        objective_keys: ['mAP', 'params']   # Objective keys for pareto front
+        num_mutate: 3               # Maximum number of mutate blocks
+        add_stage_ratio: 0.05       # Probability of the number of new feature layers
+        expend_ratio: 0.3           # Probability of the number of new blocks
+        max_stages: 6               # Maximum number of allowed feature layers
+    
+    search_space:
+        type: SearchSpace
+        hyperparameters:
+            -   key: network.backbone.code   # Search space
+                type: CATEGORY
+                range: ['111-2111-211111-211']
+
+    model:
+        pretrained_model_file: "{local_base_path}/output/fine_tune/model_0.pth"   # Get weight file from fine_tune pipe step
+        model_desc:
+            type: FasterRCNN         
+            freeze_swap_keys: True   # Freeze not swap layers 
+            backbone:                # block type
+                type: SerialBackbone
+    
 ```
 
-### Example 3: Fully train
-
-**Completely train the best network based on the search records.**
+### step2: Reignition
 
 ```yaml
-trainer:
-    type: SpNasTrainer
-    gpus: 8
-    model_desc_file: 'total_list_p.csv' 
-    config_template: "./faster_rcnn_r50_fpn_1x.py"
-    regnition: False    # Whether ImageNet regnite
-    epoch: 12
-    debug: False
+    pipe_step:
+        type: TrainPipeStep
+        models_folder: "{local_base_path}/output/serial/"  # Get desc file from serial pipe step
+
+    trainer:
+        type: Trainer
+        callbacks: ReignitionCallback   # Do reignition
 ```
 
-**Fully trained optimal network based on network coding**
+### Step3: Parallel-level
 
 ```yaml
-trainer:
-    type: SpNasTrainer
-    gpus: 8
-    model_desc_file: "{local_base_path}/output/total_list_p.csv"
-    config_template: "./faster_rcnn_r50_fpn_1x.py"
-    regnition: False    # Whether ImageNet regnite
-    epoch: 12
-    debug: False
+     pipe_step:
+        type: SearchPipeStep
+        models_folder: "{local_base_path}/output/reignition/"  # Get desc file from reignition pipe step
+
+    search_algorithm:
+        type: SpNasP
+        max_sample: 10
+
+    model:
+        pretrained_model_file:  "{local_base_path}/output/fine_tune/model_0.pth"  # Load fasterrcnn weights file
+        model_desc:
+            type: FasterRCNN
+            neck:
+              type: ParallelFPN  # Neck type
+
+    search_space:
+        type: SearchSpace
+        hyperparameters:
+            -   key: network.neck.code   # Search Space of neck
+                type: CATEGORY
+                range: [[0, 1, 2, 3]]
 ```
+
+### step4：fully train
+
+```yaml
+    pipe_step:
+        type: TrainPipeStep
+        models_folder: "{local_base_path}/output/parallel/"  # Get desc file and weights file from parallel pipe step
+```
+
 
 ### Algorithm output
 
 - The optimal models with fully training.
-- Logs of all models during the entire search process, and logs for models from the Pareto front(pareto_front.csv).
+- Logs of all models during the entire search process, and logs for models from the Pareto front({local_base_path}/output).
 
 ## Benchmark
 
-Benchmark configuration: [spnas.yml](https://github.com/huawei-noah/vega/blob/master/examples/nas/sp_nas/spnas.yml)
+Benchmark configuration: [sp_nas.yml](https://github.com/huawei-noah/vega/tree/master/examples/nas/sp_nas/spnas.yml)
