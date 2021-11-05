@@ -1,4 +1,4 @@
-pipeline: [fine_tune, serial, reigniting, parallel, fullytrain]
+pipeline: [fine_tune, serial, reignition, parallel, fullytrain]
 
 fine_tune:
     pipe_step:
@@ -46,7 +46,7 @@ fine_tune:
         type: CocoDataset
         common:
             data_root: /cache/datasets/COCO2017
-            batch_size: 8
+            batch_size: 4
             img_prefix: "2017"
             ann_prefix: instances
 serial:
@@ -78,7 +78,7 @@ serial:
     dataset:
         ref: fine_tune.dataset
 
-reigniting:
+reignition:
     pipe_step:
         type: TrainPipeStep
         models_folder: "{local_base_path}/output/serial/"

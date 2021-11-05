@@ -65,7 +65,7 @@ class SearchAlgorithm(TaskOps):
             return
         self.search_space_list = []
         models_folder = models_folder.replace("{local_base_path}", TaskOps().local_base_path)
-        pattern = FileOps.join_path(models_folder, "*.json")
+        pattern = FileOps.join_path(models_folder, "desc*.json")
         files = glob.glob(pattern)
         for file in files:
             with open(file) as f:
