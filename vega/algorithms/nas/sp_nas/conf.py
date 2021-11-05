@@ -18,13 +18,10 @@ class SpNasConfig(ConfigSerializable):
     max_sample = 20
     max_optimal = 5
     num_mutate = 3
-    objective_keys = 'mAP'
-    addstage_ratio = 0.05
+    objective_keys = ['mAP', 'params']
+    add_stage_ratio = 0.05
     expend_ratio = 0.3
     max_stages = 6
-    retain_original_code = False
-    reignite = True
-    reignite_desc = dict()
 
     @classmethod
     def rules(cls):
@@ -32,7 +29,7 @@ class SpNasConfig(ConfigSerializable):
         rules_SpNasConfig = {
             "max_sample": {"type": int},
             "max_optimal": {"type": int},
-            "serial_settings": {"type": dict},
-            "regnition": {"type": bool},
+            "num_mutate": {"type": int},
+            "max_stages": {"type": int},
         }
         return rules_SpNasConfig

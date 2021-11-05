@@ -9,6 +9,8 @@
 # MIT License for more details.
 
 """This is FasterRCNN network."""
+import copy
+from collections import OrderedDict
 from vega.common import ClassFactory, ClassType
 from vega.modules.connections import Sequential
 from vega.modules.module import Module
@@ -19,15 +21,47 @@ from torchvision.models.detection import FasterRCNN
 class FasterRCNN(FasterRCNN, Module):
     """Create ResNet Network."""
 
-    def __init__(self, num_classes=81, backbone='ResNetBackbone', neck='FPN', **kwargs):
+    def __init__(self, num_classes=91, backbone='ResNetBackbone', neck='FPN', convert_pretrained=False,
+                 freeze_swap_keys=None, **kwargs):
         """Create layers.
 
         :param num_class: number of class
         :type num_class: int
         """
+        self.convert_pretrained = convert_pretrained
+        self.freeze_swap_keys = freeze_swap_keys
         backbone_cls = ClassFactory.get_instance(ClassType.NETWORK, backbone)
         neck_cls = ClassFactory.get_instance(ClassType.NETWORK, neck, in_channels=backbone_cls.out_channels)
         backbone_neck = Sequential()
         backbone_neck.append(backbone_cls, 'body')
         backbone_neck.append(neck_cls, 'fpn')
-        super(FasterRCNN, self).__init__(backbone_neck, num_classes, **kwargs)
+        import torchvision
+        roi_pooler = torchvision.ops.MultiScaleRoIAlign(featmap_names=[0, 1, 2, 3], output_size=7, sampling_ratio=2)
+        super(FasterRCNN, self).__init__(backbone_neck, num_classes, box_roi_pool=roi_pooler, **kwargs)
+
+    def load_state_dict(self, state_dict=None, strict=None):
+        """Load State dict."""
+        if self.convert_pretrained:
+            state_dict = self._convert_state_dict(self.state_dict(), state_dict)
+            return super().load_state_dict(state_dict)
+        if not self.freeze_swap_keys:
+            return super().load_state_dict(state_dict, strict or False)
+        not_swap_keys = super().load_state_dict(state_dict, False)
+        need_freeze_layers = [name for name, parameter in self.named_parameters() if name not in not_swap_keys]
+        for name, parameter in self.named_parameters():
+            if not all([not name.startswith(layer) for layer in need_freeze_layers]):
+                parameter.requires_grad_(False)
+            else:
+                parameter.requires_grad_(True)
+
+    def _convert_state_dict(self, own_state, state_dict):
+        own_state_copy = OrderedDict({k: v for k, v in own_state.items() if 'num_batches_tracked' not in k})
+        state_dict_copy = OrderedDict({k: v for k, v in state_dict.items() if 'num_batches_tracked' not in k})
+        while state_dict_copy:
+            name, weight = state_dict_copy.popitem(0)
+            own_name, own_weight = own_state_copy.popitem(0)
+            if weight.shape != own_weight.shape:
+                raise ValueError("Unexpected key(s) in state_dict for ""convert: {} {} --> {} {}".format(
+                    name, weight.shape, own_name, own_weight.shape))
+            own_state[own_name] = weight
+        return own_state

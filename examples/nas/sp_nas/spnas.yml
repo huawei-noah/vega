@@ -1,42 +1,25 @@
-pipeline: [serial, parallel, fullytrain]
+pipeline: [fine_tune, serial, reigniting, parallel, fullytrain]
 
-serial:
+fine_tune:
     pipe_step:
-        type: SearchPipeStep
-
-    search_algorithm:
-        type: SpNasS
-        max_sample: 20
-        objective_keys: AP50
-
-    search_space:
-        type: SearchSpace
-        hyperparameters:
-            -   key: network.backbone.code
-                type: CATEGORY
-                range: ['111-2111-211111-211']
+        type: TrainPipeStep
 
     model:
+        pretrained_model_file: /cache/models/fasterrcnn_resnet50_fpn_coco-258fb6c6.pth
         model_desc:
             type: FasterRCNN
+            convert_pretrained: True
             backbone:
                 type: SerialBackbone
-                weight_file: /cache/models/fasterrcnn_serialnet_backbone.pth
-            neck:
-                type: ParallelFPN
-            num_classes: 91
 
     trainer:
         type: Trainer
-        epochs: 6
-        get_train_metric_after_epoch: False
-        model_statistics: False
-        is_detection_trainer: True
-        perfs_cmp_key: AP50
+        epochs: 1
+        with_train: False
         optimizer:
             type: SGD
             params:
-                lr: 0.03
+                lr: 0.02
                 momentum: 0.9
                 weight_decay: !!float 1e-4
         lr_scheduler:
@@ -44,13 +27,13 @@ serial:
             by_epoch: False
             params:
                 warmup_type: linear
-                warmup_iters: 2000
+                warmup_iters: 1000
                 warmup_ratio: 0.001
                 after_scheduler_config:
                     type: MultiStepLR
                     by_epoch: True
                     params:
-                        milestones:  [10, 20]
+                        milestones: [ 10, 20 ]
                         gamma: 0.1
         loss:
             type: SumLoss
@@ -63,18 +46,83 @@ serial:
         type: CocoDataset
         common:
             data_root: /cache/datasets/COCO2017
-            batch_size: 4
+            batch_size: 8
             img_prefix: "2017"
             ann_prefix: instances
+serial:
+    pipe_step:
+        type: SearchPipeStep
+
+    search_algorithm:
+        type: SpNasS
+        max_sample: 20
+
+    search_space:
+        type: SearchSpace
+        hyperparameters:
+            -   key: network.backbone.code
+                type: CATEGORY
+                range: ['111-2111-211111-211']
+
+    model:
+        pretrained_model_file: "{local_base_path}/output/fine_tune/model_0.pth"
+        model_desc:
+            type: FasterRCNN
+            freeze_swap_keys: True
+            backbone:
+                type: SerialBackbone
+    trainer:
+        ref: fine_tune.trainer
+        epochs: 3
+
+    dataset:
+        ref: fine_tune.dataset
+
+reigniting:
+    pipe_step:
+        type: TrainPipeStep
+        models_folder: "{local_base_path}/output/serial/"
+
+    dataset:
+        type: Imagenet
+        common:
+            data_path: /cache/datasets/ILSVRC/Data/CLS-LOC
+            batch_size: 128
+
+    trainer:
+        type: Trainer
+        epochs: 20
+        callbacks: ReignitionCallback
+        mixup: True
+        optimizer:
+            type: SGD
+            params:
+                lr: 0.1
+                momentum: 0.9
+                weight_decay: !!float 1e-4
+        lr_scheduler:
+            type: CosineAnnealingLR
+            by_epoch: True
+            params:
+                T_max: 20
+        loss:
+            type: CrossEntropyLoss
 
 parallel:
     pipe_step:
         type: SearchPipeStep
-        models_folder: "{local_base_path}/output/serial/"
-        pretrained_folder: "{local_base_path}/output/serial/"
+        models_folder: "{local_base_path}/output/reignition/"
 
     search_algorithm:
         type: SpNasP
+        max_sample: 20
+
+    model:
+        pretrained_model_file: "{local_base_path}/output/fine_tune/model_0.pth"
+        model_desc:
+            type: FasterRCNN
+            neck:
+                type: ParallelFPN
 
     search_space:
         type: SearchSpace
@@ -82,14 +130,6 @@ parallel:
             -   key: network.neck.code
                 type: CATEGORY
                 range: [[0, 1, 2, 3]]
-
-    model:
-        head: ["backbone.fpn", "roi_heads"]
-        model_desc:
-            type: FasterRCNN
-            neck:
-                type: ParallelFPN
-            num_classes: 91
 
     trainer:
         ref: serial.trainer
@@ -101,7 +141,6 @@ fullytrain:
     pipe_step:
         type: TrainPipeStep
         models_folder: "{local_base_path}/output/parallel/"
-        pretrained_folder: "{local_base_path}/output/parallel/"
 
     trainer:
         ref: serial.trainer

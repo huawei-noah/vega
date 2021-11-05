@@ -37,82 +37,104 @@ SP-NAS是面向物体检测及语义分割的高效主干网络架构搜索算�
 
 ## 使用指导
 
-### 样例1：串行阶段
+### fine tune：将torchvision的权重文件转换为spnas的权重
+```yaml
+
+fine_tune:
+    pipe_step:
+        type: TrainPipeStep
+
+    model:
+        pretrained_model_file: /cache/models/fasterrcnn_resnet50_fpn_coco-258fb6c6.pth  # 指定权重文件路径
+        model_desc:
+            type: FasterRCNN
+            convert_pretrained: True     # 将torchvision的预训练权重适配到backbone中
+            backbone:
+                type: SerialBackbone     # 指定backbone类型
+
+```
+
+### 阶段1：串行阶段
 
 ```yaml
     search_algorithm:
-        type: SpNas
-        codec: SpNasCodec
-        total_list: 'total_list_s.csv'  # 记录搜索结果
-        sample_level: 'serial'          # 串行搜索:'serial'，并行搜索: 'parallel'
-        max_sample: 10                  # 最多采用结构数
-        max_optimal: 5                  # 串行阶段保留Top5种子网络开始变异，并行阶段设为1
-        serial_settings:
-            num_mutate: 3               # 变异次数
-            addstage_ratio: 0.05        # 新增特征层次阶段数的概率
-            expend_ratio: 0.3           # 新增block数的概率
-            max_stages: 6               # 最大可允许的特征层次阶段数
-        regnition: False                # 是否进行过ImageNet regnite
-#        last_search_result:            # 是否基于存在的搜索记录开始搜索
+        type: SpNasS
+        max_sample: 20              # 最多采用结构数
+        objective_keys: ['mAP', 'params']   # 优化目标为mAP和params组成的pareto前沿 
+        max_optimal: 5              # 串行阶段保留Top5种子网络开始变异，并行阶段设为1
+        num_mutate: 3               # 变异次数
+        add_stage_ratio: 0.05       # 新增特征层次阶段数的概率
+        expend_ratio: 0.3           # 新增block数的概率
+        max_stages: 6               # 最大可允许的特征层次阶段数
+    
     search_space:
         type: SearchSpace
-        config_template_file: ./faster_rcnn_r50_fpn_1x.py  #起点网络的config
-        epoch: 1                        # 每个采样结构快速训练数
+        hyperparameters:
+            -   key: network.backbone.code
+                type: CATEGORY
+                range: ['111-2111-211111-211']
+
+    model:
+        pretrained_model_file: "{local_base_path}/output/fine_tune/model_0.pth"   # 从fine_tune中获取预训练权重
+        model_desc:
+            type: FasterRCNN         # 网络类型
+            freeze_swap_keys: True   # 冻结没有交换的block
+            backbone:                # block类型
+                type: SerialBackbone
+    
 ```
 
-### 样例2：并行阶段
+### 阶段2：重燃阶段
 
 ```yaml
-    search_algorithm:
-        type: SpNas
-        codec: SpNasCodec
-        total_list: 'total_list_p.csv'  # 记录搜索结果
-        sample_level: 'parallel'        # 串行搜索:'serial'，并行搜索: 'parallel'
-        max_sample: 10                  # 最多采用结构数
-        max_optimal: 1
-        serial_settings:
-        last_search_result: 'total_list_s.csv' # 基于存在的搜索记录开始搜索
-        regnition: False                # 是否进行过ImageNet regnite
-    search_space:
-        type: SearchSpace
-        config_template_file: ./faster_rcnn_r50_fpn_1x.py  # 起点网络的config
-        epoch: 1                        # 每个采样结构快速训练数
-```
+    pipe_step:
+        type: TrainPipeStep
+        models_folder: "{local_base_path}/output/serial/"  # 指定从阶段1获取模型和权重文件
 
-### 样例3：fully train
-
-**根据搜索记录完全训练最佳网络**
-
-```yaml
-    trainer:
-        type: SpNasTrainer
-        gpus: 8
-        model_desc_file: 'total_list_p.csv'
-        config_template: "./faster_rcnn_r50_fpn_1x.py"
-        regnition: False                # 是否进行过ImageNet regnite
-        epoch: 12
-        debug: False
-```
-
-**根据网络编码完全训练最佳网络**
-
-```yaml
     trainer:
         type: Trainer
-        callbacks: SpNasTrainerCallback
-        lazy_built: True
-        model_desc_file: "{local_base_path}/output/total_list_p.csv"
-        config_template: "./faster_rcnn_r50_fpn_1x.py"
-        regnition: False                # 是否进行过ImageNet regnite
-        epoch: 12
-        debug: False
+        callbacks: ReignitionCallback   # 指定重燃的callback
+```
+
+### 阶段3：并行阶段
+
+```yaml
+     pipe_step:
+        type: SearchPipeStep
+        models_folder: "{local_base_path}/output/reignition/"  # 从阶段二获取网络信息
+
+    search_algorithm:
+        type: SpNasP
+        max_sample: 1
+
+    model:
+        pretrained_model_file:  "{local_base_path}/output/fine_tune/model_0.pth"  # 加载fasterRcnn的权重
+        model_desc:
+            type: FasterRCNN
+            neck:
+              type: ParallelFPN  # neck类型
+
+    search_space:
+        type: SearchSpace
+        hyperparameters:
+            -   key: network.neck.code   # neck的搜索空间
+                type: CATEGORY
+                range: [[0, 1, 2, 3]]
+```
+
+### 阶段4：fully train
+
+```yaml
+    pipe_step:
+        type: TrainPipeStep
+        models_folder: "{local_base_path}/output/parallel/"  # 从阶段3获取模型和权重信息
 ```
 
 ### 算法输出
 
 - 搜索到的模型经充分训练后得到的模型及结果。
-- 整个搜索过程中所有模型的结果total_list，以及帕雷托前沿的结果pareto_front.csv。
+- 整个搜索过程中所有模型的结果{local_base_path}/output中。
 
 ## Benchmark
 
-Benchmark配置信息请参考: [spnas.yml](https://github.com/huawei-noah/vega/blob/master/examples/nas/sp_nas/spnas.yml)
+Benchmark配置信息请参考: [spnas.yml](https://github.com/huawei-noah/vega/tree/master/examples/nas/sp_nas/spnas.yml)
