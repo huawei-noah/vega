@@ -48,11 +48,7 @@ vega ./nas/cars/cars.yml
 | dnet_nas | 031-_64_12-1111-11211112-2.pth | /cache/models/031-_64_12-1111-11211112-2.pth | [download](https://box.saas.huaweicloud.com/p/3e5b678ec970ad347c678fabde23fb27) |
 | prune_ea(pytorch) | resnet20.pth | /cache/models/resnet20.pth | [download](https://box.saas.huaweicloud.com/p/67cd96e5da41b1c5a88f2b323446c0f8) |
 | prune_ea(mindspore) | resnet20.ckpt | /cache/models/resnet20.ckpt | [download](https://box.saas.huaweicloud.com/p/7f1743a041a0ede7f68713d1360a57d5) |
-| sp_nas | fasterrcnn_coco.pth | /cache/models/fasterrcnn_coco.pth | [download](https://box.saas.huaweicloud.com/p/27882e18e1594eaba79ff4a827e136d7) |
-| sp_nas | fasterrcnn_serialnet_backbone.pth | /cache/models/fasterrcnn_serialnet_backbone.pth | [download](https://box.saas.huaweicloud.com/p/60d2fb4d65533b60f336e74aaaeb5d96) |
-| sp_nas | serial_classification_net.pth | /cache/models/serial_classification_net.pth | [download](https://box.saas.huaweicloud.com/p/9a22840425a6ed1b53f873c506488c1c) |
-| sp_nas | torch_fpn.pth | /cache/models/torch_fpn.pth | [download](https://box.saas.huaweicloud.com/p/0bb0b0cf5229368fac006b1d8955df5b) |
-| sp_nas | torch_rpn.pth | /cache/models/torch_rpn.pth | [download](https://box.saas.huaweicloud.com/p/a41b7ca75114a9b2488e4064ed6ba3fb) |
+| sp_nas | fasterrcnn_resnet50_fpn_coco-258fb6c6.pth | /cache/models/fasterrcnn_resnet50_fpn_coco-258fb6c6.pth | [download](https://download.pytorch.org/models/fasterrcnn_resnet50_fpn_coco-258fb6c6.pth) |
 
 在每个示例的配置文件中，在 `general/backend` 中有该示例适用的平台说明（PyTorch、TensorFlow、MindSpore）。
 
