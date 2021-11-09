@@ -38,7 +38,7 @@ def run(cfg_path):
 
 
 def _init_env(cfg_path):
-    """Init config and evn parameters.
+    """Init config and env parameters.
 
     :param cfg_path: config file path
     """
