@@ -48,14 +48,14 @@ Software environment:
 
 ## Detection on CULane
 
-| Method       | Model Name | Flops(G) | F1 Score |
-| ------------ | ---------- | --------- | -------- |
-| **AutoLane**  | **CULane-S** | **66.5** | **71.5** |
-|               | **CULane-M** | **66.9** | **74.6** |
-|               | **CULane-L** | **273** | **75.2** |
-| SCNN      | - | 328.4 | 71.6 |
-| SAD       | - | 162.2 | 71.8 |
-| PointLane | - | 25.1  | 70.2 |
+| Method       | Model Name | FLOPs(G) | Params| F1 Score |
+| ------------ | ---------- | --------- | -------- |-------- |
+| **AutoLane**  | **CULane-S** | **2.09** | **4.57** | **71.5** |
+|               | **CULane-M** | **8.54** | **6.6** | **74.6** |
+|               | **CULane-L** | **2.08** | **7.32** | **75.2** |
+| SCNN      | - | 328.4 | - | 71.6 |
+| SAD       | - | 162.2 | - | 71.8 |
+| PointLane | - | 25.1  | - | 70.2 |
 
 ## Super-Resolution on Set5
 
