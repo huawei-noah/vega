@@ -35,11 +35,11 @@
 
 ## Detection on CULane
 
-| Model | Flops(G) | F1 Score | Inference Time(ms) | Inference Device | Download |
-|---|---|---|---|---|:--:|
-| AutoLane: CULane-s | 66.5 | 71.5 | - | V100 | [tar](https://box.saas.huaweicloud.com/p/18bcca1d2e3f19bcf52e1408a0853931) |
-| AutoLane: CULane-m | 66.9 | 74.6 | - | V100 | [tar](https://box.saas.huaweicloud.com/p/398d76084a3a89c656cc2671a9edab12) |
-| AutoLane: CULane-l | 273 | 75.2 | - | V100 | [tar](https://box.saas.huaweicloud.com/p/e4bd2cba73fee6012bbc4ef9ed3699b9) |
+| Model | FLOPs(G) | Params | F1 Score | Inference Time(ms) | Inference Device | Download |
+|---|---|---|---|---|---|:--:|
+| AutoLane: CULane-s | 2.09 | 4.57 | 71.5 | - | V100 | [tar](https://box.saas.huaweicloud.com/p/18bcca1d2e3f19bcf52e1408a0853931) |
+| AutoLane: CULane-m | 8.54 | 6.6 | 74.6 | - | V100 | [tar](https://box.saas.huaweicloud.com/p/398d76084a3a89c656cc2671a9edab12) |
+| AutoLane: CULane-l | 2.08 | 7.32 | 75.2 | - | V100 | [tar](https://box.saas.huaweicloud.com/p/e4bd2cba73fee6012bbc4ef9ed3699b9) |
 
 ## Super-Resolution on Urban100, B100, Set14, Set5
 
