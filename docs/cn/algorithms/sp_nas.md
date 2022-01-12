@@ -137,4 +137,4 @@ fine_tune:
 
 ## Benchmark
 
-Benchmark配置信息请参考: [spnas.yml](https://github.com/huawei-noah/vega/tree/master/examples/nas/sp_nas/spnas.yml)
+Benchmark配置信息请参考: [spnas.yml](https://github.com/huawei-noah/vega/blob/master/examples/nas/sp_nas/spnas.yml)

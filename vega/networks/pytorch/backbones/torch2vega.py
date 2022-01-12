@@ -1,22 +1,28 @@
 # -*- coding: utf-8 -*-
 
 # Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the MIT License.
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# MIT License for more details.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 """Transform torchvision model to vega."""
+from collections import OrderedDict
 import torch.nn as nn
 import torchvision
-from vega.modules.module import Module
-from collections import OrderedDict
 from vega.modules.operators import ops
 from vega.networks.necks import Bottleneck, BasicBlock
 from vega.modules.connections import Sequential
 from vega.common import ClassType, ClassFactory
+from vega.modules.module import Module
 
 atom_op = (nn.Conv2d, nn.BatchNorm2d, nn.ReLU, nn.LeakyReLU, nn.MaxPool2d, nn.AvgPool2d, nn.AdaptiveAvgPool2d,
            nn.Linear, nn.Dropout)
@@ -31,7 +37,6 @@ def _transsorm_op(init_layer):
         kernel_size = init_layer.kernel_size
         stride = init_layer.stride
         padding = init_layer.padding
-        # bias = init_layer.bias
         new_layer = ops.Conv2d(in_channels=in_channels, out_channels=out_channels, kernel_size=kernel_size,
                                stride=stride, padding=padding)
     elif isinstance(init_layer, nn.BatchNorm2d):
@@ -55,7 +60,6 @@ def _transsorm_op(init_layer):
     elif isinstance(init_layer, nn.Linear):
         in_features = init_layer.in_features
         out_features = init_layer.out_features
-        # use_bias = init_layer.bias
         new_layer = ops.Linear(in_features=in_features, out_features=out_features)
     elif isinstance(init_layer, nn.Dropout):
         prob = init_layer.p
@@ -93,7 +97,6 @@ def _transfowm_model(model):
     """Transform the torch model to Vega model."""
     new_model_dict = OrderedDict()
     for name, module in model.named_children():
-        # print("name:", name, "module:", module, "type:", type(module))
         if isinstance(module, atom_op):
             new_model_dict[name] = _transsorm_op(module)
 

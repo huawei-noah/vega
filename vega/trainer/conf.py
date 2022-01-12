@@ -1,20 +1,26 @@
 # -*- coding=utf-8 -*-
 
 # Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the MIT License.
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# MIT License for more details.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 """Default configs."""
 
 import os
+from vega.common import ConfigSerializable
 from .modules.conf.loss import LossConfig
 from .modules.conf.lr_scheduler import LrSchedulerConfig
 from .modules.conf.optim import OptimConfig
-from vega.common import ConfigSerializable
 from .task_conf import DEFAULT_CONFIG
 
 
@@ -77,7 +83,6 @@ class TrainerConfig(ConfigSerializable):
     # TODO: need to delete
     limits = None
     init_model_file = None
-    pareto_front_file = None
     unrolled = True
     model_desc_file = None
     codec = None
@@ -110,6 +115,7 @@ class TrainerConfig(ConfigSerializable):
     eval_per_epoch = True
     # script runner
     script = None
+    use_dag_forward = False
 
     @classmethod
     def set_task(cls, task):
@@ -155,7 +161,6 @@ class TrainerConfig(ConfigSerializable):
                                "metric": {"type": dict},
                                "limits": {"type": (dict, None)},
                                "init_model_file": {"type": (str, None)},
-                               "pareto_front_file": {"type": (str, None)},
                                "unrolled": {"type": bool},
                                "model_desc_file": {"type": (str, None)},
                                "codec": {"type": (str, dict, None)},

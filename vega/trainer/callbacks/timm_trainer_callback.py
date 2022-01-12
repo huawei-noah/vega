@@ -1,15 +1,22 @@
 # -*- coding: utf-8 -*-
 
 # Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the MIT License.
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# MIT License for more details.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 """TIMM method trainer."""
 
+import logging
 import os
 import importlib
 import torch
@@ -25,7 +32,7 @@ try:
     import apex
     from apex import amp
 except Exception:
-    pass
+    logging.debug('apex is no installed.')
 import horovod.torch as hvd
 import vega
 from vega.common import Config
@@ -77,8 +84,6 @@ def create_loader(
             sampler = torch.utils.data.distributed.DistributedSampler(
                 dataset, num_replicas=world_size, rank=rank)
         else:
-            # This will add extra duplicate entries to result in equal num
-            # of samples per-process, will slightly alter validation results
             sampler = OrderedDistributedSampler(dataset, num_replicas=world_size, rank=rank)
 
     if collate_fn is None:
@@ -171,7 +176,7 @@ class TimmTrainerCallback(Callback):
         if self.trainer.is_chief:
             self.trainer._backup()
 
-    def _init_all_settings(self):  # noqa: C901
+    def _init_all_settings(self):
         """Init all settings from config."""
         self.config = self.trainer.config
         if self.trainer.hps and self.trainer.hps.get('trainer'):
@@ -199,8 +204,6 @@ class TimmTrainerCallback(Callback):
         self._init_dataloader()
         self.trainer.valid_metrics = self.trainer._init_metrics(None)
         self.trainer.callbacks._set_params(self.trainer)
-
-        # self.trainer.has_built = True
 
     def _init_model_ema(self):
         """Init Model Ema."""

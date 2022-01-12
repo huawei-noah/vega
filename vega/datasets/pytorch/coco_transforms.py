@@ -1,16 +1,16 @@
-# -*- coding: utf-8 -*-
+# -*- coding:utf-8 -*-
 
-# Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the MIT License.
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# MIT License for more details.
+# This file is adapted from the torchvision library at
+# https://github.com/pytorch/vision/blob/main/references/detection/coco_utils.py
+
+# 2020.11.12-Changed for vega
+#       Huawei Technologies Co., Ltd. <chenchen6@huawei.com>
+# Copyright 2020 Huawei Technologies Co., Ltd.
 
 """This is a class for Coco Transforms."""
-import torch
+
 import copy
+import torch
 from pycocotools import mask as coco_mask
 from vega.common import ClassFactory, ClassType
 
@@ -50,7 +50,6 @@ class PolysToMaskTransform(object):
         anno = target["annotations"]
         anno = [obj for obj in anno if obj['iscrowd'] == 0]
         boxes = [obj["bbox"] for obj in anno]
-        # guard against no boxes via resizing
         boxes = torch.as_tensor(boxes, dtype=torch.float32).reshape(-1, 4)
         boxes[:, 2:] += boxes[:, :2]
         boxes[:, 0::2].clamp_(min=0, max=w)
@@ -73,7 +72,6 @@ class PolysToMaskTransform(object):
         keep = (boxes[:, 3] > boxes[:, 1]) & (boxes[:, 2] > boxes[:, 0])
         boxes = boxes[keep]
         classes = classes[keep]
-        # masks = masks[keep]
         if keypoints is not None:
             keypoints = keypoints[keep]
 
@@ -85,7 +83,6 @@ class PolysToMaskTransform(object):
         if keypoints is not None:
             target["keypoints"] = keypoints
 
-        # for conversion to coco api
         area = torch.tensor([obj["area"] for obj in anno])
         iscrowd = torch.tensor([obj["iscrowd"] for obj in anno])
         target["area"] = area
@@ -119,7 +116,6 @@ class PrepareVOCInstance(object):
     """Convert dataset to Voc instance."""
 
     CLASSES = (
-        # "__background__ ",
         "aeroplane",
         "bicycle",
         "bird",
@@ -170,13 +166,11 @@ class PrepareVOCInstance(object):
         area = torch.as_tensor(area)
         iscrowd = torch.as_tensor(iscrowd)
         image_id = anno['filename'][5:-4]
-        # image_id = torch.as_tensor([int(image_id)])
         image_id = image_id
         target = {}
         target["boxes"] = boxes
         target["labels"] = classes
         target["image_id"] = image_id
-        # for conversion to coco api
         target["area"] = area
         target["iscrowd"] = iscrowd
         target["file_name"] = anno['filename']

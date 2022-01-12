@@ -1,12 +1,18 @@
 # -*- coding: utf-8 -*-
 
 # Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the MIT License.
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# MIT License for more details.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 """Custom functions of pytorch."""
 from collections import OrderedDict
@@ -19,8 +25,8 @@ import torch.nn.init as init
 from torch.nn.quantized import Conv2d as QuantConv2d
 from torch.nn import Parameter as Torch_Parameter
 import vega
-from .serializable import OperatorSerializable
 from vega.common.class_factory import ClassType, ClassFactory
+from .serializable import OperatorSerializable
 
 
 class Module(nn.Module):
@@ -573,7 +579,6 @@ class Squeeze(nn.Module, OperatorSerializable):
 
     def forward(self, inputs):
         """Call forward function."""
-        # return torch.squeeze(inputs, self.dim)
         return inputs.squeeze(self.dim)
 
 
@@ -759,7 +764,6 @@ def mean_all(inputs):
 
 def pad(inputs, position):
     """Apply pad function."""
-    # return F.pad(inputs, position)
     dtype = inputs.dtype
     return F.pad(inputs.cpu().float(), position).to(vega.get_devices()).to(dtype)
 
@@ -1037,9 +1041,9 @@ def conv_ws_2d(input,
     """
     c_in = weight.size(0)
     weight_flat = weight.view(c_in, -1)
-    mean = weight_flat.mean(dim=1, keepdim=True).view(c_in, 1, 1, 1)
+    mean_weight = weight_flat.mean(dim=1, keepdim=True).view(c_in, 1, 1, 1)
     std = weight_flat.std(dim=1, keepdim=True).view(c_in, 1, 1, 1)
-    weight = (weight - mean) / (std + eps)
+    weight = (weight - mean_weight) / (std + eps)
     return F.conv2d(input, weight, bias, stride, padding, dilation, groups)
 
 

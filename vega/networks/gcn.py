@@ -1,12 +1,18 @@
 # -*- coding:utf-8 -*-
 
 # Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the MIT License.
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# MIT License for more details.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 """This is FasterRCNN network."""
 from vega.common import ClassFactory, ClassType
@@ -17,9 +23,11 @@ from vega.modules.module import Module
 class GCN(Module):
     """Create ResNet Network."""
 
-    def __init__(self, blocks=[[1, 32, 64]], kernel_size=4, gru_layers=1, gcn_layers=1, keep_prob=1,
+    def __init__(self, blocks=None, kernel_size=4, gru_layers=1, gcn_layers=1, keep_prob=1,
                  temporal_attention=False, spatial_attention=False, adjacency_matrix=None):
         super().__init__()
+        if blocks is None:
+            blocks = [[1, 32, 64], ]
         self.kernel_size = kernel_size
         self.blocks = blocks
         self.gru_layers = gru_layers

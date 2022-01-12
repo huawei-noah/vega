@@ -1,174 +1,258 @@
 # vega 安全配置
-## 用户数据保护
-用户用于训练的模型脚本/文件、预训练模型以及数据集属于比较重要的数据文件，需要做好安全保护，可以通过设置正确的文件权限来提升其安全性。可以通过如下命令来设置正确的文件权限
+
+Vega的安全配置，包括如下步骤：
+
+1. 安装OpenSSL
+2. 生成CA根证书
+3. 生成评估服务用的证书
+4. 生成Dask用的证书
+5. 加密私钥口令
+6. 配置安全相关的配置文件
+7. 配置评估服务守护服务
+8. 安装dask和distributed
+9. 配置HCCL白名单
+10. 注意事项
+
+## 1.安装OpenSSL
+
+首先要安装OpenSSL 1.1.1，从源码编译安装，或者直接安装编译后的发行包。
+
+然后安装OpenSSL的python接口，如下：
+
 ```shell
-chmod 640 -R "file_path"
+pip3 install --user pyOpenSSL==19.0.0
 ```
 
-## 安全配置文件
-vega在启动时会尝试读取```~/.vega/vega.ini```配置文件中的内容，如果该文件不存在或者文件中的配置不正确，那么vega会报错并自动退出。
+## 2.生成CA证书
 
-用户在安装vega之后，可以通过命令```vega-security-config -i```初始化该文件，初始化之后该文件内容如下：
-```ini
-[security]
-enable = True
+执行如下命令生成CA证书：
 
-[https]
-cert_pem_file =
-secret_key_file =
-```
-```[security] -> enable```的默认配置为True，此时用户还需要配置```[https]```段落下的```cert_pem_file```与```secret_key_file。```关于如何生成这2个文件请参考下面的章节，生成文件之后用户可以直接编辑vega.ini配置这2项内容，也可以通过如下命令来配置
 ```shell
-vega-security-config -m https -c "cert_file_path" -k "key_file_path"
-# 替换“cert_file_path”与“key_file_path"为真实的文件路径
+openssl genrsa -out ca.key 4096 
+openssl req -new -x509 -key ca.key -out ca.crt -subj "/C=<country>/ST=<province>/L=<city>/O=<organization>/OU=<group>/CN=<cn>"
 ```
 
-> 注意：用户也可以选择关闭安全配置，通过运行命令```vega-security-config -s 0```来实现。关闭安全配置之后，训练服务器与推理服务器之间的通信将不再使用https而是https协议，无法保证通信安全。
-> 
-> 用户在关闭安全配置后，可以通过命令```vega-security-config -s 1```来重新开启安全配置。
-> 
+注意：以上`<country>`、`<province>`、`<city>`、`<organization>`、`<group>`、`<cn>`根据实际情况填写，本文后面的配置也是同样的。并且CA的配置需要和其他的不同。
 
-vega-security-config提供的操作vega.ini文件的命令总览如下：
-```shell
-# 1. 初始化vega.ini文件
-vega-security-config -i
-# 2. 关闭安全配置
-vega-security-config -s 0
-# 3. 打开安全配置
-vega-security-config -s 1
-# 4. 查询当前的安全配置开关是否打开
-vega-security-config -q sec
-# 5. 查询https的证书与密钥配置
-vega-security-config -q https
-# 6. 配置https的证书与密钥文件路径
-vega-security-config -m https -c "cert_file_path" -k "key_file_path"
-# 7. 只配置https的证书路径(在训练服务器上)
-vega-security-config -m https -c "cert_file_path"
-```
+## 3. 生成评估服务使用的证书
 
-## 评估服务器
-### 评估服务器 https 安全配置
-#### 生成评估服务器密钥和证书
+评估服务支持加密证书和普通证书：
 
-在评估服务器上执行以下操作
+1. 若使用加密证书，需要安装华为公司的KMC安全组件，参考`生成加密证书`章节
+2. 若使用普通证书，参考`生成普通证书`章节
 
-1.将/etc/pki/tls/openssl.cnf或者/etc/ssl/openssl.cnf拷贝到当前文件夹
+### 3.1 生成加密证书
 
-2.修改当前目录下的openssl.cnf文件内容，在[ v3_ca ]段落中添加内容
-```ini
-subjectAltName = IP:xx.xx.xx.xx
-```
-> 注意：xx.xx.xx.xx修改为推理服务器的IP地址
-> 
-3.生成服务器密钥
-```shell
-openssl genrsa -aes-256-ofb -out example_key.pem 4096
-```
-> 注意：在这个阶段需要用户输入保护密钥的密码，此密码由用户自己记住，并且输入的密码强度需满足需求，具体的密码强度需求见下面的启动评估服务器章节
-> 
-4.生成证书请求文件
-```shell
-openssl req -new -key example_key.pem -out example.csr -extensions v3_ca \
--config openssl.cnf
-```
-5.生成自签名证书
-```shell
-openssl x509 -req -days 365 -in example.csr -signkey example_key.pem \
--out example_crt.pem -extensions v3_ca -extfile openssl.cnf
-```
-6.设置密钥/证书权限
-为了确保系统安全，需要正确配置密钥/证书文件的权限，用户可以使用如下命令进行配置
-```shell
-sudo chmod 600 example_key.pem example_crt.pem
-```
+执行如下脚本，生成评估服务器所使用的证书的加密私钥，执行该命令时，会提示输入加密密码，密码的强度要求如下：
 
-#### 评估服务器配置https密钥和证书
-将example_key.pem和example_crt.pem拷贝到```~/.vega```文件夹下
-
-修改配置文件`~/.vega/vega.ini` 配置密钥和证书
-```ini
-[security]
-enable = True  # 需要配置成True才能启用https加密通信
-
-[https]
-cert_pem_file = /home/<username>/.vega/example_crt.pem  # 修改username和证书文件名
-secret_key_file = /home/<username>/.vega/example_key.pem  # 修改username和密钥文件名
-```
-
-
-#### 评估服务器配置访问频率
-配置文件`~/.vega/vega.ini` 配置访问频率,默认限制每分钟最大100次访问
-```ini
-[limit]
-request_frequency_limit=5/minute # 配置为每分钟最大5次访问
-```
-
-#### 评估服务器配置请求大小限制
-配置文件`~/.vega/vega.ini` 配置请求大小限制，可以控制上传文件大小，默认配置 1G
-```ini
-[limit]
-max_content_length=100000 # 配置请求大小最大100K 
-```
-
-#### 评估服务器配置白名单，仅可信的服务器连接评估服务器
-1. linux 白名单配置
-    * 配置白名单：
-        ```
-        sudo iptables -I INPUT -p tcp --dport 评估端口 -j DROP
-        sudo iptables -I INPUT -s 白名单IP地址1 -p tcp --dport 评估端口 -j ACCEPT
-        sudo iptables -I INPUT -s 白名单IP地址2 -p tcp --dport 评估端口 -j ACCEPT
-        sudo iptables -I INPUT -s 白名单IP地址3 -p tcp --dport 评估端口 -j ACCEPT
-        sudo iptables -I INPUT -s 白名单IP地址4 -p tcp --dport 评估端口 -j ACCEPT
-       ```
-    * 如果需要从白名单中删除某一项
-        1. 查询白名单 ```sudo iptables -L -n --line-number```
-        2. 删除白名单 ```sudo iptables -D INPUT 查询的对应行编号```
-
-2. 配置文件 `.vega/vega.ini` 配置白名单
-    * 在配置中的 limit.white_list 中配置白名单，用逗号分隔
-    ```ini
-    [limit]
-    white_list=127.0.0.1,10.174.183.95
-    ```
-
-#### 启动评估服务器
-在配置了以上安全配置项之后，用户用以下命令启动评估服务器
-
-```vega-evaluate_service-service -i {your_ip_adress} -w {your_work_path}```
-
-其中`-i`参数指定当前使用的服务器的ip地址， 
-`-w`参数指定工作路径， 程序运行时的中间文件将存储在该目录下，请使用绝对路径。 其他可选参数的设置可查看该命令的帮助信息， 一般情况下建议采用默认值。
-
-在评估服务器启动时需要用户输入服务器密钥对应的密码（在生成密钥时输入的密码），系统会检查用户密码的强度，如果密码强度不符合需求，将会提示用户并自动退出。密码强度要求如下：
-```
 1. 密码长度大于等于8位
 2. 必须包含至少1位大写字母
 3. 必须包含至少1位小写字母
 4. 必须包含至少1位数字
-```
-
-## 训练服务器
-### 训练服务器安全配置
-训练服务器需要配置推理服务器的证书信息，才能正常向推理服务器发送请求进行推理。用户可以按照如下方法进行配置：
-
-修改配置文件`~/.vega/vega.ini` 配置密钥和证书
-```ini
-[security]
-enable = True  # 需要配置成True才能启用https加密通信
-
-[https]
-cert_pem_file = /home/<username>/.vega/example_crt.pem  # 修改username和证书文件名
-```
-> 注意：这里的example_crt.pem为上面的步骤中生成的证书文件，用户需要手动将该证书文件拷贝到训练节点的对应目录下。
-
-### 训练服务器防火墙设置
-训练节点在进行多卡训练时需要启动dask和zmq服务，这些服务会随机监听本地127.0.0.1的27000 - 34000 端口。为了保护用户的服务不被恶意攻击，可以通过如下方式配置防火墙保护这些端口:
 
 ```shell
-iptables -I OUTPUT -p tcp -m owner --uid-owner "user_id" -d 127.0.0.1 --match multiport --dports 27000:34000 -j ACCEPT
-iptables -A OUTPUT -p tcp --match multiport -d 127.0.0.1 --dports 27000:34000 -j DROP
+openssl genrsa -aes-256-ofb -out server.key 4096
 ```
-其中```"user_id"```需要用户执行命令```id "username"```查看用户的id并镜像替换。
-> 注意：该配置限制了所有其他用户对端口27000-34000的访问，在多用户环境下如果其他用户也需要运行vega训练任务，需要使用其他用户的id去运行第一条命令，以便使该用户添加到防火墙的白名单中。
-> 
 
+然后再执行如下命令，生成证书，并删除临时文件：
+
+```shell
+openssl req -new -key server.key -out server.csr -extensions v3_ca -subj "/C=<country>/ST=<province>/L=<city>/O=<organization>/OU=<group>/CN=<cn>"
+openssl x509 -req -in server.csr -CA ca.crt -CAkey ca.key -CAcreateserial -out server.crt
+rm server.csr
+```
+
+执行如下脚本生成评估服务客户端所使用的证书的加密私钥，执行该命令时，会提示输入加密密码，密码的强度要求如服务器端私钥，且和服务器段私钥密码不同，请记录好改密码，后继还需使用：
+
+```shell
+openssl genrsa -aes-256-ofb -out client.key 4096
+```
+
+然后再执行如下命令，生成证书，并删除临时文件：
+
+```shell
+openssl req -new -key client.key -out client.csr -extensions v3_ca -subj "/C=<country>/ST=<province>/L=<city>/O=<organization>/OU=<group>/CN=<cn>"
+openssl x509 -req -in client.csr -CA ca.crt -CAkey ca.key -CAcreateserial -out client.crt
+rm client.csr
+```
+
+### 3.2 生成普通证书
+
+执行如下脚本，生成评估服务器端和客户端使用的证书的私钥和证书：
+
+```shell
+openssl genrsa -out server.key 4096
+openssl req -new -key server.key -out server.csr -extensions v3_ca  -subj "/C=<country>/ST=<province>/L=<city>/O=<organization>/OU=<group>/CN=<cn>"
+openssl x509 -req -in server.csr -CA ca.crt -CAkey ca.key -CAcreateserial -out server.crt
+rm server.csr
+
+openssl genrsa -out client.key 4096
+openssl req -new -key client.key -out client.csr -extensions v3_ca  -subj "/C=<country>/ST=<province>/L=<city>/O=<organization>/OU=<group>/CN=<cn>"
+openssl x509 -req -in client.csr -CA ca.crt -CAkey ca.key -CAcreateserial -out client.crt
+rm client.csr
+```
+
+## 4. 生成Dask使用的证书
+
+执行如下脚本，生成Dask服务器端和客户端使用的证书的私钥和证书：
+
+```shell
+openssl genrsa -out server_dask.key 4096
+openssl req -new -key server_dask.key -out server_dask.csr -extensions v3_ca  -subj "/C=<country>/ST=<province>/L=<city>/O=<organization>/OU=<group>/CN=<cn>"
+openssl x509 -req -in server_dask.csr -CA ca.crt -CAkey ca.key -CAcreateserial -out server_dask.crt
+rm server_dask.csr
+
+openssl genrsa -out client_dask.key 4096
+openssl req -new -key client_dask.key -out client_dask.csr -extensions v3_ca  -subj "/C=<country>/ST=<province>/L=<city>/O=<organization>/OU=<group>/CN=<cn>"
+openssl x509 -req -in client_dask.csr -CA ca.crt -CAkey ca.key -CAcreateserial -out client_dask.crt
+rm client_dask.csr
+```
+
+删除CA私钥：
+
+```shell
+rm ca.key
+```
+
+## 5. 加密私钥口令
+
+若加密服务器使用加密证书，则需要执行本章节余下步骤，若使用普通证书，则跳过该章节。
+
+加密生成评估服务的服务器端和客户端的私钥口令，需要安装华为公司KMC安全组件，并将该安全组件动态链接库所在的目录添加到`LD_LIBRARY_PATH`中。
+
+```shell
+export LD_LIBRARY_PATH=<Directory where the KMC dynamic link library is located>:$LD_LIBRARY_PATH
+```
+
+接下来安装Vega，使用Vega的密码加密工具调用KMC安全组件对密码加密。
+在执行如下命令时，请输入在生成私钥时输入的口令，该命令会生成加密后的口令，请注意保存，在配置文件中会使用到这两个加密后的口令：
+
+```shell
+vega-encrypt_key --cert=server.crt --key=server.key --key_component_1=ksmaster_server.dat --key_component_2=ksstandby_server.dat
+vega-encrypt_key --cert=client.crt --key=client.key --key_component_1=ksmaster_client.dat --key_component_2=ksstandby_client.dat
+```
+
+## 6. 配置安全配置文件
+
+请在当前用户的主目录下创建`.vega`目录，并将如上生成的秘钥、证书、加密材料等，拷贝到该目录下，并改变权限：
+
+```shell
+mkdir ~/.vega
+mv * ~/.vega/
+chmod -R 600 ~/.vega
+```
+
+说明：
+
+1. 如上的秘钥、证书、加密材料也可以放到其他目录位置，注意访问权限要设置为`600`，并在后继的配置文件中同步修改该文件的位置。
+2. 在训练集群上，需要保留`ca.crt`、`client.key`、`client.crt`、`ksmaster_client.dat`、`ksstandby_client.dat`、`server_dask.key`、`server_dask.crt`、`client_dask.key`、`client_dask.crt`，并删除其他文件。
+3. 评估服务上，需要保留`ca.crt`、`server.key`、`server.crt`、`ksmaster_server.dat`、`ksstandby_server.dat`，并删除其他文件。
+
+在`~/.vega`目录下创建`server.ini`和`client.ini`。
+
+在训练集群中，需要配置`~/.vega/server.ini`和`~/.vega/client.ini`：
+
+server.ini:
+
+```ini
+[security]
+    ca_cert=<~/.vega/car.crt>
+    server_cert_dask=<~/.vega/server_dask.crt>
+    server_secret_key_dask=<~/.vega/server_dask.key>
+    client_cert_dask=<~/.vega/client_dask.crt>
+    client_secret_key_dask=<~/.vega/ client_dask.key>
+```
+
+client.ini:
+
+```ini
+[security]
+    ca_cert=<~/.vega/car.crt>
+    client_cert=<~/.vega/client.crt>
+    client_secret_key=<~/.vega/client.key>
+    encrypted_password=<加密后的client端的口令>       #如果使用普通证书， 此项配置为空
+    key_component_1=<~/.vega/ksmaster_client.dat>  #如果使用普通证书， 此项配置为空
+    key_component_2=<~/.vega/ksstandby_client.dat> #如果使用普通证书， 此项配置为空
+```
+
+在评估服务器上，需要配置`~/.vega/vega.ini`：
+
+```ini
+[security]
+ca_cert=<~/.vega/car.crt>
+server_cert=<~/.vega/server.crt>
+server_secret_key=<~/.vega/server.key>
+encrypted_password=<加密后的server端的口令>       #如果使用普通证书， 此项配置为空
+key_component_1=<~/.vega/ksmaster_server.dat>  #如果使用普通证书， 此项配置为空
+key_component_2=<~/.vega/ksstandby_server.dat> #如果使用普通证书， 此项配置为空
+```
+
+## 7. 配置评估服务守护服务
+
+使用systemctl管理评估服务器进程，当进程出现异常时自动重启，保证评估服务器连续性。
+
+首先创建一个启动评估服务的脚本`run_evaluate_service.sh`，内容如下，注意替换`<ip>`、`<path>`为真实IP和目录：
+
+```shell
+vega-evaluate_service-service -i <ip> -w <path>
+```
+
+然后再创建一个守护服务的文件`evaluate-service`，脚本内容如下，注意替换为真实的脚本位置：
+
+```ini
+[Unit]
+    Description=Vega Evaluate Service Daemon
+[Service]
+    Type=forking
+    ExecStart=/<your_run_script_path>/run.sh
+    Restart=always
+    RestartSec=60
+[Install]
+    WantedBy=multi-user.target
+```
+
+然后将`evaluate-service`拷贝到目录`/usr/lib/systemd/system`中，并启动该服务：
+
+```shell
+sudo cp evaluate-service /usr/lib/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl start evaluate-service
+```
+
+## 8. 安装Dask和distributed
+
+安装Vega时，会自动安装Dask和Distributed的最新版本，我们发现在当前版本中Distributed关闭dash board时存在bug，需要执行如下命令，安装如下版本的这两个组件：
+
+```shell
+pip3 install --user dask==2.11.0
+pip3 install --user distributed==2.11.0
+```
+
+## 9. 配置HCCL白名单
+
+请参考Ascend提供的[配置指导](https://support.huawei.com/enterprise/zh/doc/EDOC1100206668/8e964064)。
+
+## 10. 注意事项
+
+### 10.1 模型风险
+
+对于AI框架来说，模型就是程序，模型可能会读写文件、发送网络数据。例如Tensorflow提供了本地操作API tf.read_file, tf.write_file，返回值是一个operation，可以被Tensorflow直接执行。
+因此对于未知来源的模型，请谨慎使用，使用前应该排查该模型是否存在恶意操作，消除安全隐患。
+
+### 10.2 运行脚本风险
+
+Vega提供的script_runner功能可以调用外部脚本进行超参优化，请确认脚本来源，确保不存在恶意操作，谨慎运行未知来源脚本。
+
+### 10.3 KMC组件不支持多个用户同时使用
+
+若使用KMC组件对私钥密码加密，需要注意KMC组件不支持不同的用户同时使用KMC组件。若需要切换用户，需要在root用户下，使用如下命令查询当前信号量：
+
+```bash
+ipcs
+```
+
+然后删除查询到的当前所有的信号量：
+
+```bash
+ipcrm -S '<信号量>'
+```

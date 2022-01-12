@@ -1,12 +1,18 @@
 # -*- coding: utf-8 -*-
 
 # Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the MIT License.
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# MIT License for more details.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 """Prune operators."""
 import numpy as np
@@ -33,7 +39,7 @@ def get_shape(layer):
         return getattr(layer, para_name).default_input.shape
 
 
-def is_ops_instance(layer, name):
+def _is_ops_instance(layer, name):
     """Get weight shape."""
     if vega.is_tf_backend():
         return layer.name.find(name) > 0
@@ -41,7 +47,7 @@ def is_ops_instance(layer, name):
         return layer.__class__.__name__ == name
 
 
-def get_named_modules(layer):
+def _get_named_modules(layer):
     """Get named modules."""
     if vega.is_tf_backend():
         return [(op.name, op) for op in layer]
@@ -51,7 +57,7 @@ def get_named_modules(layer):
         return layer._children_scope_recursive()
 
 
-def parse_module_name(name, module):
+def _parse_module_name(name, module):
     """Parse the module name of mindspore."""
     if vega.is_ms_backend():
         while (list(module.cells()) != []):
@@ -205,8 +211,8 @@ class PruneResnet(object):
     def apply(self, chn_node_mask, chn_mask):
         """Apply mask to resnet."""
         end_mask = []
-        for name, m1 in get_named_modules(self.layer):
-            name, m1 = parse_module_name(name, m1)
+        for name, m1 in _get_named_modules(self.layer):
+            name, m1 = _parse_module_name(name, m1)
             if name.startswith('backbone.init_block'):
                 if name.endswith('conv'):
                     end_mask = chn_node_mask[0]
@@ -219,7 +225,7 @@ class PruneResnet(object):
                     continue
                 block_idx = int(parsed_name[2][-1])
                 layer_idx = block_idx + 1
-                if is_ops_instance(m1, 'Conv2d'):
+                if _is_ops_instance(m1, 'Conv2d'):
                     if int(parsed_name[4]) == 0 and parsed_name[5].startswith('conv1'):
                         start_mask = chn_node_mask[layer_idx - 1]
                         end_mask = chn_mask[block_idx]
@@ -227,14 +233,13 @@ class PruneResnet(object):
                     elif int(parsed_name[4]) == 0 and parsed_name[5].startswith('conv2'):
                         start_mask = end_mask
                         end_mask = chn_node_mask[layer_idx]
-                    # shortcut
                     elif int(parsed_name[4]) == 1 and parsed_name[5].startswith('conv1'):
                         start_mask = chn_node_mask[layer_idx - 1]
                         end_mask = chn_node_mask[layer_idx]
                     PruneConv2D(m1).apply(end_mask, start_mask)
-                elif is_ops_instance(m1, 'BatchNorm2d'):
+                elif _is_ops_instance(m1, 'BatchNorm2d'):
                     PruneBatchNorm(m1).apply(end_mask)
-                elif is_ops_instance(m1, 'Linear'):
+                elif _is_ops_instance(m1, 'Linear'):
                     PruneLinear(m1).apply(end_mask)
         return self.layer
 
@@ -248,9 +253,8 @@ class PruneMobileNet(PruneResnet):
     def apply(self, chn_mask):
         """Apply mask to resnet."""
         end_mask = []
-        # cur_idx = 1
-        for idx, (name, m1) in enumerate(get_named_modules(self.layer)):
-            name, m1 = parse_module_name(name, m1)
+        for idx, (name, m1) in enumerate(_get_named_modules(self.layer)):
+            name, m1 = _parse_module_name(name, m1)
             if name.startswith('features'):
                 if len(name.split('.')) == 3:
                     module_length = len(m1._modules)
@@ -262,7 +266,7 @@ class PruneMobileNet(PruneResnet):
                         start_mask = chn_mask[sequence_idx - 1] if sequence_idx > 0 else None
                         end_mask = chn_mask[sequence_idx]
                     elif block_idx < module_length - 2:
-                        if is_ops_instance(m1, 'Conv2d'):
+                        if _is_ops_instance(m1, 'Conv2d'):
                             continue
                         end_mask = chn_mask[sequence_idx]
                         start_mask = end_mask
@@ -270,10 +274,10 @@ class PruneMobileNet(PruneResnet):
                         start_mask = end_mask
                         end_mask = chn_mask[sequence_idx + 1]
 
-                    if is_ops_instance(m1, 'Conv2d'):
+                    if _is_ops_instance(m1, 'Conv2d'):
                         PruneConv2D(m1).apply(end_mask, start_mask)
-                    elif is_ops_instance(m1, 'BatchNorm2d'):
+                    elif _is_ops_instance(m1, 'BatchNorm2d'):
                         PruneBatchNorm(m1).apply(end_mask)
-            elif name.startswith('classifier') and is_ops_instance(m1, 'Linear'):
+            elif name.startswith('classifier') and _is_ops_instance(m1, 'Linear'):
                 PruneLinear(m1).apply(end_mask)
         return self.layer

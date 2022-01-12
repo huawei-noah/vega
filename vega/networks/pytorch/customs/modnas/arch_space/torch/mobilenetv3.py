@@ -1,7 +1,14 @@
-"""MobileNetV3 architectures.
+# -*- coding:utf-8 -*-
 
-modified from https://github.com/d-li14/mobilenetv3.pytorch
-"""
+# This file is adapted from the mobilenetv3.pytorch library at
+# https://github.com/d-li14/mobilenetv3.pytorch
+
+# 2020.6.29-Changed for Modular-NAS search space.
+#         Huawei Technologies Co., Ltd. <linyunfeng5@huawei.com>
+# Copyright 2020 Huawei Technologies Co., Ltd.
+
+"""MobileNetV3 architectures."""
+
 import torch.nn as nn
 import torch.nn.functional as F
 from modnas.registry.construct import DefaultMixedOpConstructor, DefaultSlotTraversalConstructor,\
@@ -121,7 +128,8 @@ class MobileInvertedResidualBlock(nn.Module):
 
     def __init__(self, chn_in, chn, chn_out, kernel_size, stride, use_se, use_hs):
         super(MobileInvertedResidualBlock, self).__init__()
-        assert stride in [1, 2]
+        if stride not in [1, 2]:
+            raise ValueError('unknown stride: %s' % repr(stride))
         self.identity = stride == 1 and chn_in == chn_out
         self.conv = Slot(_chn_in=chn_in,
                          _chn_out=chn_out,
@@ -147,7 +155,8 @@ class MobileNetV3(nn.Module):
         super(MobileNetV3, self).__init__()
         # setting of inverted residual blocks
         self.cfgs = cfgs
-        assert mode in ['large', 'small']
+        if mode not in ['large', 'small']:
+            raise ValueError('unknown mode: %s' % repr(mode))
         block = MobileInvertedResidualBlock
         # building layers
         layers = []

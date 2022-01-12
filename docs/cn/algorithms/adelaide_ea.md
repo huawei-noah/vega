@@ -98,16 +98,4 @@ mutate:
 
 ### 4. 算法输出
 
-输出结果包括一系列.pth文件（训练到配置文件中```num_iter```迭代次数的模型）、```result.csv```文件以及```pareto_front.csv```文件。```result.csv```文件记录了所有搜索模型，```pareto_front.csv```文件记录了所有```pareto_front```模型。.csv文件中包含了```encoding```、```flops```、```parameters```以及```mIOU```：
-
-1. ```encoding```：19位字符串表示了模型的结构，19位字符串以“_”为结尾（避免以“0”开头的```encoding```造成记录错误）。
-
-2. ```flops```：记录的是模型的Macc值，如：1371603728表示的就是1.277G。
-
-3. ```parameters```：记录的是模型的parameters值，如：3162900表示的就是3.016M。
-
-4. ```mIOU```：记录的是训练到配置文件中num_iter迭代次数后的模型mIOU。
-
-## 5. Benchmark
-
-请参考 [adelaide_ea.yml](https://github.com/huawei-noah/vega/blob/master/examples/nas/adelaide_ea/adelaide_ea.yml)。
+输出结果包括预训练模型、架构描述文件、和性能结果文件，其中架构描述文件中，`encoding`使用19位字符串表示了模型的结构，19位字符串以“_”为结尾（避免以“0”开头的`encoding`造成记录错误）。

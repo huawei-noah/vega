@@ -1,12 +1,18 @@
 # -*- coding: utf-8 -*-
 
 # Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the MIT License.
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# MIT License for more details.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 """The main part of the cluster framework.
 
@@ -24,15 +30,15 @@ import glob
 from threading import Lock
 from queue import Queue
 from vega.trainer import utils
-from .distribution import ClusterDaskDistributor
 from vega.common import TaskOps, FileOps
 from vega.common.general import General
-from .worker_env import WorkerEnv
-from .dask_env import DaskEnv
 from vega.trainer.deserialize import pickle_worker
 from vega.trainer.run_remote_worker import run_remote_worker
-from .master_base import MasterBase
 from vega.report import ReportClient
+from .distribution import ClusterDaskDistributor
+from .worker_env import WorkerEnv
+from .dask_env import DaskEnv
+from .master_base import MasterBase
 
 
 class Master(MasterBase):

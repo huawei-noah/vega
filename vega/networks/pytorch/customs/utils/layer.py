@@ -1,22 +1,28 @@
 # -*- coding:utf-8 -*-
 
 # Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the MIT License.
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# MIT License for more details.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 """Common module in NAGO."""
 import torch
 from torch import nn
 from torch.nn.functional import adaptive_avg_pool2d
 from vega.common import ClassType, ClassFactory
+from vega.networks.pytorch.heads.auxiliary_head import AuxiliaryHead
 from .ops import depthwise_separable_conv_general, Triplet_unit, PassThrough, BoundedScalarMultiply
 from .logical_graph import LogicalMasterGraph, LogicalCellGraph, LogicalOpGraph, EdgeMerge, \
     LogicalOperation, Ops
-from vega.networks.pytorch.heads.auxiliary_head import AuxiliaryHead
 
 
 def diff_size(x, size):

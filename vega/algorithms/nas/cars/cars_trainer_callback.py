@@ -1,18 +1,25 @@
 # -*- coding: utf-8 -*-
 
 # Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the MIT License.
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# MIT License for more details.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 """CARS trainer."""
-import numpy as np
-from collections import namedtuple
+
 import logging
+from collections import namedtuple
 import vega
+import numpy as np
 from vega.common import ClassFactory, ClassType
 from vega.core.search_space import SearchSpace
 from vega.core.search_algs import SearchAlgorithm
@@ -43,7 +50,6 @@ class CARSTrainerCallback(Callback):
 
     def before_train(self, logs=None):
         """Be called before the training process."""
-        # Use zero valid_interval to supress default valid step
         self.trainer.valid_interval = 0
         self.trainer.config.report_on_epoch = True
         if vega.is_torch_backend():
@@ -52,7 +58,6 @@ class CARSTrainerCallback(Callback):
         self.search_alg = SearchAlgorithm(SearchSpace())
         self.alg_policy = self.search_alg.config.policy
         self.set_algorithm_model(self.trainer.model)
-        # setup alphas
         n_individual = self.alg_policy.num_individual
         self.alphas = np.stack([self.search_alg.random_sample_path()
                                 for i in range(n_individual)], axis=0)
@@ -79,7 +84,6 @@ class CARSTrainerCallback(Callback):
                     alpha = torch.from_numpy(self.search_alg.random_sample_path()).cuda()
                 elif vega.is_npu_device():
                     alpha = torch.from_numpy(self.search_alg.random_sample_path()).to(vega.get_devices())
-                # logits = self.trainer.model.forward_random(input)
             else:
                 alpha = alphas[i]
             logits = self.trainer.model(input, alpha=alpha)

@@ -1,29 +1,35 @@
 # -*- coding: utf-8 -*-
 
 # Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the MIT License.
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# MIT License for more details.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 """Mindspore Trainer."""
 
 import os
+import logging
+import vega
 from mindspore import context
 from mindspore.train import Model as MsModel
 from mindspore.train.callback import ModelCheckpoint, CheckpointConfig, LossMonitor, TimeMonitor
 from mindspore.train.loss_scale_manager import FixedLossScaleManager
 from mindspore import save_checkpoint
 from vega.trainer.callbacks.ms_callbacks import EvalCallBack
-import vega
 from vega.trainer.trainer_base import TrainerBase
 from vega.trainer.modules.optimizer import Optimizer
 from vega.trainer.modules.lr_schedulers import LrScheduler
 from vega.modules.loss import Loss
 from vega.common import ClassFactory, ClassType
-import logging
 from vega.common.general import General
 
 
@@ -44,7 +50,7 @@ class TrainerMs(TrainerBase):
             self.optimizer = Optimizer()(model=self.model, dynamic_lr=dynamic_lr, no_decay_params=no_decay_params)
         else:
             self.optimizer = Optimizer()(model=self.model, no_decay_params=no_decay_params)
-        logging.info(f"The optimizer is {self.optimizer}.")
+        logging.debug(f"The optimizer is {self.optimizer}.")
         if hasattr(self.model, 'add_loss'):
             loss_cls = Loss()()
             self.model.add_loss(loss_cls)

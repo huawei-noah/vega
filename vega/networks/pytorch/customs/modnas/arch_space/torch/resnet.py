@@ -1,14 +1,21 @@
-"""ResNet architectures.
+# -*- coding:utf-8 -*-
 
-modified from https://github.com/pytorch/vision/blob/master/torchvision/models/resnet.py
-"""
+# This file is adapted from the torchvision library at
+# https://github.com/pytorch/vision/blob/master/torchvision/models/resnet.py
+
+# 2020.6.29-Changed for Modular-NAS search space.
+#         Huawei Technologies Co., Ltd. <linyunfeng5@huawei.com>
+# Copyright 2020 Huawei Technologies Co., Ltd.
+
+"""ResNet architectures."""
+
 from functools import partial
 import torch.nn as nn
-from ..slot import Slot
 from modnas.registry.construct import DefaultSlotTraversalConstructor
 from modnas.registry.construct import register as register_constructor
 from modnas.registry.arch_space import register
 from ..ops import Identity
+from ..slot import Slot
 
 
 def conv3x3(in_planes, out_planes, stride=1, groups=1):

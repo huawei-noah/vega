@@ -1,27 +1,32 @@
 # -*- coding:utf-8 -*-
 
 # Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the MIT License.
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# MIT License for more details.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 """Horovod fully train."""
 
 import os
 import logging
 import subprocess
-import pickle
-import vega
-from .train_pipe_step import TrainPipeStep
 from vega.common.general import General
 from vega.common.class_factory import ClassFactory, ClassType
 from vega.common import Status
 from vega.report import ReportServer
 from vega.core.pipeline.conf import PipeStepConfig
 from vega.trainer.conf import TrainerConfig
+from vega.common import FileOps
+from .train_pipe_step import TrainPipeStep
 
 logger = logging.getLogger(__name__)
 
@@ -62,20 +67,13 @@ class HorovodTrainStep(TrainPipeStep):
                       'pipe_step_config': PipeStepConfig().to_dict(),
                       'model_desc': trainer.model_desc,
                       'worker_id': trainer.worker_id}
-        with open(cf_file, 'wb') as f:
-            pickle.dump(cf_content, f)
-        if os.environ.get('DLS_TASK_NUMBER') is None:
-            # local cluster
-            worker_ips = '127.0.0.1'
-            if General.cluster.master_ip is not None and General.cluster.master_ip != '127.0.0.1':
-                worker_ips = General.cluster.master_ip
-                for ip in General.cluster.slaves:
-                    worker_ips = worker_ips + ',' + ip
-            cmd = ['bash', f'{pwd_dir}/horovod/run_horovod_train.sh',
-                   str(General.cluster.num_workers), cf_file, worker_ips, General.python_command]
-        else:
-            # Roma
-            cmd = ['bash', '/home/work/run_horovod_train.sh',
-                   str(General.cluster.num_workers), cf_file]
+        FileOps.dump_pickle(cf_content, cf_file)
+        worker_ips = '127.0.0.1'
+        if General.cluster.master_ip is not None and General.cluster.master_ip != '127.0.0.1':
+            worker_ips = General.cluster.master_ip
+            for ip in General.cluster.slaves:
+                worker_ips = worker_ips + ',' + ip
+        cmd = ['bash', f'{pwd_dir}/horovod/run_horovod_train.sh',
+               str(General.cluster.num_workers), cf_file, worker_ips, General.python_command]
         proc = subprocess.Popen(cmd, env=os.environ)
         proc.wait()

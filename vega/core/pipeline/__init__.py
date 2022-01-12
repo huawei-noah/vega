@@ -1,7 +1,7 @@
 # -*- coding:utf-8 -*-
+from vega.common.class_factory import ClassFactory
 from .pipe_step import PipeStep
 from .pipeline import Pipeline
-from vega.common.class_factory import ClassFactory
 
 
 ClassFactory.lazy_register("vega.core.pipeline", {

@@ -1,27 +1,34 @@
 # -*- coding:utf-8 -*-
 
 # Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the MIT License.
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# MIT License for more details.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 """search algorithm for ESR_EA."""
+
 import csv
 import logging
 import os
+import random
 from bisect import bisect_right
-from random import random, sample
 import numpy as np
 import pandas as pd
 from vega.common.general import General
-from .conf import ESRConfig
 from vega.common import FileOps
 from vega.common import ClassFactory, ClassType
 from vega.core.search_algs import SearchAlgorithm
 from .esr_ea_individual import ESRIndividual
+from .conf import ESRConfig
 
 
 @ClassFactory.register(ClassType.SEARCH_ALGORITHM)
@@ -161,7 +168,7 @@ class ESRSearch(SearchAlgorithm):
         fitness_all = np.asarray(fitness_all)
         if select_type == 'Tournament':
             for i in range(parent_num):
-                tourn = sample(range(len(popu_all)), 2)
+                tourn = random.sample(range(len(popu_all)), 2)
                 if fitness_all[tourn[0]] >= fitness_all[tourn[1]]:
                     parent[i].copy(popu_all[tourn[0]])
                     fitness_all[tourn[0]] = 0
@@ -173,7 +180,7 @@ class ESRSearch(SearchAlgorithm):
             eval_norm = eval_submean / sum(eval_submean)
             eva_threshold = np.cumsum(eval_norm)
             for i in range(parent_num):
-                ran = random()
+                ran = random.random()
                 selec_id = bisect_right(eva_threshold, ran)
                 parent[i].copy(popu_all[selec_id])
                 eval_submean[selec_id] = 0
@@ -202,7 +209,7 @@ class ESRSearch(SearchAlgorithm):
             if int(self.individual_num / 2) == len(self.elitism):
                 self.pop[i].copy(self.elitism[i])
             else:
-                self.pop[i].copy(sample(self.elitism, 1)[0])
+                self.pop[i].copy(random.sample(self.elitism, 1)[0])
             self.pop[i].mutation_using(self.mutation_rate)
             while self.pop[i].active_num < self.min_active:
                 self.pop[i].mutation_using(self.mutation_rate)

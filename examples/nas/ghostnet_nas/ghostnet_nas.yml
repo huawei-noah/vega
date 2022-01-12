@@ -1,0 +1,115 @@
+# general:
+#     quota: "flops < 5 and params < 4e10"
+pipeline: [nas, fully_train]
+
+nas:
+    pipe_step:
+        type: SearchPipeStep
+    search_algorithm:
+        type: BayesSearch
+        objective_keys: ['accuracy', 'params']
+        num_samples: 50
+
+    search_space:
+        hyperparameters:
+            -   key: network.block
+                type: CATEGORY
+                range: ['BasicBlock', 'Bottleneck']
+            -   key: network.stage1
+                type: INT
+                range: [2,10]
+            -   key: network.stage2
+                type: INT
+                range: [2,10]
+            -   key: network.stage3
+                type: INT
+                range: [2,20]
+            -   key: network.stage4
+                type: INT
+                range: [2,10]
+
+    model:
+        model_desc:
+            type: GhostNetNas
+            num_classes: 20
+
+    trainer:
+        type: Trainer
+        epochs: 1
+        mixup: True
+        optimizer:
+            type: SGD
+            params:
+                lr: 0.1
+                momentum: 0.9
+                weight_decay: !!float 1e-4
+        lr_scheduler:
+            type: MultiStepLR
+            by_epoch: True
+            params:
+                milestones: [50, 75, 90]
+                gamma: 0.1
+        loss:
+            type: CrossEntropyLoss
+            params:
+                sparse: True
+
+    dataset:
+        type: Cifar10
+        common:
+            data_path: /cache/datasets/cifar10/
+            batch_size: 64
+        train:
+            transforms:
+                -   type: Resize
+                    size: [256, 256]
+                -   type: RandomCrop
+                    size: [224, 224]
+                -   type: RandomHorizontalFlip
+                -   type: ToTensor
+                -   type: Normalize
+                    mean: [0.50, 0.5, 0.5]
+                    std: [0.50, 0.5, 0.5]
+        val:
+            transforms:
+                -   type: Resize
+                    size: [224, 224]
+                -   type: ToTensor
+                -   type: Normalize
+                    mean: [0.50, 0.5, 0.5]
+                    std: [0.50, 0.5, 0.5]
+        test:
+            transforms:
+                -   type: Resize
+                    size: [224, 224]
+                -   type: ToTensor
+                -   type: Normalize
+                    mean: [0.50, 0.5, 0.5]
+                    std: [0.50, 0.5, 0.5]
+
+
+fully_train:
+    pipe_step:
+        type: TrainPipeStep
+        models_folder: "{local_base_path}/output/nas/"
+    trainer:
+        type: Trainer
+        epochs: 100
+        mixup: True
+        optimizer:
+            type: SGD
+            params:
+                lr: 0.1
+                momentum: 0.9
+                weight_decay: !!float 1e-4
+        lr_scheduler:
+            type: CosineAnnealingLR
+            by_epoch: True
+            params:
+                T_max: 100
+        loss:
+            type: CrossEntropyLoss
+            params:
+                sparse: True
+    dataset:
+        ref: nas.dataset

@@ -1,12 +1,18 @@
 # -*- coding: utf-8 -*-
 
 # Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the MIT License.
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# MIT License for more details.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 """DARTS trainer."""
 import logging
@@ -56,10 +62,8 @@ class DartsTrainerCallback(Callback):
 
     def before_train_step(self, epoch, logs=None):
         """Be called before a batch training."""
-        # Get current train batch directly from logs
         train_batch = logs['train_batch']
         train_input, train_target = train_batch
-        # Prepare valid batch data by using valid loader from trainer
         try:
             valid_input, valid_target = next(self.valid_loader_iter)
         except Exception:
@@ -69,7 +73,6 @@ class DartsTrainerCallback(Callback):
             valid_input, valid_target = valid_input.to(int(self.device)), valid_target.to(int(self.device))
         else:
             valid_input, valid_target = valid_input.to(self.device), valid_target.to(self.device)
-        # Call arch search step
         self._train_arch_step(train_input, train_target, valid_input, valid_target)
 
     def after_epoch(self, epoch, logs=None):
@@ -100,7 +103,6 @@ class DartsTrainerCallback(Callback):
         dataset = tf.data.Dataset.zip((self.trainer.train_loader.input_fn(),
                                        self.trainer.valid_loader.input_fn()))
         dataset = dataset.map(lambda td, vd: map_to_dict(td, vd))
-        # dataset = dataset.prefetch(buffer_size=tf.contrib.data.AUTOTUNE)
         return dataset
 
     def model_fn(self, features, labels, mode):
@@ -111,7 +113,6 @@ class DartsTrainerCallback(Callback):
         if mode == tf.estimator.ModeKeys.TRAIN:
             features, valid_features = features['train'], features['valid']
             labels, valid_labels = labels['train'], labels['valid']
-            # update arch
             epoch = tf.cast(global_step, tf.float32) / tf.cast(len(self.trainer.train_loader), tf.float32)
             self.trainer.optimizer = Optimizer()(distributed=self.trainer.horovod)
             self.trainer.lr_scheduler = LrScheduler()(self.trainer.optimizer)
@@ -146,11 +147,9 @@ class DartsTrainerCallback(Callback):
         elif vega.is_tf_backend():
             sess_config = self.trainer._init_session_config()
             with tf.compat.v1.Session(config=sess_config) as sess:
-                # tf.reset_default_graph()
                 checkpoint_file = tf.train.latest_checkpoint(self.trainer.get_local_worker_path())
                 saver = tf.train.import_meta_graph("{}.meta".format(checkpoint_file))
                 saver.restore(sess, checkpoint_file)
-                # initializer is necessary here
                 sess.run(tf.global_variables_initializer())
                 arch_weights = self.model.arch_weights
                 arch_weights = [weight.eval() for weight in arch_weights]

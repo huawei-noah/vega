@@ -1,22 +1,28 @@
 # -*- coding:utf-8 -*-
 
 # Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the MIT License.
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# MIT License for more details.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 """The BiSeNet model."""
 import torch.nn as nn
 import torch.nn.functional as F
-from .segmentation.common import AttentionRefinement, FeatureFusion
-from .segmentation.evolveresnet import build_archs, build_spatial_path
-from .segmentation.weights import init_weight
 from vega.common import ClassType, ClassFactory
 from vega.modules.module import Module
 from vega.modules.operators import ConvBnRelu
+from .segmentation.common import AttentionRefinement, FeatureFusion
+from .segmentation.evolveresnet import build_archs, build_spatial_path
+from .segmentation.weights import init_weight
 
 
 @ClassFactory.register(ClassType.NETWORK)
@@ -33,7 +39,6 @@ class BiSeNet(Module):
         self.conv_channel = desc['conv_channel']
         self.norm_layer = desc['norm_layer']
         self.backone_args = desc['backbone_args']
-        # self.lr = desc['lr']
         self.encoding = desc['config']
         norm_type = self.norm_layer['norm_type']
         if norm_type == 'GN':

@@ -1,1 +1,1 @@
-from .graph_getter import *
+from .graph_getter import GraphGetter

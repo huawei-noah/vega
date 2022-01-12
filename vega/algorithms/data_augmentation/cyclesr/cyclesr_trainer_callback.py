@@ -1,12 +1,18 @@
 # -*- coding: utf-8 -*-
 
 # Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the MIT License.
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# MIT License for more details.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 """This is the class for cyclesr trainworker."""
 import datetime
@@ -14,10 +20,10 @@ import logging
 import itertools
 import os
 import time
-import numpy as np
-import torch
 import json
+import torch
 from tensorboardX import SummaryWriter
+import numpy as np
 import vega
 from vega.datasets import Adapter
 from vega.datasets.common.dataset import Dataset
@@ -32,9 +38,8 @@ from .utils import TensorNorm
 
 try:
     import horovod.torch as hvd
-except Exception:
-    # logging.warning("horovod not been installed, {}".format(str(e)))
-    pass
+except Exception as e:
+    logging.debug("horovod not been installed, {}".format(str(e)))
 # data-processing module
 from .utils import find_best_PSNR
 
@@ -137,27 +142,24 @@ class CyclesrTrainerCallback(Callback):
             model.set_mode('train')
             step = epoch * num_batches + batch_idx
             data_time.update(time.time() - end)
-            #######################################################################
             model.optimize_CycleSR(data, epoch)
 
             # caclute psnr during training
             losses = model.get_current_losses()
             for name, loss in losses.items():
-                writer.add_scalar("loss" + name, loss, step)  # store the loss in tensorboardX
+                writer.add_scalar("loss" + name, loss, step)
             batchsize = data['X'].size(0)
             loss_sr.update(losses['SR'], batchsize)
             loss_ga.update(losses['G'], batchsize)
             loss_cycA.update(losses['rec_X'], batchsize)
-            # logging.info("HR: {}. SR: {}".format(model.HR.data))
             if epoch < 6:
                 psnr = self.batch_psnr(model.HR.data, model.G_SR.data)
             else:
                 psnr = self.batch_psnr(model.HR.data, model.SR.data)
             PSNRes.update(psnr, batchsize)
-            writer.add_scalar("training_psnr", psnr, step)  # store the psnr
+            writer.add_scalar("training_psnr", psnr, step)
 
             batch_time.update(time.time() - end)
-            # print result
             if (batch_idx + 1) % print_freq == 0:
                 if not vega.is_gpu_device() or (vega.is_gpu_device() and self.trainer.is_chief):
                     logging.info('[epoch {0},iter {1}/{2}]\t'
@@ -214,11 +216,11 @@ class CyclesrTrainerCallback(Callback):
                     real_Y = img['Y'].cuda()
                     HR = img['HR'].cuda()
                 fake_Y = model.netG(real_X)  # G(X)
-                rec_X = model.netF(fake_Y)  # F(G(X))
+                rec_X = model.netF(fake_Y)   # F(G(X))
                 fake_X = model.netF(real_Y)  # F(Y)
-                rec_Y = model.netG(fake_X)  # G(F(Y))
+                rec_Y = model.netG(fake_X)   # G(F(Y))
 
-                G_SR = model.netSR(fake_Y)  # SR(G(X))
+                G_SR = model.netSR(fake_Y)   # SR(G(X))
                 writer.add_image("G_SR" + str(i), TensorNorm((G_SR[0])), epoch)
                 writer.add_image("HR" + str(i), TensorNorm((HR[0])), epoch)
                 writer.add_image("Real_bicubic" + str(i), TensorNorm((real_X[0])), epoch)
@@ -319,7 +321,6 @@ class CyclesrTrainerCallback(Callback):
             self._train(train_dataloader, writer, epoch, self.model, print_freq=self.cfg.print_freq)
             train_time += round(time.time() - start_train_time)
             # validation
-            ###############################################################################
             if epoch % self.cfg.eval_epoch == 0:
                 logging.info("==> Validng")
                 self._evalGAN(self.model, val_gan_imgs, epoch, writer)
@@ -359,9 +360,7 @@ class CyclesrTrainerCallback(Callback):
                     self.worker_path,
                     "model_{}.pth".format(name))
                 if vega.is_gpu_device() and torch.cuda.is_available():
-                    # torch.save(net.module.cpu().state_dict(), save_path)
                     torch.save(net.module.state_dict(), save_path)
-                    # net.cuda()
                     if best:
                         torch.save(net.module.state_dict(), best_file)
                 elif vega.is_npu_device():

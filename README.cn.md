@@ -9,13 +9,13 @@
 
 ---
 
-**Vega ver1.7.1 released**
+**Vega ver1.8.0 发布**
 
-- Bug修复:
+- 特性增强
 
-  - 增加评估服务最大尝试次数限制.
-  - 使用SafeLoader加载YAML文件.
-  - 增加评估服务输入参数异常处理.
+  - 安全增强，组件间通信支持安全协议。
+  - 提供独立的评估服务安装。
+  - 更新Auto-lane模型，提供auto-lane推理代码。
 
 ---
 
@@ -29,16 +29,6 @@ Vega是诺亚方舟实验室自研的AutoML算法工具链，有主要特点：
 4. 细粒度SearchSpace：可以自由定义网络搜索空间，提供了丰富的网络架构参数供搜索空间使用，可同时搜索网络架构参数和模型训练超参，并且该搜索空间可以同时适用于Pytorch、TensorFlow和MindSpore。
 5. 多Backend支持：支持PyTorch(GPU, Ascend 910), TensorFlow(GPU, Ascend 910), MindSpore(Ascend 910).。
 6. 支持昇腾平台：支持在Ascend 910搜索和训练，支持在Ascend 310上模型评估。
-
-## AutoML工具特性
-
-|  | 平台 | HPO算法 | NAS算法 | 端侧评估 | 模型过滤 | 统一网络 |
-| :--: | :-- | :-- | :-- | :-- | :-- | :-- |
-| **AutoGluon** | mxnet, PyTorch | Random Search, Bayesian, Hyper-Band | Random Search, RL | × | × | × |
-| **AutoKeras** | Keras | No Restrictions | Network Morphism | × | × | × |
-| **Model Search** | TensorFlow | No Restrictions | Random Search, Beam Search | × | × | × |
-| **NNI** | No Restrictions | Random Search and Grid Search, Bayesian, Annealing, Hyper-Band, Evolution, RL | Random Search, Gradient-Based,  One-Shot | × | × | × |
-| **Vega** | PyTorch, TensorFlow, MindSpore | Random Search, Grid Search, Bayesian, Hyper-Band, Evolution | Random Search, Gradient-Based, Evalution, One-Shot | Ascend 310, Kirin 980/990 | Quota (在NAS搜索中根据parameters, flops, latency过滤模型) | 提供同时用于PyTorch、TensorFlow和MindSpore的网络 |
 
 ## 算法列表
 
@@ -67,13 +57,11 @@ Vega是诺亚方舟实验室自研的AutoML算法工具链，有主要特点：
 
 ## 安装
 
-执行如下命令安装Vega和相关开源软件：
+执行如下命令安装Vega：
 
 ```bash
 pip3 install --user --upgrade noah-vega
 ```
-
-若需要在Ascend 910训练环境上安装，请联系我们。
 
 ## 使用
 
@@ -86,12 +74,18 @@ vega ./examples/nas/cars/cars.yml
 其中`cars.yml`中包含了pipeline、搜索算法、搜索空间、训练参数等定义。
 Vega提供了40+示例供参考：[示例](https://github.com/huawei-noah/vega/tree/master/examples)、[示例参考](./docs/cn/user/examples.md)、[配置参考](./docs/cn/user/config_reference.md)。
 
+安全模式适用于通信安全要求高的场景，在运行前请执行[安全配置](./docs/cn/security.md)：
+
+```bash
+vega ./examples/nas/cars/cars.yml -s
+```
+
 ## 参考
 
 | 对象 | 参考 |
 | :--: | :-- |
-| [**用户**<br>(用户指南)](./docs/cn/user/README.md) | [安装指导](./docs/cn/user/install.md)、[部署指导](./docs/cn/user/deployment.md)、[配置指导](./docs/cn/user/config_reference.md)、[示例参考](./docs/cn/user/examples.md)、[评估服务](./docs/cn/user/evaluate_service.md)、任务参考([分类](./docs/cn/tasks/classification.md)、[检测](./docs/cn/tasks/detection.md)、[分割](./docs/cn/tasks/segmentation.md)、[超分](./docs/cn/tasks/segmentation.md)) |
-| [**开发者**<br>(开发者指南)](./docs/cn/developer/README.md) | [开发者指导](./docs/cn/developer/developer_guide.md)、[快速入门指导](./docs/cn/developer/quick_start.md)、[数据集指导](./docs/cn/developer/datasets.md)、[算法开发指导](./docs/cn/developer/new_algorithm.md)、[细粒度搜索空间指导](./docs/cn/developer/fine_grained_space.md) |
+| **用户** | [安装指导](./docs/cn/user/install.md)、[部署指导](./docs/cn/user/deployment.md)、[安全配置](./docs/cn/security.md)、[配置指导](./docs/cn/user/config_reference.md)、[示例参考](./docs/cn/user/examples.md)、[评估服务](./evaluate_service/docs/cn/evaluate_service.md) |
+| **开发者** | [开发者指导](./docs/cn/developer/developer_guide.md)、[快速入门指导](./docs/cn/developer/quick_start.md)、[数据集指导](./docs/cn/developer/datasets.md)、[算法开发指导](./docs/cn/developer/new_algorithm.md) |
 
 ## FAQ
 
@@ -113,4 +107,3 @@ Vega提供了40+示例供参考：[示例](https://github.com/huawei-noah/vega/t
 ## 合作和贡献
 
 欢迎大家使用Vega，有任何疑问、求助、修改bug、贡献算法、完善文档，请在社区提交issue，我们会及时回复沟通交流。
-欢迎大家加入我们的QQ群: **833345709** 。

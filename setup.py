@@ -1,16 +1,22 @@
 # -*- coding: utf-8 -*-
 
 # Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the MIT License.
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# MIT License for more details.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 """Setuptools of vega."""
-import setuptools
 import sys
+import setuptools
 
 
 if sys.version_info < (3, 6):
@@ -23,8 +29,8 @@ with open("RELEASE.md", "r") as fh:
 
 setuptools.setup(
     name="noah-vega",
-    version="1.7.1", 
-    packages=["vega", "evaluate_service"],
+    version="1.8.0",
+    packages=["vega"],
     include_package_data=True,
     python_requires=">=3.6",
     author="Huawei Noah's Ark Lab",
@@ -32,45 +38,36 @@ setuptools.setup(
     description="AutoML Toolkit",
     long_description=long_desc,
     long_description_content_type="text/markdown",
-    license="MIT",
+    license="Apache License 2.0",
     url="https://github.com/huawei-noah/vega",
-    # packages=setuptools.find_packages(),
     classifiers=[
         "Programming Language :: Python :: 3",
-        "License :: OSI Approved :: MIT License",
+        "License :: OSI Approved :: Apache Software License",
         "Operating System :: POSIX :: Linux",
     ],
     install_requires=[
-        "py-dag",
-        "pareto",
         "thop",
         "psutil",
         "pillow",
         "pyzmq",
-        "tf-slim",
-        "pandas==0.25.2",
-        "distributed==2.18.0",
-        "click==7.1.2",
-        "PyYAML==5.1.2",
-        "numpy==1.18.5",
-        "scipy==1.5.3",
-        "scikit-learn==0.21.3",
-        "opencv-python-headless==4.3.0.38",
-        "tensorboardX==1.9",
-        "tf-models-official==0.0.3.dev1",
-        "torch==1.3.0",
-        "torchvision==0.4.1",
-        "tensorflow-gpu>=1.14.0,<2.0",
-        # "onnx-simplifier"
+        "pandas",
+        "distributed",
+        "click",
+        "PyYAML",
+        "numpy",
+        "scipy",
+        "scikit-learn",
+        "opencv-python",
+        "tensorboardX",
     ],
     entry_points="""
         [console_scripts]
-        vega=vega.tools.run_pipeline:run_pipeline
-        vega-kill=vega.tools.kill:_kill
-        vega-verify-cluster=vega.tools.verify_cluster:_verify_cluster
-        vega-fine-tune=vega.tools.fine_tune:_fine_tune
-        vega-progress=vega.tools.query_progress:print_progress
-        vega-process=vega.tools.query_process:print_processes
-        vega-evaluate-service=evaluate_service.main:run
-      """,
+        vega=vega.tools.run_pipeline:main
+        vega-inference=vega.tools.inference:main
+        vega-inference-det=vega.tools.detection_inference:main
+        vega-kill=vega.tools.kill:main
+        vega-progress=vega.tools.query_progress:main
+        vega-process=vega.tools.query_process:main
+        vega-encrypt_key=vega.security.kmc.encrypt_key:main
+    """,
 )

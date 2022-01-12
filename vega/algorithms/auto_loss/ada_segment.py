@@ -1,17 +1,23 @@
 # -*- coding: utf-8 -*-
 
 # Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the MIT License.
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# MIT License for more details.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 """Implementation of Ada-Segment algorithm."""
+from enum import Enum
 from torch import nn
 import numpy as np
 import pandas as pd
-from enum import Enum
 import torch
 from torch.optim import Adam
 
@@ -81,7 +87,6 @@ class AdaSegment(object):
         self.is_completed = False
         self.rung_id = 0
         self.estimator = WeightController(in_features=loss_num)
-        # self.estimator.apply(_weight_init())
         self.optimizer = Adam(self.estimator.parameters(), lr=5e-2, weight_decay=5e-4)
         self.loss = Xloss(total_rungs=total_rungs)
 
@@ -111,7 +116,6 @@ class AdaSegment(object):
             self.weight_tensor = weighted_loss / input_tensor
             self.weight_tensor = self.weight_tensor.squeeze()
             weight = self.weight_tensor.detach().numpy().tolist()
-            # explore
             new_weight = np.random.normal(weight, 0.2)
             sample["dynamic_weight"] = new_weight
         return sample
@@ -141,8 +145,6 @@ class AdaSegment(object):
 
     def _init_next_rung(self):
         current_rung_df = self.sieve_board.loc[(self.sieve_board['rung_id'] == self.rung_id)]
-
-        # update the WeightController
         if self.rung_id >= 1:
             last_rung_df = self.sieve_board.loc[(self.sieve_board['rung_id'] == self.rung_id - 1)]
             cur_performance = current_rung_df['score'].to_list()

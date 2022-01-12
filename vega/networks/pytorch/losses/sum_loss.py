@@ -1,21 +1,28 @@
 # -*- coding: utf-8 -*-
 
 # Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the MIT License.
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# MIT License for more details.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 """Sum_loss for detection task."""
+
+import os
+import logging
+from collections import OrderedDict
 import torch
 from torch import nn
-from collections import OrderedDict
 from vega.common import ClassType, ClassFactory
-import os
-import pickle
-import logging
+from vega.common import FileOps
 
 
 @ClassFactory.register(ClassType.LOSS)
@@ -53,11 +60,9 @@ class SumLoss(nn.Module):
         init_loss = [_value for _key, _value in log_vars.items() if 'loss' in _key]
 
         if hasattr(self, "dynamic_loss_weight"):
-            # save the init loss
             loss_save = [float(_value.detach().cpu().numpy()) for _value in init_loss]
             save_file = os.path.join(self.save_path, "muti_loss.pkl")
-            with open(save_file, "wb") as f:
-                pickle.dump(loss_save, f)
+            FileOps.dump_pickle(loss_save, save_file)
 
             if len(self.dynamic_loss_weight) != len(init_loss):
                 logging.error("The length of the loss must be same with the length of the weight, but got {} and {}"
@@ -67,13 +72,6 @@ class SumLoss(nn.Module):
             sum_loss = sum(weighted_loss)
         else:
             sum_loss = sum(init_loss)
-        # Debug
-        """
-        if loss > 100:
-            logging.error(str(losses))
-            import os
-            os._exit()
-        """
         return sum_loss
 
     def adaptive_muti_loss(self, save_path, weight):

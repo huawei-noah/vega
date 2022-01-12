@@ -1,2 +1,2 @@
 import vega.algorithms.nas.modnas.compat
-from .compat import *
+from .compat import ModNasArchSpace

@@ -1,13 +1,20 @@
 # -*- coding:utf-8 -*-
 
 # Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the MIT License.
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# MIT License for more details.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 """CARS and DARTS network."""
+import vega
 from vega.common import ClassFactory, ClassType
 from vega.modules.blocks import AuxiliaryHead
 from vega.modules.connections import Cells
@@ -49,6 +56,10 @@ class DartsNetwork(Module):
         """Initialize architecture parameters."""
         self.set_parameters('alphas_normal', 1e-3 * ops.random_normal(self.len_alpha, self.num_ops))
         self.set_parameters('alphas_reduce', 1e-3 * ops.random_normal(self.len_alpha, self.num_ops))
+        if vega.is_torch_backend():
+            self.alphas_normal.requires_grad = False
+            self.alphas_reduce.requires_grad = False
+            self._apply_once = False # Ensure that the build function is not called in the forward function.
 
     @property
     def learnable_params(self):

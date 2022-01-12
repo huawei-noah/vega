@@ -1,12 +1,18 @@
 # -*- coding: utf-8 -*-
 
 # Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the MIT License.
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# MIT License for more details.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 """Base Trainer."""
 
@@ -14,7 +20,6 @@ import logging
 import subprocess
 import traceback
 import os
-import pickle
 import glob
 from vega.common import Config
 from vega.common.general import General
@@ -23,6 +28,7 @@ from vega.trainer.distributed_worker import DistributedWorker
 from vega.trainer.conf import TrainerConfig
 from vega.common.class_factory import ClassFactory, ClassType
 from vega.trainer.utils import WorkerTypes
+from vega.common import FileOps
 
 logger = logging.getLogger(__name__)
 
@@ -48,9 +54,9 @@ class ScriptRunner(DistributedWorker):
         try:
             self._dump_trial_config()
             self._run_script()
-        except Exception:
-            logger.error(traceback.format_exc())
-            logger.error("Failed to run script.")
+        except Exception as e:
+            logger.debug(traceback.format_exc())
+            logger.error(f"Failed to run script, message: {e}.")
 
     def _run_script(self):
         """Run script."""
@@ -58,14 +64,15 @@ class ScriptRunner(DistributedWorker):
         script = os.path.abspath(self.config.script)
         cmd = [General.python_command, script]
         if hasattr(self.config, "params") and self.config.params is not None:
-            cmd = [General.python_command, self.config.params]
+            params = [f"--{k}={v}" for k, v in self.config.params.items()]
+            cmd += params
         try:
             proc = subprocess.Popen(cmd, env=env, cwd=self.get_local_worker_path())
             logger.info(f"start process, pid: {proc.pid}")
             proc.wait(timeout=General.worker.timeout)
-        except Exception:
-            logger.warn("Timeout worker has been killed.")
-            logger.warn(traceback.print_exc())
+        except Exception as e:
+            logger.warn(f"Timeout worker has been killed, message: {e}.")
+            logger.debug(traceback.format_exc())
 
     def _dump_trial_config(self):
         """Dump trial config."""
@@ -77,8 +84,7 @@ class ScriptRunner(DistributedWorker):
             "epochs": self.config.epochs,
         }
         _file = os.path.join(self.get_local_worker_path(), ".trial")
-        with open(_file, "wb") as f:
-            pickle.dump(data, f)
+        FileOps.dump_pickle(data, _file)
 
     def _get_hps(self, hps):
         if hps is not None:

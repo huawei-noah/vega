@@ -1,12 +1,18 @@
 # -*- coding: utf-8 -*-
 
 # Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the MIT License.
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# MIT License for more details.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 
 """Extend HyperParameter classes."""
@@ -170,7 +176,6 @@ class CatHyperParameter(HyperParameter):
         super(CatHyperParameter, self).__init__(param_name, param_slice, param_type, param_range, generator, sample_num)
         self.list_values = []
         self.cat_transform = {}
-        # Converting array to index map
         for idx, each in enumerate(self.range):
             if isinstance(each, list):
                 key = idx
@@ -206,7 +211,6 @@ class CatHyperParameter(HyperParameter):
         :rtype: bool.
 
         """
-        # print("cat check_legal")
         if self.cast(value) in self.cat_transform:
             return True
         else:
@@ -219,23 +223,17 @@ class CatHyperParameter(HyperParameter):
         :return: transform real `x` to hp's `x`.
 
         """
-        # Accumulate the scores of each category
-        # and the number of times that we have used it
         tmp_cat_transform = {each: (0, 0) for each in self.cat_transform.keys()}
         for i in range(len(x)):
             tmp_cat_transform[x[i]] = (
-                tmp_cat_transform[x[i]][0] + y[i],  # sum score
-                tmp_cat_transform[x[i]][1] + 1  # count occurrences
+                tmp_cat_transform[x[i]][0] + y[i],
+                tmp_cat_transform[x[i]][1] + 1
             )
-
-        # If we have at least one score, compute the average
         for key, value in tmp_cat_transform.items():
             if value[1] != 0:
                 self.cat_transform[key] = value[0] / float(value[1])
             else:
                 self.cat_transform[key] = 0
-
-        # Compute the range using the min and max scores
         range_max = max(
             self.cat_transform.keys(),
             key=(lambda k: self.cat_transform[k])
@@ -253,7 +251,7 @@ class CatHyperParameter(HyperParameter):
 
         return np.vectorize(self.cat_transform.get)(x)
 
-    def decode(self, x, forbidden=[]):
+    def decode(self, x, forbidden=None):
         """Inverse transform.
 
         :param x: input `x`.
@@ -261,7 +259,8 @@ class CatHyperParameter(HyperParameter):
         :return: inverse transform `x` back to real `x`.
 
         """
-        # Compute the inverse dictionary
+        if forbidden is None:
+            forbidden = []
         inv_map = defaultdict(list)
         for key, value in self.cat_transform.items():
             if key not in forbidden:
@@ -272,8 +271,6 @@ class CatHyperParameter(HyperParameter):
             diff = (np.abs(keys - x))
             min_diff = diff[0]
             max_key = keys[0]
-
-            # Find the score which is closer to the given value
             for i in range(len(diff)):
                 if diff[i] < min_diff:
                     min_diff = diff[i]
@@ -281,8 +278,6 @@ class CatHyperParameter(HyperParameter):
                 elif diff[i] == min_diff and keys[i] > max_key:
                     min_diff = diff[i]
                     max_key = keys[i]
-
-            # Get a random category from the ones that had the given score
             return random.choice(np.vectorize(inv_map.get)(max_key))
 
         if isinstance(x, Iterable):
@@ -399,7 +394,6 @@ class HalfCodeHyperParameter(HyperParameter):
         """
         individual = []
         size = self.range[0]
-        # TODO: TEST ONLY
         from vega.core.pipeline.conf import PipeStepConfig
         ratio = 0.8
         if hasattr(PipeStepConfig.search_space, "prune_ratio"):

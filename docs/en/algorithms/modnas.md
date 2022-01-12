@@ -303,10 +303,6 @@ search_space:
 
 Now we have a supernet on top of the base model where the original convolution operators are replaced with specified mixed operators and primitives. A search routine can then be set up by matching the search space with selected Optimizer and Estimators.
 
-## Known Issues
-
-- Currently the ModularNAS routine runs in a separate thread and listens on condition variables in Vega, which might lead to deadlocks.
-
 ## Reference
 
 [^fn1]: Liu, H., Simonyan, K., and Yang, Y. Darts: Differentiable architecture search. ArXiv, abs/1806.09055, 2019b.

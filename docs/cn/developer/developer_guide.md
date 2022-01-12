@@ -1,16 +1,10 @@
 # 开发参考
 
+**已过时，待刷新。**
+
 ## 1. Vega简介
 
 Vega的重点特性是网络架构搜索和超参优化，在网络架构搜索流程中，搜索空间`Search Space`、搜索算法`Search Algorithm`是核心部分，并通过`Generator`来控制搜索的采样、更新和结束等流程步骤。
-
-搜索空间和搜索算法的类图如下所示：
-
-![Search Space类图](../../images/search_space_classes.png)
-
-搜索空间和搜索算法的流程图如下所示：
-
-![Search Space流程图](../../images/search_space_flow.png)
 
 以下就分别介绍下面几个部分：
 

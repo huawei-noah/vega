@@ -1,21 +1,27 @@
 # -*- coding: utf-8 -*-
 
 # Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the MIT License.
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# MIT License for more details.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 """Evolution Algorithm used to prune model."""
 import logging
 import random
 import numpy as np
-from .conf import PruneConfig
 from vega.common import ClassFactory, ClassType
 from vega.report import ReportServer
 from vega.core.search_algs import SearchAlgorithm
+from .conf import PruneConfig
 
 
 @ClassFactory.register(ClassType.SEARCH_ALGORITHM)
@@ -80,7 +86,6 @@ class PruneEA(SearchAlgorithm):
         if self.random_count < self.random_samples:
             self.random_count += 1
             desc = self._random_sample()
-            # desc.update({"trainer.codec": dict(desc)})
             return self.random_count, desc
         records = ReportServer().get_pareto_front_records(self.step_name, self.num_individual)
         codes = [record.desc.get('backbone').get('encoding') for record in records]
@@ -93,10 +98,8 @@ class PruneEA(SearchAlgorithm):
         else:
             encoding1, encoding2 = random.sample(codes, 2)
         choice = random.randint(0, 1)
-        # mutate
         if choice == 0:
             encoding_new = self.mutatation(encoding1)
-        # crossover
         else:
             encoding_new, _ = self.crossover(encoding1, encoding2)
         self.ea_count += 1

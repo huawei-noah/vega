@@ -1,12 +1,18 @@
 # -*- coding: utf-8 -*-
 
 # Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the MIT License.
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# MIT License for more details.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 """This script is used to process the Avazu dataset."""
 from __future__ import division
@@ -117,7 +123,6 @@ class BaseDataset():
         else:
             logging.info("generating {} files from offset {}".format(gen_type, offset))
             parts = np.arange(num_of_files)[offset:]
-            # while True:
             if shuffle_block:
                 for i in range(int(shuffle_block)):
                     np.random.shuffle(parts)
@@ -126,7 +131,6 @@ class BaseDataset():
                     os.path.join(self.npy_data_dir, file_prefix + '_output_part_' + str(p) + '.npy'), \
                     i + 1 == len(parts)
 
-    # todo: support val_ratio
     def batch_generator(self, gen_type='train', batch_size=None, pos_ratio=None, num_of_parts=None, val_ratio=None,
                         random_sample=False, shuffle_block=False, split_fields=False, on_disk=True):
         """Genetate a batch_size data.
@@ -144,8 +148,6 @@ class BaseDataset():
         else using unified index, defaults to False
         :param bool on_disk: Whether the data is on disk or not, defaults to True
         """
-        # if pos_ratio is None:
-        #     pos_ratio = self.train_pos_ratio
         if batch_size is None:
             batch_size = max(int(1 / self.train_pos_ratio),
                              int(1 / self.test_pos_ratio)) + 1
@@ -208,16 +210,18 @@ class BaseDataset():
         if shuffle:
             for i in range(int(shuffle)):
                 np.random.shuffle(sample_index)
-        assert X.shape[0] > 0
-        while True:
-            batch_idx = sample_index[batch_size * counter:batch_size * (counter + 1)]
-            X_batch = X[batch_idx]
-            y_batch = y[batch_idx]
-            counter += 1
-            if counter == num_of_batches:
-                counter = 0
-                finished = True
-            yield X_batch, y_batch, finished
+        if X.shape[0] > 0:
+            while True:
+                batch_idx = sample_index[batch_size * counter:batch_size * (counter + 1)]
+                X_batch = X[batch_idx]
+                y_batch = y[batch_idx]
+                counter += 1
+                if counter == num_of_batches:
+                    counter = 0
+                    finished = True
+                yield X_batch, y_batch, finished
+        else:
+            raise ValueError('Shape of data must be bigger than 0.')
 
     @staticmethod
     def split_pos_neg(X, y):

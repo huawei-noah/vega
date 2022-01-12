@@ -8,13 +8,13 @@
 
 ---
 
-**Vega ver1.7.1 released**
+**Vega ver1.8.0 released**
 
-- Bug fixes:
+- Feature enhancement:
 
-  - Maximum number of evaluation service attempts.
-  - Use SafeLoader to load the YAML file.
-  - Catch evaluation service input parameter exceptions.
+  - Security enhancement: Security protocols communication.
+  - Provide evaluation service release package.
+  - Update the auto-lane model and provide auto-lane inference sample code.
 
 ---
 
@@ -28,16 +28,6 @@ Vega is an AutoML algorithm tool chain developed by Noah's Ark Laboratory, the m
 4. High-concurrency neural network training capability: Provides high-performance trainers to accelerate model training and evaluation.
 5. Multi-Backend: PyTorch (GPU and Ascend 910), TensorFlow (GPU and Ascend 910), MindSpore (Ascend 910).
 6. Ascend platform: Search and training on the Ascend 910 and model evaluation on the Ascend 310.
-
-## AutoML Tools Features
-
-|  | Supported Frameworks | HPO Algorithms | NAS Algorithms | Device-Side Evaluation | Model Filter | Universal Network |
-| :--: | :-- | :-- | :-- | :-- | :-- | :-- |
-| **AutoGluon** | mxnet, PyTorch | Random Search, Bayesian, Hyper-Band | Random Search, RL | × | × | × |
-| **AutoKeras** | Keras | No Restrictions | Network Morphism | × | × | × |
-| **Model Search** | TensorFlow | No Restrictions | Random Search, Beam Search | × | × | × |
-| **NNI** | No Restrictions | Random Search and Grid Search, Bayesian, Annealing, Hyper-Band, Evolution, RL | Random Search, Gradient-Based,  One-Shot | × | × | × |
-| **Vega** | PyTorch, TensorFlow, MindSpore | Random Search, Grid Search, Bayesian, Hyper-Band, Evolution | Random Search, Gradient-Based, Evalution, One-Shot | Ascend 310, Kirin 980/990 | Quota (filter model based on parameters, flops, latency) | provides networks compatibility with PyTorch, TensorFlow, and MindSpore |
 
 ## Algorithm List
 
@@ -68,13 +58,11 @@ Vega is an AutoML algorithm tool chain developed by Noah's Ark Laboratory, the m
 
 ## Installation
 
-Run the following commands to install Vega and related open-source software:
+Run the following commands to install Vega:
 
 ```bash
 pip3 install --user --upgrade noah-vega
 ```
-
-If you need to install the Ascend 910 training environment, please contact us.
 
 ## Usage
 
@@ -87,12 +75,18 @@ vega ./examples/nas/cars/cars.yml
 The `cars.yml` file contains definitions such as pipeline, search algorithm, search space, and training parameters.
 Vega provides more than 40 examples for reference: [Examples](https://github.com/huawei-noah/vega/tree/master/examples), [Example Guide](./docs/en/user/examples.md), and [Configuration Guide](./docs/en/user/config_reference.md).
 
+The security mode is applicable to communication with high security requirements. Before running this command, run the security configuration (./docs/en/security.md).
+
+```bash
+vega ./examples/nas/cars/cars.yml -s
+```
+
 ## Reference
 
-| object | refrence |
+| Reader | Refrence |
 | :--: | :-- |
-| [**User**<br>(User Guide)](./docs/en/user/README.md) | [Install Guide](./docs/en/user/install.md), [Deployment Guide](./docs/en/user/deployment.md), [Configuration Guide](./docs/en/user/config_reference.md), [Examples](./docs/en/user/examples.md), [Evaluate Service](./docs/en/user/evaluate_service.md) |
-| [**Developer**<br>(Developer Guide)](./docs/en/developer/README.md) | [Development Reference](./docs/en/developer/developer_guide.md), [Quick Start Guide](./docs/en/developer/quick_start.md), [Dataset Guide](./docs/en/developer/datasets.md), [Algorithm Development Guide](./docs/en/developer/new_algorithm.md), [Fine-Grained Search Space Guide](./docs/en/developer/fine_grained_space.md) |
+| **User** | [Install Guide](./docs/en/user/install.md), [Deployment Guide](./docs/en/user/deployment.md), [Configuration Guide](./docs/en/user/config_reference.md), [Security Configuration](./docs/en/security.md), [Examples](./docs/en/user/examples.md), [Evaluate Service](./evaluate_service/docs/en/evaluate_service.md) |
+| **Developer** | [Development Reference](./docs/en/developer/developer_guide.md), [Quick Start Guide](./docs/en/developer/quick_start.md), [Dataset Guide](./docs/en/developer/datasets.md), [Algorithm Development Guide](./docs/en/developer/new_algorithm.md) |
 
 ## FAQ
 
@@ -114,4 +108,3 @@ For common problems and exception handling, please refer to [FAQ](./docs/en/user
 ## Cooperation and Contribution
 
 Welcome to use Vega. If you have any questions or suggestions, need help, fix bugs, contribute new algorithms, or improve the documentation, submit an issue in the community. We will reply to and communicate with you in a timely manner.  
-Welcome to join our QQ chatroom (Chinese): **833345709**.

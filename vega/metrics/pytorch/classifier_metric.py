@@ -1,12 +1,18 @@
 # -*- coding:utf-8 -*-
 
 # Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the MIT License.
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# MIT License for more details.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 """Metric of classifier task."""
 from functools import partial
@@ -37,7 +43,7 @@ def accuracy(output, target, top_k=(1,)):
     res = []
     for k in top_k:
         correct_k = correct[:k].reshape(-1).float().sum(0)
-        res.append(correct_k.mul_(100.0 / batch_size))
+        res.append(correct_k / batch_size)
     return res
 
 
@@ -63,6 +69,8 @@ class Accuracy(MetricBase):
         """
         if isinstance(output, tuple):
             output = output[0]
+        if isinstance(target, tuple) or isinstance(target, list):
+            target = target[0]
         res = accuracy(output, target, self.topk)
         n = output.size(0)
         self.data_num += n

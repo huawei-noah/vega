@@ -1,12 +1,18 @@
 # -*- coding: utf-8 -*-
 
 # Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the MIT License.
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# MIT License for more details.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 """Architecture."""
 import os
 import logging
@@ -15,6 +21,39 @@ from vega.modules.arch.combiner import ConnectionsArchParamsCombiner
 from vega.networks.network_desc import NetworkDesc
 import vega
 from vega.core.pipeline.conf import PipeStepConfig
+
+
+def change_model_rebuild(model, changed_name_list, mask_weight_list, pretrained_model_file):
+    """Change model and rebuild."""
+    from mindspore.train.serialization import load_checkpoint
+    if len(changed_name_list) == len(mask_weight_list):
+        model_desc = model.desc
+        for changed_name, mask in zip(changed_name_list, mask_weight_list):
+            name = changed_name.split('.')
+            if len(name) <= 6:
+                if len(name) == 6:
+                    model_desc[name[0]][name[1]][name[2]][name[3]][name[4]][name[5]] = sum(mask)
+                if len(name) == 5:
+                    model_desc[name[0]][name[1]][name[2]][name[3]][name[4]] = sum(mask)
+                if len(name) == 4:
+                    model_desc[name[0]][name[1]][name[2]][name[3]] = sum(mask)
+                if len(name) == 3:
+                    model_desc[name[0]][name[1]][name[2]] = sum(mask)
+                if len(name) == 2:
+                    model_desc[name[0]][name[1]] = sum(mask)
+            else:
+                raise ValueError('Name must be shorter than 6.')
+        network = NetworkDesc(model_desc)
+        model = network.to_model()
+        model_desc.pop('_arch_params') if '_arch_params' in model_desc else model_desc
+        model.desc = model_desc
+        if pretrained_model_file and hasattr(model, "pretrained"):
+            pretrained_weight = model.pretrained(pretrained_model_file)
+            load_checkpoint(pretrained_weight, net=model)
+            os.remove(pretrained_weight)
+        return model
+    else:
+        raise ValueError('Name and weight do not match.')
 
 
 def transform_architecture(model, pretrained_model_file=None):
@@ -33,34 +72,7 @@ def transform_architecture(model, pretrained_model_file=None):
             if not ClassFactory.is_exists(model._arch_params_type, module.model_name):
                 continue
             changed_name_list, mask_weight_list = decode_fn_ms(module, changed_name_list, mask_weight_list)
-        assert len(changed_name_list) == len(mask_weight_list)
-        # change model and rebuild
-        model_desc = model.desc
-        # root_name = [name for name in list(model_desc.keys()) if name not in ('type', '_arch_params')]
-        for changed_name, mask in zip(changed_name_list, mask_weight_list):
-            name = changed_name.split('.')
-            # name[0] = root_name[int(name[0])]
-            assert len(name) <= 6
-            if len(name) == 6:
-                model_desc[name[0]][name[1]][name[2]][name[3]][name[4]][name[5]] = sum(mask)
-            if len(name) == 5:
-                model_desc[name[0]][name[1]][name[2]][name[3]][name[4]] = sum(mask)
-            if len(name) == 4:
-                model_desc[name[0]][name[1]][name[2]][name[3]] = sum(mask)
-            if len(name) == 3:
-                model_desc[name[0]][name[1]][name[2]] = sum(mask)
-            if len(name) == 2:
-                model_desc[name[0]][name[1]] = sum(mask)
-        network = NetworkDesc(model_desc)
-        model = network.to_model()
-        model_desc.pop('_arch_params') if '_arch_params' in model_desc else model_desc
-        model.desc = model_desc
-        # change weight
-        if pretrained_model_file and hasattr(model, "pretrained"):
-            pretrained_weight = model.pretrained(pretrained_model_file)
-            load_checkpoint(pretrained_weight, net=model)
-            os.remove(pretrained_weight)
-
+        model = change_model_rebuild(model, changed_name_list, mask_weight_list, pretrained_model_file)
     else:
         for name, module in model.named_modules():
             if not ClassFactory.is_exists(model._arch_params_type, module.model_name):
@@ -68,7 +80,6 @@ def transform_architecture(model, pretrained_model_file=None):
             arch_cls = ClassFactory.get_cls(model._arch_params_type, module.model_name)
             decode_fn(module, arch_cls)
             module.register_forward_pre_hook(arch_cls.fit_weights)
-            # module.register_forward_hook(module.clear_module_arch_params)
     return model
 
 

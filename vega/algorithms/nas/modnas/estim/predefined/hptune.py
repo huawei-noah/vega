@@ -1,12 +1,18 @@
 # -*- coding:utf-8 -*-
 
 # Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the MIT License.
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# MIT License for more details.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 """Hyperparameter-tuning Estimator."""
 import copy
@@ -14,10 +20,10 @@ import itertools
 import traceback
 import multiprocessing as mp
 import yaml
-from ..base import EstimBase
 from modnas.utils.config import Config
 from modnas.utils.wrapper import run
 from modnas.registry.estim import register
+from ..base import EstimBase
 
 
 def _default_trial_runner(conn, trial_args):
@@ -75,9 +81,10 @@ class HPTuneEstim(EstimBase):
         try:
             score = self.measure_fn(hp, **fn_args)
             self.is_succ = True
-        except RuntimeError:
+        except RuntimeError as e:
             score = 0
-            logger.info('trial {} failed with error: {}'.format(self.trial_index, traceback.format_exc()))
+            logger.debug(traceback.format_exc())
+            logger.info(f'trial {self.trial_index} failed with error, message: {e}')
         result = {
             'score': score,
         }

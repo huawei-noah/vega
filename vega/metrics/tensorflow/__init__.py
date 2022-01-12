@@ -1,5 +1,5 @@
-from .metrics import Metrics
 from vega.common.class_factory import ClassFactory
+from .metrics import Metrics
 
 
 ClassFactory.lazy_register("vega.metrics.tensorflow", {

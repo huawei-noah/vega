@@ -1,23 +1,28 @@
 # -*- coding: utf-8 -*-
 
 # Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the MIT License.
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# MIT License for more details.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 """This is the class of Cityscapes dataset."""
 import os.path as osp
+import glob
 import cv2
 import numpy as np
-import glob
-import pickle
-from .dataset import Dataset
 from vega.common import ClassFactory, ClassType
 from vega.common import FileOps
 from vega.datasets.conf.city_scapes import CityscapesConfig
+from .dataset import Dataset
 
 
 @ClassFactory.register(ClassType.DATASET)
@@ -113,7 +118,6 @@ class Cityscapes(Dataset):
         :rtype: dict, {'data': xx, 'mask': xx, 'name': name}
         """
         image, label = self.read_fn(index)
-        # image_name = self.data_files[index].split("/")[-1].split(".")[0]
         image, label = self.transforms(image, label)
         image = np.transpose(image, [2, 0, 1]).astype(np.float32)
         mask = label.astype(np.int64)
@@ -175,10 +179,8 @@ class Cityscapes(Dataset):
         :return: image in np.array, HWC, bgr; label in np.array, HW
         :rtype: tuple of np.array
         """
-        with open(self.data_files[index], "rb") as file:
-            image = pickle.load(file)
-        with open(self.label_files[index], "rb") as file:
-            label = pickle.load(file)
+        image = FileOps.load_pickle(self.data_files[index])
+        label = FileOps.load_pickle(self.label_files[index])
         return image, label
 
     @property

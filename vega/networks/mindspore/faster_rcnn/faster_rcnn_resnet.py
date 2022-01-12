@@ -1,12 +1,21 @@
-# -*- coding:utf-8 -*-
+# Copyright 2020 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
-# Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the MIT License.
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# MIT License for more details.
+# 2021.11.29-Changed for SPNAS.
+#      Huawei Technologies Co., Ltd. <liuzhicheng15@huawei.com>
+# Copyright 2021 Huawei Technologies Co., Ltd.
+
 """FasterRcnn based on ResNet."""
 
 import numpy as np
@@ -16,6 +25,9 @@ from mindspore.ops import operations as P
 from mindspore.common.tensor import Tensor
 import mindspore.common.dtype as mstype
 from mindspore.ops import functional as F
+from vega.common import ClassFactory, ClassType
+from vega.algorithms.nas.sp_nas.src.model_utils.config import config
+from vega.modules.module import Module
 from .resnet import ResNetFea, ResidualBlockUsing
 from .bbox_assign_sample_stage2 import BboxAssignSampleForRcnn
 from .fpn_neck import FeatPyramidNeck
@@ -24,9 +36,6 @@ from .rcnn import Rcnn
 from .rpn import RPN
 from .roi_align import SingleRoIExtractor
 from .anchor_generator import AnchorGenerator
-from vega.common import ClassFactory, ClassType
-from vega.algorithms.nas.sp_nas.src.model_utils.config import config
-from vega.modules.module import Module
 
 
 @ClassFactory.register(ClassType.NETWORK)
@@ -76,7 +85,8 @@ class Faster_Rcnn_MD(Module):
         self.num_anchors = len(self.anchor_ratios) * len(self.anchor_scales)
 
         featmap_sizes = config.feature_shapes
-        assert len(featmap_sizes) == len(self.anchor_generators)
+        if len(featmap_sizes) != len(self.anchor_generators):
+            raise ValueError('Featuremap must be equal to anchor_generators.')
 
         self.anchor_list = self.get_anchors(featmap_sizes)
 
@@ -115,7 +125,7 @@ class Faster_Rcnn_MD(Module):
         self.decode = P.BoundingBoxDecode(max_shape=(config.img_height, config.img_width), means=self.target_means,
                                           stds=self.target_stds)
         # Roi
-        self.roi_init(config)
+        self.roi_init(config_roi_init=config)
 
         # Rcnn
         self.rcnn = Rcnn(config, config.rcnn_in_channels * config.roi_layer.out_size * config.roi_layer.out_size,
@@ -138,18 +148,18 @@ class Faster_Rcnn_MD(Module):
         self.concat_end = (self.num_classes - 1)
 
         # Test mode
-        self.test_mode_init(config)
+        self.test_mode_init(config_mode_init=config)
 
         # Init tensor
-        self.init_tensor(config)
+        self.init_tensor(config_tensor_init=config)
         self.device_type = "Ascend" if context.get_context("device_target") == "Ascend" else "Others"
 
-    def roi_init(self, config):
+    def roi_init(self, config_roi_init):
         """
         Initialize roi from the config file.
 
         Args:
-            config (file): config file.
+            config_roi_init (file): config file.
             roi_layer (dict): Numbers of block in different layers.
             roi_align_out_channels (int): Out channel in each layer.
             config.roi_align_featmap_strides (list): featmap_strides in each layer.
@@ -158,36 +168,36 @@ class Faster_Rcnn_MD(Module):
         Examples:
             self.roi_init(config)
         """
-        self.roi_align = SingleRoIExtractor(config,
-                                            config.roi_layer,
-                                            config.roi_align_out_channels,
-                                            config.roi_align_featmap_strides,
+        self.roi_align = SingleRoIExtractor(config_roi_init,
+                                            config_roi_init.roi_layer,
+                                            config_roi_init.roi_align_out_channels,
+                                            config_roi_init.roi_align_featmap_strides,
                                             self.train_batch_size,
-                                            config.roi_align_finest_scale)
-        self.roi_align.set_train_local(config, True)
-        self.roi_align_test = SingleRoIExtractor(config,
-                                                 config.roi_layer,
-                                                 config.roi_align_out_channels,
-                                                 config.roi_align_featmap_strides,
+                                            config_roi_init.roi_align_finest_scale)
+        self.roi_align.set_train_local(config_roi_init, True)
+        self.roi_align_test = SingleRoIExtractor(config_roi_init,
+                                                 config_roi_init.roi_layer,
+                                                 config_roi_init.roi_align_out_channels,
+                                                 config_roi_init.roi_align_featmap_strides,
                                                  1,
-                                                 config.roi_align_finest_scale)
-        self.roi_align_test.set_train_local(config, False)
+                                                 config_roi_init.roi_align_finest_scale)
+        self.roi_align_test.set_train_local(config_roi_init, False)
 
-    def test_mode_init(self, config):
+    def test_mode_init(self, config_mode_init):
         """
         Initialize test_mode from the config file.
 
         Args:
-            config (file): config file.
+            config_mode_init (file): config file.
             test_batch_size (int): Size of test batch.
             rpn_max_num (int): max num of rpn.
             test_score_thresh (float): threshold of test score.
             test_iou_thr (float): threshold of test iou.
 
         Examples:
-            self.test_mode_init(config)
+            self.test_mode_init(config_mode_init)
         """
-        self.test_batch_size = config.test_batch_size
+        self.test_batch_size = config_mode_init.test_batch_size
         self.split = P.Split(axis=0, output_num=self.test_batch_size)
         self.split_shape = P.Split(axis=0, output_num=4)
         self.split_scores = P.Split(axis=1, output_num=self.num_classes)
@@ -195,7 +205,7 @@ class Faster_Rcnn_MD(Module):
         self.tile = P.Tile()
         self.gather = P.GatherNd()
 
-        self.rpn_max_num = config.rpn_max_num
+        self.rpn_max_num = config_mode_init.rpn_max_num
 
         self.zeros_for_nms = Tensor(np.zeros((self.rpn_max_num, 3)).astype(self.dtype))
         self.ones_mask = np.ones((self.rpn_max_num, 1)).astype(np.bool)
@@ -205,24 +215,26 @@ class Faster_Rcnn_MD(Module):
         self.nms_pad_mask = Tensor(np.concatenate((self.ones_mask, self.ones_mask,
                                                    self.ones_mask, self.ones_mask, self.zeros_mask), axis=1))
 
-        self.test_score_thresh = Tensor(np.ones((self.rpn_max_num, 1)).astype(self.dtype) * config.test_score_thr)
+        self.test_score_thresh = Tensor(
+            np.ones((self.rpn_max_num, 1)).astype(self.dtype) * config_mode_init.test_score_thr)
         self.test_score_zeros = Tensor(np.ones((self.rpn_max_num, 1)).astype(self.dtype) * 0)
         self.test_box_zeros = Tensor(np.ones((self.rpn_max_num, 4)).astype(self.dtype) * -1)
-        self.test_iou_thr = Tensor(np.ones((self.rpn_max_num, 1)).astype(self.dtype) * config.test_iou_thr)
-        self.test_max_per_img = config.test_max_per_img
-        self.nms_test = P.NMSWithMask(config.test_iou_thr)
+        self.test_iou_thr = Tensor(np.ones((self.rpn_max_num, 1)).astype(self.dtype) * config_mode_init.test_iou_thr)
+        self.test_max_per_img = config_mode_init.test_max_per_img
+        self.nms_test = P.NMSWithMask(config_mode_init.test_iou_thr)
         self.softmax = P.Softmax(axis=1)
         self.logicand = P.LogicalAnd()
         self.oneslike = P.OnesLike()
         self.test_topk = P.TopK(sorted=True)
         self.test_num_proposal = self.test_batch_size * self.rpn_max_num
 
-    def init_tensor(self, config):
+    def init_tensor(self, config_tensor_init):
         """Construct the trainer of SpNas."""
-        roi_align_index = [np.array(np.ones((config.num_expected_pos_stage2 + config.num_expected_neg_stage2, 1)) * i,
-                                    dtype=self.dtype) for i in range(self.train_batch_size)]
+        roi_align_index = [np.array(
+            np.ones((config_tensor_init.num_expected_pos_stage2 + config_tensor_init.num_expected_neg_stage2, 1)) * i,
+            dtype=self.dtype) for i in range(self.train_batch_size)]
 
-        roi_align_index_test = [np.array(np.ones((config.rpn_max_num, 1)) * i, dtype=self.dtype)
+        roi_align_index_test = [np.array(np.ones((config_tensor_init.rpn_max_num, 1)) * i, dtype=self.dtype)
                                 for i in range(self.test_batch_size)]
 
         self.roi_align_index_tensor = Tensor(np.concatenate(roi_align_index))

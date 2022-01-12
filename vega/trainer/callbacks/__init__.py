@@ -1,6 +1,6 @@
+from vega.common.class_factory import ClassFactory
 from .callback import Callback
 from .callback_list import CallbackList
-from vega.common.class_factory import ClassFactory
 
 __all__ = ["Callback", "CallbackList"]
 
@@ -23,4 +23,5 @@ ClassFactory.lazy_register("vega.trainer.callbacks", {
     "fusion": ["trainer.callback:OperatorFusionCallback"],
     "horovod": ["trainer.callback:Horovod"],
     "hccl": ["trainer.callback:Hccl"],
+    "search_alg_callback": ["trainer.callback:SearchAlgorithmCallbacks"],
 })

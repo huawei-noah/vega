@@ -1,12 +1,18 @@
 # -*- coding:utf-8 -*-
 
 # Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the MIT License.
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# MIT License for more details.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 """Defined DnetNas."""
 import logging
@@ -29,7 +35,6 @@ class DblockNas(SearchAlgorithm):
     def __init__(self, search_space=None, **kwargs):
         """Init DnetNas."""
         super(DblockNas, self).__init__(search_space, **kwargs)
-        # ea or random
         self.max_sample = self.config.range.max_sample
         self.min_sample = self.config.range.min_sample
         self.sample_count = 0
@@ -47,8 +52,6 @@ class DblockNas(SearchAlgorithm):
         """Search in search_space and return a sample."""
         sample = {}
         while sample is None or 'code' not in sample:
-            # pareto_dict = self.pareto_front.get_pareto_front()
-            # pareto_list = list(pareto_dict.values())
             sample_desc = self.search_space.sample()
             sample = self.codec.encode(sample_desc)
             if not self.pareto_front._add_to_board(id=self.sample_count + 1,

@@ -1,12 +1,18 @@
 # -*- coding: utf-8 -*-
 
 # Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the MIT License.
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# MIT License for more details.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 """Model zoo."""
 import re
@@ -46,8 +52,10 @@ def convert_faster_backbone_weights(model, state_dict):
         state_name = state_name.replace('norm', 'bn')
         state_name = state_name.replace('head', 'fc')
         new_state_dict[name] = state_dict.pop(state_name)
-    assert len(state_dict) == 0
-    return new_state_dict
+    if len(state_dict) == 0:
+        return new_state_dict
+    else:
+        raise ValueError('Failed to convert weigh of faster_backbone.')
 
 
 def convert_resnet_general_weights(model, state_dict):
@@ -87,8 +95,10 @@ def convert_resnet_general_weights(model, state_dict):
                 state_name = re.sub(r'batch', '1', state_name)
             state_name = re.sub(r'batch', 'bn', state_name)
         new_state_dict[name] = state_dict.pop(state_name)
-    assert len(state_dict) == 0
-    return new_state_dict
+    if len(state_dict) == 0:
+        return new_state_dict
+    else:
+        raise ValueError('Failed to convert weigh of resnet_general.')
 
 
 def convert_torch_resnet_weights_to_serialClassificationNet(model, state_dict, strict=True):
@@ -97,7 +107,6 @@ def convert_torch_resnet_weights_to_serialClassificationNet(model, state_dict, s
     new_state_dict = OrderedDict()
     for name in names:
         state_name = name
-        # state_name = name.replace('backbone.', '')
         state_name = state_name.replace('backbone.', '')
         if name.startswith('head.linear'):
             state_name = state_name.replace('head.linear', 'fc')
@@ -112,7 +121,8 @@ def convert_torch_resnet_weights_to_serialClassificationNet(model, state_dict, s
             state_name = state_name.replace('layers.{}'.format(layer_no), 'layer{}'.format(layer_no + 1))
         new_state_dict[name] = state_dict.pop(state_name)
     if strict:
-        assert len(state_dict) == 0
+        if len(state_dict) != 0:
+            raise ValueError('Failed to convert resnet weights to serialClassificationNet')
     return new_state_dict
 
 

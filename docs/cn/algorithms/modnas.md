@@ -302,10 +302,6 @@ search_space:
 
 现在，我们在基础模型之上定义了一个超网，其中原来的卷积算子被指定的混合算子和原语替换。然后，可以通过将搜索空间与选定的优化器和估计器匹配来设置搜索例程。
 
-## 已知问题
-
-- 目前， ModularNAS例程在单独的线程中运行，并监听Vega中的条件变量，这可能导致死锁。
-
 ## 参考文献
 
 [^fn1]: Liu, H., Simonyan, K., and Yang, Y. Darts: Differentiable architecture search. ArXiv, abs/1806.09055, 2019b.

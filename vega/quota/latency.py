@@ -1,12 +1,18 @@
 # -*- coding:utf-8 -*-
 
 # Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the MIT License.
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# MIT License for more details.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 """Flops and Parameters Filter."""
 
@@ -27,7 +33,7 @@ class LatencyVerification(QuotaItemBase):
         """Filter function of latency."""
         model = ModelZoo.get_model(model_desc)
         count_input = self.get_input_data()
-        trainer = vega.trainer(model_desc=model_desc)
+        trainer = vega.get_trainer(model_desc=model_desc)
         sess_config = trainer._init_session_config() if vega.is_tf_backend() else None
         latency = calc_forward_latency_on_host(model, count_input, sess_config)
         logging.info(f"Sampled model's latency: {latency}ms")

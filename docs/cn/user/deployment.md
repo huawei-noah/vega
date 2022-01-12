@@ -2,18 +2,14 @@
 
 ## 1. 本地集群部署
 
-### 1.1 部署
-
 本地集群部署Vega，需满足如下条件：
 
-1. Ubuntu 18.04 or later。
-2. CUDA 10.0
-3. Python 3.7
-4. pip3
+1. Ubuntu 18.04 or EulerOS 2.0 SP8
+2. CUDA 10.0 or CANN 20.1
+3. Python 3.7 or later
+4. pytorch, tensorflow(>1.14, <2.0) or mindspore
 
-**注： 若需要在Ascend 910集群上部署，请和我们联系。**
-
-集群在部署时，需要在每个集群节点中安装vega和一些必备的软件包，可执行如下命令进行安装：
+集群在部署时，需要在每个集群节点中安装vega：
 
 ```bash
 pip3 install --user --upgrade noah-vega
@@ -24,23 +20,6 @@ pip3 install --user --upgrade noah-vega
 在各个主机上安装上述软件后，还需要[配置SSH互信](#ssh)，并[构建NFS](#nfs)。
 
 以上工作完成后，集群已部署完成。
-
-### 1.2 校验
-
-集群部署完成后，请执行以下命令检查集群是否可用：
-
-```bash
-vega-verify-cluster -m <master IP> -s <slave IP 1> <slave IP 2> ... -n <shared NFS folder>
-```
-
-例如：
-
-```bash
-vega-verify-cluster -m 192.168.0.2 -s 192.168.0.3 192.168.0.4 -n /home/alan/nfs_folder
-```
-
-校验结束后，会有显示"All cluster check items have passed."。
-若校验中出现错误，请根据异常信息调整集群。
 
 ## 参考
 
@@ -76,6 +55,24 @@ vega-verify-cluster -m 192.168.0.2 -s 192.168.0.3 192.168.0.4 -n /home/alan/nfs_
 
 ### <span id="nfs"> 构建NFS </span>
 
+NFS是集群中用于数据共享的常用系统，若你所使用的集群中已经有NFS系统，请直接使用已有的NFS系统。
+
+以下配置NFS的简单指导，可能不适用于所有的NFS系统，请根据实际集群环境调整。
+
+在配置NFS服务器前，需要确定当前用户的在集群中的各个主机上的UID是否是同样的数值。若UID不相同，会造成无法访问NFS共享目录，需要调整当前用户的UID为同一个数值，同时要避免和其他用户的UID冲突。
+
+查询当前用户的UID：
+
+```bash
+id <user name>
+```
+
+修改当前用的UID，（请慎重修改，请咨询集群系统管理员获取帮助）：
+
+```bash
+sudo usermod <user name> -u <new UID>
+```
+
 NFS服务器设置：
 
 1. 安装NFS服务器：
@@ -97,13 +94,7 @@ NFS服务器设置：
     sudo bash -c "echo '/home/<user home path>/nfs_cache *(rw,sync,no_subtree_check,no_root_squash,all_squash)' >> /etc/exports"
     ```
 
-4. 将共享目录设置为`nobody`用户
-
-    ```bash
-    sudo chown -R nobody: /<user home path>/nfs_cache
-    ```
-
-5. 重启nfs服务器：
+4. 重启nfs服务器：
 
     ```bash
     sudo service nfs-kernel-server restart

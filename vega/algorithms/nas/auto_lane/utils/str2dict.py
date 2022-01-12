@@ -1,14 +1,21 @@
 # -*- coding:utf-8 -*-
 
 # Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the MIT License.
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# MIT License for more details.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 """Utilities for the conversion between str and dict."""
+import ast
 
 
 def str_warp(str_):
@@ -39,7 +46,7 @@ def str2dict(str_):
         raise TypeError('"str_" must be a string, not {}'.format(type(str_)))
     # to keep the keys order
     str_.replace('dict(', 'OrderedDict(')
-    return eval(str_)
+    return ast.literal_eval(str_)
 
 
 def dict2str(dict_, tab=0, format_first_line=False, in_one_line=False):

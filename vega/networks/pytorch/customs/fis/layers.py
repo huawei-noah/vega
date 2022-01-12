@@ -1,4 +1,19 @@
-# -*- coding: utf-8 -*-
+# -*- coding:utf-8 -*-
+
+# Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """
 Common modules in ctr prediction task.
 
@@ -98,7 +113,6 @@ class EmbeddingLayer(torch.nn.Module):
         :type embed_dim: int
         """
         super(EmbeddingLayer, self).__init__()
-        # todo: add padding_idx = 0
         self.embedding = torch.nn.Embedding(input_dim, embed_dim)
         torch.nn.init.xavier_uniform_(self.embedding.weight.data)
 
@@ -118,7 +132,7 @@ class EmbeddingLayer(torch.nn.Module):
 
 
 class FactorizationMachineLayer(torch.nn.Module):
-    """Factorization Machines module. https://www.csie.ntu.edu.tw/~b97053/paper/Rendle2010FM.pdf.
+    """Factorization Machines module.
 
     :param reduce_sum: whether to sum interaction score of all feature pairs, defaults to `True`
     :type reduce_sum: bool, optional

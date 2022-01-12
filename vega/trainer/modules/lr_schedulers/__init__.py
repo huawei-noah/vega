@@ -1,5 +1,5 @@
-from .lr_scheduler import LrScheduler
 import vega
+from .lr_scheduler import LrScheduler
 
 if vega.is_torch_backend():
     from .warmup_scheduler_torch import WarmupScheduler

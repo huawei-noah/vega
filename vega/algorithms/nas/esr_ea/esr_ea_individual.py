@@ -1,16 +1,22 @@
 # -*- coding: utf-8 -*-
 
 # Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the MIT License.
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# MIT License for more details.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 """The Individual definition of ESR_EA algorithm."""
 from bisect import bisect_right
-from random import random
+import random
 import numpy as np
 from .conf import ESRRangeConfig
 
@@ -42,7 +48,7 @@ class ESRIndividual(object):
         """Initialize the gene randomly."""
         for gene_ind in range(self.node_num):
             type_prob = self.net_info.func_prob
-            self.gene[gene_ind][1] = bisect_right(type_prob, random())
+            self.gene[gene_ind][1] = bisect_right(type_prob, random.random())
             self.gene[gene_ind][0] = np.random.randint(2)
 
     def using_node_num(self):
@@ -183,7 +189,7 @@ class ESRIndividual(object):
         for node_ind in range(self.node_num):
             if self.gene[node_ind][0] and np.random.rand() < mutation_rate:
                 type_prob = self.net_info.func_prob
-                self.gene[node_ind][1] = bisect_right(type_prob, random())
+                self.gene[node_ind][1] = bisect_right(type_prob, random.random())
         self.active_net = self.active_net_list()
         self.parameter = self.network_parameter()
         self.flops = self.network_flops()

@@ -2,22 +2,14 @@
 
 ## 1. 常见异常汇总
 
-### 1.1 异常 `ModuleNotFoundError: No module named 'mmdet'`
-
-运行SP-NAS等算法时，需要单独安装开源软件mmdetection，具体安装步骤请参考该软件的安装指导。
-
-### 1.2 异常 `ModuleNotFoundError: No module named 'nasbench'`
-
-运行Benchmark时，需要单独安装开源软件NASBench，具体安装步骤请参考该软件的安装指导。
-
-### 1.3 异常 `Exception: Failed to create model, model desc={<model desc>}`
+### 1.1 异常 `Exception: Failed to create model, model desc={<model desc>}`
 
 出现该类问题的原因有两类：
 
 1. 该网络未注册到Vega中，在调用该网络前，需要使用`@ClassFactory.register`注册该网络，可参考示例<https://github.com/huawei-noah/vega/tree/master/examples/fully_train/fmd>。
 2. 该网络的模型描述文件有错误，可通过异常信息中的`<model desc>`定位问题的原因。
 
-### 1.5 异常 `ImportError: libgthread-2.0.so.0: cannot open shared object file: No such file or directory`
+### 1.2 异常 `ImportError: libgthread-2.0.so.0: cannot open shared object file: No such file or directory`
 
 该异常可能是因为opencv-python缺少了系统依赖库，可尝试使用如下命令解决：
 
@@ -25,7 +17,7 @@
 sudo apt install libglib2.0-0
 ```
 
-### 1.6 安装过程中出现异常 `ModuleNotFoundError: No module named 'skbuild'`，或者在安装过程中卡在`Running setup.py bdist_wheel for opencv-python-headless ...`
+### 1.3 安装过程中出现异常 `ModuleNotFoundError: No module named 'skbuild'`，或者在安装过程中卡在`Running setup.py bdist_wheel for opencv-python-headless ...`
 
 该异常可能是pip的版本过低，可尝试使用如下命令解决：
 
@@ -33,16 +25,12 @@ sudo apt install libglib2.0-0
 pip3 install --user --upgrade pip
 ```
 
-### 1.7 异常 `PermissionError: [Errno 13] Permission denied: 'dask-scheduler'`, `FileNotFoundError: [Errno 2] No such file or directory: 'dask-scheduler': 'dask-scheduler'`, 或者 `vega: command not found`
+### 1.4 异常 `PermissionError: [Errno 13] Permission denied: 'dask-scheduler'`, `FileNotFoundError: [Errno 2] No such file or directory: 'dask-scheduler': 'dask-scheduler'`, 或者 `vega: command not found`
 
 这类异常一般是因为在 `PATH` 路径中未找到 `dask-scheduler` ，一般该文件会安装在 `/<user home path>/.local/bin` 路径下。
 在安装完 Vega ，会自动添加 `/<user home path>/.local/bin/` 到 `PATH` 环境变量中，但不会即时生效，需要该用户执行`source ~/.profile`，或者再次登录服务器后才会生效。
 若问题还未解决，可先检查在 `/<user home path>/.local/bin` 路径下是否存在 `dask-scheduler` 文件。
 若该文件已存在，则需要手动添加 `/<user home path>/.local/bin` 到环境变量 `PATH` 中。
-
-### 1.8 Pytorch模型评估时，出现异常 `FileNotFoundError: [Errno 2] No such file or directory: '<path>/torch2caffe.prototxt'`
-
-请参考文档 [Evaluate Service](./evaluate_service.md) 6.1 章节。
 
 ## 2. 常见配置问题汇总
 
@@ -112,29 +100,11 @@ general:
         level: info  # debug|info|warn|error|
 ```
 
-### 2.5 如何实时查看搜索进展
-
-Vega提供了模型搜索过程可视化进展，用户只需在`USER.yml` 中配置`VisualCallBack`， 如下所示
-
-```yaml
-    trainer:
-        type: Trainer
-        callbacks: [VisualCallBack, ]
-```
-
-可视化信息输出目录为：
-
-```text
-./tasks/<task id>/visual
-```
-
-在主机上执行`tensorboard --logdir PATH`如下启动服务，在浏览器上查看进展。具体可参考tensorboard的相关命令和指导。
-
-### 2.6 如何终止后台运行的vega程序
+### 2.5 如何终止后台运行的vega程序
 
 Vega在多个GPU/NPU场景中，会启动dask scheduler、dask worker及训练器，若仅仅杀死Vega主进程会造成部分进程不会及时的关闭，其占用的资源一直不会被释放。
 
-可使用如下命令终止Vega应用程序：
+在安全模式下，可使用如下命令终止Vega应用程序：
 
 ```bash
 # 查询运行中的Vega主程序的进程ID
@@ -146,3 +116,57 @@ vega-kill -a
 # 若主程序被非常正常关闭，还存在遗留的相关进程，可使用强制清理
 vega-kill -f
 ```
+
+在普通模式下，使用如下命令：
+
+```bash
+vega-kill -s -l
+vega-kill -s -p <pid>
+vega-kill -s -a
+vega-kill -s -f
+```
+
+### 2.6 如何查询正在运行的vega程序
+
+在安全模式下，可通过如下命令查询正在运行的Vega应用程序：
+
+```bash
+vega-process
+```
+
+在普通模式下，可通过如下命令查询：
+
+```bash
+vega-process -s
+```
+
+### 2.7 如何查询vega程序运行进度
+
+在安全模式下，可通过如下命令查询正在运行的Vega程序运行进度：
+
+```bash
+vega-progress -t <Task ID> -r <Task Root Path>
+```
+
+在普通模式下，可通过如下命令查询：
+
+```bash
+vega-progress -s -t <Task ID> -r <Task Root Path>
+```
+
+### 2.8 如何使用vega程序执行模型推理
+
+可通过命令`vega-inference`执行分类模型推理，通过执行命令`vega-inference-det`执行检测模型推理。
+
+通过如下命令查询命令参数。
+
+```bash
+vega-inference --help
+vega-inference-det --help
+```
+
+## 3. 注意事项
+
+### 3.1 请预留足够的磁盘空间
+
+在Vega运行期间，会有缓存每一个搜索到的网络的模型，当搜索的数量较大是，需要较大的存储空间。请根据每个搜索算法的搜索网络模型的数量的大小，预留足够的磁盘空间。

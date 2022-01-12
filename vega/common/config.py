@@ -1,23 +1,29 @@
 # -*- coding:utf-8 -*-
 
 # Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the MIT License.
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# MIT License for more details.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 """Load public configuration from yaml or py file and convert dictionary types to objects."""
 
-import yaml
-import json
-import copy
-import os.path as osp
 import sys
+import json
 import logging
 import traceback
+import copy
 from importlib import import_module
+import os.path as osp
+import yaml
 
 
 class Config(dict):
@@ -38,6 +44,9 @@ class Config(dict):
                 if arg.endswith('.yaml') or arg.endswith('.yml'):
                     with open(arg) as f:
                         raw_dict = yaml.safe_load(f)
+                        if "abs_path" in kwargs:
+                            file_path = osp.dirname(osp.abspath(arg))
+                            self._replace_abs_path(file_path, raw_dict)
                         _dict2config(self, raw_dict)
                 elif arg.endswith('.py'):
                     module_name = osp.basename(arg)[:-3]
@@ -116,9 +125,9 @@ class Config(dict):
             with open(output_file, "w") as f:
                 data = json.loads(json.dumps(self))
                 yaml.dump(data, f, indent=4, Dumper=SafeDumper, sort_keys=False, **kwargs)
-        except Exception:
-            logging.error(f"Failed to dump config to file: {output_file}.")
-            logging.error(traceback.format_exc())
+        except Exception as e:
+            logging.error(f"Failed to dump config to file: {output_file}. error message: {e}")
+            logging.debug(traceback.format_exc())
 
     def __setattr__(self, key, value):
         """Get a object attr `key` with `value`.
@@ -147,6 +156,14 @@ class Config(dict):
 
         """
         return Config(copy.deepcopy(dict(self)))
+
+    def _replace_abs_path(self, file_path, raw_dict):
+        if isinstance(raw_dict, dict):
+            for k, v in raw_dict.items():
+                if isinstance(v, dict):
+                    self._replace_abs_path(file_path, v)
+                elif isinstance(v, str) and v.startswith("./"):
+                    raw_dict[k] = osp.join(file_path, v[2:])
 
 
 def _dict2config(config, dic):

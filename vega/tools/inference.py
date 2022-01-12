@@ -1,22 +1,30 @@
 # -*- coding: utf-8 -*-
 
 # Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the MIT License.
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# MIT License for more details.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 """Inference of vega model."""
 
-import pickle
 import os
+import csv
 import numpy as np
 import cv2
-import csv
 import vega
 from vega.common import argment_parser
+from vega.common import FileOps
+from vega.common.general import General
+from vega import security
 
 
 def _load_data(args):
@@ -39,7 +47,7 @@ def _load_image(image_file):
     return img.reshape(1, channel, height, width)
 
 
-def _to_tensor(data):
+def _to_tensor(args, data):
     """Change data to tensor."""
     if vega.is_torch_backend():
         import torch
@@ -68,20 +76,20 @@ def _get_model(args):
 def _infer(args, loader, model=None):
     """Choose backend."""
     if vega.is_torch_backend():
-        return _infer_pytorch(model, loader)
+        return _infer_pytorch(args, model, loader)
     elif vega.is_tf_backend():
         return _infer_tf(args, model, loader)
     elif vega.is_ms_backend():
         return _infer_ms(args, model, loader)
 
 
-def _infer_pytorch(model, loader):
+def _infer_pytorch(args, model, loader):
     """Infer with pytorch."""
     infer_result = []
     import torch
     with torch.no_grad():
         for file_name in loader:
-            data = _to_tensor(_load_image(file_name))
+            data = _to_tensor(args, _load_image(file_name))
             logits = model(data)
             logits = logits[0].tolist()
             infer_result.append((os.path.basename(file_name), logits))
@@ -116,7 +124,6 @@ def _infer_tf(args, model, loader):
 
 def _infer_ms():
     """Infer with ms."""
-    # TODO
     pass
 
 
@@ -134,8 +141,7 @@ def _save_result(args, result):
     else:
         if not _output_file:
             _output_file = "./result.pkl"
-        with open(_output_file, 'wb') as f:
-            pickle.dump(result, f)
+        FileOps.dump_pickle(result, _output_file)
         print('Results of Inference is saved in {}.'.format(_output_file))
 
 
@@ -173,12 +179,21 @@ def parse_args_parser():
                         "segmentation: ./result.pkl, "
                         "detection: ./result.pkl "
                         )
+    parser = security.args.add_args(parser)
     args = parser.parse_args()
+    security.args.check_args(args)
     return args
 
 
-if __name__ == '__main__':
+def main():
+    """Inference."""
     args = parse_args_parser()
+    if args.security:
+        if not security.load_config("client"):
+            print("If you run vega in normal mode, use parameter '-s'.")
+            print("For more parameters: vega-inference --help")
+            return
+    General.security = args.security
     vega.set_backend(args.backend, args.device)
     print("Start building model.")
     model = _get_model(args)
@@ -188,3 +203,7 @@ if __name__ == '__main__':
     result = _infer(args, loader, model)
     _save_result(args, result)
     print("Completed successfully.")
+
+
+if __name__ == '__main__':
+    main()

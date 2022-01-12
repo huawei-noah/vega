@@ -1,12 +1,18 @@
 # -*- coding:utf-8 -*-
 
 # Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the MIT License.
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# MIT License for more details.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 """This is SearchSpace for connection."""
 from copy import deepcopy
@@ -22,7 +28,6 @@ class ConnectionsDecorator(Module):
 
     def __init__(self, *models, **kwargs):
         super(ConnectionsDecorator, self).__init__(*models, **kwargs)
-        # for key, model in kwargs.items():
         if kwargs:
             for key, model in kwargs.items():
                 self.__add_module(key, model)
@@ -274,9 +279,11 @@ class ProcessList(ConnectionsDecorator):
             inputs = list(inputs)
             for model, idx in zip(self.children(), self.out_list):
                 if isinstance(idx, list):
-                    assert len(idx) == 2
-                    output = model(inputs[idx[0]], inputs[idx[1]])
-                    inputs.append(output)
+                    if len(idx) == 2:
+                        output = model(inputs[idx[0]], inputs[idx[1]])
+                        inputs.append(output)
+                    else:
+                        raise ValueError('Idx must be 2.')
                 else:
                     inputs.append(model(inputs[idx]))
             output = inputs
@@ -306,11 +313,11 @@ class Repeat(Module):
                     v_idx = idx if len(values) > idx else -1
                     params[key] = values[v_idx]
             params = update_dict_with_flatten_keys(ref_copy, params)
-            name, module = create_module(params)
+            name, module = _create_module(params)
             self.add_module('{}{}'.format(name, idx), module)
 
 
-def create_module(model):
+def _create_module(model):
     """Create search space from model or desc."""
     if isinstance(model, Module):
         return model.__class__.__name__, model
@@ -335,7 +342,6 @@ class Cells(Module):
         self.auxiliary = auxiliary
         if auxiliary:
             self.auxiliary_layer = auxiliary_layer
-        # output params
         normal_info = desc.get('normal')
         if normal_info:
             self.k = len(normal_info.genotype)

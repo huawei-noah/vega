@@ -1,12 +1,18 @@
 # -*- coding:utf-8 -*-
 
 # Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the MIT License.
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# MIT License for more details.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 """Functions to implement the BiSeNet."""
 
@@ -58,7 +64,7 @@ class FeatureFusion(nn.Module):
     """FeatureFusion module."""
 
     def __init__(self, in_planes, out_planes,
-                 reduction=1, norm_layer={'norm_type': 'BN'}, Conv2d=nn.Conv2d):
+                 reduction=1, norm_layer=None, Conv2d=nn.Conv2d):
         """Construct the FeatureFusion class.
 
         :param in_planes: input channels
@@ -68,6 +74,8 @@ class FeatureFusion(nn.Module):
         :param reduction: reduction ratio.
         """
         super(FeatureFusion, self).__init__()
+        if norm_layer is None:
+            norm_layer = {'norm_type': 'BN'}
         self.conv_1x1 = ConvBnRelu(in_planes, out_planes, 1, 1, 0,
                                    norm_layer=norm_layer,
                                    Conv2d=Conv2d)

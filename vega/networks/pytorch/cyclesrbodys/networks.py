@@ -1,12 +1,18 @@
 # -*- coding: utf-8 -*-
 
 # Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the MIT License.
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# MIT License for more details.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 """Basic layers."""
 
@@ -23,8 +29,7 @@ import vega
 try:
     import horovod.torch as hvd
 except Exception:
-    # logging.warning("horovod not been installed, {}".format(str(e)))
-    pass
+    logging.debug("horovod not been installed.")
 
 
 def initialize(nets, init_gain=0.02, use_cuda=True, use_distributed=False):
@@ -66,17 +71,17 @@ def initialize(nets, init_gain=0.02, use_cuda=True, use_distributed=False):
     return module_nets
 
 
-def requires_grad(nets, requires_grad=False):
+def requires_grad(nets, requires_grads=False):
     """Set requies_grad=Fasle for all the networks to avoid unnecessary computations.
 
     :param nets: a list of networks
     :type nets: list
-    :param requires_grad: whether the networks require gradients or not
-    :type requires_grad: bool
+    :param requires_grads: whether the networks require gradients or not
+    :type requires_grads: bool
     """
     for net in nets:
         for param in net.parameters():
-            param.requires_grad = requires_grad
+            param.requires_grad = requires_grads
 
 
 class ShortcutBlock(nn.Module):

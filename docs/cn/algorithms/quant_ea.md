@@ -73,8 +73,4 @@ nas和fully_train两个过程会依次进行，搜索过程会搜出Pareto前沿
 
 ### 5. 算法输出
 
-输出文件：
-
-- 搜索到的帕雷托前沿的模型经充分训练后得到的模型及结果
-- `reports.csv`包含了搜索过程中所有模型的encoding/flops/parameters/accuracy；
-- `output.csv`包含了搜索出来的pareto front的信息。
+输出未搜索到的帕雷托前沿的模型经充分训练后得到的模型及结果，在目录`./tasks/<task id>/output/nas/`中。

@@ -105,18 +105,3 @@ The PBA algorithm uses the default parameters in the parameter configuration fil
 |:--:|:--:|:--:|:--:|:--:|
 |Ho et at.,2019|96.13%|96.92%|97.32%|97.42%|
 |Vega Pipeline|96.26%|97.18%| \ |97.57%|
-
-The final output files and directories are as follows:
-
-```text
-output:
-    best_hps.json:    best augmentation policy schedule obtained by the PBA algorithm and the ID and score of the search phase
-    hps.csv:          ID and score of 16 groups of augmentation policy schedules obtained by the PBA algorithm in the search phase
-    score_board.csv:  score and status of each round of iteration of the 16 groups of data augmentation operations obtained in the algorithm search phase.
-workers:
-    hpo:             The 16 folders are the final results of the 16 groups of models, including the score and model.
-        0:
-        1:
-        ...
-        16:
-```

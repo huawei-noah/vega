@@ -1,18 +1,11 @@
 # Development Reference
 
+**Outdated and to be updated.**
+
 ## 1. Introduction
 
 The key features of Vega are network architecture search and hyperparameter optimization. In the network architecture search process, the search space and search algorithm are the core parts, and the generator is used to control the sampling, update, and end of the search process.
 
-The following figure shows the class diagram of the search space and search algorithm.
-
-![Search Space diagram](../../images/search_space_classes.png)
-
-The following figure shows the search space and search algorithm process.
-
-![Search Space process](../../images/search_space_flow.png)
-
-Search space process
 The following describes the following parts:
 
 - search space

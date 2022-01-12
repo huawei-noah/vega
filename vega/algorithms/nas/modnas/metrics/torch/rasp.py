@@ -1,20 +1,27 @@
 # -*- coding:utf-8 -*-
 
 # Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the MIT License.
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# MIT License for more details.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 """RASP-based metrics."""
-from ..base import MetricsBase
+
+from typing import List, Any, Union
+from torch.nn.modules.module import Module
 from modnas.registry.metrics import register, build
 from modnas.arch_space.mixed_ops import MixedOp
 from modnas.registry import SPEC_TYPE
-from torch.nn.modules.module import Module
-from typing import List, Any, Union
+from ..base import MetricsBase
 
 try:
     import rasp
@@ -122,7 +129,8 @@ class RASPTraversalMetrics(MetricsBase):
                 continue
             mixop_node = F.get_stats_node(m)
             self.excluded.add(mixop_node)
-            assert mixop_node['in_shape'] is not None
+            if mixop_node['in_shape'] is None:
+                raise ValueError('Inshape of mixop is None.')
             mixop_mt = 0
             m_in, _ = mixop_node['in_shape'], mixop_node['out_shape']
             for p, (pn, op) in zip(m.prob(), m.named_candidates()):

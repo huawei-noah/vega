@@ -79,8 +79,4 @@ mutate:
 
 ### Output
 
-The outputs are as follows:
-
-• The model on the found Pareto front after fully training.
-• Logs of all models in random search and evolutionary search process (result.csv)
-• Logs of Pareto front results (pareto_front.csv).
+The outputs is the model on the found Pareto front after fully training.

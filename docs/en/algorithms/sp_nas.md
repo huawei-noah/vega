@@ -130,7 +130,6 @@ fine_tune:
         models_folder: "{local_base_path}/output/parallel/"  # Get desc file and weights file from parallel pipe step
 ```
 
-
 ### Algorithm output
 
 - The optimal models with fully training.
@@ -138,4 +137,4 @@ fine_tune:
 
 ## Benchmark
 
-Benchmark configuration: [sp_nas.yml](https://github.com/huawei-noah/vega/tree/master/examples/nas/sp_nas/spnas.yml)
+Benchmark configuration: [spnas.yml](https://github.com/huawei-noah/vega/blob/master/examples/nas/sp_nas/spnas.yml)

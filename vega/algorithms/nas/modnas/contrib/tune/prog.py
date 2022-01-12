@@ -1,21 +1,25 @@
 # -*- coding:utf-8 -*-
 
 # Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the MIT License.
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# MIT License for more details.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 """Run hyperparameter tuning on python programs."""
-
 import sys
 import yaml
 import argparse
 import importlib
 from .func import tune
-from modnas.utils import exec_file
 
 
 def tune_prog(progname=None, funcname=None, config=None, options=None, hparams=None, prog_args=None):
@@ -32,10 +36,7 @@ def tune_prog(progname=None, funcname=None, config=None, options=None, hparams=N
     prog_spec = prog_spec.split(':')
     exec_name = prog_spec[0]
     funcname = funcname or (None if len(prog_spec) == 1 else prog_spec[1])
-    if exec_name.endswith('.py'):
-        mod = exec_file(exec_name)
-    else:
-        mod = importlib.import_module(exec_name)
+    mod = importlib.import_module(exec_name)
     if funcname is None:
         for k in mod.keys():
             if not k.startswith('_'):

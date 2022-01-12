@@ -1,4 +1,4 @@
-**Vega ver1.7.1 released:**
+**Vega ver1.8.0 released:**
 
 **Introduction**
 
@@ -19,4 +19,3 @@ Install Vega and the open source softwares that Vega depends on:
 **Cooperation and Contribution**
 
 Welcome to use Vega. If you have any questions or suggestions, need help, fix bugs, contribute new algorithms, or improve the documentation, submit an issue in the community. We will reply to and communicate with you in a timely manner.  
-Welcome to join our QQ chatroom (Chinese): **833345709**.

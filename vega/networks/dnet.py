@@ -1,12 +1,18 @@
 # -*- coding:utf-8 -*-
 
 # Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the MIT License.
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# MIT License for more details.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 """DNet network."""
 from vega.common import ClassFactory, ClassType
@@ -27,7 +33,6 @@ class DNet(Module):
         _big_model = "*" in block_str
         if _big_model:
             block_encoding_list = block_str.split('*')
-        # stem
         self.layers = Sequential(
             create_op('conv3', 3, curr_channel // 2, stride=2),
             ops.Relu(),
@@ -37,7 +42,6 @@ class DNet(Module):
             ops.Relu()
         )
 
-        # body
         if not _big_model:
             while index < len(macro_str):
                 stride = 1
@@ -106,11 +110,10 @@ OPS = {
     'conv3_grp2': lambda in_channel, out_channel, stride: conv33(in_channel, out_channel, stride, groups=2),
     'conv3_grp4': lambda in_channel, out_channel, stride: conv33(in_channel, out_channel, stride, groups=4),
     'conv3_base1': lambda in_channel, out_channel, stride: conv33_base(in_channel, out_channel, stride, base_channel=1),
-    # noqa: E501
     'conv3_base16': lambda in_channel, out_channel, stride: conv33_base(in_channel, out_channel, stride,
-                                                                        base_channel=16),  # noqa: E501
+                                                                        base_channel=16),
     'conv3_base32': lambda in_channel, out_channel, stride: conv33_base(in_channel, out_channel, stride,
-                                                                        base_channel=32),  # noqa: E501
+                                                                        base_channel=32),
     'conv3_sep': lambda in_channel, out_channel, stride: conv33_sep(in_channel, out_channel, stride)
 }
 
@@ -188,7 +191,6 @@ class EncodedBlock(Module):
         connect_index = 0
 
         self.module_list = ModuleList()
-        # self.module_list = []
         length = len(layer_str) // 2
         stride_place = 0
         while (stride_place + 1) * 2 < len(layer_str) and layer_str[stride_place * 2] == '1':
@@ -230,3 +232,8 @@ class EncodedBlock(Module):
             current = ops.Relu()(outs[-1])
 
         return current
+
+    def to_desc(self, recursion=True):
+        """Convert to desc."""
+        self.desc.update({"type": "EncodedBlock"})
+        return dict(self.desc)

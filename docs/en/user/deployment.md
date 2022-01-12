@@ -6,14 +6,14 @@
 
 The following conditions must be met when the Vega is deployed in a local cluster:
 
-1. Ubuntu 18.04 or later
-2. CUDA 10.0
-3. Python 3.7
-4. pip
+1. Ubuntu 18.04 or EulerOS 2.0 SP8
+2. CUDA 10.0 or CANN 20.1
+3. Python 3.7 or later
+4. pytorch, tensorflow(>1.14, <2.0) or mindspore
 
 **Note: If you need to deploy the Ascend 910 cluster, contact us.**
 
-During cluster deployment, you need to install the Vega and some mandatory software packages on each cluster node by running the following commands:
+During cluster deployment, you need to install the Vega:
 
 ```bash
 pip3 install --user --upgrade noah-vega
@@ -24,23 +24,6 @@ In addition, you need to install the `MPI' software. For details, see [Installin
 After installing the preceding software on each host, you need to configure SSH mutual trust (#ssh) and build NFS (#nfs).
 
 After the preceding operations are complete, the cluster has been deployed.
-
-### 1.2 Verify
-
-After the cluster is deployed, run the following command to check whether the cluster is available:
-
-```bash
-vega-verify-cluster -m <master IP> -s <slave IP 1> <slave IP 2> ... -n <shared NFS folder>
-```
-
-For example:
-
-```bash
-vega-verify-cluster -m 192.168.0.2 -s 192.168.0.3 192.168.0.4 -n /home/alan/nfs_folder
-```
-
-After the verification is complete, the message "All cluster check items have passed." is displayed.
-If an error occurs during the verification, please adjust the cluster based on the exception information.
 
 ## Reference
 
@@ -74,6 +57,24 @@ Any two hosts on the network must support SSH mutual trust. The configuration me
 
 ### <span id="nfs"> Building NFS </span>
 
+NFS is a widely used system for data sharing in a cluster. If an NFS system already exists in the cluster, use the existing NFS system.
+
+The following instructions for configuring NFS may not apply to all NFS systems. Adjust the instructions based on the actual cluster environment.
+
+Before configuring the NFS server, check whether the UID of the current user on each host in the cluster are the same. If the UID are different, the NFS shared directory cannot be accessed. In this case, you need to change the UID of the current user to the same value to avoid conflicts with the UIDs of other users.
+
+To query the UID of the current user, run the following command:
+
+```bash
+id <user name>
+```
+
+Change the current UID (Change the value with caution, please contact the cluster system administrator for help):
+
+```bash
+sudo usermod <user name> -u <new UID>
+```
+
 NFS server settings:
 
 1. Install the NFS server.
@@ -95,13 +96,7 @@ NFS server settings:
     sudo bash -c "echo '/home/<user home path>/nfs_cache *(rw,sync,no_subtree_check,no_root_squash,all_squash)' >> /etc/exports"
     ```
 
-4. Set the shared directory to the `nobody` user.
-
-    ```bash
-    sudo chown -R nobody: /<user home path>/nfs_cache
-    ```
-
-5. Restart the NFS server.
+4. Restart the NFS server.
 
     ```bash
     sudo service nfs-kernel-server restart

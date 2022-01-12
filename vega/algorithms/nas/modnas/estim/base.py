@@ -1,23 +1,29 @@
 # -*- coding:utf-8 -*-
 
 # Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the MIT License.
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# MIT License for more details.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 """Base Estimator."""
 import traceback
 import threading
-import pickle
 from modnas import backend
 from modnas.metrics import build_metrics_all
 from modnas.registry.export import build as build_exporter
 from modnas.core.event import event_hooked_subclass
 from modnas.utils.logging import get_logger
 from modnas.registry import streamline_spec
+from vega.common import FileOps
 
 
 def build_criterions_all(crit_configs, device_ids=None):
@@ -310,10 +316,10 @@ class EstimBase():
         epoch = epoch or self.cur_epoch
         try:
             chkpt = self.state_dict()
-            with open(chkpt_path, 'wb') as f:
-                pickle.dump(chkpt, f)
-        except RuntimeError:
-            logger.error("Failed saving estimator: {}".format(traceback.format_exc()))
+            FileOps.dump_pickle(chkpt, chkpt_path)
+        except RuntimeError as e:
+            logger.debug(traceback.format_exc())
+            logger.error(f"Failed saving estimator: {e}")
 
     def save_checkpoint(self, epoch=None, save_name=None):
         """Save Estimator & model to file."""
@@ -334,14 +340,14 @@ class EstimBase():
         save_path = expman.join('output', fname)
         try:
             build_exporter(exporter, path=save_path)(arch_desc)
-        except RuntimeError:
-            logger.error("Failed saving arch_desc: {}".format(traceback.format_exc()))
+        except RuntimeError as e:
+            logger.debug(traceback.format_exc())
+            logger.error(f"Failed saving arch_desc, message: {e}")
 
     def load(self, chkpt_path):
         """Load states from file."""
         if chkpt_path is None:
             return
         self.logger.info("Resuming from checkpoint: {}".format(chkpt_path))
-        with open(chkpt_path, 'rb') as f:
-            chkpt = pickle.load(f)
+        chkpt = FileOps.load_pickle(chkpt_path)
         self.load_state_dict(chkpt)

@@ -1,12 +1,18 @@
 # -*- coding: utf-8 -*-
 
 # Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the MIT License.
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# MIT License for more details.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 """Inference of vega model."""
 
@@ -17,9 +23,12 @@ from datetime import datetime
 from vega.common import Status, JsonEncoder, DatatimeFormatString, argment_parser
 from vega.tools.query_process import query_task_info
 from vega.common import MessageClient
+from vega import security
+from vega.common.general import General
 
 
 __all__ = ["query_progress"]
+error_message = ""
 
 
 def _parse_args(desc):
@@ -28,7 +37,9 @@ def _parse_args(desc):
                         help="vega application task id")
     parser.add_argument("-r", "--root_path", type=str, required=True,
                         help="root path where vega application is running")
+    parser = security.args.add_args(parser)
     args = parser.parse_args()
+    security.args.check_args(args)
     return args
 
 
@@ -42,7 +53,9 @@ def _load_report(report_path):
     try:
         with open(report_path, "r") as f:
             return json.load(f)
-    except Exception:
+    except Exception as e:
+        global error_message
+        error_message = str(e)
         return None
 
 
@@ -95,11 +108,13 @@ def _statistic_progress(progress):
     for step in progress["steps"]:
         step["estimated_end_time"] = None
         if step["status"] == Status.running.value:
-            if "finished_epochs" in step and step["finished_epochs"] != 0:
+            if "finished_epochs" in step and step["finished_epochs"] != 0 and "num_epochs" in step:
                 start_time = datetime.strptime(step["start_time"], DatatimeFormatString)
                 delta = datetime.now() - start_time
                 delta = delta * (step["num_epochs"] - step["finished_epochs"]) / step["finished_epochs"]
                 step["estimated_end_time"] = datetime.now() + delta
+            else:
+                step["estimated_end_time"] = "0000-00-00 00:00:00"
     # count status
     all_finished = True
     progress["status"] = Status.running
@@ -125,13 +140,14 @@ def _query_report(task_info):
         ip = task_info["ip"]
         client = MessageClient(ip=ip, port=port, timeout=1)
         return client.send(action="query_report")
-    except Exception:
+    except Exception as e:
+        global error_message
+        error_message = str(e)
         return None
 
 
-def query_progress(times=0):
+def query_progress(args, times=0):
     """Query vega progress."""
-    args = _parse_args("Query Vega progress.")
     task_info = query_task_info(args.task_id)
 
     if not task_info:
@@ -150,9 +166,10 @@ def query_progress(times=0):
     else:
         report = _query_report(task_info)
     if not report:
+        global error_message
         return json.dumps({
             "status": Status.error,
-            "message": "Failed to query progress."
+            "message": f"Failed to query progress. {error_message}"
         }, cls=JsonEncoder, indent=4)
 
     progress = _parse_report(report)
@@ -163,10 +180,17 @@ def query_progress(times=0):
     return json.dumps(progress, cls=JsonEncoder, indent=4)
 
 
-def print_progress():
+def main():
     """Print progress."""
-    print(query_progress())
+    args = _parse_args("Query Vega progress.")
+    if args.security:
+        if not security.load_config("client"):
+            print("If you run vega in normal mode, use parameter '-s'.")
+            print("For more parameters: vega-progress --help")
+            return
+    General.security = args.security
+    print(query_progress(args))
 
 
 if __name__ == "__main__":
-    print_progress()
+    main()

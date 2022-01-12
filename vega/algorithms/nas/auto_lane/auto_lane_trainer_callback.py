@@ -1,12 +1,18 @@
 # -*- coding:utf-8 -*-
 
 # Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the MIT License.
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# MIT License for more details.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 """The trainer program for Auto Lane."""
 
@@ -28,7 +34,6 @@ class AutoLaneTrainerCallback(Callback):
         """Patch the default logger."""
         worker_path = self.trainer.get_local_worker_path()
         worker_spec_log_file = FileOps.join_path(worker_path, 'current_worker.log')
-        logger = logging.getLogger(__name__)
         for hdlr in logger.handlers:
             logger.removeHandler(hdlr)
         for hdlr in logging.root.handlers:
@@ -81,10 +86,6 @@ class AutoLaneTrainerCallback(Callback):
                 'cls_neg_loss': loss_neg.item(),
                 'loc_loss': loss_loc.item(),
                 'train_batch_output': None}
-
-    # def before_valid(self, logs=None):
-    #     """Be called before a batch validation."""
-    #     epochs = self.params['epochs']
 
     def valid_step(self, batch):
         """Be called on each batch validing."""

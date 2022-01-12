@@ -1,12 +1,18 @@
 # -*- coding:utf-8 -*-
 
 # Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the MIT License.
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# MIT License for more details.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 """This is Network for SerialNet."""
 from vega.common import ClassFactory, ClassType
 from vega.modules.operators import ops
@@ -18,13 +24,15 @@ from vega.modules.connections import ModuleList
 class ParallelFPN(Module):
     """Parallel FPN."""
 
-    def __init__(self, in_channels=[64, 128, 256, 512], out_channels=256, code=None,
+    def __init__(self, in_channels=None, out_channels=256, code=None,
                  weight_file=None, weights_prefix='head.backbone.1'):
         """Init FPN.
 
         :param desc: config dict
         """
         super(ParallelFPN, self).__init__()
+        if in_channels is None:
+            in_channels = [64, 128, 256, 512]
         self.code = code
         self.inner_blocks = ModuleList()
         self.layer_blocks = ModuleList()

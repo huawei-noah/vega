@@ -1,0 +1,7 @@
+pandas
+scikit-learn
+scipy
+pyyaml
+zmq
+requests
+psutil

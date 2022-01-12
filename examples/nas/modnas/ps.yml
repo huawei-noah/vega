@@ -31,11 +31,13 @@ nas:
                 type: CIFAR_MobileNetV2_GPU
                 args:
                     n_classes: 10
-            construct:
-                predefined: MobileNetV2PredefinedConstructor
-                elastic: MobileNetV2ElasticConstructor
-            desc_construct:
-                arch_desc: MobileNetV2ArchDescConstructor
+            search:
+                construct:
+                    predefined: MobileNetV2PredefinedConstructor
+                    elastic: MobileNetV2ElasticConstructor
+            augment:
+                construct:
+                    arch_desc: MobileNetV2ArchDescConstructor
 
     trainer:
         type: Trainer

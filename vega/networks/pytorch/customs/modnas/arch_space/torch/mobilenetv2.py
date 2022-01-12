@@ -1,7 +1,14 @@
-"""MobileNetV2 architectures.
+# -*- coding:utf-8 -*-
 
-modified from https://github.com/Randl/MobileNetV2-pytorch
-"""
+# This file is adapted from the MobileNetV2-pytorch library at
+# https://github.com/Randl/MobileNetV2-pytorch
+
+# 2020.6.29-Changed for Modular-NAS search space.
+#         Huawei Technologies Co., Ltd. <linyunfeng5@huawei.com>
+# Copyright 2020 Huawei Technologies Co., Ltd.
+
+"""MobileNetV2 architectures."""
+
 import math
 from functools import partial
 from collections import OrderedDict
@@ -257,10 +264,10 @@ def mobilenetv2(cfgs=None, cifar=False, **kwargs):
     return MobileNetV2(cfgs=cfgs, **kwargs)
 
 
-for cifar in [True, False]:
-    img = 'CIFAR' if cifar else 'ImageNet'
-    register(partial(mobilenetv2, cifar=cifar), '{}_MobileNetV2'.format(img))
-    register(partial(mobilenetv2, cfgs=_mbv2_gpu_cfgs, cifar=cifar), '{}_MobileNetV2_GPU'.format(img))
+for cifar_format in [True, False]:
+    img = 'CIFAR' if cifar_format else 'ImageNet'
+    register(partial(mobilenetv2, cifar=cifar_format), '{}_MobileNetV2'.format(img))
+    register(partial(mobilenetv2, cfgs=_mbv2_gpu_cfgs, cifar=cifar_format), '{}_MobileNetV2_GPU'.format(img))
 
 
 kernel_sizes = [3, 5, 7, 9]

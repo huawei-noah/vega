@@ -1,0 +1,9 @@
+#dispatch files to site-packages
+recursive-include docs *
+recursive-include evaluate_service *
+include LICENSE
+include MANIFEST.in
+include README.cn.md
+include README.md
+include RELEASE.md
+include setup.py

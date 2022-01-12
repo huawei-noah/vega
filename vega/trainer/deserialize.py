@@ -1,18 +1,24 @@
 # -*- coding:utf-8 -*-
 
 # Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the MIT License.
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# MIT License for more details.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 """Deserialize worker."""
 
 import os
-import pickle
 from copy import deepcopy
+from vega.common import FileOps
 
 
 def _get_worker_config(worker):
@@ -43,23 +49,25 @@ def pickle_worker(workers, id):
         config_file = os.path.join(
             worker.get_local_worker_path(),
             f".{str(id)}.{str(index)}.config.pkl")
-        with open(config_file, "wb") as f:
-            pickle.dump(worker_config, f)
+        FileOps.dump_pickle(worker_config, config_file)
         # pickle worker
         worker_file = os.path.join(
             worker.get_local_worker_path(),
             f".{str(id)}.{str(index)}.worker.pkl")
-        with open(worker_file, "wb") as f:
-            pickle.dump(worker, f)
+        FileOps.dump_pickle(worker, worker_file)
 
 
 def load_config(config_file):
     """Load config from file."""
-    import pickle
+    # load General config (includes security setting)
+    from vega.common.general import General
+    General.security = False
+    config = FileOps.load_pickle(config_file)
+    General.from_dict(config["general"])
 
-    with open(config_file, 'rb') as f:
-        config = pickle.load(f)
-
+    # if security mode, reload config
+    if General.security:
+        config = FileOps.load_pickle(config_file)
     from vega.common.class_factory import ClassFactory
     from vega.common.general import General
     from vega.datasets.conf.dataset import DatasetConfig
@@ -69,7 +77,6 @@ def load_config(config_file):
     from vega.core.pipeline.conf import PipeStepConfig
 
     ClassFactory.__registry__ = config["class_factory"]
-    General.from_dict(config["general"])
     DatasetConfig.from_dict(config["dataset"])
     ModelConfig.from_dict(config["model"])
     TrainerConfig.from_dict(config["trainer"])
@@ -79,7 +86,5 @@ def load_config(config_file):
 
 def load_worker(worker_file):
     """Load worker from file."""
-    import pickle
-    with open(worker_file, 'rb') as f:
-        worker = pickle.load(f)
+    worker = FileOps.load_pickle(worker_file)
     return worker

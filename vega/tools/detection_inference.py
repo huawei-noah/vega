@@ -1,27 +1,35 @@
 # -*- coding: utf-8 -*-
 
 # Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the MIT License.
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# MIT License for more details.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 """Inference of vega detection model."""
 
 import vega
 from vega.common import argment_parser
 from vega.common import FileOps
+from vega.common.general import General
+from vega import security
 
 
 def _load_data(args):
     """Load data from path."""
     if args.data_format == 'CULANE':
-        return vega.dataset("AutoLaneDataset", dataset_format="CULane", data_path=args.data_path, mode="test",
+        return vega.get_dataset("AutoLaneDataset", dataset_format="CULane", data_path=args.data_path, mode="test",
                                 batch_size=args.batch_size).loader
     elif args.data_format == 'COCO':
-        return vega.dataset("CocoDataset", data_root=args.data_path, mode="test",
+        return vega.get_dataset("CocoDataset", data_root=args.data_path, mode="test",
                                 batch_size=args.batch_size).loader
 
 
@@ -108,13 +116,21 @@ def parse_args_parser():
                         help="output file. "
                         "type: pkl"
                         )
+    parser = security.args.add_args(parser)
     args = parser.parse_args()
+    security.args.check_args(args)
     return args
 
 
 def main():
     """Inference."""
     args = parse_args_parser()
+    if args.security:
+        if not security.load_config("client"):
+            print("If you run vega in normal mode, use parameter '-s'.")
+            print("For more parameters: vega-inference-det --help")
+            return
+    General.security = args.security
     vega.set_backend(args.backend, args.device)
     print("Start building model.")
     model = _get_model(args)

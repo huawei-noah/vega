@@ -1,22 +1,28 @@
 # -*- coding:utf-8 -*-
 
 # Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the MIT License.
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# MIT License for more details.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 """Pipeline Estimator."""
 import time
-import yaml
 import traceback
 import threading
 import multiprocessing as mp
-from ..base import EstimBase
+import yaml
 from modnas.registry.estim import register
 from modnas.utils.wrapper import run
+from ..base import EstimBase
 
 
 def _mp_step_runner(conn, step_conf):
@@ -60,8 +66,9 @@ class PipelineEstim(EstimBase):
         """Execute runner in a thread."""
         try:
             ret = self.runner(self.config.pipeline[pname])
-        except RuntimeError:
-            self.logger.info('pipeline step failed with error: {}'.format(traceback.format_exc()))
+        except RuntimeError as e:
+            self.logger.debug(traceback.format_exc())
+            self.logger.info(f'pipeline step failed with error, message: {e}')
             self.failed.add(pname)
             ret = None
         self.step_done(pname, ret, None)

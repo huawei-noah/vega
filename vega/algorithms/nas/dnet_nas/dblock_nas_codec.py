@@ -1,12 +1,18 @@
 # -*- coding:utf-8 -*-
 
 # Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the MIT License.
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# MIT License for more details.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 """Defined DblockNasCodec."""
 import copy
@@ -50,35 +56,7 @@ class DblockNasCodec(Codec):
         skip_num = sample_desc['network.backbone.skip_num']
         base_channel = sample_desc['network.backbone.base_channel']
 
-        block_coding = ''
-        for i in range(op_num):
-            op_index = random.randint(0, op_choices - 1)
-            channel_index = random.randint(0, channel_choices - 1)
-            if i < op_num - 1:
-                block_coding += str(op_index) + str(channel_index)
-            else:
-                block_coding += str(op_index)
-
-        skip_set = []
-        for i in range(op_num + 1):
-            for j in range(i + 1, op_num + 1):
-                if i == 0 and j == op_num:
-                    continue
-                skip_set.append(str(i) + str(j))
-
-        skip_num = min(skip_num, len(skip_set))
-        skip_indexes = list(np.random.permutation(skip_num))
-        skip_indexes.sort()
-
-        skip_coding = ''
-        for skip_index in skip_indexes:
-            if random.randint(0, 1) == 0:
-                skip_type = 'a'
-            else:
-                skip_type = 'c'
-            skip_coding += skip_type + skip_set[skip_index]
-
-        block_coding += '-' + skip_coding
+        block_coding = decode_d_block_str(op_choices, channel_choices, op_num, skip_num)
 
         code = {}
         code['network.backbone.block_coding'] = block_coding
@@ -107,3 +85,38 @@ class DblockNasCodec(Codec):
         desc['network.backbone.encoding'] = f'{block_coding}_{base_channel}_{marco_coding}'
 
         return desc
+
+
+def decode_d_block_str(op_choices, channel_choices, op_num, skip_num):
+    """Decode d block str."""
+
+    block_coding = ''
+    for i in range(op_num):
+        op_index = random.randint(0, op_choices - 1)
+        channel_index = random.randint(0, channel_choices - 1)
+        if i < op_num - 1:
+            block_coding += str(op_index) + str(channel_index)
+        else:
+            block_coding += str(op_index)
+
+    skip_set = []
+    for i in range(op_num + 1):
+        for j in range(i + 1, op_num + 1):
+            if i == 0 and j == op_num:
+                continue
+            skip_set.append(str(i) + str(j))
+
+    skip_num = min(skip_num, len(skip_set))
+    skip_indexes = list(np.random.permutation(skip_num))
+    skip_indexes.sort()
+
+    skip_coding = ''
+    for skip_index in skip_indexes:
+        if random.randint(0, 1) == 0:
+            skip_type = 'a'
+        else:
+            skip_type = 'c'
+        skip_coding += skip_type + skip_set[skip_index]
+
+    block_coding += '-' + skip_coding
+    return block_coding

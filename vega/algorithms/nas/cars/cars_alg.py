@@ -1,30 +1,36 @@
 # -*- coding:utf-8 -*-
 
 # Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the MIT License.
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# MIT License for more details.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 """DifferentialAlgorithm."""
+
 import copy
 import logging
 import os
 from collections import namedtuple
-import numpy as np
 import vega
-from .conf import CARSConfig
 from vega.common import Config
+import numpy as np
 from vega.algorithms.nas.darts_cnn import DartsNetworkTemplateConfig
 from vega.common import ClassFactory, ClassType
 from vega.core.search_algs import SearchAlgorithm
 from vega.report import SortAndSelectPopulation
 from vega.report.report_client import ReportClient
-from vega.report.report_server import ReportServer
 from .nsga3 import CARS_NSGA
 from .utils import eval_model_parameters
+from .conf import CARSConfig
 
 if vega.is_torch_backend():
     import torch
@@ -103,7 +109,6 @@ class CARSAlgorithm(SearchAlgorithm):
                 alphas_c = self.random_sample_path()
             if self.judge_repeat(alphas, alphas_c) == 0:
                 offsprings.append(alphas_c)
-        # offsprings = torch.cat([offspring.unsqueeze(0) for offspring in offsprings], dim=0)
         offsprings = np.stack(offsprings, axis=0)
         return offsprings
 
@@ -186,7 +191,7 @@ class CARSAlgorithm(SearchAlgorithm):
                 if alg_policy.select_method == 'uniform':
                     selected_genotypes, selected_acc, selected_model_sizes = self.select_uniform_pareto_front(
                         np.array(fitness_keep), np.array(size_keep), genotype_keep)
-                else:  # default: first
+                else:
                     selected_genotypes, selected_acc, selected_model_sizes = self.select_first_pareto_front(
                         np.array(fitness_keep), np.array(size_keep), genotype_keep)
 
@@ -223,7 +228,6 @@ class CARSAlgorithm(SearchAlgorithm):
                     logits = self.trainer.model(input, alpha=alpha_tensor)
                     metrics(logits, target)
         elif vega.is_tf_backend():
-            # self.trainer.valid_alpha = tf.convert_to_tensor(alpha)
             metrics = self.trainer.valid_metrics
             setattr(self.trainer, 'valid_alpha', alpha)
             eval_results = self.trainer.estimator.evaluate(input_fn=self.trainer.valid_loader.input_fn,
@@ -287,8 +291,7 @@ class CARSAlgorithm(SearchAlgorithm):
         _range = max_acc - min_acc
         if _range == 0.:
             return genotypes[:1], fitness[:1], obj[:1]
-        ratio = 0.5 / _range
-        keep = (((fitness - min_acc) / _range) > ratio)
+        keep = (((fitness - min_acc) / _range) > 0.5)
         fitness = fitness[keep]
         obj = obj[keep]
         genotypes = [i for (i, v) in zip(genotypes, keep) if v]
@@ -346,7 +349,6 @@ class CARSAlgorithm(SearchAlgorithm):
                 new_alphas_reduce_ops0[i] = new_alphas_reduce_ops1[i].copy()
         alphas_normal = self._node_ops_to_alpha(new_alphas_normal_node0, new_alphas_normal_ops0).copy()
         alphas_reduce = self._node_ops_to_alpha(new_alphas_reduce_node0, new_alphas_reduce_ops0).copy()
-        # alphas = torch.cat([alphas_normal, alphas_reduce], dim=0)
         alphas = np.concatenate([alphas_normal, alphas_reduce], axis=0)
         return alphas
 

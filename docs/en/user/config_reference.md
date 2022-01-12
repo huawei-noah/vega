@@ -157,6 +157,7 @@ fully_train:
         common:
             data_path: /cache/datasets/cifar10/
 ```
+**Note**: HCCL supports multi-machine multi-card, Horovod currently only supports single machine multi-card.
 
 ## 3. NAS and HPO configuration items
 

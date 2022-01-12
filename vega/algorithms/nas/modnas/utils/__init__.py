@@ -1,29 +1,36 @@
 # -*- coding:utf-8 -*-
 
 # Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the MIT License.
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# MIT License for more details.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 import sys
+import re
+import os
 import time
 import inspect
 import importlib
-import numpy as np
 import hashlib
 from functools import partial
-from modnas.version import __version__
-from .logging import get_logger
-from modnas import backend as be
 from typing import Callable, Dict, List, Optional, Union, Any
-
+import numpy as np
+from modnas.version import __version__
+from modnas import backend as be
 try:
     from tensorboardX import SummaryWriter
 except ImportError:
     SummaryWriter = None
+from .logging import get_logger
 
 
 logger = get_logger('utils')
@@ -39,18 +46,10 @@ def import_file(path, name=None):
     return module
 
 
-def exec_file(path):
-    """Execute file and return globals."""
-    with open(path, 'rb') as fp:
-        code = compile(fp.read(), path, 'exec')
-    globs = {
-        '__file__': path,
-        '__name__': '__main__',
-        '__package__': None,
-        '__cached__': None,
-    }
-    exec(code, globs, None)
-    return globs
+def check_value(value, pattern):
+    """Check value."""
+    if isinstance(value, str) and len(re.compile(pattern).findall(value)) > 0:
+        raise ValueError(f"{value} contains invalid characters.")
 
 
 def import_modules(modules: List[str]) -> None:
@@ -77,7 +76,8 @@ def import_modules(modules: List[str]) -> None:
 
 def get_exp_name(config):
     """Return experiment name."""
-    return '{}.{}'.format(time.strftime('%Y%m%d', time.localtime()), hashlib.sha1(str(config).encode()).hexdigest()[:4])
+    return '{}.{}'.format(time.strftime('%Y%m%d', time.localtime()),
+                          hashlib.sha256(str(config).encode()).hexdigest()[:4])
 
 
 def env_info() -> str:
@@ -181,13 +181,18 @@ def copy_members(
 def get_same_padding(kernel_size: int) -> int:
     """Return SAME padding size for convolutions."""
     if isinstance(kernel_size, tuple):
-        assert len(kernel_size) == 2, 'invalid kernel size: %s' % kernel_size
+        if len(kernel_size) != 2:
+            raise ValueError('invalid kernel size: %s' % kernel_size)
         p1 = get_same_padding(kernel_size[0])
         p2 = get_same_padding(kernel_size[1])
         return p1, p2
-    assert isinstance(kernel_size, int), 'kernel size should be either `int` or `tuple`'
-    assert kernel_size % 2 > 0, 'kernel size should be odd number'
-    return kernel_size // 2
+    if isinstance(kernel_size, int):
+        if kernel_size % 2 > 0:
+            return kernel_size // 2
+        else:
+            raise ValueError('kernel size should be odd number')
+    else:
+        raise ValueError('kernel size should be either `int` or `tuple`')
 
 
 class AverageMeter():
