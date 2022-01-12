@@ -1,12 +1,18 @@
 # -*- coding: utf-8 -*-
 
 # Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the MIT License.
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# MIT License for more details.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 """Utils tools."""
 
@@ -15,12 +21,12 @@ import shutil
 import sys
 import logging
 import imp
-import numpy as np
 import random
 import socket
+from contextlib import contextmanager
 from functools import wraps
 from copy import deepcopy
-from contextlib import contextmanager
+import numpy as np
 
 
 logger = logging.getLogger(__name__)
@@ -44,7 +50,7 @@ def singleton(cls):
     return get_instance
 
 
-def update_dict(src, dst, exclude=['loss', 'metric', 'lr_scheduler', 'optim', 'model_desc', 'transforms']):
+def update_dict(src, dst, exclude=None):
     """Use src dictionary update dst dictionary.
 
     :param dict src: Source dictionary.
@@ -52,6 +58,8 @@ def update_dict(src, dst, exclude=['loss', 'metric', 'lr_scheduler', 'optim', 'm
     :return: Updated dictionary.
     :rtype: Dictionary
     """
+    if exclude is None:
+        exclude = ['loss', 'metric', 'lr_scheduler', 'optim', 'model_desc', 'transforms']
     exclude_keys = exclude or []
     for key in src.keys():
         if key in dst.keys() and key not in exclude_keys:
@@ -192,6 +200,23 @@ def verify_requires(requires):
     return True
 
 
+def verify_platform_pkgs(pkgs: list) -> bool:
+    """Verify pytorch, tensorflow or mindspore."""
+    failed = []
+    for module, pkg in pkgs:
+        try:
+            __import__(module)
+        except Exception:
+            failed.append(pkg)
+    if failed:
+        logger.error("Missing modules: {}".format(failed))
+        logger.error("Please run the following command:")
+        for pkg in failed:
+            logger.error("    pip3 install --user \"{}\"".format(pkg))
+        return False
+    return True
+
+
 def remove_np_value(value):
     """Remove np.int64 and np.float32."""
     if value is None:
@@ -233,6 +258,7 @@ def get_available_port(min_port=8000, max_port=9999):
             _sock.close()
             return port
         except Exception:
+            logging.debug('Failed to get available port, continue.')
             continue
     return None
 

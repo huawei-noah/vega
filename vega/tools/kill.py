@@ -1,21 +1,30 @@
 # -*- coding: utf-8 -*-
 
 # Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the MIT License.
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# MIT License for more details.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 """Kill vega progress."""
 
+import logging
 import os
 import signal
-import psutil
 import time
+import psutil
 from vega.common import argment_parser
 from vega.tools.query_process import query_process, get_pid, query_processes, get_vega_pids, print_process
+from vega import security
+from vega.common.general import General
 
 
 def _parse_args(desc):
@@ -29,7 +38,9 @@ def _parse_args(desc):
                        help="kill all Vega main process")
     group.add_argument("-f", "--force", action='store_true',
                        help="Forcibly kill all Vega-related processes even if the main process does not exist")
+    parser = security.add_args(parser)
     args = parser.parse_args()
+    security.check_args(args)
     return args
 
 
@@ -52,7 +63,7 @@ def _kill_vega_process(pid):
     try:
         os.kill(pid, signal.SIGINT)
     except Exception:
-        pass
+        logging.debug('Failed to kill pid {}.'.format(pid))
     _wait(3)
     spids.append(pid)
     not_stoped = _check_exited(spids)
@@ -60,7 +71,7 @@ def _kill_vega_process(pid):
         try:
             os.kill(pid, signal.SIGKILL)
         except Exception:
-            pass
+            logging.debug('Failed to kill pid {}.'.format(pid))
     _wait(5)
     print("")
     not_stoped = _check_exited(not_stoped)
@@ -104,14 +115,14 @@ def _kill_all_vega_process():
         try:
             os.kill(pid, signal.SIGINT)
         except Exception:
-            pass
+            logging.debug('Failed to kill pid {}.'.format(pid))
     _wait(3)
     not_stoped = _check_exited(all_spids)
     for pid in not_stoped:
         try:
             os.kill(pid, signal.SIGKILL)
         except Exception:
-            pass
+            logging.debug('Failed to kill pid {}.'.format(pid))
     _wait(5)
     print("")
     not_stoped = _check_exited(not_stoped)
@@ -122,7 +133,9 @@ def _kill_all_vega_process():
         print("All Vega processes have been killed.")
 
 
-def _get_sub_processes(pid, cpids=[]):
+def _get_sub_processes(pid, cpids=None):
+    if cpids is None:
+        cpids = []
     p = psutil.Process(pid)
     for cp in p.children():
         cpid = cp.pid
@@ -130,7 +143,7 @@ def _get_sub_processes(pid, cpids=[]):
         try:
             _get_sub_processes(cpid, cpids)
         except Exception:
-            pass
+            logging.debug('Failed to get sub_process {}.'.format(cpid))
     return cpids
 
 
@@ -151,7 +164,7 @@ def _force_kill():
         try:
             os.kill(pid, signal.SIGKILL)
         except Exception:
-            pass
+            logging.debug('Failed to kill pid {}.'.format(pid))
     _wait(5)
     print("")
     not_stoped = _check_exited(vega_pids)
@@ -169,6 +182,7 @@ def _get_all_related_processes():
         try:
             p = psutil.Process(pid)
         except Exception:
+            logging.debug('Failed to get pid {}.'.format(pid))
             continue
         if p.name() in ["vega", "dask-scheduler", "dask-worker", "vega-main"]:
             vega_pids.append(pid)
@@ -199,8 +213,15 @@ def _wait(seconds):
         time.sleep(0.5)
 
 
-def _kill():
+def main():
+    """Kill vega process."""
     args = _parse_args("Kill Vega processes.")
+    if args.security:
+        if not security.load_config("client"):
+            print("If you run vega in normal mode, use parameter '-s'.")
+            print("For more parameters: vega-kill --help")
+            return
+    General.security = args.security
     if args.pid:
         _kill_vega_process(args.pid)
     elif args.task_id:
@@ -212,4 +233,4 @@ def _kill():
 
 
 if __name__ == "__main__":
-    _kill()
+    main()

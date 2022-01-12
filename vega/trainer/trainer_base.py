@@ -1,12 +1,18 @@
 # -*- coding: utf-8 -*-
 
 # Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the MIT License.
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# MIT License for more details.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 """Base Trainer."""
 
@@ -213,6 +219,20 @@ class TrainerBase(DistributedWorker):
         """Init dataloader."""
         if loader is not None:
             return loader
+        dataset = self._init_dataset(mode)
+        if transforms is not None:
+            dataset.transforms = transforms
+        if (self.hccl or self.horovod) and mode == "train":
+            dataset.set_distributed(self.num_workers, self.rank_id)
+        # adapt the dataset to specific backend
+        adapter = Adapter(dataset)
+        if (self.hccl or self.horovod) and mode == "train" and hasattr(adapter, "sampler"):
+            self.sampler = adapter.sampler
+        dataloader = adapter.loader
+        return dataloader
+
+    def _init_dataset(self, mode):
+        """Init dataset."""
         if mode == "train" and self.hps is not None and self.hps.get("dataset") is not None:
             if self.hps.get("dataset") and self.hps.get("dataset").get('type'):
                 dataset_cls = ClassFactory.get_cls(ClassType.DATASET, self.hps.get("dataset").get('type'))
@@ -229,16 +249,7 @@ class TrainerBase(DistributedWorker):
         else:
             dataset_cls = ClassFactory.get_cls(ClassType.DATASET)
             dataset = dataset_cls(mode=mode)
-        if transforms is not None:
-            dataset.transforms = transforms
-        if (self.hccl or self.horovod) and mode == "train":
-            dataset.set_distributed(self.num_workers, self.rank_id)
-        # adapt the dataset to specific backend
-        adapter = Adapter(dataset)
-        if (self.hccl or self.horovod) and mode == "train" and hasattr(adapter, "sampler"):
-            self.sampler = adapter.sampler
-        dataloader = adapter.loader
-        return dataloader
+        return dataset
 
     def _train_loop(self):
         """Do the training with data, callbacks and step functions etc."""

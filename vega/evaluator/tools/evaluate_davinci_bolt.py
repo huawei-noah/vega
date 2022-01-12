@@ -1,25 +1,28 @@
 # -*- coding: utf-8 -*-
 
 # Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the MIT License.
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# MIT License for more details.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 """The EvaluateService of client."""
-import os
 import logging
-import subprocess
-import pickle
+import os
 import numpy as np
 from .rest import post
 
 
-# flake8: noqa: C901
 def evaluate(backend, hardware, remote_host, model, weight, test_data, input_shape=None, reuse_model=False, job_id=None,
-             quantize=False, repeat_times=1, precision='FP32', **kwargs):
+             quantize=False, repeat_times=10, precision='FP32', cal_metric=False, **kwargs):
     """Evaluate interface of the EvaluateService.
 
     :param backend: the backend can be one of "tensorflow", "caffe" and "pytorch"
@@ -37,14 +40,7 @@ def evaluate(backend, hardware, remote_host, model, weight, test_data, input_sha
     :return: the latency in Davinci or Bolt
     :rtype: float
     """
-    if backend not in ["tensorflow", "caffe", "pytorch", "mindspore"]:
-        raise ValueError("The backend only support tensorflow, caffe, pytorch and mindspore.")
-
-    if hardware not in ["Davinci", "Bolt", "Kirin990_npu"]:
-        raise ValueError("The hardware only support Davinci and Bolt.")
-
-    if input_shape is None:
-        raise ValueError("The input shape must be provided.")
+    _check_backend_hardware_shape(backend, hardware, input_shape)
 
     if not reuse_model:
         base_save_dir = os.path.dirname(test_data)
@@ -62,7 +58,7 @@ def evaluate(backend, hardware, remote_host, model, weight, test_data, input_sha
         upload_data = {"data_file": data_file}
 
     evaluate_config = {"backend": backend, "hardware": hardware, "remote_host": remote_host, "reuse_model": reuse_model,
-                       "job_id": job_id, "repeat_times": repeat_times, "precision": precision}
+                       "job_id": job_id, "repeat_times": repeat_times, "precision": precision, "cal_metric": cal_metric}
     if backend == 'tensorflow':
         shape_list = [str(s) for s in input_shape]
         shape_cfg = {"input_shape": "Placeholder:" + ",".join(shape_list)}
@@ -72,8 +68,32 @@ def evaluate(backend, hardware, remote_host, model, weight, test_data, input_sha
         out_node_cfg = {"out_nodes": out_node_name}
         evaluate_config.update(out_node_cfg)
 
+    evaluate_result = _post_request(remote_host, upload_data, test_data, evaluate_config)
+
+    if not kwargs.get("save_intermediate_file", False):
+        if os.path.exists(model):
+            os.remove(model)
+        if weight and os.path.isfile(weight) and os.path.exists(weight):
+            os.remove(weight)
+        if os.path.exists(test_data):
+            os.remove(test_data)
+
+    return evaluate_result
+
+
+def _check_backend_hardware_shape(backend, hardware, input_shape):
+    if backend not in ["tensorflow", "caffe", "pytorch", "mindspore"]:
+        raise ValueError("The backend only support tensorflow, caffe, pytorch and mindspore.")
+
+    if hardware not in ["Davinci", "Bolt", "Kirin990_npu"]:
+        raise ValueError("The hardware only support Davinci and Bolt.")
+
+    if input_shape is None:
+        raise ValueError("The input shape must be provided.")
+
+
+def _post_request(remote_host, upload_data, test_data, evaluate_config):
     evaluate_result = post(host=remote_host, files=upload_data, data=evaluate_config)
-    # evaluate_result = requests.get(remote_host, proxies={"http": None}).json()
     if evaluate_result.get("status") != "sucess":
         logging.warning(
             "Evaluate failed and will try again, the status is {}, the timestamp is {}, \
@@ -101,15 +121,6 @@ def evaluate(backend, hardware, remote_host, model, weight, test_data, input_sha
     else:
         logging.info("Evaluate sucess! The latency is {}.".format(evaluate_result["latency"]))
 
-    if not kwargs.get("save_intermediate_file", False):
-        # clean intermediate file
-        if os.path.exists(model):
-            os.remove(model)
-        if weight and os.path.isfile(weight) and os.path.exists(weight):
-            os.remove(weight)
-        if os.path.exists(test_data):
-            os.remove(test_data)
-
     return evaluate_result
 
 
@@ -130,35 +141,13 @@ def preprocessing_model(backend, hardware, model, weight, input_shape, base_save
     :type base_save_dir: str
     """
     if backend == "pytorch":
-        if hardware == "Bolt":
-            opset_version = kwargs["opset_version"]
-            from .pytorch2onnx import pytorch2onnx
-            model = pytorch2onnx(model, input_shape, base_save_dir, opset_version)
-        elif kwargs["intermediate_format"] == "caffe":
-            model_file = os.path.join(base_save_dir, "torch_model.pkl")
-            shape_file = os.path.join(base_save_dir, "input_shape.pkl")
-            with open(model_file, "wb") as f:
-                pickle.dump(model, f)
-            with open(shape_file, "wb") as f:
-                pickle.dump(input_shape, f)
-            env = os.environ.copy()
-            abs_path = os.path.abspath(__file__)
-            cur_dir = os.path.dirname(abs_path)
-            shell_file = os.path.join(cur_dir, "pytorch2caffe.sh")
-            command_line = ["bash", shell_file, cur_dir, model_file, shape_file]
-            try:
-                subprocess.check_output(command_line, env=env)
-            except subprocess.CalledProcessError as exc:
-                logging.error("convert torch model to caffe model failed.\
-                              the return code is: {}.".format(exc.returncode))
-            model = os.path.join(base_save_dir, "torch2caffe.prototxt")
-            weight = os.path.join(base_save_dir, "torch2caffe.caffemodel")
-            backend = "caffe"
+        if kwargs.get("custom", None) is not None:
+            model = kwargs.get("custom").export_model(model)
         else:
             from .pytorch2onnx import pytorch2onnx
             opset_version = kwargs["opset_version"]
             model = pytorch2onnx(model, input_shape, base_save_dir, opset_version)
-            backend = "onnx"
+        backend = "onnx"
     elif backend == "tensorflow":
         pb_model_file = os.path.join(base_save_dir, "tf_model.pb")
         if os.path.exists(pb_model_file):
@@ -167,12 +156,15 @@ def preprocessing_model(backend, hardware, model, weight, input_shape, base_save
         freeze_graph(model, weight, pb_model_file, input_shape, quantize, test_data)
         model = pb_model_file
     elif backend == "mindspore":
-        from mindspore.train.serialization import export
-        from mindspore import Tensor
-        fake_input = np.random.random(input_shape).astype(np.float32)
-        save_name = os.path.join(base_save_dir, "ms2air.air")
-        export(model, Tensor(fake_input), file_name=save_name, file_format='AIR')
-        model = save_name
+        if kwargs.get("custom", None) is not None:
+            model = kwargs.get("custom").export_model(model)
+        else:
+            from mindspore.train.serialization import export
+            from mindspore import Tensor
+            fake_input = np.random.random(input_shape).astype(np.float32)
+            save_name = os.path.join(base_save_dir, "ms2air.air")
+            export(model, Tensor(fake_input), file_name=save_name, file_format='AIR')
+            model = save_name
     return model, weight, backend
 
 
@@ -197,7 +189,6 @@ def freeze_graph(model, weight_file, output_graph_file, input_shape, quantize, t
             output_name = [output.name.split(":")[0]]
         with tf.Session() as sess:
             sess.run(tf.global_variables_initializer())
-            # if weight_file is None, only latency can be evaluated
             if weight_file is not None:
                 saver = tf.train.Saver()
                 last_weight_file = tf.train.latest_checkpoint(weight_file)

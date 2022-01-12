@@ -1,18 +1,26 @@
 # -*- coding: utf-8 -*-
 
 # Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the MIT License.
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# MIT License for more details.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 """This is a base class of the dataset."""
+import logging
+
 from torch.utils import data as torch_data
-from .samplers import DistributedSampler
 from torch.utils.data.sampler import SubsetRandomSampler
 import numpy as np
+from .samplers import DistributedSampler
 
 
 class TorchAdapter(object):
@@ -75,12 +83,16 @@ class TorchAdapter(object):
         """
         if hasattr(self.dataset, "data_loader"):
             return self.dataset.data_loader
-        data_loader = torch_data.DataLoader(dataset=self.dataset,
-                                            batch_size=self.args.batch_size,
-                                            shuffle=self.args.shuffle,
-                                            num_workers=self.args.num_workers,
-                                            pin_memory=self.args.pin_memory,
-                                            sampler=self.sampler,
-                                            drop_last=self.args.drop_last,
-                                            collate_fn=self.collate_fn)
+        try:
+            data_loader = torch_data.DataLoader(dataset=self.dataset,
+                                                batch_size=self.args.batch_size,
+                                                shuffle=self.args.shuffle,
+                                                num_workers=self.args.num_workers,
+                                                pin_memory=self.args.pin_memory,
+                                                sampler=self.sampler,
+                                                drop_last=self.args.drop_last,
+                                                collate_fn=self.collate_fn)
+        except BrokenPipeError as ex:
+            logging.debug(ex)
+            data_loader = None
         return data_loader

@@ -1,12 +1,18 @@
 # -*- coding: utf-8 -*-
 
 # Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the MIT License.
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# MIT License for more details.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 """Ops ArchSpace."""
 from vega import is_torch_backend
 from vega.common.class_factory import ClassFactory
@@ -44,7 +50,6 @@ class Conv2dDoubleChannelArchitecture(Architecture):
                 padding = [0, out_channels_diff]
             else:
                 groups = module.groups
-                # depthwise conv
                 if groups == module.in_channels and module.out_channels < groups:
                     module.out_channels = groups
                 in_channels_diff = int(inputs.shape[1]) - int(weight.shape[in_channels_axis] * module.groups)
@@ -52,7 +57,6 @@ class Conv2dDoubleChannelArchitecture(Architecture):
                 if in_channels_diff == 0 and out_channels_diff == 0:
                     continue
                 padding = [0, 0, 0, 0, 0, 0, 0, 0]
-                # fit input channel
                 if groups == 1:
                     if in_channels_diff != 0:
                         padding[5] = in_channels_diff
@@ -136,7 +140,6 @@ class AddArchitecture(Architecture):
             else:
                 fit_weights_shapes.append(out_channels)
         fit_weights_shape = min(fit_weights_shapes)
-        # fit_weights_shape = max(fit_weights_shapes)
         for child in module.children():
             if isinstance(child, ops.MaxPool2d):
                 fit_weights_shape = inputs.shape[1]

@@ -1,12 +1,18 @@
 # -*- coding:utf-8 -*-
 
 # Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the MIT License.
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# MIT License for more details.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 """Backend Register."""
 
@@ -80,14 +86,7 @@ def set_backend(backend='pytorch', device_category='GPU'):
     register_networks(backend)
     register_modelzoo(backend)
 
-    # register ascend automl modules
-    ascend_automl_path = os.environ.get("ASCEND_AUTOML_PATH")
-    if ascend_automl_path:
-        sys.path.append(ascend_automl_path)
-    try:
-        import ascend_automl
-    except ImportError:
-        pass
+    import_extension_module()
     # backup config
     from vega.common.config_serializable import backup_configs
     backup_configs()
@@ -132,3 +131,11 @@ def get_devices():
         if "CUDA_VISIBLE_DEVICES" in os.environ:
             device_id = int(os.environ["CUDA_VISIBLE_DEVICES"].split(",")[0])
     return "{}:{}".format(device_category.lower(), device_id)
+
+
+def import_extension_module():
+    """Import extension module."""
+    try:
+        import ascend_automl
+    except ImportError:
+        pass

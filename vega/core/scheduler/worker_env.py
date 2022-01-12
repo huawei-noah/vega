@@ -1,12 +1,18 @@
 # -*- coding: utf-8 -*-
 
 # Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the MIT License.
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# MIT License for more details.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 """The main part of the cluster framework.
 
@@ -53,7 +59,6 @@ class WorkerEnv(WorkerPlugin):
             "BACKEND_TYPE": os.environ.get("BACKEND_TYPE", None),
             "LD_PRELOAD": os.environ.get("LD_PRELOAD", None),
             "DLS_JOB_ID": os.environ.get("DLS_JOB_ID", None),
-            "vega_init_env": os.environ.get("vega_init_env", None),
             "vega_python_command": os.environ.get("vega_python_command", None),
             "vega_timeout": os.environ.get("vega_timeout", None),
             "vega_world_size": os.environ.get("WORLD_SIZE", None),

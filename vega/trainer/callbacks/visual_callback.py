@@ -1,22 +1,28 @@
 # -*- coding:utf-8 -*-
 
 # Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the MIT License.
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# MIT License for more details.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 """Visual callback definition."""
 
 import logging
-import vega
 import numpy as np
-from .callback import Callback
+import vega
 from vega.common import ClassFactory, ClassType
 from vega.common import TaskOps
 from vega.visual.tensorboarder import SummaryBoard
+from .callback import Callback
 
 
 def _flat_items(data, parents=tuple()):
@@ -55,8 +61,6 @@ class VisualCallBack(Callback):
         """Fetch trainer info before train stage."""
         self._fix_path = "_".join([self.trainer.step_name, str(self.trainer.worker_id)])
         self.summary = SummaryBoard(self._archive_root, self._fix_path)
-
-        # add graph only once.
         if vega.is_tf_backend():
             import tensorflow as tf
             datasets = self.trainer.valid_input_fn()
@@ -96,8 +100,6 @@ class VisualCallBack(Callback):
         """Collect data after epoch, and 'after_epoch' data could contains 'after_valid'."""
         readable_records = make_keys_readable(logs)
         self.summary.insert_epoch_logs(readable_records, epoch)
-
-        # update info
         info_records = [("/".join(["info", k]), self._info[k]) for k in self._need_keys]
         self.summary.insert_epoch_logs(info_records, epoch)
 
@@ -136,5 +138,4 @@ def _fetch_tf_graph(model, input):
         sess.run(tf.global_variables_initializer())
 
         sess.run(out, feed_dict={dummy_input: np.ones(input.shape.as_list())})
-        # print(np.shape(o), o)
     return graph

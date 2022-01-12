@@ -159,6 +159,7 @@ fully_train:
         common:
             data_path: /cache/datasets/cifar10/
 ```
+**注**: HCCL支持多机多卡，Horovod目前只支持单机多卡。
 
 ## 3. NAS和HPO配置项
 

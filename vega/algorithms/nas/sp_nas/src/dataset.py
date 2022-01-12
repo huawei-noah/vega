@@ -1,12 +1,18 @@
-# -*- coding:utf-8 -*-
+# Copyright 2020 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 
-# Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the MIT License.
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# MIT License for more details.
 
 """FasterRcnn dataset."""
 from __future__ import division
@@ -34,8 +40,8 @@ def bbox_overlaps(bboxes1, bboxes2, mode='iou'):
     Returns:
         ious(ndarray): shape (n, k)
     """
-    assert mode in ['iou', 'iof']
-
+    if mode not in ['iou', 'iof']:
+        raise ValueError('Mode is wrong.')
     bboxes1 = bboxes1.astype(np.float32)
     bboxes2 = bboxes2.astype(np.float32)
     rows = bboxes1.shape[0]
@@ -170,13 +176,14 @@ def rescale_column(img, img_shape, gt_bboxes, gt_label, gt_num, config):
 
     pad_h = config.img_height - img_data.shape[0]
     pad_w = config.img_width - img_data.shape[1]
-    assert ((pad_h >= 0) and (pad_w >= 0))
+    if ((pad_h >= 0) and (pad_w >= 0)):
+        pad_img_data = np.zeros((config.img_height, config.img_width, 3)).astype(img_data.dtype)
+        pad_img_data[0:img_data.shape[0], 0:img_data.shape[1], :] = img_data
 
-    pad_img_data = np.zeros((config.img_height, config.img_width, 3)).astype(img_data.dtype)
-    pad_img_data[0:img_data.shape[0], 0:img_data.shape[1], :] = img_data
-
-    img_shape = (config.img_height, config.img_width, 1.0)
-    img_shape = np.asarray(img_shape, dtype=np.float32)
+        img_shape = (config.img_height, config.img_width, 1.0)
+        img_shape = np.asarray(img_shape, dtype=np.float32)
+    else:
+        raise ValueError('pad_h and pad_w are wrong.')
 
     return (pad_img_data, img_shape, gt_bboxes, gt_label, gt_num)
 
@@ -190,14 +197,15 @@ def rescale_column_test(img, img_shape, gt_bboxes, gt_label, gt_num, config):
 
     pad_h = config.img_height - img_data.shape[0]
     pad_w = config.img_width - img_data.shape[1]
-    assert ((pad_h >= 0) and (pad_w >= 0))
+    if ((pad_h >= 0) and (pad_w >= 0)):
 
-    pad_img_data = np.zeros((config.img_height, config.img_width, 3)).astype(img_data.dtype)
-    pad_img_data[0:img_data.shape[0], 0:img_data.shape[1], :] = img_data
+        pad_img_data = np.zeros((config.img_height, config.img_width, 3)).astype(img_data.dtype)
+        pad_img_data[0:img_data.shape[0], 0:img_data.shape[1], :] = img_data
 
-    img_shape = np.append(img_shape, (scale_factor, scale_factor))
-    img_shape = np.asarray(img_shape, dtype=np.float32)
-
+        img_shape = np.append(img_shape, (scale_factor, scale_factor))
+        img_shape = np.asarray(img_shape, dtype=np.float32)
+    else:
+        raise ValueError('pad_h and pad_w are wrong.')
     return (pad_img_data, img_shape, gt_bboxes, gt_label, gt_num)
 
 

@@ -1,19 +1,26 @@
 # -*- coding:utf-8 -*-
 
 # Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the MIT License.
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# MIT License for more details.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 """LogicalGraph for NAGO."""
 import time
 import collections
-import numpy as np
+import logging
 from dataclasses import dataclass
 from typing import List
+import numpy as np
 import networkx as nx
 
 
@@ -123,8 +130,8 @@ class Ops:
     all_ops = conv_ops + pooling_ops
     ops_to_num_params = {C3: 9, C5: 25, C31: 3, C13: 3, C1: 1, POOL3: 0, POOL5: 0}
     ops_to_kernel_size = {C3: (3, 3), C5: (5, 5), C31: (3, 1), C13: (1, 3), C1: (1, 1), POOL3: (3, 3), POOL5: (5, 5)}
-    assert _has_all_keys(ops_to_num_params, all_ops), "Ops must match"
-    assert _has_all_keys(ops_to_kernel_size, all_ops), "Ops must match"
+    if not _has_all_keys(ops_to_num_params, all_ops) or not _has_all_keys(ops_to_kernel_size, all_ops):
+        raise ValueError("Ops must match.")
 
 
 @dataclass
@@ -185,6 +192,7 @@ class BasicNode:
                 self.nodes, self.input_nodes, self.output_nodes = get_graph_info(self.graph)
                 return graph
             except Exception:
+                logging.debug('Failed to get graph.')
                 continue
         self.nodes, self.input_nodes, self.output_nodes = ([], [], [])
         return graph
@@ -310,14 +318,16 @@ class LogicalMasterGraph(LogicalOpGraph):
 
     def __init__(self, solution: GeneratorSolution):
         """Initialize LogicalMasterGraph."""
-        assert len(solution.stage_ratios) == len(solution.channel_ratios), "Ratios should have same length"
-        self.child_nodes = []
-        self.depth = ""
-        self.inputs = []
-        self.inplanes = solution.channel_ratios[0]
-        self.role = NodeRoles.MASTER
-        self.toplvl_graph = self._init_graph(solution.master_params)
-        self._init_nodes(solution)
+        if len(solution.stage_ratios) == len(solution.channel_ratios):
+            self.child_nodes = []
+            self.depth = ""
+            self.inputs = []
+            self.inplanes = solution.channel_ratios[0]
+            self.role = NodeRoles.MASTER
+            self.toplvl_graph = self._init_graph(solution.master_params)
+            self._init_nodes(solution)
+        else:
+            raise ValueError("Ratios should have same length.")
 
     def _get_merging_cost(self):  # TODO fix this, it's unprecise
         cost = [node._get_merging_cost() for node in self.child_nodes]

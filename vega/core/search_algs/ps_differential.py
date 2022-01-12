@@ -1,25 +1,31 @@
 # -*- coding:utf-8 -*-
 
 # Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the MIT License.
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# MIT License for more details.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 """DifferentialAlgorithm."""
 import importlib
 import math
 import logging
-import numpy as np
 from functools import partial
+import numpy as np
 import vega
-from .search_algorithm import SearchAlgorithm
 from vega.common import ClassFactory, ClassType
 from vega.networks.network_desc import NetworkDesc
 from vega.trainer.conf import TrainerConfig
 from vega.common import ConfigSerializable
+from .search_algorithm import SearchAlgorithm
 
 if vega.is_torch_backend():
     import torch
@@ -132,11 +138,17 @@ class DifferentialAlgorithm(SearchAlgorithm):
     def step(self, train_x=None, train_y=None, valid_x=None, valid_y=None,
              lr=None, w_optimizer=None, w_loss=None, unrolled=None, scope_name=None):
         """Compute one step."""
+        def set_opt_requires_grad(value):
+            for param in self.optimizer.param_groups:
+                for parameter in param['params']:
+                    parameter.requires_grad = value
         if vega.is_torch_backend():
+            set_opt_requires_grad(True)
             self.optimizer.zero_grad()
             loss = w_loss(self.model(valid_x), valid_y)
             loss.backward()
             self.optimizer.step()
+            set_opt_requires_grad(False)
             return
         elif vega.is_tf_backend():
             self.lr = lr

@@ -1,29 +1,35 @@
 # -*- coding=utf-8 -*-
 
 # Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the MIT License.
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# MIT License for more details.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 """This is the class for CurveLane dataset."""
 
 import json
 import numpy as np
-from .dataset import Dataset
-from vega.common import ClassFactory, ClassType
-from .utils.auto_lane_utils import get_img_whc, imread, create_train_subset, create_test_subset
-from .utils.auto_lane_utils import load_lines, resize_by_wh, bgr2rgb, imagenet_normalize, load_json
-from vega.datasets.common.utils.auto_lane_pointlane_codec import PointLaneCodec
-from vega.datasets.conf.auto_lane import AutoLaneConfig
 from more_itertools import grouper
-from vega.common import FileOps
 from imgaug.augmentables.lines import LineStringsOnImage
 from imgaug.augmentables.lines import LineString as ia_LineString
 import imgaug as ia
 import imgaug.augmenters as iaa
+from vega.common import ClassFactory, ClassType
+from vega.datasets.common.utils.auto_lane_pointlane_codec import PointLaneCodec
+from vega.datasets.conf.auto_lane import AutoLaneConfig
+from vega.common import FileOps
+from .dataset import Dataset
+from .utils.auto_lane_utils import get_img_whc, imread, create_train_subset, create_test_subset
+from .utils.auto_lane_utils import load_lines, resize_by_wh, bgr2rgb, imagenet_normalize, load_json
 
 
 def _culane_line_to_curvelane_dict(culane_lines):

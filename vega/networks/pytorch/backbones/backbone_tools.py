@@ -1,19 +1,25 @@
 # -*- coding:utf-8 -*-
 
 # Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the MIT License.
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# MIT License for more details.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 """Some function need in spnet.py."""
 
-import torch.nn as nn
 import os.path as osp
-import torch
 from collections import OrderedDict
+import torch.nn as nn
+import torch
 
 
 def dirac_init(module, bias=0):
@@ -29,7 +35,7 @@ def dirac_init(module, bias=0):
         nn.init.constant_(module.bias, bias)
 
 
-def load_state_dict(module, state_dict, mapping, logger=None, mb_mapping=None):  # noqa: C901
+def load_state_dict(module, state_dict, mapping, logger=None, mb_mapping=None):
     """Load state_dict to a module. This method is modified from :meth:`torch.nn.Module.load_state_dict`.
 
     :param module: Module that receives the state_dict
@@ -60,7 +66,6 @@ def load_state_dict(module, state_dict, mapping, logger=None, mb_mapping=None): 
                 continue
             name = mapping[name]
         if isinstance(param, torch.nn.Parameter):
-            # backwards compatibility for serialized parameters
             param = param.data
         if param.size() != own_state[name].size():
             shape_mismatch_pairs.append(
@@ -72,14 +77,6 @@ def load_state_dict(module, state_dict, mapping, logger=None, mb_mapping=None): 
             for mb_name in mb_mapping[name]:
                 own_state[mb_name].copy_(param)
                 mb_keys.append(mb_name)
-
-    # all_missing_keys = set(own_state.keys()) - set(state_dict.keys()
-    #                                                ) - set(mapping.values()) - set(mb_keys)
-    # unexpected_keys = set(unexpected_keys) - set(mb_keys)
-    # ignore "num_batches_tracked" of BN layers
-    # missing_keys = [
-    #     key for key in all_missing_keys if 'num_batches_tracked' not in key
-    # ]
 
 
 def load_checkpoint(model,
@@ -105,11 +102,9 @@ def load_checkpoint(model,
     :return: checkpoint
     :rtype: checkpoint
     """
-    # load checkpoint from file
     if not osp.isfile(filename):
         raise IOError('{} is not a checkpoint file'.format(filename))
     checkpoint = torch.load(filename, map_location=map_location)
-    # get state_dict from checkpoint
     if isinstance(checkpoint, OrderedDict):
         state_dict = checkpoint
     elif isinstance(checkpoint, dict) and 'weight' in checkpoint:
@@ -117,10 +112,8 @@ def load_checkpoint(model,
     else:
         raise RuntimeError(
             'No state_dict found in checkpoint file {}'.format(filename))
-    # strip prefix of state_dict
     if list(state_dict.keys())[0].startswith('module.'):
         state_dict = {k[7:]: v for k, v in checkpoint['state_dict'].items()}
-    # load state_dict
     if hasattr(model, 'module'):
         load_state_dict(model.module, state_dict,
                         pretrain_to_own, logger, mb_mapping)
@@ -197,15 +190,12 @@ def match_name(own_names, checkpoint_names):
     """
     pretrain_to_own = dict()
     print("matching pretrained model with new distributed architecture....")
-    # build mapping1: blocks id to own name
     bid_to_own = []
     for name in own_names:
         if name.find('layer') >= 0:
             block_name = '.'.join(name.split('.')[:2])
             if block_name not in bid_to_own:
                 bid_to_own.append(block_name)
-
-    # map pretrained name to own name
     flag = ''
     bid = -1
     for name in checkpoint_names:

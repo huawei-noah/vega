@@ -1,21 +1,27 @@
 # -*- coding:utf-8 -*-
 
 # Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the MIT License.
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# MIT License for more details.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 """The ResNet_Variant for encode."""
-from .str2dict import dict2str
-from .listdict import ListDict
-from collections import OrderedDict
-from .backbone_codec import Backbone
 import random
-import numpy as np
 import re
+import logging
+from collections import OrderedDict
+import numpy as np
+from .listdict import ListDict
+from .backbone_codec import Backbone
 
 
 class ResNet_Variant(Backbone):
@@ -52,7 +58,6 @@ class ResNet_Variant(Backbone):
                  **kwargs):
         """Contruct ResNet_Variant encoder."""
         super(ResNet_Variant, self).__init__(*args, **kwargs)
-        # set sampled params
         self.arch = arch
         self.base_channel = int(base_channel)
         self.depth = self.base_depth = base_depth
@@ -60,7 +65,6 @@ class ResNet_Variant(Backbone):
         if block not in ['BasicBlock', 'Bottleneck']:
             raise Exception('Invalid block name. (should be BasicBlock or Bottleneck)')
         expansion = 1 if block == 'BasicBlock' else 4
-        # other params
         if self.train_from_scratch:
             self.zero_init_residual = False
             self.frozen_stages = -1
@@ -73,7 +77,6 @@ class ResNet_Variant(Backbone):
         self.dilations = self._base_dilations[:self.num_stages]
         self.out_indices = self._base_out_indices[:] if self.with_neck else (2,)
         self.out_strides = [2 ** (i + 2) for i in range(self.num_stages)] if self.with_neck else [16]
-        # out channels
         num_scale = 0
         self.out_channels = []
         for stage in range(self.num_stages):
@@ -145,9 +148,9 @@ class ResNet_Variant(Backbone):
                method='random',
                base_depth=50,
                base_arch=None,
-               sampled_archs=[],
+               sampled_archs=None,
                flops_constraint=None,
-               EA_setting=dict(num_mutate=3),
+               EA_setting=None,
                fore_part=None,
                max_sample_num=100000,
                **kwargs
@@ -172,13 +175,16 @@ class ResNet_Variant(Backbone):
         :type max_sample_num: int
         :return: model dict
         """
+        if sampled_archs is None:
+            sampled_archs = []
+        if EA_setting is None:
+            EA_setting = dict(num_mutate=3)
         if flops_constraint is None:
             low_flops, high_flops = 0, float('inf')
         else:
             low_flops, high_flops = flops_constraint
         sample_num = 0
         discard = ListDict()
-        # params = cls.quest_param(fore_part=fore_part, **kwargs)
         params = {}
         while sample_num < max_sample_num:
             sample_num += 1
@@ -191,11 +197,9 @@ class ResNet_Variant(Backbone):
                 params.update(cls.arch_decoder(arch_code=base_arch))
             else:
                 raise ValueError('Unrecognized sample method {}.')
-            # construct config
             net = cls(**params, base_depth=base_depth, fore_part=fore_part)
             exist = net.name in sampled_archs + discard['arch']
             success = low_flops <= net.flops_ratio <= high_flops
-            # state = 'Exist' if exist else 'Success' * success + 'Discard' * (not success)
             flops_info = '{}({})'.format(net.flops, net.flops_ratio)
             if exist:
                 continue
@@ -217,7 +221,6 @@ class ResNet_Variant(Backbone):
         else:
             num_reduction, num_stage = 2, 3
         arch_space = cls.attr_space['arch']
-        # base_channel = random.choice(cls.attr_space['base_channel'])
         length = random.randint(*arch_space['num_block'])
         arch = ['1'] * length
         position = np.random.choice(length, size=num_reduction, replace=False)
@@ -295,6 +298,7 @@ class ResNet_Variant(Backbone):
                     arch[idx], arch[idx + direction] = arch[idx + direction], arch[idx]
                     break
                 except Exception:
+                    logging.debug("Arch is not match, continue.")
                     continue
             ops.append('swap:{}&{}'.format(idx, idx + direction))
             return arch
@@ -318,7 +322,7 @@ class ResNet_Variant(Backbone):
         min_block, max_block = arch_space['num_block']
         params = cls.arch_decoder(base_arch)
         base_channel, base_arch = params.get('base_channel'), params.get('arch')
-        while True:  # whether to mutate base_channel
+        while True:
             ops = []
             new_arch = list(base_arch)
             new_channel = base_channel
@@ -337,6 +341,7 @@ class ResNet_Variant(Backbone):
                     else:
                         raise Exception('operation index out of range')
             except Exception:
+                logging.debug("Arch is not match, continue.")
                 continue
             new_arch = ''.join(new_arch)
             if is_valid(new_arch) and (new_arch != base_arch or new_channel != base_channel):
@@ -366,4 +371,4 @@ class ResNet_Variant(Backbone):
             conv_cfg=self.conv_cfg,
             out_channels=self.out_channels,
             style='pytorch')
-        return dict2str(config, tab=2)
+        return config

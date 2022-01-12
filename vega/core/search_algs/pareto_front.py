@@ -1,12 +1,18 @@
 # -*- coding:utf-8 -*-
 
 # Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the MIT License.
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# MIT License for more details.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 """A basic ParetoFront class, for multi-objective optimization.
 
@@ -37,12 +43,13 @@ Example:
     >>> #    {id1:hp1, id2:hp2, id6:hp6}
 
 """
-import pandas as pd
-import pareto
+
 import copy
 import hashlib
-import json
 import logging
+import json
+import pandas as pd
+from vega.common.pareto_front import get_pareto_index
 
 
 class ParetoFront(object):
@@ -52,14 +59,14 @@ class ParetoFront(object):
     :type cfg: type
     """
 
-    def __init__(self, object_count=2, max_object_ids=[]):
+    def __init__(self, object_count=2, max_object_ids=None):
         """Init for ParetoFront."""
         logging.info("start init ParetoFront")
-        self.sieve_columns = ['config_id', 'md5', 'config']
+        self.sieve_columns = ['config_id', 'sha256', 'config']
         for i in range(0, object_count):
             self.sieve_columns.append("score_{}".format(i))
         self.sieve_board = pd.DataFrame(columns=self.sieve_columns)
-        self.max_object_ids = None
+        self.max_object_ids = []
         if isinstance(max_object_ids, list) and len(max_object_ids) > 0:
             self.max_object_ids = [x + 3 for x in max_object_ids]
         self.pareto_cols = [x + 3 for x in range(0, object_count)]
@@ -85,11 +92,13 @@ class ParetoFront(object):
         pareto_board = self.sieve_board.copy()
         pareto_board = pareto_board.dropna()
         if not pareto_board.empty:
-            nondominated = pareto.eps_sort(
-                [list(pareto_board.itertuples(False))],
-                objectives=self.pareto_cols,
-                epsilons=None,
-                maximize=self.max_object_ids)
+            for max_id in self.max_object_ids:
+                pareto_board.iloc[:, max_id] = pareto_board.iloc[:, max_id] * -1
+            col_names = [pareto_board.columns[i] for i in self.pareto_cols]
+            rewards = -1 * pareto_board[col_names].values
+            indexes = get_pareto_index(rewards).tolist()
+            nondominated = pareto_board[indexes]
+
             for tmp_list in nondominated:
                 for i, value in enumerate(tmp_list):
                     if i == 2:
@@ -107,7 +116,7 @@ class ParetoFront(object):
         """
         tmp_column = self.sieve_columns.copy()
         tmp_column.remove('config_id')
-        tmp_column.remove('md5')
+        tmp_column.remove('sha256')
         tmp_column.remove('config')
         self.sieve_board.loc[
             (self.sieve_board['config_id'] == config_id),
@@ -124,11 +133,11 @@ class ParetoFront(object):
         if config is None:
             return False
         config_dict = copy.deepcopy(config)
-        md5 = hashlib.md5(json.dumps(config_dict, sort_keys=True).encode('utf-8')).hexdigest()
-        found_df = self.sieve_board[self.sieve_board['md5'].str.contains(md5)]
+        sha256 = hashlib.sha256(json.dumps(config_dict, sort_keys=True).encode('utf-8')).hexdigest()
+        found_df = self.sieve_board[self.sieve_board['sha256'].str.contains(sha256)]
         if found_df.shape[0] > 0:
             return False
         else:
-            save_dict = {'config_id': id, 'md5': md5, 'config': config_dict}
+            save_dict = {'config_id': id, 'sha256': sha256, 'config': config_dict}
             self.sieve_board = self.sieve_board.append(save_dict, ignore_index=True)
             return True

@@ -1,19 +1,24 @@
 # -*- coding:utf-8 -*-
 
 # Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the MIT License.
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# MIT License for more details.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 """Fully Train PipeStep that used in Pipeline."""
 
 import os
 import logging
 import vega
-from .pipe_step import PipeStep
 from vega.common.general import General
 from vega.common.class_factory import ClassFactory, ClassType
 from vega.common import FileOps, TaskOps, Status
@@ -21,6 +26,7 @@ from vega.report import ReportServer, ReportRecord, ReportClient
 from vega.core.scheduler import create_master
 from vega.core.pipeline.conf import PipeStepConfig, PipelineConfig
 from vega.trainer.conf import TrainerConfig
+from .pipe_step import PipeStep
 
 logger = logging.getLogger(__name__)
 
@@ -84,13 +90,14 @@ class TrainPipeStep(PipeStep):
         cls_trainer = ClassFactory.get_cls(ClassType.TRAINER, PipeStepConfig.trainer.type)
         step_name = self.task.step_name
         if model_desc is not None:
-            sample = dict(worker_id=model_id, desc=model_desc, step_name=step_name)
+            sample = dict(worker_id=model_id, desc=model_desc, step_name=step_name, weights_file=weights_file)
             record = ReportRecord().load_dict(sample)
             logging.debug("update record=%s", str(record))
             trainer = cls_trainer(model_desc=model_desc, hps=hps, id=model_id, pretrained_model_file=weights_file)
         else:
             trainer = cls_trainer(None, 0, hps=hps)
-            record = ReportRecord(trainer.step_name, trainer.worker_id, desc=trainer.model_desc, hps=hps)
+            record = ReportRecord(trainer.step_name, trainer.worker_id, desc=trainer.model_desc, hps=hps,
+                                  weights_file=weights_file)
         ReportClient().update(**record.to_dict())
         # resume training
         if vega.is_torch_backend() and General._resume:

@@ -1,19 +1,25 @@
 # -*- coding: utf-8 -*-
 
 # Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the MIT License.
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# MIT License for more details.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 """Cross Entropy Loss."""
 import torch
 import torch.nn.functional as F
 from vega.modules.module import Module
-from .reduce_loss import weight_reduce_loss
 from vega.common import ClassFactory, ClassType
+from .reduce_loss import weight_reduce_loss
 
 
 def cross_entropy(pred, label, weight=None, reduction='mean', avg_factor=None):
@@ -82,11 +88,13 @@ def mask_cross_entropy(pred, target, label, reduction='mean', avg_factor=None):
     :param avg_factor: avg factor
     :return: loss
     """
-    assert reduction == 'mean' and avg_factor is None
-    num_rois = pred.size()[0]
-    inds = torch.arange(0, num_rois, dtype=torch.long, device=pred.device)
-    pred_slice = pred[inds, label].squeeze(1)
-    return F.binary_cross_entropy_with_logits(pred_slice, target, reduction='mean')[None]
+    if reduction == 'mean' and avg_factor is None:
+        num_rois = pred.size()[0]
+        inds = torch.arange(0, num_rois, dtype=torch.long, device=pred.device)
+        pred_slice = pred[inds, label].squeeze(1)
+        return F.binary_cross_entropy_with_logits(pred_slice, target, reduction='mean')[None]
+    else:
+        raise ValueError('Falied to calculate mask cross_entropy.')
 
 
 @ClassFactory.register(ClassType.NETWORK)
@@ -120,9 +128,11 @@ class CustomCrossEntropyLoss(Module):
         :param reduction_override: reduce function
         :return: loss
         """
-        assert reduction_override in (None, 'none', 'mean', 'sum')
-        reduction = (
-            reduction_override if reduction_override else self.reduction)
-        loss_cls = self.loss_weight * self.loss_function(cls_score, label, weight, reduction=reduction,
-                                                         avg_factor=avg_factor, **kwargs)
-        return loss_cls
+        if reduction_override in (None, 'none', 'mean', 'sum'):
+            reduction = (
+                reduction_override if reduction_override else self.reduction)
+            loss_cls = self.loss_weight * self.loss_function(cls_score, label, weight, reduction=reduction,
+                                                             avg_factor=avg_factor, **kwargs)
+            return loss_cls
+        else:
+            raise ValueError('Falied to calculate CustomCrossEntropyLoss.')

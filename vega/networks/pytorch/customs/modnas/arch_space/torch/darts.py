@@ -1,16 +1,23 @@
-"""Cell-based architecture in DARTS.
+# -*- coding:utf-8 -*-
 
-modified from https://github.com/khanrc/pt.darts
-"""
+# This file is adapted from the pt.darts library at
+# https://github.com/khanrc/pt.darts
+
+# 2020.6.29-Changed for Modular-NAS search space.
+#         Huawei Technologies Co., Ltd. <linyunfeng5@huawei.com>
+# Copyright 2020 Huawei Technologies Co., Ltd.
+
+"""Cell-based architecture in DARTS."""
+
 from functools import partial
 import torch.nn as nn
-from ..ops import FactorizedReduce, StdConv
-from ..slot import Slot
 from modnas.registry.construct import DefaultMixedOpConstructor
 from modnas.registry.construct import register as register_constructor
 from modnas.registry.arch_space import register
 from modnas.registry import parse_spec, to_spec
 from ..layers import DAGLayer
+from ..ops import FactorizedReduce, StdConv
+from ..slot import Slot
 
 
 class PreprocLayer(StdConv):
@@ -25,7 +32,8 @@ class AuxiliaryHead(nn.Module):
 
     def __init__(self, input_size, C, n_classes):
         # assuming input size 7x7 or 8x8
-        assert input_size in [7, 8]
+        if input_size not in [7, 8]:
+            raise ValueError('unknown input_size: %s' % repr(input_size))
         super().__init__()
         self.net = nn.Sequential(
             nn.ReLU(inplace=True),
@@ -120,10 +128,12 @@ class DARTSLikeNet(nn.Module):
 
     def build_from_arch_desc(self, desc, *args, **kwargs):
         """Build network from archdesc."""
-        assert len(self.cell_group) == len(desc)
-        for cells, g in zip(self.cell_group, desc):
-            for c in cells:
-                c.build_from_arch_desc(g, *args, **kwargs)
+        if len(self.cell_group) == len(desc):
+            for cells, g in zip(self.cell_group, desc):
+                for c in cells:
+                    c.build_from_arch_desc(g, *args, **kwargs)
+        else:
+            raise ValueError('Failed to build network from archdesc.')
 
     def to_arch_desc(self, k=2):
         """Return archdesc from parameters."""

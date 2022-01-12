@@ -1,20 +1,26 @@
 # -*- coding:utf-8 -*-
 
 # Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the MIT License.
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# MIT License for more details.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 """Subnet-based Estimator."""
 import itertools
 import traceback
-from ..base import EstimBase
 from modnas import backend
 from modnas.core.param_space import ParamSpace
 from modnas.registry.estim import register
+from ..base import EstimBase
 
 
 @register
@@ -34,8 +40,9 @@ class SubNetEstim(EstimBase):
         config = self.config
         try:
             self.construct_subnet(arch_desc)
-        except RuntimeError:
-            self.logger.info('subnet construct failed:\n{}'.format(traceback.format_exc()))
+        except RuntimeError as e:
+            self.logger.debug(traceback.format_exc())
+            self.logger.info(f'subnet construct failed, message: {e}')
             ret = {'error_no': -1}
             return ret
         tot_epochs = config.subnet_epochs

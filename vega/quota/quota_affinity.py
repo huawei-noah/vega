@@ -1,16 +1,23 @@
 # -*- coding:utf-8 -*-
 
 # Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the MIT License.
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# MIT License for more details.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 """Quota for Affinity."""
 
 import logging
+import ast
 import pandas as pd
 from sklearn import ensemble
 
@@ -40,12 +47,11 @@ class AffinityModelBase(object):
             return None
         space_list = []
         for idx in range(len(desc)):
-            desc_item = eval(desc.iloc[idx])
+            desc_item = ast.literal_eval(desc.iloc[idx])
             space_dict = {}
             self.init_space_dict(space_dict)
             for key, value in desc_item.items():
                 self.get_space_dict(key, value, space_dict)
-            # space_dict[_metric_key] = eval(pfms.iloc[idx])[_metric_key]
             if space_dict:
                 space_list.append(space_dict)
         return pd.DataFrame(space_list)
@@ -53,10 +59,10 @@ class AffinityModelBase(object):
     def generate_label(self):
         """Generate label from affinity report."""
         _pfms = self.affinity_report['performance']
-        _metric_key = eval(self.affinity_report['_objective_keys'][0])[0]
+        _metric_key = ast.literal_eval(self.affinity_report['_objective_keys'][0])[0]
         label_list = []
         for pfm in _pfms:
-            value = eval(pfm)[_metric_key]
+            value = ast.literal_eval(pfm)[_metric_key]
             clc = 1 if value > self.standard else 0
             label_list.append({_metric_key: clc})
         return pd.DataFrame(label_list)
@@ -101,7 +107,7 @@ class QuotaAffinity(object):
     """Generate affinity model of search space, filter bad sample."""
 
     def __init__(self, affinity_cfg):
-        affinity_class = eval(self.get_affinity_model(affinity_cfg.type))
+        affinity_class = ast.literal_eval(self.get_affinity_model(affinity_cfg.type))
         self.affinity_model = affinity_class(affinity_cfg.affinity_file, affinity_cfg.affinity_value)
         self.affinity_model.build_model()
 

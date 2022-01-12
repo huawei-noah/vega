@@ -1,12 +1,18 @@
 # -*- coding:utf-8 -*-
 
 # Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the MIT License.
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# MIT License for more details.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 """FileOps class."""
 import os
@@ -75,7 +81,7 @@ class FileOps(object):
         return prefix + tail
 
     @classmethod
-    def dump_pickle(cls, obj, filename):
+    def dump_pickle(cls, obj, filename, protocol=None):
         """Dump a object to a file using pickle.
 
         :param object obj: target object.
@@ -85,10 +91,10 @@ class FileOps(object):
         if not os.path.isfile(filename):
             cls.make_base_dir(filename)
         with open(filename, "wb") as f:
-            pickle.dump(obj, f)
+            pickle.dump(obj, f, protocol=protocol)
 
     @classmethod
-    def load_pickle(cls, filename):
+    def load_pickle(cls, filename, fix_imports=True, encoding="ASCII", errors="strict"):
         """Load a pickle file and return the object.
 
         :param str filename: target pickle file path.
@@ -98,8 +104,11 @@ class FileOps(object):
         """
         if not os.path.isfile(filename):
             return None
+        from vega.common.general import General
+        from vega.security.load_pickle import restricted_loads
         with open(filename, "rb") as f:
-            return pickle.load(f)
+            return restricted_loads(
+                f, fix_imports=fix_imports, encoding=encoding, errors=errors, security=General.security)
 
     @classmethod
     def copy_folder(cls, src, dst):
@@ -143,9 +152,6 @@ class FileOps(object):
         if dst is None or dst == "":
             return
         try:
-            if ":" in src:
-                cls.http_download(src, dst)
-                return
             if os.path.isfile(src):
                 shutil.copy(src, dst)
             else:
@@ -167,57 +173,29 @@ class FileOps(object):
         """
         if src_path is None:
             raise FileNotFoundError("Dataset path is None, please set dataset path in config file.")
-        if src_path.lower().startswith("http://") or src_path.lower().startswith("https://"):
-            if local_path is None:
-                local_path = os.path.abspath("./temp")
-            cls.make_dir(local_path)
-            base_name = os.path.basename(src_path)
-            local_path = os.path.join(local_path, base_name)
-            logger.debug("Downloading, from={}, to={}.".format(src_path, local_path))
-            cls.http_download(src_path, local_path, unzip=True)
-            return os.path.dirname(local_path)
         if os.path.exists(src_path):
             return src_path
         else:
             raise FileNotFoundError('Path is not existed, path={}'.format(src_path))
 
     @classmethod
-    def http_download(cls, src, dst, unzip=False):
-        """Download data from http or https web site.
+    def download_pretrain_model(cls, src_file, local_path=None):
+        """Download dataset from http or https web site, return path.
 
-        :param src: the data path
-        :type src: str
-        :param dst: the data path
-        :type dst: str
+        :param src_path: the data path
+        :type src_path: str
+        :param src_file: the local path
+        :type src_file: str
         :raises FileNotFoundError: if the file path is not exist, an error will raise
+        :return: the final data path
+        :rtype: str
         """
-        from six.moves import urllib
-        import fcntl
-
-        signal_file = cls.join_path(os.path.dirname(dst), ".{}.signal".format(os.path.basename(dst)))
-        if not os.path.isfile(signal_file):
-            with open(signal_file, 'w') as fp:
-                fp.write('{}'.format(0))
-
-        with open(signal_file, 'r+') as fp:
-            fcntl.flock(fp, fcntl.LOCK_EX)
-            signal = int(fp.readline().strip())
-            if signal == 0:
-                try:
-                    urllib.request.urlretrieve(src, dst)
-                    logger.info("Downloaded completely.")
-                except (urllib.error.URLError, IOError) as e:
-                    logger.error("Faild download, msg={}".format(str(e)))
-                    raise e
-                if unzip is True and dst.endswith(".tar.gz"):
-                    logger.info("Untar dataset file, file={}".format(dst))
-                    cls._untar(dst)
-                    logger.info("Untar dataset file completely.")
-                with open(signal_file, 'w') as fn:
-                    fn.write('{}'.format(1))
-            else:
-                logging.debug("File is already downloaded, file={}".format(dst))
-            fcntl.flock(fp, fcntl.LOCK_UN)
+        if src_file is None:
+            raise FileNotFoundError("Path of pretrain model is None, please set correct path.")
+        if os.path.isfile(src_path):
+            return src_path
+        else:
+            raise FileNotFoundError('Model is not existed, path={}'.format(src_path))
 
     @classmethod
     def _untar(cls, src, dst=None):

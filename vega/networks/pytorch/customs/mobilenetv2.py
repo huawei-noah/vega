@@ -1,12 +1,10 @@
 # -*- coding:utf-8 -*-
 
-# Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the MIT License.
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# MIT License for more details.
+# This file is adapted from the torchvision library at
+# https://github.com/pytorch/vision/blob/main/torchvision/models/mobilenetv2.py
+
+# 2021.07.04-Changed for vega search space
+# Author: Nikita Klyuchnikov <nikita.klyuchnikov@skolkovotech.ru>
 
 """MobileNetV2 architecture."""
 
@@ -19,8 +17,6 @@ def _make_divisible(v, divisor, min_value=None):
     Taken from the original tf repo.
 
     It ensures that all layers have a channel number that is divisible by 8
-    It can be seen here:
-    https://github.com/tensorflow/models/blob/master/research/slim/nets/mobilenet/mobilenet.py
     :param v:
     :param divisor:
     :param min_value:
@@ -55,7 +51,8 @@ class InvertedResidual(nn.Module):
         """Initialize InvertedResidual instance."""
         super(InvertedResidual, self).__init__()
         self.stride = stride
-        assert stride in [1, 2]
+        if stride not in [1, 2]:
+            raise ValueError("Stride must be in [1,2].")
 
         hidden_dim = int(round(inp * expand_ratio))
         self.use_res_connect = self.stride == 1 and inp == oup
@@ -90,7 +87,7 @@ class MobileNetV2(nn.Module):
                  width_mult=1.0,
                  inverted_residual_setting=None,
                  round_nearest=8,
-                 block=None, kernels=[3] * 7, first_stride=1, last_channel=1280, desc=None):
+                 block=None, kernels=None, first_stride=1, last_channel=1280, desc=None):
         """
         Network MobileNet V2 main class.
 
@@ -105,6 +102,8 @@ class MobileNetV2(nn.Module):
         """
         super(MobileNetV2, self).__init__()
 
+        if kernels is None:
+            kernels = [3] * 7
         if block is None:
             block = InvertedResidual
         input_channel = 32
@@ -148,7 +147,6 @@ class MobileNetV2(nn.Module):
             idx += 1
         # building last several layers
         features.append(ConvBNReLU(input_channel, self.last_channel, kernel_size=1))
-        # self.list_features = nn.ModuleList(features)
         # make it nn.Sequential
         self.features = nn.Sequential(*features)
 
@@ -183,10 +181,8 @@ class MobileNetV2(nn.Module):
             if i in [0, 2, 3, 5, 7]:
                 kd_layers.append(x)
 
-        # x = self.features(x)
         f5 = x.mean([2, 3])
         out = self.classifier(f5)
-        # kd_layers.append(f5)
 
         if is_feat:
             return kd_layers, out

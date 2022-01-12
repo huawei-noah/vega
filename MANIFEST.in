@@ -1,6 +1,5 @@
 #dispatch files to site-packages
 recursive-include docs *
-recursive-include evaluate_service *
 recursive-include examples *
 include LICENSE
 include MANIFEST.in

@@ -1,15 +1,23 @@
-"""ShuffleNetV2 architectures.
+# -*- coding:utf-8 -*-
 
-modified from https://github.com/megvii-model/SinglePathOneShot
-"""
+# This file is adapted from the SinglePathOneShot library at
+# https://github.com/megvii-model/SinglePathOneShot
+
+# 2020.6.29-Changed for Modular-NAS search space.
+#         Huawei Technologies Co., Ltd. <linyunfeng5@huawei.com>
+# Copyright 2020 Huawei Technologies Co., Ltd.
+
+"""ShuffleNetV2 architectures."""
+
 import torch
 import torch.nn as nn
-from .. import ops
-from ..slot import Slot
 from modnas.registry.construct import register as register_constructor
 from modnas.registry.construct import DefaultMixedOpConstructor, DefaultSlotTraversalConstructor
 from modnas.registry.arch_space import build, register
 from ..slot import register_slot_ccs
+from .. import ops
+from ..slot import Slot
+
 
 kernel_sizes = [3, 5, 7, 9]
 for k in kernel_sizes:
@@ -23,19 +31,23 @@ for k in kernel_sizes:
 
 def channel_split(x, split):
     """Return data split in channel dimension."""
-    assert x.size(1) == split * 2
-    return torch.split(x, split, dim=1)
+    if x.size(1) == split * 2:
+        return torch.split(x, split, dim=1)
+    else:
+        raise ValueError('Failed to return data split in channel dimension.')
 
 
 def shuffle_channels(x, groups=2):
     """Return data shuffled in channel dimension."""
     batch_size, channels, height, width = x.size()
-    assert channels % groups == 0
-    channels_per_group = channels // groups
-    x = x.view(batch_size, groups, channels_per_group, height, width)
-    x = x.transpose(1, 2).contiguous()
-    x = x.view(batch_size, channels, height, width)
-    return x
+    if channels % groups == 0:
+        channels_per_group = channels // groups
+        x = x.view(batch_size, groups, channels_per_group, height, width)
+        x = x.transpose(1, 2).contiguous()
+        x = x.view(batch_size, channels, height, width)
+        return x
+    else:
+        raise ValueError('Failed to return data shuffled in channel dimension.')
 
 
 class ShuffleUnit(nn.Module):

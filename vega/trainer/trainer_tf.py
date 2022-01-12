@@ -1,12 +1,18 @@
 # -*- coding: utf-8 -*-
 
 # Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the MIT License.
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# MIT License for more details.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 """TensorFlow Trainer."""
 
@@ -27,7 +33,6 @@ class TrainerTf(TrainerBase):
     def build(self):
         """Build the trainer by assembling the necessary components."""
         super().build()
-        # Some trainer has different train batch size from valid batch
         self.train_metrics = None
         self.valid_metrics = self._init_metrics()
 
@@ -106,7 +111,6 @@ class TrainerTf(TrainerBase):
             self.loss = self.model.overall_loss()
         else:
             self.loss = Loss()()
-        # loss
         if self.config.mixup and mode == tf.estimator.ModeKeys.TRAIN:
             loss = self._mixup_loss(self.loss, logits, y_a, y_b, mixup_ratio)
         else:
@@ -209,13 +213,11 @@ class TrainerTf(TrainerBase):
     def _init_gpu_session_config(self):
         sess_config = tf.compat.v1.ConfigProto()
         sess_config.gpu_options.allow_growth = True
-        # if self.horovod:
-        #     import horovod.tensorflow as hvd
-        #     sess_config.gpu_options.visible_device_list = str(hvd.local_rank())
         return sess_config
 
     def _init_npu_session_config(self):
         from tensorflow.core.protobuf.rewriter_config_pb2 import RewriterConfig
+        from npu_bridge import npu_init
         sess_config = tf.ConfigProto()
         sess_config.graph_options.rewrite_options.remapping = RewriterConfig.OFF
         custom_op = sess_config.graph_options.rewrite_options.custom_optimizers.add()

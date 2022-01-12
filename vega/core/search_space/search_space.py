@@ -1,25 +1,31 @@
 # -*- coding: utf-8 -*-
 
 # Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the MIT License.
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# MIT License for more details.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 """SearchSpace class."""
-import numpy as np
 import logging
 from collections import OrderedDict
 from queue import Queue
+import numpy as np
+from vega.common.dag import DAG
+from vega.common.class_factory import ClassFactory, ClassType
+from vega.core.pipeline.conf import SearchSpaceConfig
 from .param_types import PARAM_TYPE_MAP
 from .condition_types import CONDITION_TYPE_MAP
 from .params_factory import ParamsFactory
 from .forbidden import ForbiddenAndConjunction, ForbiddenEqualsClause
-from dag import DAG, DAGValidationError
-from vega.common.class_factory import ClassFactory, ClassType
-from vega.core.pipeline.conf import SearchSpaceConfig
 
 logger = logging.getLogger(__name__)
 
@@ -50,6 +56,7 @@ class SearchSpace(dict):
         self._forbidden_list = []
         self._hp_count = 0
         self._dag = DAG()
+        self.handler = None
         if desc is not None:
             self.form_desc(desc)
 
@@ -189,9 +196,11 @@ class SearchSpace(dict):
         except KeyError:
             raise KeyError('Hyperparameter in condition {} not exist in'
                            'current SearchSpace.'.format(condition))
+        """
         except DAGValidationError:
             raise KeyError('Current condition {} valid DAG rule in current'
                            'SearchSpace, can not be added!'.format(condition))
+        """
         if parent_name not in self._condition_dict:
             self._condition_dict[parent_name] = {}
         self._condition_dict[parent_name][child_name] = condition
@@ -275,7 +284,7 @@ class SearchSpace(dict):
         parameters_array = np.zeros((n, self._hp_count))
         i = 0
         for _, hp in self._params.items():
-            column = hp.sample(n=n, decode=False)
+            column = hp.sample(n=n, decode=False, handler=self.handler)
             parameters_array[:, i] = column
             i = i + 1
         return parameters_array
@@ -353,9 +362,40 @@ class SearchSpace(dict):
         while not q.empty():
             parent = q.get()
             final_param_dict[parent] = inversed_param_dict[parent]
-            child_list = self._dag.downstream(parent)
+            child_list = self._dag.next_nodes(parent)
             for child in child_list:
                 condition = self._condition_dict[parent][child]
                 if condition.evaluate(inversed_param_dict[parent]):
                     q.put(child)
         return final_param_dict
+
+
+class SpaceSet(object):
+    """Define a Space set to add search space dict."""
+
+    def __init__(self, ):
+        super(SpaceSet, self).__init__()
+        self._search_space = []
+
+    def add(self, key, space_type, space_range):
+        """add one search space dict."""
+        self._search_space.append({"key": key, "type": space_type, "range": space_range})
+        return self
+
+    def pop(self, idx):
+        """Pop item by idx."""
+        return self._search_space.pop(idx)
+
+    def load(self, space_list):
+        """Load search space list."""
+        for space in space_list:
+            if type(space) in [list, tuple]:
+                self.add(*space)
+            elif isinstance(space, dict):
+                self.add(**space)
+        return self.search_space
+
+    @property
+    def search_space(self):
+        """Get all search spaces."""
+        return SearchSpace(dict(hyperparameters=self._search_space))

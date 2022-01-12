@@ -1,19 +1,25 @@
 # -*- coding:utf-8 -*-
 
 # Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the MIT License.
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# MIT License for more details.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 """Data parallel callback."""
 
 import logging
 import vega
-from .callback import Callback
 from vega.common import ClassFactory, ClassType
+from .callback import Callback
 
 logger = logging.getLogger(__name__)
 
@@ -33,22 +39,13 @@ class Horovod(Callback):
             return
         if vega.is_torch_backend():
             self._init_torch()
-        # elif vega.is_tf_backend():
-        #     self._init_tf()
 
     def _init_torch(self):
         import torch
         import horovod.torch as hvd
         hvd.broadcast_parameters(self.trainer.model.state_dict(), root_rank=0)
         hvd.broadcast_optimizer_state(self.trainer.optimizer, root_rank=0)
-        # torch.cuda.set_device(hvd.local_rank())
         self.trainer._average_metrics = self._average_metrics
-
-    # def _init_tf(self):
-    #     import horovod.tensorflow as hvd
-    #     # hvd.init()
-    #     # TODO horovod tf
-    #     self.trainer.sess_config.gpu_options.visible_device_list = str(hvd.local_rank())
 
     def _average_metrics(self, metrics_results):
         import torch

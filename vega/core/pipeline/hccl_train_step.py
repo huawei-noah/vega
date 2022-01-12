@@ -1,12 +1,18 @@
 # -*- coding:utf-8 -*-
 
 # Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the MIT License.
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# MIT License for more details.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 """HCCL fully train."""
 
@@ -14,13 +20,14 @@ import os
 import logging
 import json
 import vega
-from .train_pipe_step import TrainPipeStep
 from vega.common.general import General
 from vega.common.class_factory import ClassFactory, ClassType
 from vega.common import Status, TaskOps
 from vega.report import ReportServer
 from vega.core.scheduler import create_master
 from vega.trainer.conf import TrainerConfig
+from vega.security.args import path_verify
+from .train_pipe_step import TrainPipeStep
 
 logger = logging.getLogger(__name__)
 
@@ -76,19 +83,27 @@ class HcclTrainStep(TrainPipeStep):
     def _set_nccl_ip_port(self):
         if not vega.is_torch_backend():
             return
-        rank_file = os.environ["RANK_TABLE_FILE"]
+        rank_file = os.getenv('RANK_TABLE_FILE', None)
+        if not rank_file:
+            raise ValueError('RANK_TABLE_FILE not in environ.')
+        rank_file = os.path.realpath(rank_file)
+        rank_file = path_verify(rank_file)
         with open(rank_file, 'r') as f:
             data = json.loads(f.read())
         General.cluster.hccl_server_ip = data['server_list'][0]['server_id']
         if "server_port" in data['server_list'][0]:
             General.cluster.hccl_port = int(data['server_list'][0]["server_port"])
-        os.environ["vega_pytorch_hccl_port"] = {General.cluster.hccl_port}
+        os.environ["vega_pytorch_hccl_port"] = str(General.cluster.hccl_port)
         logger.info(f"HCCL server: tcp://{General.cluster.hccl_server_ip}:{General.cluster.hccl_port}")
 
     def _new_rank_table_file(self):
         if not vega.is_torch_backend():
             return
-        rank_file = os.environ["RANK_TABLE_FILE"]
+        rank_file = os.getenv('RANK_TABLE_FILE', None)
+        if not rank_file:
+            raise ValueError('RANK_TABLE_FILE not in environ.')
+        rank_file = os.path.realpath(rank_file)
+        rank_file = path_verify(rank_file)
         with open(rank_file, 'r') as f:
             data = json.loads(f.read())
         device_ids = os.environ["NPU_VISIBLE_DEVICES"].split(",")

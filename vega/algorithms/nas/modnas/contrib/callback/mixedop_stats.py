@@ -1,24 +1,30 @@
 # -*- coding:utf-8 -*-
 
 # Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the MIT License.
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# MIT License for more details.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 """Mixed operator statistics reporter."""
 import numpy as np
-import pickle
 import torch.nn.functional as F
+from matplotlib import pyplot as plt
+from typing import Dict, Optional, Any
 from modnas.registry.callback import register
 from modnas.arch_space.mixed_ops import MixedOp
 from modnas.callback.base import CallbackBase
-from matplotlib import pyplot as plt
 from modnas.estim.base import EstimBase
 from modnas.optim.base import OptimBase
-from typing import Dict, Optional, Any
+from vega.common import FileOps
 
 plt.switch_backend('Agg')
 
@@ -60,8 +66,7 @@ class MixedOpStatsReporter(CallbackBase):
             plt.savefig(estim.expman.join('plot', 'prob_{}.png'.format(i)))
             save_probs.append(prob)
         probs_path = estim.expman.join('output', 'probs.pkl')
-        with open(probs_path, 'wb') as f:
-            pickle.dump(save_probs, f)
-            self.logger.info('mixed op probs saved to {}'.format(probs_path))
+        FileOps.dump_pickle(save_probs, probs_path)
+        self.logger.info('mixed op probs saved to {}'.format(probs_path))
         self.probs = []
         return ret

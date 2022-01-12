@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 """Defined faster rcnn detector."""
+from collections import ChainMap
 import torch
 from torch import nn
 from torch.nn import functional as F
-from collections import ChainMap
 import ujson
 from vega.modules.module import Module
 from vega.common import ClassType, ClassFactory

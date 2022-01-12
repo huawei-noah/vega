@@ -2,22 +2,14 @@
 
 ## 1. Exceptions
 
-### 1.1 Exception `ModuleNotFoundError: No module named 'mmdet'`
-
-To run algorithms such as SP-NAS, you need to install the open-source software mmdetection. For details, see the installation guide of the software.
-
-### 1.2 Exception `ModuleNotFoundError: No module named 'nasbench'`
-
-Before running the benchmark, install the open-source software NASBench. For details, see the installation guide of the software.
-
-### 1.3 Exception `Exception: Failed to create model, model desc={<model desc>}`
+### 1.1 Exception `Exception: Failed to create model, model desc={<model desc>}`
 
 The possible causes are as follows:
 
 1. The network is not registered with the Vega. Before invoking the network, you need to use `@ClassFactory.register` to register the network. For details, see <https://github.com/huawei-noah/vega/tree/master/examples/fully_train/fmd>.
 2. The model description file of the network is incorrect. You can locate the fault based on `<model desc>` in the exception information.
 
-### 1.5 Exception `ImportError: libgthread-2.0.so.0: cannot open shared object file: No such file or directory`
+### 1.2 Exception `ImportError: libgthread-2.0.so.0: cannot open shared object file: No such file or directory`
 
 The opencv-python system dependency library is missing. Run the following command:
 
@@ -25,7 +17,7 @@ The opencv-python system dependency library is missing. Run the following comman
 sudo apt install libglib2.0-0
 ```
 
-### 1.6 Exception `ModuleNotFoundError: No module named'skbuild '` or stuck in `Running setup.py bdist_wheel for opencv-python-headless...` during installation
+### 1.3 Exception `ModuleNotFoundError: No module named'skbuild '` or stuck in `Running setup.py bdist_wheel for opencv-python-headless...` during installation
 
 The possible cause is that the PIP version is too early. Run the following command:
 
@@ -33,18 +25,14 @@ The possible cause is that the PIP version is too early. Run the following comma
 pip3 install --user --upgrade pip
 ```
 
-### 1.7 Exception `PermissionError: [Errno 13] Permission denied: 'dask-scheduler'`, `FileNotFoundError: [Errno 2] No such file or directory: 'dask-scheduler': 'dask-scheduler'`, or `vega: command not found`
+### 1.4 Exception `PermissionError: [Errno 13] Permission denied: 'dask-scheduler'`, `FileNotFoundError: [Errno 2] No such file or directory: 'dask-scheduler': 'dask-scheduler'`, or `vega: command not found`
 
 This type of exception is usually caused by the failure to find `dask-scheduler` in `PATH`. Generally, the file is installed in `/<user home path>/.local/bin`.
 After the Vega is installed , `/<user home path>/.local/bin/` is automatically added to the `PATH` environment variable. The setting does not take effect immediately. You can run the ls command `source ~/.profile` or log in again to make the setting take effect.
 If the problem persists, check whether the dask-scheduler file exists in the `/<user home path>/.local/bin` directory. 
 If the file already exists, manually add `/<user home path>/.local/bin` to the environment variable `PATH`.
 
-### 1.8 Exception During Pytorch model evaluation: `FileNotFoundError: [Errno 2] No such file or directory: '<path>/torch2caffe.prototxt'`
-
-For details, see section 6.1 in [Evaluate Service](./evaluate_service.md).
-
-## 2. Common Configuration Problems
+## 2. Configuration Issues
 
 ### 2.1 How do I configure multi-GPU/NPU
 
@@ -112,29 +100,11 @@ general:
         level: info  # debug|info|warn|error|
 ```
 
-### 2.5 How do I view the search progress in real time
-
-Vega provides the visualized progress of the model search process. User could set `VisualCallBack` within `USER.yml` as follow,
-
-```yaml
-    trainer:
-        type: Trainer
-        callbacks: [VisualCallBack, ]
-```
-
-The output directory of the visualized information is as follows:
-
-```text
-./tasks/<task id>/visual
-```
-
-Run the `tensorboard --logdir PATH` command on the active node to start the service and view the progress in the browser. For details, see TensorBoard commands and instructions.
-
-### 2.6 How Do I Stop the VEGA Program Running in the Background
+### 2.5 How Do I Stop the VEGA Program Running in the Background
 
 If only the main Vega process is killed, some processes will not be stopped in time, and the resources occupied by the processes will not be released.
 
-The Vega application can be terminated using the following command:
+In safe mode, the Vega application can be terminated using the following command:
 
 ```bash
 # Query the process ID of the running Vega main program.
@@ -149,19 +119,56 @@ vega-kill -a
 vega-kill -f
 ```
 
-### 2.6 How Do I Stop the Vega Program Running in the Background?
-
-In the multi-GPU/NPU scenario, Vega starts the dask scheduler, dask worker, and trainer. If only the main Vega process is killed, some processes are not stopped in time and the resources occupied by these processes are not released.
-
-Run the following command to stop the Vega application:
+In common mode, run the following command:：
 
 ```bash
-# Query the process ID of the running Vega main program.
-vega-kill -l
-# Stop a Vega main program and related processes.
-vega-kill -p <pid>
-# Or stop all Vega processes at a time.
-vega-kill -a
-# If the main program is closed normally and there are still residual processes, you can forcibly clear the process.
-vega-kill -f
+vega-kill -s -l
+vega-kill -s -p <pid>
+vega-kill -s -a
+vega-kill -s -f
 ```
+
+### 2.6 How Do I Query the Running Vega Program
+
+In safe mode, run the following command to query the running Vega applications:
+
+```bash
+vega-process
+```
+
+In common mode, you can run the following command to query:
+
+```bash
+vega-process -s
+```
+
+### 2.7 How Do I Query the Vega Program Running Progress
+
+In safe mode, you can run the following command to query the running progress of the Vega program:
+
+```bash
+vega-progress -t <Task ID> -r <Task Root Path>
+```
+
+In common mode, you can run the following command to query:
+
+```bash
+vega-progress -s -t <Task ID> -r <Task Root Path>
+```
+
+### 2.8 How to Perform Model Inference Using the Vega Program
+
+Classification model inference can be performed with the command `vega-inference`, and detection model inference can be performed with the command `vega-inference-det`.
+
+Run the following command to query the command parameters:
+
+```bash
+vega-inference --help
+vega-inference-det --help
+```
+
+## 3. Precautions
+
+### 3.1 Reserve Sufficient Disk Space
+
+During Vega running, there is a model that caches each searched network. When the number of searched networks is large, a large amount of storage space is required. Reserve sufficient disk space based on the number of search network models for each search algorithm.

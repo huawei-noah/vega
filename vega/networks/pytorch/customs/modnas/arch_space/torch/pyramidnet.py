@@ -1,13 +1,20 @@
-"""PyramidNet architectures.
+# -*- coding:utf-8 -*-
 
-modified from https://github.com/dyhan0920/PyramidNet-PyTorch/
-"""
+# This file is adapted from the PyramidNet-PyTorch library at
+# https://github.com/dyhan0920/PyramidNet-PyTorch/
+
+# 2020.6.29-Changed for Modular-NAS search space.
+#         Huawei Technologies Co., Ltd. <linyunfeng5@huawei.com>
+# Copyright 2020 Huawei Technologies Co., Ltd.
+
+"""PyramidNet architectures."""
+
 import torch
 import torch.nn as nn
-from ..slot import Slot
 from modnas.registry.construct import DefaultSlotTraversalConstructor
 from modnas.registry.construct import register as register_constructor
 from modnas.registry.arch_space import register
+from ..slot import Slot
 
 
 class GroupConv(nn.Module):

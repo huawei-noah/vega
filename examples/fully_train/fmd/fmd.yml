@@ -1,9 +1,7 @@
 general:
     backend: pytorch
 
-
 pipeline: [fully_train]
-
 
 fully_train:
     pipe_step:

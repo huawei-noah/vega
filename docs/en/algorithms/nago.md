@@ -88,7 +88,4 @@ search_algorithm:
 
 ### 5. Output
 
-The following two files are generated in the specified output directory (the default directory is `./example/tasks/<task id>/output/nas/`):
-
-- The `output.csv` file contains the best architecture generator hyperparameters found by BOHB
-- The `reports.csv` file contains all the architecture generator hyperparameters queried by BOHB at different epoch.
+The best hpyerparameters in file `desc_nn.json` in folder `./example/tasks/<task id>/output/nas/`.

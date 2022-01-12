@@ -1,36 +1,42 @@
 # -*- coding: utf-8 -*-
 
 # Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the MIT License.
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# MIT License for more details.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 """Report."""
 import json
 import logging
 import os
 import glob
-import pickle
 import time
 import random
 from copy import deepcopy
+from collections import OrderedDict
+from threading import Lock
+from threading import Thread
 import numpy as np
 import pandas as pd
-from threading import Lock
-from collections import OrderedDict
-from threading import Thread
 
 import vega
 from vega.common import FileOps, TaskOps
 from vega.common.general import General
-from .record import ReportRecord
-from .report_persistence import ReportPersistence
 from vega.common import MessageServer
 from vega.common.utils import singleton
 from vega.common.pareto_front import get_pareto_index
+from .record import ReportRecord
+from .report_persistence import ReportPersistence
+
 
 __all__ = ["ReportServer"]
 logger = logging.getLogger(__name__)
@@ -138,8 +144,7 @@ class ReportServer(object):
         step_path = TaskOps().step_path
         _file = os.path.join(step_path, ".reports")
         if os.path.exists(_file):
-            with open(_file, "rb") as f:
-                data = pickle.load(f)
+            data = FileOps.load_pickle(_file)
             cls._hist_records = data[0]
             cls.__instances__ = data[1]
 
@@ -330,8 +335,6 @@ def _dump_report(report_server, persistence):
 
             try:
                 persistence.save_report(all_records)
-                # TODO
-                # persistence.pickle_report(report_server._hist_records, report_server.__instances__)
                 report_server.backup_output_path()
             except Exception as e:
                 logging.warning(f"Failed to dump reports, message={str(e)}")

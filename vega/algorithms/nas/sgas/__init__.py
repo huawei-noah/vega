@@ -1,1 +1,1 @@
-from .sgas_trainer_callback import *
+from .sgas_trainer_callback import SGASTrainerCallback

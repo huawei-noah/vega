@@ -1,12 +1,17 @@
-# -*- coding:utf-8 -*-
-
-# Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the MIT License.
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# MIT License for more details.
+# Copyright 2020 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """Coco eval for fasterrcnn."""
 import json
 import numpy as np
@@ -39,61 +44,63 @@ def coco_eval(result_files, result_types, coco, max_dets=(100, 300, 1000), singl
 
     if mmcv.is_str(coco):
         coco = COCO(coco)
-    assert isinstance(coco, COCO)
+    if isinstance(coco, COCO):
 
-    for res_type in result_types:
-        result_file = result_files[res_type]
-        assert result_file.endswith('.json')
+        for res_type in result_types:
+            result_file = result_files[res_type]
+            if result_file.endswith('.json'):
 
-        coco_dets = coco.loadRes(result_file)
-        gt_img_ids = coco.getImgIds()
-        det_img_ids = coco_dets.getImgIds()
-        iou_type = 'bbox' if res_type == 'proposal' else res_type
-        cocoEval = COCOeval(coco, coco_dets, iou_type)
-        if res_type == 'proposal':
-            cocoEval.params.useCats = 0
-            cocoEval.params.maxDets = list(max_dets)
-
-        tgt_ids = gt_img_ids if not single_result else det_img_ids
-
-        if single_result:
-            res_dict = dict()
-            for id_i in tgt_ids:
+                coco_dets = coco.loadRes(result_file)
+                gt_img_ids = coco.getImgIds()
+                det_img_ids = coco_dets.getImgIds()
+                iou_type = 'bbox' if res_type == 'proposal' else res_type
                 cocoEval = COCOeval(coco, coco_dets, iou_type)
                 if res_type == 'proposal':
                     cocoEval.params.useCats = 0
                     cocoEval.params.maxDets = list(max_dets)
 
-                cocoEval.params.imgIds = [id_i]
+                tgt_ids = gt_img_ids if not single_result else det_img_ids
+
+                if single_result:
+                    res_dict = dict()
+                    for id_i in tgt_ids:
+                        cocoEval = COCOeval(coco, coco_dets, iou_type)
+                        if res_type == 'proposal':
+                            cocoEval.params.useCats = 0
+                            cocoEval.params.maxDets = list(max_dets)
+
+                        cocoEval.params.imgIds = [id_i]
+                        cocoEval.evaluate()
+                        cocoEval.accumulate()
+                        cocoEval.summarize()
+                        res_dict.update({coco.imgs[id_i]['file_name']: cocoEval.stats[1]})
+
+                cocoEval = COCOeval(coco, coco_dets, iou_type)
+                if res_type == 'proposal':
+                    cocoEval.params.useCats = 0
+                    cocoEval.params.maxDets = list(max_dets)
+
+                cocoEval.params.imgIds = tgt_ids
                 cocoEval.evaluate()
                 cocoEval.accumulate()
                 cocoEval.summarize()
-                res_dict.update({coco.imgs[id_i]['file_name']: cocoEval.stats[1]})
 
-        cocoEval = COCOeval(coco, coco_dets, iou_type)
-        if res_type == 'proposal':
-            cocoEval.params.useCats = 0
-            cocoEval.params.maxDets = list(max_dets)
-
-        cocoEval.params.imgIds = tgt_ids
-        cocoEval.evaluate()
-        cocoEval.accumulate()
-        cocoEval.summarize()
-
-        summary_metrics = {
-            'Precision/mAP': cocoEval.stats[0],
-            'Precision/mAP@.50IOU': cocoEval.stats[1],
-            'Precision/mAP@.75IOU': cocoEval.stats[2],
-            'Precision/mAP (small)': cocoEval.stats[3],
-            'Precision/mAP (medium)': cocoEval.stats[4],
-            'Precision/mAP (large)': cocoEval.stats[5],
-            'Recall/AR@1': cocoEval.stats[6],
-            'Recall/AR@10': cocoEval.stats[7],
-            'Recall/AR@100': cocoEval.stats[8],
-            'Recall/AR@100 (small)': cocoEval.stats[9],
-            'Recall/AR@100 (medium)': cocoEval.stats[10],
-            'Recall/AR@100 (large)': cocoEval.stats[11],
-        }
+                summary_metrics = {
+                    'Precision/mAP': cocoEval.stats[0],
+                    'Precision/mAP@.50IOU': cocoEval.stats[1],
+                    'Precision/mAP@.75IOU': cocoEval.stats[2],
+                    'Precision/mAP (small)': cocoEval.stats[3],
+                    'Precision/mAP (medium)': cocoEval.stats[4],
+                    'Precision/mAP (large)': cocoEval.stats[5],
+                    'Recall/AR@1': cocoEval.stats[6],
+                    'Recall/AR@10': cocoEval.stats[7],
+                    'Recall/AR@100': cocoEval.stats[8],
+                    'Recall/AR@100 (small)': cocoEval.stats[9],
+                    'Recall/AR@100 (medium)': cocoEval.stats[10],
+                    'Recall/AR@100 (large)': cocoEval.stats[11],
+                }
+    else:
+        raise ValueError('Type of coco is wrong.')
 
     return summary_metrics
 

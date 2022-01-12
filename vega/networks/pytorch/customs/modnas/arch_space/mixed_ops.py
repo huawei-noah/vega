@@ -1,20 +1,26 @@
 # -*- coding:utf-8 -*-
 
 # Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the MIT License.
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# MIT License for more details.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 """Mixed operators."""
+from collections import OrderedDict
+from typing import Any, Collection, Iterator, List, Tuple, Optional, Union
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from collections import OrderedDict
 from torch import Tensor
-from typing import Any, Collection, Iterator, List, Tuple, Optional, Union
 from torch.nn.modules.module import Module
 from modnas.core.params.base import Param
 from modnas.core.params import Categorical
@@ -246,7 +252,6 @@ class BinaryGateUniformMixedOp(BinaryGateMixedOp):
         p = self.alpha()
         s_op = self.s_op
         self.w_path_f = F.softmax(p.index_select(-1, torch.tensor(s_op).to(p.device)), dim=-1)
-        # sample uniformly
         samples = F.softmax(torch.ones(len(s_op)), dim=-1).multinomial(self.n_samples)
         s_path_f = [s_op[i] for i in samples]
         self.s_path_f = s_path_f
@@ -254,10 +259,7 @@ class BinaryGateUniformMixedOp(BinaryGateMixedOp):
     def sample_ops(self, n_samples: int) -> None:
         """Sample activated candidates."""
         p = self.alpha()
-        # sample uniformly
         samples = F.softmax(torch.ones(p.shape), dim=-1).multinomial(n_samples).detach()
-        # sample according to p
-        # samples = F.softmax(p, dim=-1).multinomial(n_samples).detach()
         self.s_op = list(samples.flatten().cpu().numpy())
 
 
@@ -291,7 +293,7 @@ class GumbelSumMixedOp(MixedOp):
     def to_arch_desc(self, k: int = 1) -> Any:
         """Return archdesc from mixed operator."""
         cname = self.candidate_names()
-        w = F.softmax(self.alpha().detach(), dim=-1)  # use alpha softmax
+        w = F.softmax(self.alpha().detach(), dim=-1)
         _, cand_idx = torch.topk(w, k)
         desc = [cname[i] for i in cand_idx]
         if desc == []:

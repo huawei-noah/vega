@@ -6,8 +6,8 @@ The host where the Vega is installed has a GPU and meets the following requireme
 
 1. Ubuntu 18.04 or EulerOS 2.0 SP8
 2. CUDA 10.0 or CANN 20.1
-3. Python 3.7
-4. pip3
+3. Python 3.7 or later
+4. pytorch, tensorflow(>1.14, <2.0) or mindspore
 
 ## 2. Installing Vega
 

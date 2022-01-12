@@ -88,7 +88,4 @@ search_algorithm:
 
 ### 5. 算法输出
 
-以下两个输出文件会在指定的输出目录中生成（默认输出目录是 `./example/tasks/<task id>/output/nas/` ):
-
-- `output.csv` 文件包含了BOHB推荐的最优网络结构生成器的超参数值。
-- `reports.csv` 文件包含了BOHB搜索过程中评估过的所有超参组合的数据。
+包含最优超参的文件 `desc_nn.json` 在目录`./tasks/<task id>/output/nas/`中。

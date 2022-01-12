@@ -1,20 +1,28 @@
 # -*- coding: utf-8 -*-
 
 # Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the MIT License.
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# MIT License for more details.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 """This is a base class of the dataset."""
 
+import logging
+from typing import Iterator
+import numpy as np
 from mindspore.dataset import GeneratorDataset, DistributedSampler, SubsetRandomSampler
 import mindspore.dataset.transforms.c_transforms as C2
 import mindspore.dataset.vision.c_transforms as vision
 import mindspore.common.dtype as mstype
-import numpy as np
 from mindspore.communication.management import get_rank, get_group_size
 
 
@@ -46,7 +54,7 @@ class MsAdapter(object):
         try:
             image_dtype = str(image.dtype)
         except Exception:
-            pass
+            logging.debug('Falied to get image dtype.')
         try:
             label_dtype = str(label.dtype)
         except Exception:
@@ -96,6 +104,13 @@ class MsAdapter(object):
         :return: a batch data
         :rtype: dict, list, optional
         """
+        from mindspore.dataset.engine.datasets import BatchDataset, MapDataset
+        BatchDataset.__len__ = BatchDataset.get_dataset_size
+        MapDataset.__len__ = MapDataset.get_dataset_size
+        GeneratorDataset.__len__ = GeneratorDataset.get_dataset_size
+        Iterator.__len__ = lambda x: x.dataset.get_dataset_size()
+        if hasattr(self.dataset, "data_loader"):
+            return self.dataset.data_loader
         rank_size = 1
         rank_id = 0
         if self.dataset.world_size > 1:
@@ -104,7 +119,6 @@ class MsAdapter(object):
             self.sampler = None
         ms_dataset = GeneratorDataset(self.dataset, ["image", "label"], sampler=self.sampler, num_shards=rank_size,
                                       shard_id=rank_id)
-        # ms_dataset.set_dataset_size(len(self.dataset))  # TODO delete, only mindspore 0.5 need
         ms_dataset = self.convert_dtype(ms_dataset)
         if self.args.shuffle:
             buffer_size = self.args.get("buffer_size", len(self.dataset))
@@ -121,7 +135,4 @@ class MsAdapter(object):
         else:
             ms_dataset = ms_dataset.batch(self.args.batch_size)
 
-        from mindspore.dataset.engine.datasets import BatchDataset, MapDataset
-        BatchDataset.__len__ = BatchDataset.get_dataset_size
-        MapDataset.__len__ = MapDataset.get_dataset_size
         return ms_dataset

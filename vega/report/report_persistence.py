@@ -1,19 +1,25 @@
 # -*- coding: utf-8 -*-
 
 # Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the MIT License.
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# MIT License for more details.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 """Report."""
 import json
 import logging
 import os
 import traceback
-import pickle
+from pickle import HIGHEST_PROTOCOL
 from vega.common import FileOps, TaskOps, JsonEncoder, Status
 
 
@@ -54,8 +60,9 @@ class ReportPersistence(object):
             data = self.get_report(records)
             with open(_file, "w") as f:
                 json.dump(data, f, indent=4, cls=JsonEncoder)
-        except Exception:
-            logging.warning(traceback.format_exc())
+        except Exception as e:
+            logging.warning(f"Failed to save report, message: {e}")
+            logging.debug(traceback.format_exc())
 
     def get_report(self, records):
         """Save report to `reports.json`."""
@@ -75,15 +82,16 @@ class ReportPersistence(object):
                 else:
                     data[record.step_name] = [record.to_dict()]
             return data
-        except Exception:
-            logging.warning(traceback.format_exc())
+        except Exception as e:
+            logging.warning(f"Failed to get report, message: {e}")
+            logging.debug(traceback.format_exc())
 
     def pickle_report(self, records, report_instance):
         """Pickle report to `.reports`."""
         try:
             _file = os.path.join(TaskOps().step_path, ".reports")
             _dump_data = [records, report_instance]
-            with open(_file, "wb") as f:
-                pickle.dump(_dump_data, f, protocol=pickle.HIGHEST_PROTOCOL)
-        except Exception:
-            logging.warning(traceback.format_exc())
+            FileOps.dump_pickle(_dump_data, _file, protocol=HIGHEST_PROTOCOL)
+        except Exception as e:
+            logging.warning(f"Failed to pickle report, message: {e}")
+            logging.debug(traceback.format_exc())

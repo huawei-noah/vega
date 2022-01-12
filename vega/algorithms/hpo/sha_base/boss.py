@@ -1,12 +1,18 @@
 # -*- coding: utf-8 -*-
 
 # Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the MIT License.
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# MIT License for more details.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 
 """
@@ -28,11 +34,12 @@ BOSS: Bayesian Optimization via Sub-Sampling for Hyperparameter Optimization.
 
 import operator
 import math
-from .sha_base import ShaBase
 import random
+from vega.core.search_space.search_space import SearchSpace
+from vega.common.class_factory import ClassFactory, ClassType
+from .sha_base import ShaBase
 from .ssa import SSA
 from .tuner import TunerBuilder
-from vega.core.search_space.search_space import SearchSpace
 
 
 class BOSS(ShaBase):
@@ -50,13 +57,16 @@ class BOSS(ShaBase):
     """
 
     def __init__(self, search_space, num_samples, max_epochs, repeat_times, min_epochs=1,
-                 eta=3):
+                 eta=3, tuner="RF"):
         """Init BOSS."""
         super().__init__(search_space, num_samples, max_epochs, min_epochs,
                          eta)
         # init all the configs
         self.repeat_times = repeat_times
-        self.tuner = TunerBuilder(search_space, tuner='GP')
+        if tuner == "hebo":
+            self.tuner = ClassFactory.get_cls(ClassType.SEARCH_ALGORITHM, "HeboAdaptor")(search_space)
+        else:
+            self.tuner = TunerBuilder(search_space, tuner=tuner)
         self.iter_list, self.min_epoch_list = self._get_total_iters(
             num_samples, max_epochs, self.repeat_times, min_epochs, eta)
         self.config_dict = {}
@@ -64,7 +74,10 @@ class BOSS(ShaBase):
         # init the empty ssa config list, all ssa object need to be set_config_list
         self.ssa_list = self._get_ssa_list(self.iter_list, self.min_epoch_list, self.repeat_times, max_epochs)
         # init the first ssa with first config list
-        self.config_dict[0] = self.get_hyperparameters(self.iter_list[0])
+        if tuner == "hebo":
+            self.config_dict[0] = self.tuner.propose(self.iter_list[0])
+        else:
+            self.config_dict[0] = self.get_hyperparameters(self.iter_list[0])
         self.ssa_list[0].set_config_list(self.config_dict[0], start_id=0)
         return
 
@@ -106,8 +119,8 @@ class BOSS(ShaBase):
                         iter_list.append(int(
                             count_list[i] - (math.pow(eta, iter) - 1) / (eta - 1)))
             iter_list.sort(reverse=True)
-            for i in range(len(iter_list)):
-                temp_ep = int(min_epochs * math.pow(eta, i))
+            for j in range(len(iter_list)):
+                temp_ep = int(min_epochs * math.pow(eta, j))
                 if temp_ep > max_epochs:
                     temp_ep = max_epochs
                 min_ep_list.append(temp_ep)

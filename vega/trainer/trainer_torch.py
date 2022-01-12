@@ -1,14 +1,21 @@
 # -*- coding: utf-8 -*-
 
 # Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the MIT License.
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# MIT License for more details.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 """Torch Trainer."""
+
 import torch
 import numpy as np
 import vega
@@ -71,13 +78,13 @@ class TrainerTorch(TrainerBase):
     def _init_setting(self):
         """Init CUDA setting."""
         if vega.is_gpu_device():
-            import torch.cuda
+            import torch.cuda as torch_cuda
             self.config.device = vega.is_gpu_device() if vega.is_gpu_device() is not True else 0
-            torch.cuda.manual_seed(self.config.seed)
+            torch_cuda.manual_seed(self.config.seed)
         elif vega.is_npu_device():
-            import torch.npu
-            torch.npu.set_device(vega.get_devices())
-            torch.npu.manual_seed(self.config.seed)
+            import torch.npu as torch_npu
+            torch_npu.set_device(vega.get_devices())
+            torch_npu.manual_seed(self.config.seed)
         elif vega.is_cpu_device():
             self.config.device = -1
             return
@@ -156,17 +163,7 @@ class TrainerTorch(TrainerBase):
         else:
             loss = self.loss(output, target)
         if self.use_amp:
-            from apex import amp
-            if vega.is_npu_device():
-                with amp.scale_loss(loss, self.optimizer) as scaled_loss:
-                    scaled_loss.backward()
-                self.optimizer.step()
-            else:
-                with amp.scale_loss(loss, self.optimizer) as scaled_loss:
-                    scaled_loss.backward()
-                    self.optimizer.synchronize()
-                with self.optimizer.skip_synchronize():
-                    self.optimizer.step()
+            self._set_amp_loss(loss)
         else:
             loss.backward()
             if self.config.grad_clip:
@@ -176,6 +173,19 @@ class TrainerTorch(TrainerBase):
         return {'loss': loss.item(),
                 'train_batch_output': output,
                 'lr': self.lr_scheduler.get_lr()}
+
+    def _set_amp_loss(self, loss):
+        from apex import amp
+        if vega.is_npu_device():
+            with amp.scale_loss(loss, self.optimizer) as scaled_loss:
+                scaled_loss.backward()
+            self.optimizer.step()
+        else:
+            with amp.scale_loss(loss, self.optimizer) as scaled_loss:
+                scaled_loss.backward()
+                self.optimizer.synchronize()
+            with self.optimizer.skip_synchronize():
+                self.optimizer.step()
 
     def _multi_train_step(self, batch):
         train_batch_output = None

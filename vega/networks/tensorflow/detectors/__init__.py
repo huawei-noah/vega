@@ -1,2 +1,0 @@
-from .faster_rcnn import FasterRCNN
-from .faster_rcnn_trainer_callback import FasterRCNNTrainerCallback

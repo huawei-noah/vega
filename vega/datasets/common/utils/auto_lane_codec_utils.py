@@ -1,17 +1,24 @@
 # -*- coding: utf-8 -*-
 
 # Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the MIT License.
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# MIT License for more details.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 """This script is used to process the auto lane dataset."""
-import numpy as np
-import cv2
+
 import json
+import cv2
+import numpy as np
 
 
 class Point:
@@ -55,8 +62,8 @@ class Lane:
     def __init__(self, prob=0, start_pos=0, end_pos=0,
                  anchor_x=0, anchor_y=0, type=0, lane=np.array([])):
         self.prob = prob
-        self.start_pos = start_pos  # the position for start points in location array
-        self.end_pos = end_pos  # the position for start points in location array
+        self.start_pos = start_pos
+        self.end_pos = end_pos
         self.lane = lane
         self.idx = 0
         self.ax = anchor_x
@@ -204,22 +211,15 @@ def order_lane_x_axis(lane_set, h):
     for i in range(len(lane_set)):
         lane_with_cross_k = LaneWithCrossK(lane_set[i], i, cross_y)
         lanes_crossk.append(lane_with_cross_k)
-        # print(lane_with_cross_k.cross_x)
-        # print(lane_with_cross_k.k)
 
     lanes_crossk_sorted = sorted(lanes_crossk)
 
-    # for i in range(len(lanes_crossk_sorted)):
-    #     print(lanes_crossk_sorted[i].k)
-
-    # find current lanes
     right_pos = len(lanes_crossk_sorted)
     for i in range(len(lanes_crossk_sorted)):
         if lanes_crossk_sorted[i].k > 0:
             right_pos = i
             break
 
-    # assign lane index
     lane_idx = [None] * len(lanes_crossk_sorted)
     idx = -1
     for i in range(right_pos - 1, -1, -1):
@@ -229,8 +229,6 @@ def order_lane_x_axis(lane_set, h):
     for i in range(right_pos, len(lanes_crossk_sorted), 1):
         lane_idx[i] = idx
         idx += 1
-
-    # print(lane_idx)
 
     lanes_final = list()
     for i in range(len(lanes_crossk_sorted)):
@@ -314,7 +312,7 @@ def delete_repeat_y(cur_line):
         list_x.append(pt.x)
         list_y.append(pt.y)
 
-    sorted_y = sorted(list_y)  # y from up--->down
+    sorted_y = sorted(list_y)
     sorted_x = []
     for i in range(len(sorted_y)):
         sorted_x.append(list_x[list_y.index(sorted_y[i])])
@@ -335,7 +333,7 @@ def delete_repeat_y(cur_line):
     for i in range(len(set_sorted_y)):
         new_lane.append({"x": set_sorted_x[i], "y": set_sorted_y[i]})
     if new_lane[0]["y"] < new_lane[1]["y"]:
-        new_lane = new_lane[::-1]  # y from big to small
+        new_lane = new_lane[::-1]
 
     return new_lane
 
@@ -439,7 +437,6 @@ def gettopk_idx(gt_dist_list):
         distance_list.append(cur_distance)
 
     top_idx = np.argsort(distance_list)[:1]
-    # top_2_values = [ distance_list[i] for i in top_2_idx]
     return top_idx
 
 

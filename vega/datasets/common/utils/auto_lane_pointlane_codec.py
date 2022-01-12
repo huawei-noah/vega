@@ -1,12 +1,18 @@
 # -*- coding: utf-8 -*-
 
 # Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the MIT License.
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# MIT License for more details.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 """This script is used to process the auto lane dataset."""
 
@@ -69,7 +75,6 @@ class PointLaneCodec(object):
         s_y = self.input_height * 1.0 / org_height
         gt_lanes_list = get_lane_list(lane_object, s_x, s_y)
         if len(gt_lanes_list) < 1:
-            # background image
             gt_lane_offset = np.zeros(shape=(self.feature_size, self.points_per_line * 2 + 1), dtype=float)
             gt_lane_type = np.zeros(shape=(self.feature_size, self.class_num), dtype=float)
             gt_lane_type[:, 0] = 1
@@ -77,9 +82,6 @@ class PointLaneCodec(object):
             gt_type = gt_lane_type.astype(np.float32)
         else:
             lane_set = trans_to_lane_with_type(gt_lanes_list)
-            # sort_lanes = order_lane_x_axis(lane_set, self.input_height)
-            # lane_set=
-            # lane_set = ensure_yshape_lines_order(sort_lanes, self.input_width, self.input_height)
             all_anchor_count = np.zeros(shape=(self.feature_height, self.feature_width))
             all_anchor_distance = list()
             all_anchor_loc = list()
@@ -95,10 +97,9 @@ class PointLaneCodec(object):
                     y_list = []
                 else:
                     interp_lane = spline_interp(lane=new_lane, step_t=1)
-                    # x_pt_list, y_pt_list = trans_to_pt_list(interp_lane)
                     x_pt_list, y_pt_list = delete_nearby_point(interp_lane)
                     x_pt_list = x_pt_list[::-1]
-                    y_pt_list = y_pt_list[::-1]  # y from small to big
+                    y_pt_list = y_pt_list[::-1]
                     startpos, endpos, x_list, y_list = \
                         self.uniform_sample_lane_y_axis(x_pt_list, y_pt_list)
                 if startpos == -1 or endpos == -1:
@@ -110,7 +111,6 @@ class PointLaneCodec(object):
                 all_anchor_loc.append(gt_loc_list)
                 all_anchor_list.append(anchor_list)
 
-            # process gt offset value
             if self.anchor_lane_num == 1:
                 gt_type, gt_loc = self.get_one_lane_gt_loc_type(all_anchor_distance,
                                                                 all_anchor_loc, all_anchor_count)
@@ -147,7 +147,6 @@ class PointLaneCodec(object):
                 down_lane = np.array([])
                 end_pos = anchor_y_pos
                 start_pos = anchor_y_pos
-                # up anchor
                 for i in range(self.points_per_line):
                     if i >= relative_end_pos or anchor_y_pos + i >= self.points_per_line:
                         break
@@ -157,7 +156,6 @@ class PointLaneCodec(object):
                     p = Point(abs_x, abs_y)
                     up_lane = np.append(up_lane, p)
                     end_pos = anchor_y_pos + i + 1
-                # down anchor
                 for i in range(anchor_y_pos):
                     rela_x = down_anchor_lane[i]
                     abs_x = anchor_center_x + rela_x
@@ -198,21 +196,22 @@ class PointLaneCodec(object):
                 gt_loc_list, gt_dist_list = \
                     get_lane_loc_list(all_anchor_distance, all_anchor_loc, h, w)
 
-                if cnt == 0:  # back ground
+                if cnt == 0:
                     gt_lane_type[index, 0] = 1
-                elif cnt == 1:  # single
+                elif cnt == 1:
                     gt_lane_type[index, 0] = 0
                     gt_lane_type[index, 1] = 1
                     gt_lane_offset[index, :self.pt_nums_single_lane] = gt_loc_list[0]
-                else:  # choose one
+                else:
                     gt_lane_type[index, 0] = 0
                     gt_lane_type[index, 1] = 1
-                    # choose small distance
                     line_loc_num = len(gt_loc_list)
                     line_dist_num = len(gt_dist_list)
-                    assert (line_dist_num == line_loc_num)
-                    [top_idx] = gettopk_idx(gt_dist_list)
-                    gt_lane_offset[index, :self.pt_nums_single_lane] = gt_loc_list[top_idx]
+                    if line_dist_num == line_loc_num:
+                        [top_idx] = gettopk_idx(gt_dist_list)
+                        gt_lane_offset[index, :self.pt_nums_single_lane] = gt_loc_list[top_idx]
+                    else:
+                        raise ValueError('Feature is Wrong.')
 
         gt_loc = gt_lane_offset.astype(np.float32)
         gt_type = gt_lane_type.astype(np.float32)
@@ -238,8 +237,8 @@ class PointLaneCodec(object):
                 max_y = y_new
 
         x_list = np.array(x_pt_list)
-        y_list = np.array(y_pt_list)  # y from small to big
-        if y_list.max() - y_list.min() < 5:  # filter < 5 pixel lane
+        y_list = np.array(y_pt_list)
+        if y_list.max() - y_list.min() < 5:
             return -1, -1, [], []
         if len(y_list) < 4:
             tck = interpolate.splrep(y_list, x_list, k=1, s=0)
@@ -272,7 +271,7 @@ class PointLaneCodec(object):
 
         for i in range(0, endpos - startpos + 1):
             h = self.feature_height - 1 - int((startpos + i) * self.interval / self.step_h)
-            w = int(xlist[i] / self.step_w)  # IndexError: list index out of range
+            w = int(xlist[i] / self.step_w)
             if h < 0 or h > self.feature_height - 1 or w < 0 or w > self.feature_width - 1:
                 continue
             if (h, w) in anchor_list:
@@ -280,7 +279,6 @@ class PointLaneCodec(object):
             anchor_y = (1.0 * h + 0.5) * self.step_h
             center_x = (1.0 * w + 0.5) * self.step_w
 
-            # ensure anchor on same side of lane
             curr_y = self.input_height - 1 - i * self.interval
             if curr_y <= anchor_y:
                 continue
@@ -288,17 +286,14 @@ class PointLaneCodec(object):
             anchor_list.append((h, w))
             center_y = y_list[int(self.points_per_line / self.feature_height) * (self.feature_height - 1 - h)]
 
-            # get lane offset
             loss_line = [0] * (self.points_per_line * 2 + 1)
             length = endpos - startpos + 1
-            # offset up cur anchor
             up_index = 0
             for j in range(0, length):
                 if y_list[startpos + j] <= center_y:
                     loss_line[self.points_per_line + 1 + up_index] = xlist[j] - center_x
                     up_index += 1
             loss_line[self.points_per_line] = up_index
-            # offset done cur anchor
             down_index = length - up_index - 1
             for j in range(0, endpos - startpos + 1):
                 if y_list[startpos + j] > center_y:

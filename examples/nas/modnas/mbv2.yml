@@ -19,9 +19,10 @@ fully_train:
                     type: CIFAR_MobileNetV2_GPU
                     args:
                         n_classes: 10
-                desc_construct:
-                    predefined:
-                        type: MobileNetV2PredefinedConstructor
+                proc: augment
+                augment:
+                    construct:
+                        predefined: MobileNetV2PredefinedConstructor
 
     trainer:
         type: Trainer

@@ -1,24 +1,32 @@
 # -*- coding:utf-8 -*-
 
 # Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the MIT License.
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# MIT License for more details.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 """Run worker remotely."""
 
 import os
 import sys
-import psutil
 import logging
-import subprocess
 import traceback
+import subprocess
 import signal
+import psutil
 import vega
+from vega.common.general import General
 from vega.trainer.deserialize import load_config, load_worker
+from vega import security
 
 
 def run_remote_worker(worker_id, worker_path, id, num_workers):
@@ -29,12 +37,12 @@ def run_remote_worker(worker_id, worker_path, id, num_workers):
                   log_path=worker_path)
     for index in range(num_workers):
         os.chdir(os.environ["PWD"])
-        if 'PYTHONPATH' in os.environ:
-            os.environ['PYTHONPATH'] = "{}:{}:{}".format(
-                os.environ['PYTHONPATH'], worker_path, os.path.abspath(os.curdir))
-        elif worker_id is not None and worker_path is not None:
-            os.environ['PYTHONPATH'] = "{}:{}".format(
-                worker_path, os.path.abspath(os.curdir))
+        if "PYTHONPATH" not in os.environ:
+            os.environ["PYTHONPATH"] = ""
+        if worker_path is not None and worker_path not in os.environ["PYTHONPATH"].split(":"):
+                os.environ["PYTHONPATH"] += f":{worker_path}"
+        if os.path.abspath(os.curdir) not in os.environ["PYTHONPATH"].split(":"):
+            os.environ["PYTHONPATH"] += f":{os.path.abspath(os.curdir)}"
 
         if vega.is_gpu_device():
             sub_pid_list = call_in_gpu(id, worker_id, worker_path, index)
@@ -70,7 +78,7 @@ def kill_proc_tree(pid, sig=signal.SIGKILL, include_parent=True,
         gone, alive = psutil.wait_procs(children, timeout=timeout,
                                         callback=on_terminate)
     except Exception:
-        pass
+        logging.debug('Failed to a process tree.')
     return (gone, alive)
 
 
@@ -130,9 +138,9 @@ def _subprocess(id, worker_id, worker_path, rank, is_backend, index):
                 env=os.environ.copy())
             pid = proc.pid
             proc.wait(timeout=int(os.environ["vega_timeout"]))
-        except Exception:
-            logging.warn("Timeout worker has been killed.")
-            logging.warn(traceback.print_exc())
+        except Exception as e:
+            logging.warn(f"Timeout worker has been killed, message: {e}.")
+            logging.debug(traceback.print_exc())
     return pid
 
 
@@ -142,12 +150,15 @@ def run_worker():
         vega.set_backend(os.environ["BACKEND_TYPE"].lower(), os.environ["DEVICE_CATEGORY"])
         (config_file, worker_file) = sys.argv[1:]
         load_config(config_file)
-        # cmd += os.environ["vega_init_env"] if "vega_init_env" in os.environ else ""
+        if General.security:
+            if not security.load_config("client"):
+                return
+            os.umask(0o077)
         worker = load_worker(worker_file)
         worker.train_process()
-    except Exception:
-        traceback.print_exc(file=open("./error.log", "w+"))
-        logging.error(traceback.format_exc())
+    except Exception as e:
+        logging.debug(traceback.format_exc())
+        logging.error(f"Failed to run worker, message: {e}")
 
 
 if __name__ == "__main__":

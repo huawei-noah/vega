@@ -1,12 +1,18 @@
 # -*- coding:utf-8 -*-
 
 # Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the MIT License.
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# MIT License for more details.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 """Defined BohbHpo class."""
 from math import log, pow, sqrt
@@ -34,7 +40,7 @@ class BossHpo(HPOBase):
             total_epochs = self.config.policy.total_epochs
             num_samples, max_epochs = self.design_parameter(total_epochs, repeat_times)
         self._max_samples = num_samples
-        self.hpo = BOSS(self.search_space, num_samples, max_epochs, repeat_times)
+        self.hpo = BOSS(self.search_space, num_samples, max_epochs, repeat_times, tuner=self.config.tuner)
 
     def design_parameter(self, total_epochs, repeat_times):
         """Design parameters based on total_epochs.
@@ -56,7 +62,7 @@ class BossHpo(HPOBase):
                 cn = int(sqrt(log(current_samples * 3 / 2)))
                 min_epochs = current_epochs
                 if cn != 1:
-                    for i in range(cn - 1):
+                    for _ in range(cn - 1):
                         min_epochs *= eta
                 while(current_samples > 0):
                     valid_epochs = max(min_epochs, current_epochs)
@@ -108,8 +114,8 @@ class BossHpo(HPOBase):
                         iter_list.append(int(
                             count_list[i] - (pow(eta, iter) - 1) / (eta - 1)))
             iter_list.sort(reverse=True)
-            for i in range(len(iter_list)):
-                temp_ep = int(min_epochs * pow(eta, i))
+            for j in range(len(iter_list)):
+                temp_ep = int(min_epochs * pow(eta, j))
                 min_ep_list.append(temp_ep)
             iter_list_hl.append(iter_list)
             min_ep_list_hl.append(min_ep_list)

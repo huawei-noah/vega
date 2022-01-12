@@ -1,12 +1,18 @@
 # -*- coding: utf-8 -*-
 
 # Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the MIT License.
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# MIT License for more details.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 """HostEvaluator used to do evaluate process on gpu."""
 
@@ -181,9 +187,9 @@ class HostEvaluator(Evaluator):
             performance = self.valid(self.valid_loader)
             ReportClient().update(self.step_name, self.worker_id, performance=performance)
             logging.info(f"finished host evaluation, id: {self.worker_id}, performance: {performance}")
-        except Exception:
-            logging.error(traceback.format_exc())
-            logging.error("Failed to evalute on host.")
+        except Exception as e:
+            logging.debug(traceback.format_exc())
+            logging.error(f"Failed to evalute on host, message: {e}")
 
     def _init_session_config(self):
         import tensorflow as tf
@@ -193,6 +199,8 @@ class HostEvaluator(Evaluator):
             return sess_config
         elif vega.is_npu_device():
             from tensorflow.core.protobuf.rewriter_config_pb2 import RewriterConfig
+            # Initialize npu bridge
+            from npu_bridge import npu_init
             sess_config = tf.ConfigProto()
             sess_config.graph_options.rewrite_options.remapping = RewriterConfig.OFF
             custom_op = sess_config.graph_options.rewrite_options.custom_optimizers.add()

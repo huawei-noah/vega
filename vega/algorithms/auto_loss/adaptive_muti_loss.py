@@ -1,21 +1,27 @@
 # -*- coding: utf-8 -*-
 
 # Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the MIT License.
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# MIT License for more details.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 """Defined Autoloss class."""
 import os
 import logging
-import pickle
-from .ada_segment import AdaSegment
-from .ada_segment_conf import AdaSegConfig
-from vega.common.task_ops import TaskOps
+from vega.common import FileOps, TaskOps
 from vega.common.class_factory import ClassFactory, ClassType
 from vega.algorithms.hpo.hpo_base import HPOBase
+from vega.common import General
+from .ada_segment import AdaSegment
+from .ada_segment_conf import AdaSegConfig
 
 
 @ClassFactory.register(ClassType.SEARCH_ALGORITHM)
@@ -54,8 +60,7 @@ class Autoloss(HPOBase):
         worker_path = TaskOps().get_local_worker_path(step_name=record.get("step_name"),
                                                       worker_id=record.get("worker_id"))
         saved_loss = os.path.join(worker_path, "muti_loss.pkl")
-        with open(saved_loss, "rb") as f:
-            cur_loss = pickle.load(f)
+        cur_loss = FileOps.load_pickle(saved_loss)
 
         if not rewards:
             rewards = -1

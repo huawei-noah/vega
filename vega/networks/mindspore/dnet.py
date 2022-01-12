@@ -1,12 +1,18 @@
 # -*- coding:utf-8 -*-
 
 # Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the MIT License.
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# MIT License for more details.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 """DNet network."""
 from vega.common import ClassFactory, ClassType
@@ -158,20 +164,14 @@ class AddBlock(Module):
         stride = 1
         if strides[num1] != strides[num2]:
             stride = 2
-        # print("stride:", stride, "layer_size:", layer_sizes, "num1, num2:", num1, num2)
         if stride != 1 or layer_sizes[num1] != layer_sizes[num2]:
-            # print("run here")
             self.conv = create_op('conv1', layer_sizes[num1], layer_sizes[num2], stride)
-            # print("self.conv:", self.conv)
 
     def call(self, x, **kwargs):
         """call."""
         x1, x2 = x[self.num1], x[self.num2]
-        # print("%^" * 100, "x1 x2 shape:", x1.shape, x2.shape)
-        # print("$$" * 50, self.conv)
         if self.conv is not None:
             x1 = self.conv(x1)
-        # print("%" * 100, "x1 x2 shape new:", x1.shape, x2.shape)
         x[self.num2] = x1 + x2
         return x
 
@@ -219,7 +219,6 @@ class EncodedBlock(Module):
         connect_index = 0
 
         self.module_list = ModuleList()
-        # self.module_list = []
         length = len(layer_str) // 2
         stride_place = 0
         while (stride_place + 1) * 2 < len(layer_str) and layer_str[stride_place * 2] == '1':
@@ -229,7 +228,6 @@ class EncodedBlock(Module):
         connect_parts.append("a0{}".format(length))
 
         for i in range(length):
-            # print("length "*10, length)
             layer_module_list = ModuleList()
             layer_opt_name = op_names[int(layer_str[i * 2])]
             layer_in_channel = layer_sizes[-1]

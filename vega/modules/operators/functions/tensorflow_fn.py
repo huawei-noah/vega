@@ -1,18 +1,24 @@
 # -*- coding: utf-8 -*-
 
 # Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the MIT License.
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# MIT License for more details.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 """Custom functions of tensorflow."""
 import logging
 import math
-import numpy as np
 from collections import OrderedDict
+import numpy as np
 import tensorflow.compat.v1 as tf
 from tensorflow.python.ops import state_ops
 from vega.common.config import Config
@@ -81,7 +87,6 @@ class Module(object):
         if not weight_file:
             return
         logging.info("Load checkpoint form file ({}).".format(weight_file))
-        # model_file = tf.train.latest_checkpoint(weight_file)
         reader = tf.train.NewCheckpointReader(weight_file)
         variables = reader.get_variable_to_shape_map()
         states = {v: reader.get_tensor(v) for v in variables}
@@ -230,7 +235,6 @@ class QuantizeConv2d(OperatorSerializable):
 
     def call(self, inputs, **kwargs):
         """Call QuantizeConv2d function."""
-        # todo
         return inputs
 
 
@@ -541,7 +545,6 @@ class BatchNorm2d(Module, OperatorSerializable):
         if self._is_load_pretrained:
             self.training = True
         out = bn(inputs=input, training=self.training)
-        # update  moving average
         if self._trainable:
             for item in bn.updates:
                 tf.add_to_collections(tf.GraphKeys.UPDATE_OPS, item)
@@ -753,7 +756,7 @@ class MeanShift(Module, OperatorSerializable):
     def call(self, inputs, *args, **kwargs):
         """Call MeanShift."""
         std = tf.convert_to_tensor(self.rgb_std, dtype=tf.float32)
-        self.weight = tf.convert_to_tensor(np.eye(3).astype(np.float32))  # tf.eye(3)
+        self.weight = tf.convert_to_tensor(np.eye(3).astype(np.float32))
         self.weight = tf.div(self.weight, std)
         self.bias = self.sign * self.rgb_range * tf.convert_to_tensor(self.rgb_mean, dtype=tf.float32)
         self.bias = tf.div(self.bias, std)
@@ -838,7 +841,6 @@ def gumbel_softmax_sample(input, temperature, eps=1e-20):
 
 def gumbel_softmax(input, dim=-1, tau=1, hard=True, eps=1e-20):
     """Apply a gumbel-softmax function."""
-    # keep_dims = True if dim == -1 else False
     y = gumbel_softmax_sample(input, tau, eps)
     if hard:
         y_hard = tf.cast(tf.equal(y, tf.reduce_max(y, 1, keep_dims=True)), y.dtype)

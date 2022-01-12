@@ -1,12 +1,18 @@
 # -*- coding:utf-8 -*-
 
 # Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the MIT License.
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# MIT License for more details.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 """vega run.py."""
 import sys
@@ -15,11 +21,11 @@ import json
 import vega
 from vega.common.utils import init_log, lazy
 from vega.common import Config, UserConfig
-from vega.common.task_ops import TaskOps
-from .pipeline.pipeline import Pipeline
+from vega.common import TaskOps
 from vega import set_backend
 from vega.common.general import General
 from vega.core.pipeline.conf import PipelineConfig
+from .pipeline.pipeline import Pipeline
 
 
 logger = logging.getLogger(__name__)
@@ -67,7 +73,7 @@ def _run_pipeline():
 
 
 def _adjust_config():
-    vega.quota().adjuest_pipeline_by_runtime(UserConfig().data)
+    vega.get_quota().adjuest_pipeline_by_runtime(UserConfig().data)
 
 
 @lazy

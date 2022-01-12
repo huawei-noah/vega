@@ -1,29 +1,36 @@
 # -*- coding:utf-8 -*-
 
 # Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the MIT License.
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# MIT License for more details.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 """Pipeline that string up all PipeSteps."""
+
 import os
 import traceback
 import logging
 import signal
-import pandas as pd
 import json
-from .pipe_step import PipeStep
+import pandas as pd
 from vega.common.user_config import UserConfig
 from vega.common import FileOps, TaskOps, Status
 from vega.core.scheduler import shutdown_cluster
 from vega.common.general import General
-from .conf import PipeStepConfig, PipelineConfig
 from vega.report import ReportServer
 from vega.common.message_server import MessageServer
 from vega.common.parameter_sharing import ParameterSharing
+from .pipe_step import PipeStep
+from .conf import PipeStepConfig, PipelineConfig
 
 logger = logging.getLogger(__name__)
 
@@ -78,7 +85,7 @@ class Pipeline(object):
                 self.steps.append(pipestep)
                 pipestep.do()
         except Exception as e:
-            logger.error("Failed to run pipeline.")
+            logger.error(f"Failed to run pipeline, message: {e}")
             logger.error(traceback.format_exc())
             error_occured = True
             if "pipestep" in locals():

@@ -1,19 +1,25 @@
 # -*- coding: utf-8 -*-
 
 # Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the MIT License.
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# MIT License for more details.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 """Adaptive weight."""
 import os
 import logging
+import uuid
 from mindspore.train.serialization import save_checkpoint, load_checkpoint
 from mindspore import Tensor
 import numpy as np
-import uuid
 
 
 def adaptive_weight(ckpt_file, ms_model):
@@ -42,7 +48,6 @@ def adaptive_weight(ckpt_file, ms_model):
             param_dict['name'] = net_para_name
             param_dict['data'] = init_weight if net_para_shape == init_para_shape else new_weight
             new_ms_params_list.append(param_dict)
-            # parameter_dict[net_para_name].data = new_weight
     save_path = os.path.dirname(ckpt_file)
     save_file_name = os.path.join(save_path, "adaptive_" + uuid.uuid1().hex[:8] + ".ckpt")
     save_checkpoint(new_ms_params_list, save_file_name)

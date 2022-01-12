@@ -1,23 +1,30 @@
 # -*- coding:utf-8 -*-
 
 # Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the MIT License.
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# MIT License for more details.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 """Run pipeline."""
 
 import os
 import sys
-import vega
 from copy import deepcopy
+import vega
 from vega.common.general import General
 from vega.common.config import Config
-from vega.common.utils import verify_requires
-from vega.common import argment_parser
+from vega.common.utils import verify_requires, verify_platform_pkgs
+from vega.common.arg_parser import argment_parser, str2bool
+from vega import security
 
 
 def _append_env():
@@ -25,8 +32,8 @@ def _append_env():
     sys.path.insert(0, dir_path)
     if "PYTHONPATH" not in os.environ:
         os.environ["PYTHONPATH"] = dir_path
-    else:
-        os.environ["PYTHONPATH"] += ":{}".format(dir_path)
+    elif dir_path not in os.environ["PYTHONPATH"].split(":"):
+        os.environ["PYTHONPATH"] += f":{dir_path}"
 
 
 def _parse_args():
@@ -47,18 +54,35 @@ def _parse_args():
                               help="resume not finished task")
     group_resume.add_argument("-t", "--task_id", default=None, type=str,
                               help="specify the ID of the task to be resumed")
-    group_config = parser.add_argument_group(title='Modify config for yml')
-    group_config.add_argument("-m", "--modify", action='store_true',
-                              help="modify some config")
+    group_config = parser.add_argument_group(title='Modify default configs in yml')
     group_config.add_argument("-dt", "--dataset", default=None, type=str,
                               help='modify dataset for all pipe_step')
     group_config.add_argument("-dp", "--data_path", default=None, type=str,
                               help="modify data_path for all pipe_step")
-    group_config.add_argument("-bs", "--batch_size", default=None, type=str,
+    group_config.add_argument("-bs", "--batch_size", default=None, type=int,
                               help='modify batch_size of dataset for all pipe_step')
-    group_config.add_argument("-es", "--epochs", default=None, type=str,
+    group_config.add_argument("-es", "--epochs", default=None, type=int,
                               help='modify fully_train epochs')
+    group_cluster = parser.add_argument_group(title='Set cluster info')
+    group_cluster.add_argument("-sa", "--standalone_boot", default=None, type=str2bool,
+                               help="standalone boot mode, eg. -sa true")
+    group_cluster.add_argument("-ps", "--parallel_search", default=None, type=str2bool,
+                               help="parallel search")
+    group_cluster.add_argument("-pt", "--parallel_fully_train", default=None, type=str2bool,
+                               help="parallel fully train")
+    group_cluster.add_argument("-mi", "--master_ip", default=None, type=str,
+                               help="master ip, eg. -mi n.n.n.n")
+    group_cluster.add_argument("-ws", "--num_workers", default=None, type=int,
+                               help="number of workers, eg. -ws 12")
+    group_cluster.add_argument("-p", "--listen_port", default=None, type=int,
+                               help="listen port, eg. -p 8878")
+    group_cluster.add_argument("-sv", "--slaves", dest="slaves", nargs="+",
+                               help="slaves, eg. -sv n.n.n.n n.n.n.n")
+    parser = security.add_args(parser)
     args = parser.parse_args()
+    if args.security:
+        security.check_args(args)
+        security.check_yml(args.config_file)
     return args
 
 
@@ -85,7 +109,7 @@ def _check_parse(args):
     return args
 
 
-def _set_backend(args):
+def _get_backend_device(args):
     backend = args.backend
     device = args.device
     if backend:
@@ -107,7 +131,7 @@ def _set_backend(args):
         General.backend = backend
     if device:
         General.device_category = device
-    vega.set_backend(General.backend, General.device_category)
+    return General.backend, General.device_category
 
 
 def _resume(args):
@@ -121,13 +145,9 @@ def _resume(args):
         General.backup_original_value(force=True)
 
 
-def _backup_config(args):
-    _file = args.config_file
-    from vega.common.task_ops import TaskOps
-    from vega.common.file_ops import FileOps
-    dest_file = FileOps.join_path(TaskOps().local_output_path, os.path.basename(_file))
-    FileOps.make_base_dir(dest_file)
-    FileOps.copy_file(_file, dest_file)
+def _backup_config(file_name, config):
+    from vega.common import FileOps, TaskOps
+    config.dump_yaml(FileOps.join_path(TaskOps().local_output_path, os.path.basename(file_name)))
 
 
 def _change_process_name():
@@ -137,15 +157,62 @@ def _change_process_name():
     libc.prctl(15, byref(buff), 0, 0, 0)
 
 
-def run_pipeline(load_special_lib_func=None):
+def _set_cluster(args, config):
+    if "general" not in config:
+        config["general"] = {}
+    if "cluster" not in config["general"]:
+        config["general"]["cluster"] = {}
+    for key in ["parallel_search", "parallel_fully_train"]:
+        if args.get(key, None) is not None:
+            setattr(General, key, args.get(key))
+            config["general"][key] = args.get(key)
+    for key in ["standalone_boot", "num_workers", "master_ip", "listen_port", "slaves"]:
+        if args.get(key, None) is not None:
+            setattr(General.cluster, key, args.get(key))
+            config["general"]["cluster"][key] = args.get(key)
+    return config
+
+
+def _check_platform_pkgs(backend, device):
+    result = True
+    if backend == "pytorch":
+        result = verify_platform_pkgs([
+            ("torch", "torch"),
+            ("torchvision", "torchvision")])
+    elif backend == "tensorflow":
+        if device == "GPU":
+            tensorflow = "tensorflow-gpu>=1.14.0,<2.0"
+        else:
+            tensorflow = "tensorflow"
+        result = verify_platform_pkgs([
+            ("tensorflow", tensorflow),
+            ("tf_slim", "tf-slim"),
+            ("official", "tf-models-official==0.0.3.dev1")])
+    elif backend == "mindspore":
+        result = verify_platform_pkgs([
+            ("mindspore", "mindspore")])
+    return result
+
+
+def main():
     """Run pipeline."""
     args = _parse_args()
     _resume(args)
-    _set_backend(args)
+    if args.security:
+        os.umask(0o077)
+        if not security.load_config("all"):
+            print("If you want to run vega in normal mode, use parameter '-s'.")
+            print("For more parameters: vega --help")
+            return
+    General.security = args.security
+    (backend, device) = _get_backend_device(args)
+    if not _check_platform_pkgs(backend, device):
+        return
+    vega.set_backend(backend, device)
     _append_env()
-    if load_special_lib_func:
-        load_special_lib_func(args.config_file)
-    config = Config(args.config_file)
+    config = Config(args.config_file, abs_path=True)
+    if not security.check_risky_file(args, config):
+        return
     # load general
     if config.get("general"):
         General.from_dict(config.get("general"), skip_check=False)
@@ -154,11 +221,12 @@ def run_pipeline(load_special_lib_func=None):
         return
     dict_args = vars(args)
     dict_args = _check_parse(dict_args)
+    config = _set_cluster(dict_args, config)
     config = _modify_config(dict_args, config)
-    # _backup_config(args)
+    _backup_config(args.config_file, config)
     _change_process_name()
     vega.run(config)
 
 
 if __name__ == '__main__':
-    run_pipeline()
+    main()

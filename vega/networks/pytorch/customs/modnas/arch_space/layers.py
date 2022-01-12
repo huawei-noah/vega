@@ -1,24 +1,30 @@
 # -*- coding:utf-8 -*-
 
 # Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the MIT License.
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# MIT License for more details.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 """Layers of nested network modules."""
+from typing import Dict, List, Optional, Tuple, Type, Union, Any
 import torch
 import torch.nn as nn
+from torch import Tensor
+from torch.nn.modules.module import Module
+from modnas.registry.layer_def import build as build_layer_def
+from modnas.utils.logging import get_logger
 from .slot import Slot
 from .slot import register_slot_ccs
 from . import layer_defs
-from modnas.registry.layer_def import build as build_layer_def
-from modnas.utils.logging import get_logger
-from torch import Tensor
-from torch.nn.modules.module import Module
-from typing import Dict, List, Optional, Tuple, Type, Union, Any
 
 
 logger = get_logger('arch_space')
@@ -202,7 +208,8 @@ class MultiChainLayer(nn.Module):
         if isinstance(n_chain_nodes, int):
             n_chain_nodes = [n_chain_nodes] * n_chain
         else:
-            assert len(n_chain_nodes) == n_chain
+            if len(n_chain_nodes) != n_chain:
+                raise ValueError("Chains of network modules are wrong.")
         self.n_chain_nodes = n_chain_nodes
         self.n_nodes = sum(n_chain_nodes)
         self.n_input = len(chn_in)
@@ -271,8 +278,10 @@ class MultiChainLayer(nn.Module):
 
     def build_from_arch_desc(self, desc, *args, **kwargs):
         """Build layer ops from desc."""
-        assert len(desc) == len(self.chains)
+        if len(desc) != len(self.chains):
+            raise ValueError('Failed to build layer ops from desc.')
         for g_chain, chain in zip(desc, self.chains):
-            assert len(g_chain) == len(chain)
+            if len(g_chain) != len(chain):
+                raise ValueError('Failed to build layer ops from desc.')
             for g_edge, e in zip(g_chain, chain):
                 e.build_from_arch_desc(g_edge, *args, **kwargs)

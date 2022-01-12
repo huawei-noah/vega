@@ -89,8 +89,6 @@ mutate:
         type: AdelaideMutate
         codec: AdelaideCodec
         max_sample: 100
-        pareto_front_file: "{local_base_path}/output/random/pareto_front.csv"
-        random_file: "{local_base_path}/output/random/random.csv"
 ```
 
 ## 3. Dataset
@@ -101,13 +99,6 @@ The dataset for image semantic segmentation needs to include RGB images and corr
 
 ### 4. Output
 
-The output includes a series of .pth files (models trained to the num_iter iteration times in the configuration file), the result.csv file, and the pause_front.csv file. The result.csv file records all search models, and the pareto_front.csv file records all pareto_front models. The .csv file contains encoding, flops, parameters, and mIOU.
+The output includes model files, network description files, performance files.
+The network descrition files has encoding item, using a 19-character string indicates the structure of a model, which ends with an underscore (_) to avoid record errors caused by encoding starting with 0.
 
-1. encoding: A 19-character string indicates the structure of a model, which ends with an underscore (_) to avoid record errors caused by encoding starting with 0.
-2. flops: Records the macc value of the model. For example, 1371603728 indicates 1.277 GB.
-3. parameters: Records the values of parameters in the model. For example, 3162900 indicates 3.016 MB.
-4. mIOU: Records the segmentation performance.
-
-## 5. Benchmark
-
-For details, see the benchmark configuration item in the [adelaide_ea.yml](https://github.com/huawei-noah/vega/blob/master/examples/nas/adelaide_ea/adelaide_ea.yml) configuration file.

@@ -1,25 +1,34 @@
 # -*- coding: utf-8 -*-
 
 # Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the MIT License.
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# MIT License for more details.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 """Query vega process."""
 
-import psutil
+import logging
 import json
 import time
+import psutil
 from psutil import _pprint_secs
 from vega.common import MessageServer, MessageClient, argment_parser
+from vega import security
+from vega.common.general import General
 
 
 __all__ = [
     "query_task_info", "get_pid", "is_vega_process", "get_vega_pids",
-    "query_process", "query_processes", "print_process", "print_processes",
+    "query_process", "query_processes", "print_process"
 ]
 
 
@@ -27,6 +36,7 @@ def _parse_args(desc):
     parser = argment_parser(desc)
     parser.add_argument("-j", "--json", action='store_true',
                         help="return json format string")
+    parser = security.add_args(parser)
     args = parser.parse_args()
     return args
 
@@ -40,6 +50,7 @@ def get_vega_pids():
             try:
                 p = psutil.Process(pid)
             except Exception:
+                logging.debug('Failed to get obj of pid.')
                 continue
             ppid = p.ppid()
             if ppid in [_pid for (_pid, _ppid) in vega_pids]:
@@ -63,10 +74,10 @@ def get_task_id_path_port(pid):
                 client = MessageClient(ip=ip, port=port, timeout=1)
                 result = client.send(action="query_task_info")
                 if isinstance(result, dict) and "task_id" in result:
-                    return result.get("task_id"), result.get("base_path"), ip, port
-        return None, None, None, None
-    except Exception:
-        return None, None, None, None
+                    return result.get("task_id"), result.get("base_path"), ip, port, None
+        return None, None, None, None, "Unknown"
+    except Exception as e:
+        return None, None, None, None, str(e)
 
 
 def get_pid(task_id):
@@ -134,13 +145,13 @@ def query_process(pid):
     """Query process info."""
     try:
         p = psutil.Process(pid)
-        (task_id, base_path, ip, port) = get_task_id_path_port(pid)
+        (task_id, base_path, ip, port, msg) = get_task_id_path_port(pid)
         return {
             "PID": pid,
             "cmdline": p.cmdline()[2:],
             "create_time": _pprint_secs(p.create_time()),
             "cwd": p.cwd(),
-            "task_id": task_id if task_id is not None else "Unknown",
+            "task_id": task_id if task_id is not None else f"error: {msg}",
             "base_path": base_path if base_path is not None else "Unknown",
             "user": p.username(),
             "ip": ip,
@@ -175,9 +186,15 @@ def query_processes():
     return infos
 
 
-def print_processes():
+def main():
     """Print all processes."""
     args = _parse_args("Quey Vega processes.")
+    if args.security:
+        if not security.load_config("client"):
+            print("If you run vega in normal mode, use parameter '-s'.")
+            print("For more parameters: vega-process --help")
+            return
+    General.security = args.security
     processes = query_processes()
     if args.json:
         print(json.dumps(processes, indent=4))
@@ -186,4 +203,4 @@ def print_processes():
 
 
 if __name__ == "__main__":
-    print_processes()
+    main()

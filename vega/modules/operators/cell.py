@@ -1,12 +1,18 @@
 # -*- coding: utf-8 -*-
 
 # Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the MIT License.
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# MIT License for more details.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 """Import all torch operators."""
 import vega
@@ -137,7 +143,6 @@ class Cell(ops.Module):
         states_list = ()
         for i in self._concat:
             states_list += (states[i],)
-        # states_list = tuple([states[i] for i in self._concat])
         return ops.concat(states_list)
 
 
@@ -197,7 +202,6 @@ class ContextualCell_v1(ops.Module):
                     # turn-off scaling in batch norm
                     self.ops.append(OPS[op_name](inp, 1, True, repeats))
                     self._pos.append(pos)
-                    # self._collect_inds.append(ind * 3 + ind2 - 1) # Do not collect intermediate
                     self._pools.append('{}({})'.format(
                         op_name, self._pools[pos]))
                 # summation
@@ -218,8 +222,10 @@ class ContextualCell_v1(ops.Module):
         feats = [x]
         for pos, op in zip(self._pos, self.ops):
             if isinstance(pos, list):
-                assert len(pos) == 2, "Two ops must be provided"
-                feats.append(op(feats[pos[0]], feats[pos[1]]))
+                if len(pos) == 2:
+                    feats.append(op(feats[pos[0]], feats[pos[1]]))
+                else:
+                    raise ValueError("Two ops must be provided")
             else:
                 feats.append(op(feats[pos]))
         out = 0

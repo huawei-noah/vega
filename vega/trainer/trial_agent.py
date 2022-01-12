@@ -1,21 +1,26 @@
 # -*- coding: utf-8 -*-
 
 # Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the MIT License.
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# MIT License for more details.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 """Base Trainer."""
 
 import os
-import logging
-import pickle
 import vega
 from vega.common.general import General
 from vega.report.report_client import ReportClient
+from vega.common import FileOps
 
 
 class TrialAgent(object):
@@ -28,8 +33,7 @@ class TrialAgent(object):
 
     def _load_config(self):
         _file = os.path.join(os.path.curdir, ".trial")
-        with open(_file, "rb") as f:
-            data = pickle.load(f)
+        data = FileOps.load_pickle(_file)
         self.worker_id = data["worker_id"]
         self.model_desc = data["model_desc"]
         self.hps = data["hps"]

@@ -1,12 +1,18 @@
 # -*- coding:utf-8 -*-
 
 # Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the MIT License.
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# MIT License for more details.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 """ModelCheckpoint callback defination."""
 
@@ -15,9 +21,9 @@ import glob
 import logging
 import numpy as np
 import vega
-from .callback import Callback
 from vega.common import FileOps
 from vega.common import ClassFactory, ClassType
+from .callback import Callback
 
 if vega.is_torch_backend():
     import torch
@@ -87,7 +93,6 @@ class ModelCheckpoint(Callback):
         checkpoint_file = FileOps.join_path(
             self.trainer.get_local_worker_path(), self.trainer.checkpoint_file_name)
         logging.debug("Start Save Model, model_file=%s", self.trainer.model_pickle_file_name)
-        # save checkpoint
         if vega.is_torch_backend():
             ckpt = {
                 'epoch': epoch,
@@ -121,7 +126,6 @@ class ModelCheckpoint(Callback):
                         self.trainer.optimizer.load_state_dict(checkpoint["optimizer"])
                     self.trainer.lr_scheduler.load_state_dict(checkpoint["lr_scheduler"])
                     if self.trainer._resume_training:
-                        # epoch = checkpoint["epoch"]
                         self.trainer._start_epoch = checkpoint["epoch"]
                         logging.info("Resume fully train, change start epoch to {}".format(self.trainer._start_epoch))
                 except Exception as e:

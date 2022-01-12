@@ -1,12 +1,18 @@
 # -*- coding: utf-8 -*-
 
 # Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the MIT License.
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# MIT License for more details.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 """Conv Module with Normalization."""
 
@@ -34,8 +40,8 @@ class ConvModule(nn.Module):
                  dilation=1,
                  groups=1,
                  bias='auto',
-                 conv_cfg={"type": 'Conv'},
-                 norm_cfg={"type": 'BN'},
+                 conv_cfg=None,
+                 norm_cfg=None,
                  activation='relu',
                  inplace=True,
                  activate_last=True):
@@ -69,36 +75,46 @@ class ConvModule(nn.Module):
         :type activate_last: bool
         """
         super(ConvModule, self).__init__()
-        assert conv_cfg is None or isinstance(conv_cfg, dict)
-        assert norm_cfg is None or isinstance(norm_cfg, dict)
-        self.conv_cfg = conv_cfg
-        self.norm_cfg = norm_cfg
-        self.activation = activation
-        self.inplace = inplace
-        self.activate_last = activate_last
-        self.with_norm = norm_cfg is not None
-        self.with_activatation = activation is not None
-        if bias == 'auto':
-            bias = False if self.with_norm else True
-        self.with_bias = bias
-        self.conv = conv_cfg_dict[self.conv_cfg['type']](
-            in_channels,
-            out_channels,
-            kernel_size,
-            stride=stride,
-            padding=padding,
-            dilation=dilation,
-            groups=groups,
-            bias=bias)
-        self.in_channels = self.conv.in_channels
-        self.out_channels = self.conv.out_channels
-        self.kernel_size = self.conv.kernel_size
-        self.stride = self.conv.stride
-        self.padding = self.conv.padding
-        self.dilation = self.conv.dilation
-        self.transposed = self.conv.transposed
-        self.output_padding = self.conv.output_padding
-        self.groups = self.conv.groups
+        if conv_cfg is None:
+            conv_cfg = {"type": 'Conv'}
+        if norm_cfg is None:
+            norm_cfg = {"type": 'BN'}
+        if (conv_cfg is None or isinstance(conv_cfg, dict)) and (norm_cfg is None or isinstance(norm_cfg, dict)):
+            self.conv_cfg = conv_cfg
+            self.norm_cfg = norm_cfg
+            self.activation = activation
+            self.inplace = inplace
+            self.activate_last = activate_last
+            self.with_norm = norm_cfg is not None
+            self.with_activatation = activation is not None
+            if bias == 'auto':
+                bias = False if self.with_norm else True
+            self.with_bias = bias
+            self.conv = conv_cfg_dict[self.conv_cfg['type']](
+                in_channels,
+                out_channels,
+                kernel_size,
+                stride=stride,
+                padding=padding,
+                dilation=dilation,
+                groups=groups,
+                bias=bias)
+            self.in_channels = self.conv.in_channels
+            self.out_channels = self.conv.out_channels
+            self.kernel_size = self.conv.kernel_size
+            self.stride = self.conv.stride
+            self.padding = self.conv.padding
+            self.dilation = self.conv.dilation
+            self.transposed = self.conv.transposed
+            self.output_padding = self.conv.output_padding
+            self.groups = self.conv.groups
+            self._network_setting(in_channels, out_channels, inplace)
+            self.init_weight()
+        else:
+            raise ValueError('Failed to init ConvModule.')
+
+    def _network_setting(self, in_channels, out_channels, inplace):
+        """Set network."""
         if self.with_norm:
             norm_channels = out_channels if self.activate_last else in_channels
             requires_grad = self.norm_cfg['requires_grad'] if 'requires_grad' in self.norm_cfg else False
@@ -114,7 +130,6 @@ class ConvModule(nn.Module):
                     self.activation))
             if self.activation == 'relu':
                 self.activate = nn.ReLU(inplace=inplace)
-        self.init_weight()
 
     def init_weight(self):
         """Init weight of Conv Module with Normalization."""

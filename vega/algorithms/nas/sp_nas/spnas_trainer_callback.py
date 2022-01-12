@@ -1,12 +1,18 @@
 # -*- coding:utf-8 -*-
 
 # Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the MIT License.
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# MIT License for more details.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 """The trainer program for Auto Lane."""
 
@@ -15,54 +21,55 @@ import os
 import time
 import numpy as np
 from pycocotools.coco import COCO
-from vega.common import ClassFactory, ClassType
-from vega.trainer.trainer_ms import TrainerMs
 from mindspore.train.callback import ModelCheckpoint, CheckpointConfig, LossMonitor
 import mindspore.common.dtype as mstype
 from mindspore.train import Model as MsModel
 from mindspore import Tensor
 from mindspore.nn import SGD
+from vega.common import ClassFactory, ClassType
+from vega.trainer.trainer_ms import TrainerMs
+from vega.datasets.conf.dataset import DatasetConfig
 from .src.model_utils.config import config
 from .src.dataset import data_to_mindrecord_byte_image, create_fasterrcnn_dataset
 from .src.lr_schedule import dynamic_lr
 from .src.network_define import WithLossCell, TrainOneStepCell, LossNet
 from .src.util import coco_eval, bbox2result_1image, results2json
-from vega.datasets.conf.dataset import DatasetConfig
 
 logger = logging.getLogger(__name__)
 
 
 def valid():
     """Construct the trainer of SpNas."""
-    config = DatasetConfig().to_dict()
-    config = config['_class_data'].val
+    config_val = DatasetConfig().to_dict()
+    config_val = config_val['_class_data'].val
     prefix = "FasterRcnn_eval.mindrecord"
-    mindrecord_dir = config.mindrecord_dir
+    mindrecord_dir = config_val.mindrecord_dir
     mindrecord_file = os.path.join(mindrecord_dir, prefix)
 
     if not os.path.exists(mindrecord_file):
         if not os.path.isdir(mindrecord_dir):
             os.makedirs(mindrecord_dir)
-        if config.dataset == "coco":
-            if os.path.isdir(config.coco_root):
-                data_to_mindrecord_byte_image(config, "coco", False, prefix, file_num=1)
+        if config_val.dataset == "coco":
+            if os.path.isdir(config_val.coco_root):
+                data_to_mindrecord_byte_image(config_val, "coco", False, prefix, file_num=1)
             else:
                 logging.info("coco_root not exits.")
         else:
-            if os.path.isdir(config.IMAGE_DIR) and os.path.exists(config.ANNO_PATH):
-                data_to_mindrecord_byte_image(config, "other", False, prefix, file_num=1)
+            if os.path.isdir(config_val.IMAGE_DIR) and os.path.exists(config_val.ANNO_PATH):
+                data_to_mindrecord_byte_image(config_val, "other", False, prefix, file_num=1)
             else:
                 logging.info("IMAGE_DIR or ANNO_PATH not exits.")
-    dataset = create_fasterrcnn_dataset(config, mindrecord_file, batch_size=config.test_batch_size, is_training=False)
+    dataset = create_fasterrcnn_dataset(config_val, mindrecord_file, batch_size=config_val.test_batch_size,
+                                        is_training=False)
     return dataset
 
 
 def train():
     """Train fasterrcnn dataset."""
-    config = DatasetConfig().to_dict()
-    config = config['_class_data'].train
+    config_train = DatasetConfig().to_dict()
+    config_train = config_train['_class_data'].train
     prefix = "FasterRcnn.mindrecord"
-    mindrecord_dir = config.mindrecord_dir
+    mindrecord_dir = config_train.mindrecord_dir
     mindrecord_file = os.path.join(mindrecord_dir, prefix + "0")
     print("CHECKING MINDRECORD FILES ...")
     rank = int(os.getenv('RANK_ID', '0'))
@@ -72,28 +79,28 @@ def train():
         if not os.path.isdir(mindrecord_dir):
             os.makedirs(mindrecord_dir)
         if config.dataset == "coco":
-            if os.path.isdir(config.coco_root):
-                if not os.path.exists(config.coco_root):
+            if os.path.isdir(config_train.coco_root):
+                if not os.path.exists(config_train.coco_root):
                     logging.info("Please make sure config:coco_root is valid.")
-                    raise ValueError(config.coco_root)
-                data_to_mindrecord_byte_image(config, "coco", True, prefix)
+                    raise ValueError(config_train.coco_root)
+                data_to_mindrecord_byte_image(config_train, "coco", True, prefix)
             else:
                 logging.info("coco_root not exits.")
         else:
-            if os.path.isdir(config.image_dir) and os.path.exists(config.anno_path):
-                if not os.path.exists(config.image_dir):
+            if os.path.isdir(config_train.image_dir) and os.path.exists(config_train.anno_path):
+                if not os.path.exists(config_train.image_dir):
                     logging.info("Please make sure config:image_dir is valid.")
-                    raise ValueError(config.image_dir)
-                data_to_mindrecord_byte_image(config, "other", True, prefix)
+                    raise ValueError(config_train.image_dir)
+                data_to_mindrecord_byte_image(config_train, "other", True, prefix)
             else:
                 logging.info("image_dir or anno_path not exits.")
 
     while not os.path.exists(mindrecord_file + ".db"):
         time.sleep(5)
-    dataset = create_fasterrcnn_dataset(config, mindrecord_file, batch_size=config.batch_size,
+    dataset = create_fasterrcnn_dataset(config_train, mindrecord_file, batch_size=config_train.batch_size,
                                         device_num=device_num, rank_id=rank,
-                                        num_parallel_workers=config.num_parallel_workers,
-                                        python_multiprocessing=config.python_multiprocessing)
+                                        num_parallel_workers=config_train.num_parallel_workers,
+                                        python_multiprocessing=config_train.python_multiprocessing)
     return dataset
 
 
@@ -160,17 +167,17 @@ class SpNasTrainerCallback(TrainerMs):
             gt_labels = data['label']
             gt_num = data['valid_num']
             output = self.model(img_data, img_metas, gt_bboxes, gt_labels, gt_num)
-            all_bbox = output[0]
-            all_label = output[1]
-            all_mask = output[2]
+            all_output_bbox = output[0]
+            all_output_label = output[1]
+            all_output_mask = output[2]
 
             for j in range(config.test_batch_size):
-                all_bbox_squee = np.squeeze(all_bbox.asnumpy()[j, :, :])
-                all_label_squee = np.squeeze(all_label.asnumpy()[j, :, :])
-                all_mask_squee = np.squeeze(all_mask.asnumpy()[j, :, :])
+                all_output_bbox_squee = np.squeeze(all_output_bbox.asnumpy()[j, :, :])
+                all_output_label_squee = np.squeeze(all_output_label.asnumpy()[j, :, :])
+                all_output_mask_squee = np.squeeze(all_output_mask.asnumpy()[j, :, :])
 
-                all_bboxes_tmp_mask = all_bbox_squee[all_mask_squee, :]
-                all_labels_tmp_mask = all_label_squee[all_mask_squee]
+                all_bboxes_tmp_mask = all_output_bbox_squee[all_output_mask_squee, :]
+                all_labels_tmp_mask = all_output_label_squee[all_output_mask_squee]
 
                 if all_bboxes_tmp_mask.shape[0] > max_num:
                     inds = np.argsort(-all_bboxes_tmp_mask[:, -1])

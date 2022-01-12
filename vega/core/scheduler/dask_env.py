@@ -1,12 +1,18 @@
 # -*- coding: utf-8 -*-
 
 # Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the MIT License.
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# MIT License for more details.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 """The main part of the cluster framework.
 
@@ -18,12 +24,12 @@ import json
 import os
 import logging
 import time
+import uuid
 from datetime import datetime
 from vega.trainer import utils
-from vega.common.file_ops import FileOps
+from vega.common import FileOps
 from vega.common.general import General
-from vega.core.scheduler.run_dask import get_client, run_scheduler,\
-    run_local_worker, run_remote_worker, get_address
+from vega.core.scheduler.run_dask import get_client, run_scheduler, run_local_worker, run_remote_worker, get_address
 
 
 class DaskEnv(object):
@@ -98,7 +104,7 @@ class DaskEnv(object):
             try:
                 system_device_num = len(os.environ['NPU_VISIBLE_DEVICES'].split(','))
             except Exception:
-                pass
+                logging.debug("Failed to get NPU_VISIBLE_DEVICES in environ.")
         else:
             raise Exception('device category must be GPU or NPU.')
         return system_device_num
@@ -120,7 +126,7 @@ class DaskEnv(object):
         return True
 
     def stop(self):
-        """TODO, stop the current cluster."""
+        """Stop the current cluster."""
         return
 
     def _start_dask(self):
@@ -128,57 +134,49 @@ class DaskEnv(object):
 
         then wait and start dask-worker on all nodes.
         """
-        the_ip, the_port = utils.get_master_address(self.args)
-        logging.info("master ip and port: {}:{}".format(the_ip, the_port))
-        if 'PYTHONPATH' in os.environ:
-            os.environ['PYTHONPATH'] = "{}:{}:{}".format(
-                os.environ['PYTHONPATH'], self.__master_path__, os.path.abspath(os.curdir))
-        elif self.__master_path__ is not None:
-            os.environ['PYTHONPATH'] = "{}:{}".format(
-                self.__master_path__, os.path.abspath(os.curdir))
-
-        # set distributed configs
-        # os.environ['DASK_DISTRIBUTED__CLIENT__HEARTBEAT'] = '10s'
-
+        master_ip, master_port = utils.get_master_address(self.args)
+        logging.info("master ip and port: {}:{}".format(master_ip, master_port))
+        logging.info("Initializing cluster. Please wait.")
+        if "PYTHONPATH" not in os.environ:
+            os.environ["PYTHONPATH"] = ""
+        if self.__master_path__ not in os.environ["PYTHONPATH"].split(":"):
+            os.environ["PYTHONPATH"] += f":{self.__master_path__}"
+        if os.path.abspath(os.curdir) not in os.environ["PYTHONPATH"].split(":"):
+            os.environ["PYTHONPATH"] += f":{os.path.abspath(os.curdir)}"
         if self.args.rank == 0:
-            # host = utils.get_local_address()
-            utils.save_master_ip(the_ip, the_port, self.args)
-            address = "--node-ip-address={}".format(the_ip)
-            port = "--port={}".format(the_port)
             try:
-                get_client(get_address(the_ip, the_port))
-                logging.info("Reusing previous cluster:{}:{}".format(the_ip, the_port))
+                get_client(get_address(master_ip, master_port))
+                logging.info("Reusing previous cluster:{}:{}".format(master_ip, master_port))
                 return
             except Exception:
-                logging.info("Dask-scheduler not start. Start dask-scheduler in master {}".format(the_ip))
-            scheduler_p = run_scheduler(port=port)
+                logging.info("Dask-scheduler not start. Start dask-scheduler in master {}".format(master_ip))
+            scheduler_file = f"{self.temp_path}/.scheduler/scheduler.tmp"
+            FileOps.make_base_dir(scheduler_file)
+            scheduler_p = run_scheduler(ip=master_ip, port=master_port, tmp_file=scheduler_file)
             self._cluster_pid.append(scheduler_p.pid)
-        time.sleep(10)
 
-        master_host, master_port = utils.get_master_address(self.args)
-        address = "tcp://{0}:{1}".format(master_host, master_port)
-        self.master_address = get_address(master_host, master_port)
-        logging.info("master host({}), address({}).".format(master_host, address))
+        self.master_address = get_address(master_ip, master_port)
+        logging.info("master host({}), address({}).".format(master_ip, self.master_address))
 
         self._check_dask_scheduler()
 
-        # nproc_set = "--nprocs={}".format(self.slave_proc_num)
-        _local_dir = "{}/.vega_worker_{}".format(
-            self.temp_path,
-            datetime.now().strftime('%m%d.%H%M%S.%f')[:-3])
-        FileOps.make_dir(_local_dir)
-        local_dir = "--local-directory={}".format(_local_dir)
+        local_dir = f"{self.temp_path}/.vega_worker"
+        FileOps.make_dir(local_dir)
         # standalone boot mode, not dask-work is start by script
         if General.cluster.standalone_boot:
             return
         # run dask-worker in master
         for _ in range(self.slave_proc_num):
-            worker_p = run_local_worker(address=address, local_dir=local_dir)
+            local_master_dir = local_dir + '/{}'.format(uuid.uuid1().hex[:8])
+            FileOps.make_dir(local_master_dir)
+            worker_p = run_local_worker(slave_ip=master_ip, address=self.master_address, local_dir=local_master_dir)
             self._cluster_pid.append(worker_p.pid)
         # run dask-worker in each slaves.
         for slave_ip in self.slaves:
             for _ in range(self.slave_proc_num):
-                worker_p = run_remote_worker(slave_ip=slave_ip, address=address, local_dir=local_dir)
+                local_slaves_dir = local_dir + '/{}'.format(uuid.uuid1().hex[:8])
+                FileOps.make_dir(local_slaves_dir)
+                worker_p = run_remote_worker(slave_ip=slave_ip, address=self.master_address, local_dir=local_slaves_dir)
                 self._cluster_pid.append(worker_p.pid)
 
     def _check_dask_scheduler(self):
@@ -203,7 +201,7 @@ class DaskEnv(object):
         worker_count_min = int(self.world_size * self.worker_portion)
 
         for _ in range(100):
-            time.sleep(5)
+            time.sleep(1)
             n_workers = len(self.client.scheduler_info()["workers"])
             logging.info("Accessed Workers: {}".format(n_workers))
             if n_workers >= worker_count_min:

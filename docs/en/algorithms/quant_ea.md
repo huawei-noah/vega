@@ -66,8 +66,4 @@ The two phases ("nas" and "fully_train") are performed in sequence. The Pareto f
 
 ### 5. Algorithm output
 
-The following two files are generated in the specified output directory:
-
-- The model on the found Pareto front after fully training.
-- The result.csv file contains the encoding, flops, parameters, and accuracy of all models during the search process.
-- pareto_front.csv contains the found pareto front information.
+The following two files are generated in `./tasks/<task id>/output/nas/`.

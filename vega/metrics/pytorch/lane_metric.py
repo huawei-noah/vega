@@ -1,22 +1,28 @@
 # -*- coding:utf-8 -*-
 
 # Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the MIT License.
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# MIT License for more details.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 """Metric of lane detection task."""
 
-from vega.common import ClassFactory, ClassType
-from vega.metrics.pytorch.metrics import MetricBase
 import sys
-from scipy.optimize import linear_sum_assignment
+from itertools import product
 import cv2
 import numpy as np
-from itertools import product
+from scipy.optimize import linear_sum_assignment
+from vega.common import ClassFactory, ClassType
+from vega.metrics.pytorch.metrics import MetricBase
 
 
 def calc_x(f, t):
@@ -231,10 +237,6 @@ def evaluate_core(*, gt_lanes, pr_lanes, gt_wh, pr_wh, hyperp):
         gt_x_ratio = np.true_divide(gt_wh['width'], new_width)
         pr_y_ratio = np.true_divide(pr_wh['height'], new_height)
         pr_x_ratio = np.true_divide(pr_wh['width'], new_width)
-        # resize lanes and interp lanes,
-        # all the gt and pr are mapping to src img, so the scale ratio is same,
-        # note that the scale ratio is not a factor but a divisor
-        # print('gt_lane',gt_lanes)
         gt_lanes = list(map(lambda lane: resize_lane(lane, gt_x_ratio, gt_y_ratio), gt_lanes))
         pr_lanes = list(map(lambda lane: resize_lane(lane, pr_x_ratio, pr_y_ratio), pr_lanes))
 
@@ -245,7 +247,6 @@ def evaluate_core(*, gt_lanes, pr_lanes, gt_wh, pr_wh, hyperp):
         for (index_gt, gt_lane), (index_pr, pr_lane) in product(enumerate(sorted_gt_lanes), enumerate(sorted_pr_lanes)):
             iou_mat[index_gt][index_pr] = calc_iou(gt_lane, pr_lane, hyperp)
 
-        # match_idx = Munkres().compute(make_cost_matrix(iou_mat, lambda iou: float(1.0 - iou)))
         cost_matrix = 1 - np.array(iou_mat)
         match_index_list = linear_sum_assignment(cost_matrix)
 

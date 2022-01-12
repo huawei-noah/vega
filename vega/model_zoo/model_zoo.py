@@ -1,23 +1,32 @@
 # -*- coding: utf-8 -*-
 
 # Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the MIT License.
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# MIT License for more details.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 """Model zoo."""
 
 import os
+import subprocess
 import logging
 import glob
-import numpy
+import uuid
 from collections import OrderedDict
+import numpy
 import vega
 from vega.networks.network_desc import NetworkDesc
 from vega.common.general import General
+from vega.common import FileOps
 
 
 class ModelZoo(object):
@@ -54,7 +63,6 @@ class ModelZoo(object):
             raise ValueError("model desc can't be None when create model.")
         try:
             model = NetworkDesc(model_desc).to_model()
-            # return model
         except Exception as e:
             logging.error("Failed to get model, model_desc={}, msg={}".format(model_desc, str(e)))
             raise e
@@ -100,6 +108,27 @@ class ModelZoo(object):
             return ModelZoo.get_model(model_desc)
 
     @classmethod
+    def refine(cls, model, refine_model):
+        """Replace model weights and params by a new model."""
+        model_names = [name for name, module in model.named_modules()]
+        for name, module in refine_model.named_modules():
+            if name in model_names:
+                cls.change_module(model, name, module)
+        return model
+
+    @classmethod
+    def change_module(cls, model, name, entity):
+        """Change module."""
+        if not entity:
+            return
+        tokens = name.split('.')
+        attr_name = tokens[-1]
+        parent_names = tokens[:-1]
+        for s in parent_names:
+            model = getattr(model, s)
+        setattr(model, attr_name, entity)
+
+    @classmethod
     def parse_desc_from_pretrained_model(cls, src_model, pb_file=None):
         """Parse desc from Petrained Model."""
         import tensorflow.compat.v1 as tf
@@ -139,57 +168,65 @@ class ModelZoo(object):
     def _load_pretrained_model(cls, model, pretrained_model_file, exclude_weight_prefix=None):
         pretrained_model_file = cls._get_abs_path(pretrained_model_file)
         logging.info("load model weights from file, weights file={}".format(pretrained_model_file))
+        if not os.path.exists(pretrained_model_file):
+            pretrained_model_file = FileOps.download_pretrain_model(pretrained_model_file)
         if vega.is_torch_backend():
-            import torch
-            if not os.path.isfile(pretrained_model_file):
-                raise Exception(f"Pretrained model is not existed, model={pretrained_model_file}")
-            if vega.is_npu_device():
-                from vega.common.task_ops import TaskOps
-                import time
-                device = int(os.environ.get('DEVICE_ID', 0))
-                target_model_file = "{}/checkpoint_{}_{}.pth".format(
-                    TaskOps().temp_path, device, round(time.time() * 1000))
-                cmd = "/bin/cp -f {} {} && sed -i 's/npu:[0-9]/npu:{}/g' {}".format(
-                    pretrained_model_file, target_model_file, device, target_model_file)
-                ret = os.system(cmd)
-                logging.info("modify weight file result: " + str(ret))
-                checkpoint = torch.load(target_model_file)
-                if os.path.exists(target_model_file):
-                    os.remove(target_model_file)
-            else:
-                checkpoint = torch.load(pretrained_model_file)
-            if exclude_weight_prefix:
-                # TODO: make it more generalize
-                if vega.is_torch_backend():
-                    model.load_state_dict(checkpoint, False, exclude_weight_prefix=exclude_weight_prefix)
-                else:
-                    checkpoint = cls._exclude_checkpoint_by_prefix(checkpoint, exclude_weight_prefix)
-                    model.load_state_dict(checkpoint, False)
-            else:
-                model.load_state_dict(checkpoint)
+            return cls._load_torch_model(model, pretrained_model_file, exclude_weight_prefix)
+        elif vega.is_tf_backend():
+            return cls._load_tf_model(model, pretrained_model_file)
+        else:
+            return cls._load_ms_model(model, pretrained_model_file)
 
-            # del checkpoint
-        if vega.is_tf_backend():
-            if pretrained_model_file.endswith('.pth'):
-                checkpoint = convert_checkpoint_from_pytorch(pretrained_model_file, model)
-                model.load_checkpoint_from_numpy(checkpoint)
+    @classmethod
+    def _load_torch_model(cls, model, pretrained_model_file, exclude_weight_prefix=None):
+        import torch
+        if not os.path.isfile(pretrained_model_file):
+            raise Exception(f"Pretrained model is not existed, model={pretrained_model_file}")
+        if vega.is_npu_device():
+            device = int(os.environ.get('DEVICE_ID', 0))
+            target_model_file = f"{os.path.dirname(pretrained_model_file)}/temp_{device}_{uuid.uuid1().hex[:8]}"
+            ret_cp = subprocess.call(["/bin/cp", "-f", pretrained_model_file, target_model_file])
+            ret_sed = subprocess.call(["/bin/sed", "-i", "-e", f"s/npu:[0-9]/npu:{device}/g", target_model_file])
+            logging.info(f"modify weight file result: {ret_cp}|{ret_sed}")
+            checkpoint = torch.load(target_model_file)
+            if os.path.exists(target_model_file):
+                os.remove(target_model_file)
+        else:
+            checkpoint = torch.load(pretrained_model_file)
+        if exclude_weight_prefix:
+            if vega.is_torch_backend():
+                model.load_state_dict(checkpoint, False, exclude_weight_prefix=exclude_weight_prefix)
             else:
-                pretrained_model_file = cls._get_tf_model_file(pretrained_model_file)
-                model.load_checkpoint(pretrained_model_file)
-        elif vega.is_ms_backend():
-            from mindspore.train.serialization import load_checkpoint
-            if hasattr(model, "pretrained"):
-                pretrained_weight = model.pretrained(pretrained_model_file)
+                checkpoint = cls._exclude_checkpoint_by_prefix(checkpoint, exclude_weight_prefix)
+                model.load_state_dict(checkpoint, False)
+        else:
+            model.load_state_dict(checkpoint)
+        return model
+    
+    @classmethod
+    def _load_tf_model(cls, model, pretrained_model_file):
+        if pretrained_model_file.endswith('.pth'):
+            checkpoint = convert_checkpoint_from_pytorch(pretrained_model_file, model)
+            model.load_checkpoint_from_numpy(checkpoint)
+        else:
+            pretrained_model_file = cls._get_tf_model_file(pretrained_model_file)
+            model.load_checkpoint(pretrained_model_file)
+        return model
+
+    @classmethod
+    def _load_ms_model(cls, model, pretrained_model_file):
+        from mindspore.train.serialization import load_checkpoint
+        if hasattr(model, "pretrained"):
+            pretrained_weight = model.pretrained(pretrained_model_file)
+        else:
+            if os.path.isfile(pretrained_model_file):
+                pretrained_weight = pretrained_model_file
             else:
-                if os.path.isfile(pretrained_model_file):
-                    pretrained_weight = pretrained_model_file
-                else:
-                    for file in os.listdir(pretrained_model_file):
-                        if file.endswith(".ckpt"):
-                            pretrained_weight = os.path.join(pretrained_model_file, file)
-                            break
-            load_checkpoint(pretrained_weight, net=model)
-            # os.remove(pretrained_weight)
+                for file in os.listdir(pretrained_model_file):
+                    if file.endswith(".ckpt"):
+                        pretrained_weight = os.path.join(pretrained_model_file, file)
+                        break
+        load_checkpoint(pretrained_weight, net=model)
         return model
 
     @classmethod
@@ -203,7 +240,7 @@ class ModelZoo(object):
     @classmethod
     def _get_abs_path(cls, _path):
         if "{local_base_path}" in _path:
-            from vega.common.task_ops import TaskOps
+            from vega.common import TaskOps
             return os.path.abspath(_path.replace("{local_base_path}", TaskOps().local_base_path))
         return _path
 

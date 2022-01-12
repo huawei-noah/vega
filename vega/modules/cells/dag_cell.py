@@ -1,15 +1,21 @@
 # -*- coding:utf-8 -*-
 
 # Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the MIT License.
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# MIT License for more details.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 """This is DAG Cell for network."""
 from vega.modules.module import Module
-from dag import DAG
+from vega.common.dag import DAG
 import numpy as np
 from vega.modules.operators import ops
 from vega.modules.connections import Sequential
@@ -37,7 +43,7 @@ class DagGraphCell(Module):
     def _create_dag(self):
         dag = DAG()
         for name, modules in self.named_children():
-            dag.add_node_if_not_exists(int(name))
+            dag.add_node(int(name))
         frontier = [0]
         num_vertices = np.shape(self.adj_matrix)[0]
         while frontier:
@@ -57,7 +63,7 @@ class DagGraphCell(Module):
         return out
 
     def _forward_module(self, x, parent, dag):
-        parent_nodes = dag.predecessors(parent)
+        parent_nodes = dag.pre_nodes(parent)
         if len(parent_nodes) <= 1:
             next_input = self._modules.get(str(parent))(x)
         elif self.out_tensors.get(parent) and len(self.out_tensors.get(parent)) == len(parent_nodes) - 1:
@@ -69,7 +75,7 @@ class DagGraphCell(Module):
                 self.out_tensors[parent] = []
             self.out_tensors[parent].append(x)
             return None
-        children = dag.downstream(parent)
+        children = dag.next_nodes(parent)
         for child in children:
             out = self._forward_module(next_input, child, dag)
             if out is not None:

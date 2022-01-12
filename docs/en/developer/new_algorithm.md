@@ -1,5 +1,7 @@
 # Algorithm Development Guide
 
+**Outdated and to be updated.**
+
 New algorithms, such as new network search algorithms, model compression algorithm, hyperparameter optimization algorithms, and data augmentation algorithms, need to be extended based on the basic classes provided by Vega. The core of the AutoML algorithm is search space, search algorithm, network construction and evaluation. The new algorithm mainly considers these aspects.
 
 ## 1. Add a schema search algorithm

@@ -1,12 +1,18 @@
 # -*- coding: utf-8 -*-
 
 # Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the MIT License.
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# MIT License for more details.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 
 """HyperParameter."""
@@ -136,7 +142,7 @@ class HyperParameter(object):
         """If self is equal to other."""
         if isinstance(self, other.__class__):
             _result = (self.param_type is other.param_type) and (self.is_integer == other.is_integer) and (
-                self.range == other.range)
+                    self.range == other.range)
             return _result
         return NotImplemented
 
@@ -153,12 +159,14 @@ class HyperParameter(object):
         """
         return self.param_type != ParamTypes.BOOL and self.param_type != ParamTypes.CATEGORY
 
-    def sample(self, n=1, decode=True):
+    def sample(self, n=1, decode=True, handler=None):
         """Random sample one hyper-param."""
         if len(self.range) == 1:
             low, high = 0, self.range[0]
         else:
             low, high = self.range
+        if handler:
+            low, high = handler(low, high)
         if self.is_integer:
             value = np.random.randint(low, high + 1, size=n)
         else:
