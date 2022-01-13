@@ -95,7 +95,7 @@ class Davinci(object):
             result_file = os.path.join(log_save_path, "result_file")
         else:
             if not os.path.exists(os.path.join(share_dir, "main")):
-                self._compile_atlas300()
+                self._compile_atlas300(share_dir)
             # execute the Davinci program
             command_line = ["bash", self.current_path + "/inference_atlas300.sh",
                             input_data, converted_model, share_dir, log_save_path]
