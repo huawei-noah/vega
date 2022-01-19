@@ -169,7 +169,7 @@ class ModelZoo(object):
         pretrained_model_file = cls._get_abs_path(pretrained_model_file)
         logging.info("load model weights from file, weights file={}".format(pretrained_model_file))
         if not os.path.exists(pretrained_model_file):
-            pretrained_model_file = FileOps.download_pretrain_model(pretrained_model_file)
+            pretrained_model_file = FileOps.download_pretrained_model(pretrained_model_file)
         if vega.is_torch_backend():
             return cls._load_torch_model(model, pretrained_model_file, exclude_weight_prefix)
         elif vega.is_tf_backend():
