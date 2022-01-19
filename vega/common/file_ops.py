@@ -179,7 +179,7 @@ class FileOps(object):
             raise FileNotFoundError('Path is not existed, path={}'.format(src_path))
 
     @classmethod
-    def download_pretrain_model(cls, src_file, local_path=None):
+    def download_pretrain_model(cls, src_path):
         """Download dataset from http or https web site, return path.
 
         :param src_path: the data path
@@ -190,8 +190,8 @@ class FileOps(object):
         :return: the final data path
         :rtype: str
         """
-        if src_file is None:
-            raise FileNotFoundError("Path of pretrain model is None, please set correct path.")
+        if src_path is None:
+            raise FileNotFoundError("Path of pretrained model is None, please set correct path.")
         if os.path.isfile(src_path):
             return src_path
         else:
