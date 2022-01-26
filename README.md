@@ -85,7 +85,7 @@ vega ./examples/nas/cars/cars.yml -s
 
 | Reader | Refrence |
 | :--: | :-- |
-| **User** | [Install Guide](./docs/en/user/install.md), [Deployment Guide](./docs/en/user/deployment.md), [Configuration Guide](./docs/en/user/config_reference.md), [Security Configuration](./docs/en/security.md), [Examples](./docs/en/user/examples.md), [Evaluate Service](./evaluate_service/docs/en/evaluate_service.md) |
+| **User** | [Install Guide](./docs/en/user/install.md), [Deployment Guide](./docs/en/user/deployment.md), [Configuration Guide](./docs/en/user/config_reference.md), [Security Configuration](./docs/en/user/security_configure.md), [Examples](./docs/en/user/examples.md), [Evaluate Service](./evaluate_service/docs/en/evaluate_service.md) |
 | **Developer** | [Development Reference](./docs/en/developer/developer_guide.md), [Quick Start Guide](./docs/en/developer/quick_start.md), [Dataset Guide](./docs/en/developer/datasets.md), [Algorithm Development Guide](./docs/en/developer/new_algorithm.md) |
 
 ## FAQ
