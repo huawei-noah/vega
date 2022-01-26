@@ -84,7 +84,7 @@ vega ./examples/nas/cars/cars.yml -s
 
 | 对象 | 参考 |
 | :--: | :-- |
-| **用户** | [安装指导](./docs/cn/user/install.md)、[部署指导](./docs/cn/user/deployment.md)、[安全配置](./docs/cn/security.md)、[配置指导](./docs/cn/user/config_reference.md)、[示例参考](./docs/cn/user/examples.md)、[评估服务](./evaluate_service/docs/cn/evaluate_service.md) |
+| **用户** | [安装指导](./docs/cn/user/install.md)、[部署指导](./docs/cn/user/deployment.md)、[安全配置](./docs/cn/user/security_configure.md)、[配置指导](./docs/cn/user/config_reference.md)、[示例参考](./docs/cn/user/examples.md)、[评估服务](./evaluate_service/docs/cn/evaluate_service.md) |
 | **开发者** | [开发者指导](./docs/cn/developer/developer_guide.md)、[快速入门指导](./docs/cn/developer/quick_start.md)、[数据集指导](./docs/cn/developer/datasets.md)、[算法开发指导](./docs/cn/developer/new_algorithm.md) |
 
 ## FAQ
