@@ -18,7 +18,7 @@ dataset:
         num_workers: 8
         batch_size: 256
         train_portion: 0.9
-    valid:
+    val:
         shuffle: False
         num_workers: 8
         batch_size: 256

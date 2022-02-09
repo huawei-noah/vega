@@ -171,7 +171,7 @@ This Algorithm is mainly designed for the application of automatic driving indus
             with_aug: False                       # Set this parameter to True when fullytrain.
             shuffle: True
             random_sample: True
-        valid:
+        val:
             shuffle: False
         test:
             shuffle: False

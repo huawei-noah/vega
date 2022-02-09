@@ -97,7 +97,7 @@ nas:
             with_aug: False
             shuffle: True
             random_sample: True
-        valid:
+        val:
             shuffle: False
         test:
             shuffle: False
@@ -156,7 +156,7 @@ fully_train:
             with_aug: True
             shuffle: True
             random_sample: True
-        valid:
+        val:
             shuffle: False
         test:
             shuffle: False
