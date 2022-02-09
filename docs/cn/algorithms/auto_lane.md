@@ -173,7 +173,7 @@ auto_lane分为backbone module，feature fusion module和 head三大组件。bac
             with_aug: False                       # 请在fullytrain的时候将此项置为True
             shuffle: True
             random_sample: True
-        valid:
+        val:
             shuffle: False
         test:
             shuffle: False
