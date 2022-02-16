@@ -57,7 +57,7 @@ class ClusterConfig(ConfigSerializable):
 class Worker(ConfigSerializable):
     """Worker Config."""
 
-    timeout = 5 * 24 * 3600     # 5 days
+    timeout = 365 * 24 * 3600     # 365 days
     eval_count = 10
     evaluate_timeout = 0.1
 
