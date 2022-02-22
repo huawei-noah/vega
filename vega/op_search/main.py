@@ -23,7 +23,7 @@ from vega.common import FileOps
 from vega import security
 from vega.common.dag import DAG
 from .utils import dag2compute, cal_error_threshold
-from .automl_zero import AutomlZero
+from .op_generator import OpGenerator
 
 logging.basicConfig(level=logging.INFO)
 
@@ -42,7 +42,7 @@ security.check_args(args)
 
 def main():
     """Process of vega op search."""
-    nas = AutomlZero(population_num=args.pop_num, max_sample=args.max_sample, search_space=args.search_space)
+    nas = OpGenerator(population_num=args.pop_num, max_sample=args.max_sample, search_space=args.search_space)
     start_time = time.time()
     total_sample = 0
     valid_sample = 0
