@@ -75,7 +75,7 @@ vega ./examples/nas/cars/cars.yml
 The `cars.yml` file contains definitions such as pipeline, search algorithm, search space, and training parameters.
 Vega provides more than 40 examples for reference: [Examples](https://github.com/huawei-noah/vega/tree/master/examples), [Example Guide](./docs/en/user/examples.md), and [Configuration Guide](./docs/en/user/config_reference.md).
 
-The security mode is applicable to communication with high security requirements. Before running this command, run the security configuration (./docs/en/security.md).
+The security mode is applicable to communication with high security requirements. Before running this command, run the [security configuration](./docs/en/user/security_configure.md).
 
 ```bash
 vega ./examples/nas/cars/cars.yml -s
