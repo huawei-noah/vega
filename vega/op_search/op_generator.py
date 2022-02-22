@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""This is a class for AutomlZero."""
+"""This is a class for OpGenerator."""
 import random
 import copy
 import logging
@@ -26,8 +26,8 @@ from .ops import filter_rules, init_dict, unary_ops, binary_ops, constant_nodes,
 from .utils import get_upstreams, dag2compute
 
 
-class AutomlZero():
-    """Define AutomlZero."""
+class OpGenerator():
+    """Define OpGenerator."""
 
     def __init__(self, population_num=50, max_sample=20000, search_space=None):
         self.max_sample = max_sample
