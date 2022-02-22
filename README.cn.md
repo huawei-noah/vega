@@ -74,7 +74,7 @@ vega ./examples/nas/cars/cars.yml
 其中`cars.yml`中包含了pipeline、搜索算法、搜索空间、训练参数等定义。
 Vega提供了40+示例供参考：[示例](https://github.com/huawei-noah/vega/tree/master/examples)、[示例参考](./docs/cn/user/examples.md)、[配置参考](./docs/cn/user/config_reference.md)。
 
-安全模式适用于通信安全要求高的场景，在运行前请执行[安全配置](./docs/cn/security.md)：
+安全模式适用于通信安全要求高的场景，在运行前请执行[安全配置](./docs/cn/user/security_configure.md)：
 
 ```bash
 vega ./examples/nas/cars/cars.yml -s
