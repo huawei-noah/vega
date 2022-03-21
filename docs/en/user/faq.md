@@ -49,9 +49,9 @@ Where:
 
 - parallel_search：Controls whether multiple models are searched in parallel during the model search phase, each of which uses one or more GPUs/NPUs.
 - parallel_fully_train: Controls whether to train multiple models concurrently in the Fully Train phase. Each model uses one or more GPUs or NPUs.
-- devices_per_trainer: If any of the preceding parameters is set to True, this parameter specifies the number of GPUs/NPUs corresponding to a model.
+- devices_per_trainer: If any of the preceding parameters is set to True, this parameter specifies the number of GPUs corresponding to a model.
 
-Note: The CARS and DARTS algorithms do not support parallel search.
+Note: The CARS, DARTS, and ModularNAS algorithms do not support parallel search.
 
 ### 2.2 How do I specify the GPU environment where Vega runs
 

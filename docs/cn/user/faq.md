@@ -49,9 +49,9 @@ general:
 
 - parallel_search：控制是否在模型搜索阶段并行搜索多个模型，其中每个模型使用一个或多个GPU/NPU。
 - parallel_fully_train: 控制是否在fully train阶段并行训练多个模型，其中每个模型使用一个或多个GPU/NPU。
-- devices_per_trainer: 当如上任一控制项为True是生效，用于控制一个模型对应多少个GPU/NPU。
+- devices_per_trainer: 当如上任一控制项为True是生效，用于控制一个模型对应多少个GPU。
 
-注意：CARS和DARTS算法不支持并行搜索。
+注意：CARS、DARTS、ModularNAS不支持并行搜索。
 
 ### 2.2 如何指定Vega运行的GPU环境
 
