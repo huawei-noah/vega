@@ -55,7 +55,7 @@ my_fully_train:
 | backend | pytorch \| tensorflow \| mindspore | pytorch | 设置Backend。  |
 | local_base_path | - | ./tasks/ | 工作路径。每次系统运行，会在该路径下生成一个带有时间信息（我们称之为task id）的子文件夹，这样多次运行的输出不会被覆盖。在task id子文件夹下面一般包含output和worker两个子文件夹，output文件夹存储pipeline的每个步骤的输出数据，worker文件夹保存临时信息。 <br> **在集群的场景下，该路径需要设置为每个计算节点都可访问的EFS路径，用于不同节点共享数据。** |
 | timeout | - | 10 | worker超时时间，单位为小时，若在该时间范围内未完成，worker会被强制结束。 |
-| parallel_search | True \| False | False | 是否并行搜索多个模型。 |
+| parallel_search | True \| False | False | 是否并行搜索多个模型。注意：目前CARS，DARTS、ModularNAS这三个算法不支持并行搜索。 |
 | parallel_fully_train | True \| False | False | 是否并行训练多个模型。 |
 | devices_per_trainer | 1..N (N为单节点最大GPU/NPU数) | 1 | 并行搜索和训练时，每个trainer分配的设备（GPU \| NPU)数目。当parallel_search或parallel_fully_train为True时生效。缺省为1，每个trainer分配1个（GPU \| NPU）。 |
 | logger / level | debug \| info \| warn \| error \| critical | info | 日志级别。 |
@@ -81,16 +81,15 @@ general:
 
 ## 2.1 并行和分布式
 
-在NAS/HPO搜索过程中，一般一个Trainer对应一个GPU/NPU，若需要一个Trainer对应多个GPU/NPU，可通过修改`general.device_per_trainer`参数。
+在NAS/HPO搜索过程中，通过设置parallel_search为True或者False来控制是否并行搜索多个模型。
 
-目前该配置仅支持PyTorch/GPU场景，如下所示。
+注意：目前CARS，DARTS、ModularNAS这三个算法不支持并行搜索。
 
 ```yaml
 general:
     backend: pytroch
     parallel_search: True
     parallel_fully_train: False
-    devices_per_trainer: 2
 
 pipeline: [nas, fully_train]
 

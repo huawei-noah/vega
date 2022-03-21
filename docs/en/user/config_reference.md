@@ -54,7 +54,7 @@ The following public configuration items can be configured:
 | backend | pytorch \| tensorflow \| mindspore | pytorch | Backend.  |
 | local_base_path | - | ./tasks/ | Working path. Each time when the system is running, a subfolder with time information (task id) is generated in the path. In this way, the output of multiple running is not overwritten. The task id subfolder contains two subfolders: output and worker. The output folder stores the output data of each step in the pipeline, and the worker folder stores temporary information.  <br> **In the clustered scenario, this path needs to be set to an EFS path that can be accessed by each computing node, and is used by different nodes to share data.** |
 | timeout | - | 10 | Worker timeout interval, in hours. If the task is not completed within the interval, the worker is forcibly terminated. |
-| parallel_search | True \| False | False | Whether to search multiple models in parallel. |
+| parallel_search | True \| False | False | Whether to search multiple models in parallel. Note: The CARS, DARTS, and ModularNAS algorithms do not support parallel search. |
 | parallel_fully_train | True \| False | False | Whether to train multiple models in parallel. |
 | devices_per_trainer | 1..N (Tthe maximum number of GPUs or NPUs on a single node) | 1 | In parallel search and training, the number of devices (GPU \| NPU) allocated by each trainer, when parallel_search or parallel_fully_train is true. The default is 1, and each trainer is assigned one (gpu \| npu). |
 | logger / level | debug \| info \| warn \| error \| critical | info | Log level |
@@ -80,15 +80,14 @@ general:
 
 ## 2.1 Parallel and distributed
 
-During NAS/HPO search, one trainer corresponds to one GPU/NPU. If one trainer corresponds to multiple GPUs/NPUs, you can modify the `general.device_per_trainer` parameter.
+During NAS/HPO search, you can set parameter `general.parallel_search` to control whether to search for multiple modelss in pallel.
 
-Currently, this configuration works on PyTorch/GPU, as shown in the following:
+Note: The CARS, DARTS, and ModularNAS algorithms do not support parallel search.
 
 ```yaml
 general:
     parallel_search: True
     parallel_fully_train: False
-    devices_per_trainer: 2
 
 pipeline: [nas, fully_train]
 
