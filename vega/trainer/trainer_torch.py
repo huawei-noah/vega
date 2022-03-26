@@ -57,12 +57,12 @@ class TrainerTorch(TrainerBase):
         self.valid_metrics = self._init_metrics()
         if self.use_amp:
             from apex import amp
-            if vega.is_npu_device():
+            if not vega.is_npu_device():
                 self.model, self.optimizer = amp.initialize(
-                    self.model, self.optimizer, opt_level=self.config.opt_level, loss_scale=self.config.loss_scale)
+                    self.model, self.optimizer, opt_level=self.config.opt_level, loss_scale=self.config.apex_loss_scale)
             else:
                 self.model, self.optimizer = amp.initialize(
-                    self.model, self.optimizer, opt_level=self.config.opt_level, loss_scale=self.config.loss_scale, combine_grad=self.config.combine_grad)
+                    self.model, self.optimizer, opt_level=self.config.opt_level, loss_scale=self.config.apex_loss_scale, combine_grad=self.config.apex_combine_grad)
 
     def set_training_settings(self):
         """Set trainer training setting."""
