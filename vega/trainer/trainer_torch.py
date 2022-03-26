@@ -57,8 +57,12 @@ class TrainerTorch(TrainerBase):
         self.valid_metrics = self._init_metrics()
         if self.use_amp:
             from apex import amp
-            self.model, self.optimizer = amp.initialize(
-                self.model, self.optimizer, opt_level=self.config.opt_level, loss_scale=64, combine_grad=True)
+            if vega.is_npu_device():
+                self.model, self.optimizer = amp.initialize(
+                    self.model, self.optimizer, opt_level=self.config.opt_level, loss_scale=self.config.loss_scale)
+            else:
+                self.model, self.optimizer = amp.initialize(
+                    self.model, self.optimizer, opt_level=self.config.opt_level, loss_scale=self.config.loss_scale, combine_grad=self.config.combine_grad)
 
     def set_training_settings(self):
         """Set trainer training setting."""
@@ -181,10 +185,15 @@ class TrainerTorch(TrainerBase):
                 scaled_loss.backward()
             self.optimizer.step()
         else:
-            with amp.scale_loss(loss, self.optimizer) as scaled_loss:
-                scaled_loss.backward()
-                self.optimizer.synchronize()
-            with self.optimizer.skip_synchronize():
+            if self.horovod:
+                with amp.scale_loss(loss, self.optimizer) as scaled_loss:
+                    scaled_loss.backward()
+                    self.optimizer.synchronize()
+                with self.optimizer.skip_synchronize():
+                    self.optimizer.step()
+            else:
+                with amp.scale_loss(loss, self.optimizer) as scaled_loss:
+                    scaled_loss.backward()
                 self.optimizer.step()
 
     def _multi_train_step(self, batch):
