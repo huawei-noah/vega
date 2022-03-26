@@ -116,6 +116,8 @@ class TrainerConfig(ConfigSerializable):
     # script runner
     script = None
     use_dag_forward = False
+    loss_scale = 64
+    combine_grad = True
 
     @classmethod
     def set_task(cls, task):
