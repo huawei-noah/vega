@@ -126,7 +126,7 @@ class ModelCheckpoint(Callback):
                         self.trainer.optimizer.load_state_dict(checkpoint["optimizer"])
                     self.trainer.lr_scheduler.load_state_dict(checkpoint["lr_scheduler"])
                     if self.trainer._resume_training:
-                        self.trainer._start_epoch = checkpoint["epoch"]
+                        self.trainer._start_epoch = checkpoint["epoch"] + 1
                         logging.info("Resume fully train, change start epoch to {}".format(self.trainer._start_epoch))
                 except Exception as e:
                     logging.info("Load checkpoint failed {}".format(e))
