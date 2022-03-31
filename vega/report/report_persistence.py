@@ -42,15 +42,27 @@ class ReportPersistence(object):
         """Update step info."""
         if "step_name" in kwargs:
             step_name = kwargs["step_name"]
-            if step_name not in self.steps:
-                self.steps[step_name] = {}
-            for key in kwargs:
-                if key in ["step_name", "start_time", "end_time", "status", "message", "num_epochs", "num_models"]:
-                    self.steps[step_name][key] = kwargs[key]
-                else:
-                    logger.warn("Invilid step info {}:{}".format(key, kwargs[key]))
+
+            def update_each_step_info(step_name):
+                if step_name not in self.steps:
+                    self.steps[step_name] = {}
+                for key in kwargs:
+                    if key == "step_name":
+                        self.steps[step_name][key] = step_name
+                    elif key in ["start_time", "end_time", "status",
+                               "message", "num_epochs", "num_models", "best_models"]:
+                        self.steps[step_name][key] = kwargs[key]
+                    else:
+                        logger.warn("Invilid step info {}:{}".format(key, kwargs[key]))
+
+            if isinstance(step_name, list):
+                for step in step_name:
+                    update_each_step_info(step)
+            else:
+                update_each_step_info(step_name)
         else:
             logger.warn("Invilid step info: {}.".format(kwargs))
+
 
     def save_report(self, records):
         """Save report to `reports.json`."""

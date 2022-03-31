@@ -59,10 +59,13 @@ class TrainerTorch(TrainerBase):
             from apex import amp
             if not vega.is_npu_device():
                 self.model, self.optimizer = amp.initialize(
-                    self.model, self.optimizer, opt_level=self.config.opt_level, loss_scale=self.config.apex_loss_scale)
+                    self.model, self.optimizer, opt_level=self.config.opt_level,
+                    loss_scale=self.config.apex_loss_scale)
             else:
                 self.model, self.optimizer = amp.initialize(
-                    self.model, self.optimizer, opt_level=self.config.opt_level, loss_scale=self.config.apex_loss_scale, combine_grad=self.config.apex_combine_grad)
+                    self.model, self.optimizer, opt_level=self.config.opt_level,
+                    loss_scale=self.config.apex_loss_scale,
+                    combine_grad=self.config.apex_combine_grad)
 
     def set_training_settings(self):
         """Set trainer training setting."""
@@ -194,7 +197,6 @@ class TrainerTorch(TrainerBase):
             else:
                 with amp.scale_loss(loss, self.optimizer) as scaled_loss:
                     scaled_loss.backward()
-                self.optimizer.step()
 
     def _multi_train_step(self, batch):
         train_batch_output = None

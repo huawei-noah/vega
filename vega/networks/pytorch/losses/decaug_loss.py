@@ -36,7 +36,7 @@ class DecAugLoss(Module):
         self.cross_entropy = ClassFactory.get_cls(ClassType.LOSS, "CrossEntropyLoss")()
 
     def forward(self, x, targets=None):
-        _, logits_category, logits_concept, feature_category, feature_category, model = x
+        _, logits_category, logits_concept, feature_category, feature_concept, model = x
         gt_label, gt_concept = targets
         loss1 = self.cross_entropy(logits_category, gt_label)
         loss2 = self.cross_entropy(logits_concept, gt_concept)
@@ -71,7 +71,7 @@ class DecAugLoss(Module):
 
         ratio = random.random()
         feature_aug = ratio * FGSM_attack
-        embs = ops.concat((feature_category, feature_category + feature_aug), 1)
+        embs = ops.concat((feature_category, feature_concept + feature_aug), 1)
         output = ops.matmul(embs, w_out.transpose(0, 1)) + b_out
 
         loss_class = self.cross_entropy(output, gt_label)

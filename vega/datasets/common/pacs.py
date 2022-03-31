@@ -43,7 +43,7 @@ class Pacs(Dataset):
         self.args.data_path = FileOps.download_dataset(self.args.data_path)
         targetdomain = self.args.targetdomain
         domain = ['cartoon', 'art_painting', 'photo', 'sketch']
-        if self.train:
+        if self.mode == "train":
             domain.remove(targetdomain)
         else:
             domain = [targetdomain]
@@ -62,20 +62,9 @@ class Pacs(Dataset):
         classes.sort()
         class_to_idx = {classes[i]: i for i in range(len(classes))}
         full_label = [class_to_idx[x] for x in label_name]
-        if self.train:
-            name_train, name_val, labels_train, labels_val, concepts_train, concepts_val  = \
-            train_test_split(full_data, full_label, full_concept, train_size=self.args.train_portion)
-            if self.mode == "train":
-                self.data = name_train
-                self.label = labels_train
-                self.concept = concepts_train
-            else:
-                self.data = name_val
-                self.label = labels_val
-                self.concept = concepts_val
-        else:
-            self.data, self.label = full_data, full_label
-            self.concept = [0] * len(self.data)
+        self.data = full_data
+        self.label = full_label
+        self.concept = full_concept
 
     def __getitem__(self, index):
         """Get an item of the dataset according to the index.

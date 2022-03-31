@@ -129,13 +129,18 @@ class ReportServer(object):
                 self.old_not_finished_workers = not_finished
                 logging.info(f"waiting for the workers {str(not_finished)} to finish")
         if not records:
+            self.update_step_info({"step_name": step_name, "best_models": []})
             return []
         pareto = self.pareto_front(step_name, nums, records=records)
         if not pareto:
+            self.update_step_info(**{"step_name": step_name, "best_models": []})
             return []
         if choice is not None:
-            return [random.choice(pareto)]
+            records = random.choice(pareto)
+            self.update_step_info(**{"step_name": step_name, "best_models": [record.worker_id for record in records]})
+            return [records]
         else:
+            self.update_step_info(**{"step_name": step_name, "best_models": [record.worker_id for record in pareto]})
             return pareto
 
     @classmethod

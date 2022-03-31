@@ -98,9 +98,9 @@ class SearchPipeStep(PipeStep):
         worker_parent_folder = os.path.abspath(
             os.path.join(TaskOps().get_local_worker_path(General.step_name, 1), ".."))
         patterns = [
-            ".*.pkl", "*.pth", "model_*", "model.ckpt-*", "*.pb",
+            ".*.pkl", "*.pth", "model_*", "model.ckpt-*",
             "graph.*", "eval", "events*", "CKP-*", "checkpoint", ".*.log",
-            "*.ckpt", "*.air", "*.onnx", "*.caffemodel",
+            "*.ckpt",  "*.caffemodel",
             "*.pbtxt", "*.bin", "kernel_meta", "*.prototxt",
         ]
         all_files = []

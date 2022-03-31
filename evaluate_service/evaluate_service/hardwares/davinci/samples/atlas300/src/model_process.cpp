@@ -328,8 +328,7 @@ Result ModelProcess::Execute()
     gettimeofday(&start, NULL);
     aclError ret = aclmdlExecute(modelId_, input_, output_);
     gettimeofday(&end, NULL);
-    cout<< "costTime "<< eplasedtime(&end, &start)/1000<<endl;
-	//cout<< "costTime: "<<static_cast<double>(end_time-start_time)/CLOCKS_PER_SEC*1000<<endl;
+    cout<< "Inference time: "<< eplasedtime(&end, &start)/1000<<"ms"<<endl;
     if (ret != ACL_ERROR_NONE) {
         ERROR_LOG("execute model failed, modelId is %u", modelId_);
         return FAILED;

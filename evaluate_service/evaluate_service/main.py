@@ -28,6 +28,7 @@ from flask import abort, Flask, request
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from flask_restful import Resource, Api
+
 try:
     from werkzeug import secure_filename
 except Exception:
@@ -132,7 +133,8 @@ class Evaluate(Resource):
                 latency, output = self.hardware_instance.inference(converted_model=self.share_dir,
                                                                    input_data=self.input_data,
                                                                    is_last=is_last,
-                                                                   cal_metric=self.cal_metric)
+                                                                   cal_metric=self.cal_metric,
+                                                                   muti_input=self.muti_input)
                 latency_sum += float(latency)
             self.result["latency"] = latency_sum / self.repeat_times
             self.result["out_data"] = output
@@ -149,7 +151,10 @@ class Evaluate(Resource):
         self.backend = request.form["backend"]
         self.hardware = request.form["hardware"]
         self.reuse_model = bool(request.form["reuse_model"].upper() == "TRUE")
-        self.cal_metric = bool(request.form["cal_metric"].upper() == "TRUE")
+        self.cal_metric = request.form.get("cal_metric", type=str, default="False")
+        self.cal_metric = bool(self.cal_metric.upper() == "TRUE")
+        self.muti_input = request.form.get("muti_input", type=str, default="False")
+        self.muti_input = bool(self.muti_input.upper() == "TRUE")
         self.job_id = request.form["job_id"]
         self.input_shape = request.form.get("input_shape", type=str, default="")
         self.out_nodes = request.form.get("out_nodes", type=str, default="")

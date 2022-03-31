@@ -32,7 +32,10 @@ openssl genrsa -out ca.key 4096
 openssl req -new -x509 -key ca.key -out ca.crt -subj "/C=<country>/ST=<province>/L=<city>/O=<organization>/OU=<group>/CN=<cn>"
 ```
 
-注意：以上`<country>`、`<province>`、`<city>`、`<organization>`、`<group>`、`<cn>`根据实际情况填写，本文后面的配置也是同样的。并且CA的配置需要和其他的不同。
+注意：
+
+1. 以上`<country>`、`<province>`、`<city>`、`<organization>`、`<group>`、`<cn>`根据实际情况填写，去掉符号`<>`，本文后面的配置也是同样的。并且CA的配置需要和其他的不同。
+2. RSA密钥长度建议在3072位及以上，如本例中使用4096长度。
 
 ## 3. 生成评估服务使用的证书
 
@@ -139,12 +142,12 @@ vega-encrypt_key --cert=client.crt --key=client.key --key_component_1=ksmaster_c
 ```shell
 mkdir ~/.vega
 mv * ~/.vega/
-chmod -R 600 ~/.vega
+chmod 600 ~/.vega/*
 ```
 
 说明：
 
-1. 如上的秘钥、证书、加密材料也可以放到其他目录位置，注意访问权限要设置为`600`，并在后继的配置文件中同步修改该文件的位置。
+1. 如上的秘钥、证书、加密材料也可以放到其他目录位置，注意访问权限要设置为`600`，并在后继的配置文件中同步修改该文件的位置，需要使用绝对路径。
 2. 在训练集群上，需要保留`ca.crt`、`client.key`、`client.crt`、`ksmaster_client.dat`、`ksstandby_client.dat`、`server_dask.key`、`server_dask.crt`、`client_dask.key`、`client_dask.crt`，并删除其他文件。
 3. 评估服务上，需要保留`ca.crt`、`server.key`、`server.crt`、`ksmaster_server.dat`、`ksstandby_server.dat`，并删除其他文件。
 
@@ -155,36 +158,36 @@ chmod -R 600 ~/.vega
 server.ini:
 
 ```ini
-[security]
-    ca_cert=<~/.vega/car.crt>
+[security]  # 以下文件路径需要修改为绝对路径
+    ca_cert=<~/.vega/ca.crt>
     server_cert_dask=<~/.vega/server_dask.crt>
     server_secret_key_dask=<~/.vega/server_dask.key>
     client_cert_dask=<~/.vega/client_dask.crt>
-    client_secret_key_dask=<~/.vega/ client_dask.key>
+    client_secret_key_dask=<~/.vega/client_dask.key>
 ```
 
 client.ini:
 
 ```ini
-[security]
-    ca_cert=<~/.vega/car.crt>
+[security]  # 以下文件路径需要修改为绝对路径
+    ca_cert=<~/.vega/ca.crt>
     client_cert=<~/.vega/client.crt>
     client_secret_key=<~/.vega/client.key>
-    encrypted_password=<加密后的client端的口令>       #如果使用普通证书， 此项配置为空
-    key_component_1=<~/.vega/ksmaster_client.dat>  #如果使用普通证书， 此项配置为空
-    key_component_2=<~/.vega/ksstandby_client.dat> #如果使用普通证书， 此项配置为空
+    encrypted_password=<加密后的client端的口令>  # 如果使用普通证书， 此项配置为空
+    key_component_1=<~/.vega/ksmaster_client.dat>  # 如果使用普通证书， 此项配置为空
+    key_component_2=<~/.vega/ksstandby_client.dat>  # 如果使用普通证书， 此项配置为空
 ```
 
 在评估服务器上，需要配置`~/.vega/vega.ini`：
 
 ```ini
-[security]
-ca_cert=<~/.vega/car.crt>
-server_cert=<~/.vega/server.crt>
-server_secret_key=<~/.vega/server.key>
-encrypted_password=<加密后的server端的口令>       #如果使用普通证书， 此项配置为空
-key_component_1=<~/.vega/ksmaster_server.dat>  #如果使用普通证书， 此项配置为空
-key_component_2=<~/.vega/ksstandby_server.dat> #如果使用普通证书， 此项配置为空
+[security]  # 以下文件路径需要修改为绝对路径
+    ca_cert=<~/.vega/ca.crt>
+    server_cert=<~/.vega/server.crt>
+    server_secret_key=<~/.vega/server.key>
+    encrypted_password=<加密后的server端的口令>  # 如果使用普通证书， 此项配置为空
+    key_component_1=<~/.vega/ksmaster_server.dat>  # 如果使用普通证书， 此项配置为空
+    key_component_2=<~/.vega/ksstandby_server.dat>  # 如果使用普通证书， 此项配置为空
 ```
 
 ## 7. 配置评估服务守护服务
@@ -197,7 +200,7 @@ key_component_2=<~/.vega/ksstandby_server.dat> #如果使用普通证书， 此�
 vega-evaluate_service-service -i <ip> -w <path>
 ```
 
-然后再创建一个守护服务的文件`evaluate-service`，脚本内容如下，注意替换为真实的脚本位置：
+然后再创建一个守护服务的文件`evaluate-service.service`，脚本内容如下，注意替换为真实的脚本位置：
 
 ```ini
 [Unit]
@@ -211,10 +214,10 @@ vega-evaluate_service-service -i <ip> -w <path>
     WantedBy=multi-user.target
 ```
 
-然后将`evaluate-service`拷贝到目录`/usr/lib/systemd/system`中，并启动该服务：
+然后将`evaluate-service.service`拷贝到目录`/usr/lib/systemd/system`中，并启动该服务：
 
 ```shell
-sudo cp evaluate-service /usr/lib/systemd/system/
+sudo cp evaluate-service.service /usr/lib/systemd/system/
 sudo systemctl daemon-reload
 sudo systemctl start evaluate-service
 ```

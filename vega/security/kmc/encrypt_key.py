@@ -63,8 +63,8 @@ def validate_certificate(cert, key, origin_mm):
     p2 = subprocess.Popen(["grep", "RSA Public-Key"], stdin=p1.stdout, stdout=subprocess.PIPE, shell=False)
     p3 = subprocess.Popen(["tr", "-cd", "[0-9]"], stdin=p2.stdout, stdout=subprocess.PIPE, shell=False)
     RSA_key = p3.communicate()[0]
-    if int(RSA_key) < 2048:
-        logging.warning("Insecure key length: %d", int(RSA_key))
+    if int(RSA_key) < 3072:
+        logging.warning("Insecure key length: %d. The recommended key length is at least 3072", int(RSA_key))
     return flag
 
 

@@ -26,14 +26,17 @@ pip3 install --user pyOpenSSL==19.0.0
 ## 2. Generate the CA Certificate
 
 Run the following command to generate a CA certificate:
+Note: The length of the RSA key must be 3072 bits or more. The following RSA key length configuration also requires the same.
 
 ```shell
 openssl genrsa -out ca.key 4096
 openssl req -new -x509 -key ca.key -out ca.crt -subj "/C=<country>/ST=<province>/L=<city>/O=<organization>/OU=<group>/CN=<cn>"
 ```
 
-Note: `<country>`, `<province>`, `<city>`, `<organization>`, `<group>`, and `<cn>` should be set based on the situation. The configuration in this document is the same. 
-In addition, the CA configuration must be different from other configurations.
+Note:
+
+1. `<country>`, `<province>`, `<city>`, `<organization>`, `<group>`, and `<cn>` should be set based on the situation. The values do not contain `< >'. In addition, the CA configuration must be different from other configurations.
+2. It is recommended that the length of the RSA key be 3072 bits or more.
 
 ## 3. Generate the Certificate for Evaluate_service
 
@@ -138,15 +141,15 @@ vega-encrypt_key --cert=client.crt --key=client.key --key_component_1=ksmaster_c
 Create the `.vega` directory in the home directory of the current user, copy the generated keys, certificates, and encryption materials to this directory, and change the permission.
 
 ```shell
-mkdir -/.vega
-mv * -/.vega/
-chmod -R 600 -/.vega
+mkdir ~/.vega
+mv * ~/.vega/
+chmod 600 ~/.vega/*
 ```
 
 Description:
 
-1. The preceding keys, certificates, and encryption materials can also be stored in other directories. The access permission must be set to 600 and the file location must be changed in subsequent configuration files.
-2. In the train cluster, reserve `ca.crt`, `client.key`, `client.crt`, `ksmaster_client.dat`, `ksstandby_client.dat`, and `server_dask.key. `, `server_dask.crt`, `client_dask.key`, `client_dask.crt`, and delete other files.
+1. The preceding keys, certificates, and encryption materials can also be stored in other directories. The access permission must be set to 600, and the file location must be changed to an absolute path in subsequent configuration files.
+2. In the train cluster, reserve `ca.crt`, `client.key`, `client.crt`, `ksmaster_client.dat`, `ksstandby_client.dat`, and `server_dask.key`, `server_dask.crt`, `client_dask.key`, `client_dask.crt`, and delete other files.
 3. In the evaluate service, reserve `ca.crt`, `server.key`, `server.crt`, `ksmaster_server.dat`, and `ksstandby_server.dat` files, and delete other files.
 
 Create `server.ini` and `client.ini` in the `~/.vega` directory.
@@ -156,36 +159,36 @@ In the train cluster, configure `~/.vega/server.ini` and `~/.vega/client.ini`.
 server.ini:
 
 ```ini
-[security]
-ca_cert=<-/.vega/car.crt>
-server_cert_dask=<-/.vega/server_dask.crt>
-server_secret_key_dask=<-/.vega/server_dask.key>
-client_cert_dask=<-/.vega/client_dask.crt>
-client_secret_key_dask=<-/.vega/ client_dask.key>
+[security]  # The following file paths need to be changed to absolute paths.
+    ca_cert=<~/.vega/ca.crt>
+    server_cert_dask=<~/.vega/server_dask.crt>
+    server_secret_key_dask=<~/.vega/server_dask.key>
+    client_cert_dask=<~/.vega/client_dask.crt>
+    client_secret_key_dask=<~/.vega/ client_dask.key>
 ```
 
 client.ini:
 
 ```ini
-[security]
-ca_cert=<-/.vega/car.crt>
-client_cert=<-/.vega/client.crt>
-client_secret_key=<-/.vega/client.key>
-encrypted_password=<Encrypted client password> #If a common certificate is used, leave this parameter blank.
-If the key_component_1=<~/.vega/ksmaster_client.dat> #If a common certificate is used, leave this parameter blank.
-If the key_component_2=<~/.vega/ksstandby_client.dat> #If a common certificate is used, leave this parameter blank.
+[security]  # The following file paths need to be changed to absolute paths.
+    ca_cert=<~/.vega/ca.crt>
+    client_cert=<~/.vega/client.crt>
+    client_secret_key=<~/.vega/client.key>
+    encrypted_password=<Encrypted client password>  # If a common certificate is used, leave this parameter blank.
+    key_component_1=<~/.vega/ksmaster_client.dat>  # If a common certificate is used, leave this parameter blank.
+    key_component_2=<~/.vega/ksstandby_client.dat>  # If a common certificate is used, leave this parameter blank.
 ```
 
 On the evaluation server, configure `~/.vega/vega.ini`.
 
 ```ini
-[security]
-ca_cert=<-/.vega/car.crt>
-server_cert=<-/.vega/server.crt>
-server_secret_key=<-/.vega/server.key>
-encrypted_password=<Encrypted server password> #If a common certificate is used, leave this parameter blank.
-If the key_component_1=<~/.vega/ksmaster_server.dat> # uses a common certificate, leave this parameter blank.
-If the key_component_2=<~/.vega/ksstandby_server.dat> # uses a common certificate, leave this parameter blank.
+[security]   # The following file paths need to be changed to absolute paths.
+    ca_cert=<~/.vega/ca.crt>
+    server_cert=<~/.vega/server.crt>
+    server_secret_key=<~/.vega/server.key>
+    encrypted_password=<Encrypted server password>  # If a common certificate is used, leave this parameter blank.
+    key_component_1=<~/.vega/ksmaster_server.dat>  # uses a common certificate, leave this parameter blank.
+    key_component_2=<~/.vega/ksstandby_server.dat>  # uses a common certificate, leave this parameter blank.
 ```
 
 ## 7. Configuring the Evaluation Service Daemon Service
@@ -198,7 +201,7 @@ Create a script `run_evaluate_service.sh` for starting the evaluation service. R
 vega-evaluate_service-service -i <ip> -w <path>
 ```
 
-Create a daemon service file `evaluate-service`. The script content is as follows. Replace it with the actual script location.
+Create a daemon service file `evaluate-service.service`. The script content is as follows. Replace it with the actual script location.
 
 ```ini
 [Unit]
@@ -212,10 +215,10 @@ RestartSec=60
 WantedBy=multi-user.target
 ```
 
-Copy `evaluate-service` to the `/usr/lib/systemd/system` directory and start the service.
+Copy `evaluate-service.service` to the `/usr/lib/systemd/system` directory and start the service.
 
 ```shell
-sudo cp evaluate-service /usr/lib/systemd/system/
+sudo cp evaluate-service.service /usr/lib/systemd/system/
 sudo systemctl daemon-reload
 sudo systemctl start evaluate-service
 ```

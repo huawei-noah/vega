@@ -35,7 +35,7 @@
 
 ### 3.1 安装配置Atlas300环境
 
-首先需要配置Ascend 300环境，请参考[配置文档](./ascend_310.md)。
+首先需要配置Ascend 300环境，请参考[配置文档](./docs/cn/ascend_310.md)。
 
 然后请安装评估服务，请执行如下命令安装：
 
@@ -57,8 +57,12 @@ cd build/intermediates/host
 cmake ../../src -DCMAKE_CXX_COMPILER=g++ -DCMAKE_SKIP_RPATH=TRUE
 make  && echo "[INFO] check the env sucess!"
 ```
+### 3.2 编译推理程序
+参考 [https://gitee.com/ascend/tools/tree/master/msame](https://gitee.com/ascend/tools/tree/master/msame), 下载代码并完成编译。 
+并把编译后的可执行文件拷贝到`~/.local/lib/python3.7/site-packages/evaluate_service/hardwares/davinci/`目录下。 
 
-### 3.2 启动评估服务
+
+### 3.3 启动评估服务
 
 使用如下命令启动评估服务：
 

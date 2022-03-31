@@ -66,15 +66,15 @@ The exact code for the architecture generator (return a trainable PyTorch networ
 
 ### 4.2 Search Strategy
 
-Our NAGO search space is amenable to any Bayesian optimisation search strategies. In this code package, we use BOHB to perform the optimisation and the configuration of BOHB needs to be specified in `nago.yml`. The example below defines a BOHB run with `eta=2` and `t=50` search iterations. The minimum and maxmimum training epochs used for evaluating a recommended configuration is 30 and 120 respectively.  
+Our NAGO search space is amenable to any Bayesian optimisation search strategies. In this code package, we use BOHB to perform the optimisation and the configuration of BOHB needs to be specified in `nago.yml`.
 
 ```yaml
 search_algorithm:
     type: BohbHpo
     policy:
         total_epochs: -1
-        repeat_times: 50
-        num_samples: 350
+        repeat_times: 1
+        num_samples: 7
         max_epochs: 120
         min_epochs: 30
         eta: 2
