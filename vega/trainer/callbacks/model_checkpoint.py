@@ -19,6 +19,7 @@
 import os
 import glob
 import logging
+import dill
 import numpy as np
 import vega
 from vega.common import FileOps
@@ -103,7 +104,7 @@ class ModelCheckpoint(Callback):
                 'optimizer': self.trainer.optimizer.state_dict(),
                 'lr_scheduler': self.trainer.lr_scheduler.state_dict(),
             }
-            torch.save(ckpt, checkpoint_file)
+            torch.save(ckpt, checkpoint_file, pickle_module=dill)
         self.trainer.checkpoint_file = checkpoint_file
 
     def _load_checkpoint(self):
@@ -117,11 +118,13 @@ class ModelCheckpoint(Callback):
             if os.path.exists(checkpoint_file):
                 try:
                     logging.info("Load checkpoint file, file={}".format(checkpoint_file))
-                    checkpoint = torch.load(checkpoint_file)
+                    checkpoint = torch.load(checkpoint_file, pickle_module=dill)
                     if self.trainer.multi_task:
                         self.trainer.model.load_state_dict(checkpoint["weight"], strict=False)
-                        multi_task_checkpoint = torch.load(FileOps.join_path(checkpoint_path, self.trainer.multi_task,
-                                                                             self.trainer.checkpoint_file_name))
+                        multi_task_checkpoint = torch.load(
+                            FileOps.join_path(
+                                checkpoint_path, self.trainer.multi_task, self.trainer.checkpoint_file_name),
+                            pickle_module=dill)
                         self.trainer.optimizer.load_state_dict(multi_task_checkpoint["optimizer"])
                         self.trainer.lr_scheduler.load_state_dict(multi_task_checkpoint["lr_scheduler"])
                     else:
@@ -149,7 +152,7 @@ class ModelCheckpoint(Callback):
                 'optimizer': self.trainer.optimizer.state_dict(),
                 'lr_scheduler': self.trainer.lr_scheduler.state_dict(),
             }
-            torch.save(ckpt, checkpoint_file)
+            torch.save(ckpt, checkpoint_file, pickle_module=dill)
         self.trainer.checkpoint_file = checkpoint_file
 
     def _save_pb_model(self, weight_file, model_id):

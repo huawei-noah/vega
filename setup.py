@@ -56,6 +56,7 @@ setuptools.setup(
         "PyYAML",
         "numpy",
         "scipy",
+        "dill",
         "scikit-learn",
         "opencv-python",
         "tensorboardX",
