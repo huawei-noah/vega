@@ -40,7 +40,7 @@ Configure the hardware (Atlas 200 DK, Atlas 300, or mobile phone) by following t
 Please contact us.
 
 ### 3.1.2 Install and configure the Atlas 300 Environment (Optional)
-
+Please refer to [configuration documentation](./docs/en/ascend_310.md).
 For details, see the Huawei official tutorial at <https://support.huawei.com/enterprise/zh/ai-computing-platform/a300-3000-pid-250702915>.
 
 Note: The preceding documents may be updated. Please follow the released updates or obtain the corresponding guide documents. After the environment is installed, you need to set environment variables. For details, see the preceding guide. To facilitate environment configuration, we provide the environment variable configuration template [env_atlas300.sh](https://github.com/huawei-noah/vega/blob/master/evaluate_service/hardwares/davinci/env/env_atlas300.sh) for your reference. The actual environment prevails.
@@ -55,8 +55,11 @@ Please contact us.
 
 Please contact us.
 
+### 3.2 Compile the inference program
+Please refer to [https://gitee.com/ascend/tools/tree/master/msame](https://gitee.com/ascend/tools/tree/master/msame).
+Download the code and finish compiling, then copy the compiled executable file to the `~/.local/lib/python3.7/site-packages/evaluate_service/hardwares/davinci/` directory.
 
-### 3.2 Start the evaluation service
+### 3.3 Start the evaluation service
 
 Run the following command to start the evaluate service:
 ```shell

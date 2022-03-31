@@ -161,7 +161,6 @@ nas:
         lr_scheduler:
             type: MultiStepLR
             params:
-                warmup: False
                 milestones: [30]
                 gamma: 0.5
         loss:

@@ -104,7 +104,7 @@ class ClientConfig(Config):
         self.file_name = os.path.expanduser("~/.vega/client.ini")
         self.keys = [
             "ca_cert", "client_cert", "client_secret_key", "encrypted_password",
-            "key_component_1", "key_component_2", "white_list"]
+            "key_component_1", "key_component_2"]
 
 
 _server_config = ServerConfig()

@@ -102,7 +102,6 @@ def run_flask(app, host, port, security_mode):
     else:
         server = pywsgi.WSGIServer((host, port), app)
     logging.warning("Start the evaluate service.")
-
     server.init_socket()
     server._stop_event.clear()
 

@@ -136,7 +136,7 @@ def check_risky_files(file_list):
     """Check if cert and key file are risky."""
     res = True
     for file in file_list:
-        if not os.path.exists(file):
+        if file != '' and not os.path.exists(file):
             logging.error(f"File <{file}> does not exist")
             res = False
             continue

@@ -22,7 +22,7 @@ from .rest import post
 
 
 def evaluate(backend, hardware, remote_host, model, weight, test_data, input_shape=None, reuse_model=False, job_id=None,
-             quantize=False, repeat_times=10, precision='FP32', cal_metric=False, **kwargs):
+             quantize=False, repeat_times=10, precision='FP32', cal_metric=False, muti_input=False, **kwargs):
     """Evaluate interface of the EvaluateService.
 
     :param backend: the backend can be one of "tensorflow", "caffe" and "pytorch"
@@ -58,7 +58,8 @@ def evaluate(backend, hardware, remote_host, model, weight, test_data, input_sha
         upload_data = {"data_file": data_file}
 
     evaluate_config = {"backend": backend, "hardware": hardware, "remote_host": remote_host, "reuse_model": reuse_model,
-                       "job_id": job_id, "repeat_times": repeat_times, "precision": precision, "cal_metric": cal_metric}
+                       "job_id": job_id, "repeat_times": repeat_times, "precision": precision, "cal_metric": cal_metric,
+                       'muti_input': muti_input}
     if backend == 'tensorflow':
         shape_list = [str(s) for s in input_shape]
         shape_cfg = {"input_shape": "Placeholder:" + ",".join(shape_list)}

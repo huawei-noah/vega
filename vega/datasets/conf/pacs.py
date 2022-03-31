@@ -29,7 +29,6 @@ class PacsCommonConfig(BaseConfig):
     data_path = None
     split_path = None
     targetdomain = None
-    train_portion = 1.0
     task = None
 
     @classmethod
@@ -41,7 +40,6 @@ class PacsCommonConfig(BaseConfig):
                                   "split_path": {"type": str},
                                   "targetdomain": {"type": str},
                                   "batch_size": {"type": int},
-                                  "train_portion": {"type": (int, float)},
                                  }
         return rules_PacsCommonConfig
 

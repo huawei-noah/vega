@@ -58,6 +58,7 @@ class DeviceEvaluatorConfig(ConfigSerializable):
     save_intermediate_file = False
     custom = None
     repeat_times = 10
+    muti_input = True
 
 
 class EvaluatorConfig(ConfigSerializable):

@@ -89,6 +89,9 @@ class ModelCheckpoint(Callback):
 
     def _save_checkpoint(self, epoch):
         """Save checkpoint."""
+        if not self.trainer.config.save_slave_model:
+            if not self.trainer.is_chief:
+                return
         logging.debug("Start Save Checkpoint, file_name=%s", self.trainer.checkpoint_file_name)
         checkpoint_file = FileOps.join_path(
             self.trainer.get_local_worker_path(), self.trainer.checkpoint_file_name)

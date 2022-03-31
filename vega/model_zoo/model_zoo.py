@@ -226,7 +226,8 @@ class ModelZoo(object):
                     if file.endswith(".ckpt"):
                         pretrained_weight = os.path.join(pretrained_model_file, file)
                         break
-        load_checkpoint(pretrained_weight, net=model)
+        network = model if not hasattr(model, "get_ori_model") else model.get_ori_model()
+        load_checkpoint(pretrained_weight, net=network)
         return model
 
     @classmethod

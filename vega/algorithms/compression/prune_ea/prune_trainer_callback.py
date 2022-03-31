@@ -109,8 +109,8 @@ class PruneTrainerCallback(Callback):
         :rtype: array
         """
         chn_node_mask_tmp = self.base_net_desc.backbone.chn_node_mask
-        chn_node_mask = [single_mask for (i, single_mask) in zip([1, 3, 3, 3], chn_node_mask_tmp) 
-                                        for _ in range(i)]
+        chn_node_mask = [single_mask for (i, single_mask) in zip([1, 3, 3, 3], chn_node_mask_tmp)
+                         for _ in range(i)]
         return chn_node_mask
 
     def _generate_init_model(self):

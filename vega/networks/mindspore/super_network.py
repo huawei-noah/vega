@@ -20,7 +20,9 @@ from vega.common import ClassFactory, ClassType
 from vega.modules.blocks import AuxiliaryHead
 from vega.modules.connections import Cells
 from vega.modules.module import Module
-from vega.modules.operators import ops
+from mindspore import ops
+import numpy as np
+from mindspore import Tensor
 
 
 @ClassFactory.register(ClassType.NETWORK)
@@ -50,12 +52,16 @@ class DartsNetwork(Module):
         if not search and auxiliary:
             self.auxiliary_head = AuxiliaryHead(c_aux, num_classes, aux_size)
         # head
-        self.head = ClassFactory.get_instance(ClassType.NETWORK, head, base_channel=c_prev,
-                                              num_classes=num_classes)
+        self.head = ClassFactory.get_instance(
+            ClassType.NETWORK, head, base_channel=c_prev, num_classes=num_classes)
 
         # Initialize architecture parameters
-        self.set_parameters('alphas_normal', 1e-3 * ops.random_normal(self.len_alpha, self.num_ops))
-        self.set_parameters('alphas_reduce', 1e-3 * ops.random_normal(self.len_alpha, self.num_ops))
+        self.set_parameters(
+            'alphas_normal',
+            1e-3 * Tensor(np.random.randn(self.len_alpha, self.num_ops).astype(np.float32)))
+        self.set_parameters(
+            'alphas_reduce',
+            1e-3 * Tensor(np.random.randn(self.len_alpha, self.num_ops).astype(np.float32)))
 
         self.cell_list = self.cells_.children()
         self.name_list = []
@@ -72,9 +78,11 @@ class DartsNetwork(Module):
         """Get weights of alphas."""
         self.alphas_normal = self.get_weights('alphas_normal')
         self.alphas_reduce = self.get_weights('alphas_reduce')
-        alphas_normal = ops.softmax(self.alphas_normal, -1)
-        alphas_reduce = ops.softmax(self.alphas_reduce, -1)
-        return [ops.to_numpy(alphas_normal), ops.to_numpy(alphas_reduce)]
+        softmax = ops.Softmax()
+        alphas_normal = softmax(self.alphas_normal)
+        softmax = ops.Softmax()
+        alphas_reduce = softmax(self.alphas_reduce)
+        return [alphas_normal.asnumpy(), alphas_reduce.asnumpy()]
 
     def get_weight_ops(self):
         """Get weight ops."""
@@ -82,7 +90,8 @@ class DartsNetwork(Module):
 
     def calc_alphas(self, alphas, dim=-1, **kwargs):
         """Calculate Alphas."""
-        return ops.softmax(alphas, dim)
+        softmax = ops.Softmax()
+        return softmax(alphas)
 
     def call(self, input, alpha=None):
         """Forward a model that specified by alpha.

@@ -1,4 +1,4 @@
-**Evaluate Service ver1.8.0 released:**
+**Evaluate Service ver1.8.2 released:**
 
 **Introduction**
 

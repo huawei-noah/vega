@@ -76,7 +76,7 @@ class Davinci(object):
         except subprocess.CalledProcessError as exc:
             logging.error("compile failed. the return message is : {}.".format(exc))
 
-    def inference(self, converted_model, input_data, is_last=False, cal_metric=False, **kwargs):
+    def inference(self, converted_model, input_data, is_last=False, cal_metric=False, muti_input=False, **kwargs):
         """Inference in Davinci.
 
         :param converted_model: converted model file
@@ -94,11 +94,12 @@ class Davinci(object):
             command_line = self._get_200dk_infer_cmd(save_path=log_save_path)
             result_file = os.path.join(log_save_path, "result_file")
         else:
-            if not os.path.exists(os.path.join(share_dir, "main")):
+            if not os.path.exists(os.path.join(share_dir, "main")) and not muti_input:
                 self._compile_atlas300(share_dir)
             # execute the Davinci program
+
             command_line = ["bash", self.current_path + "/inference_atlas300.sh",
-                            input_data, converted_model, share_dir, log_save_path]
+                            input_data, converted_model, share_dir, log_save_path, str(muti_input)]
             result_file = os.path.join(log_save_path, "result.txt")
 
         try:

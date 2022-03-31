@@ -30,6 +30,8 @@ safe_builtins = {
     'numpy',
     'imageio',
     'collections',
+    'apex',
+    'ascend_automl'
 }
 
 

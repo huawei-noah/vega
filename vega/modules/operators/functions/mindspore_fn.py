@@ -274,14 +274,9 @@ class Conv2d(OperatorSerializable, nn.Cell):
         self.out_channels = out_channels
         stride = tuple(stride) if isinstance(stride, list) else stride
         dilation = tuple(dilation) if isinstance(dilation, list) else dilation
-        if groups == 1:
-            self.conv2d = nn.Conv2d(in_channels, out_channels, kernel_size=kernel_size, stride=stride, padding=padding,
-                                    has_bias=bias, group=groups, dilation=dilation, pad_mode=pad_mode)
-            self.conv2d.update_parameters_name("conv2d_" + uuid.uuid1().hex[:8] + ".")
-        else:
-            self.conv2d = nn.Conv2d(in_channels, out_channels, kernel_size=kernel_size, stride=stride, padding=padding,
-                                    has_bias=bias, group=1, dilation=dilation, pad_mode=pad_mode)
-            self.conv2d.update_parameters_name("conv2d_" + uuid.uuid1().hex[:8] + ".")
+        self.conv2d = nn.Conv2d(in_channels, out_channels, kernel_size=kernel_size, stride=stride, padding=padding,
+                                has_bias=bias, group=groups, dilation=dilation, pad_mode=pad_mode)
+        self.conv2d.update_parameters_name("conv2d_" + uuid.uuid1().hex[:8] + ".")
 
     def construct(self, input):
         """Call conv2d function."""

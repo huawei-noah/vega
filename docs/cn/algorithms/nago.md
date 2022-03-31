@@ -66,15 +66,14 @@ search_space:
 ### 4.2 搜索策略设置
 
 NAGO的搜索空间适用于任何贝叶斯优化算法。在VEGA中我们采用了BOHB, 所以我们需要在 `nago.yml` 文件中也设置BOHB算法的基本参数。
-例如，下面的设置会跑50个搜索循环的BOHB，并用最少30 epochs和最多120 epochs来训练和评估所生成的神经网络结构。
 
 ```yaml
 search_algorithm:
     type: BohbHpo
     policy:
         total_epochs: -1
-        repeat_times: 50
-        num_samples: 350
+        repeat_times: 1
+        num_samples: 7
         max_epochs: 120
         min_epochs: 30
         eta: 2

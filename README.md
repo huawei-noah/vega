@@ -8,13 +8,13 @@
 
 ---
 
-**Vega ver1.8.0 released**
+**Vega ver1.8.2 released**
 
-- Feature enhancement:
+- Bug Fixed:
 
-  - Security enhancement: Security protocols communication.
-  - Provide evaluation service release package.
-  - Update the auto-lane model and provide auto-lane inference sample code.
+  - Fixed bad document links.
+  - The model to be evaluated supports multiple imputs.
+  - Fixed using Apex on the NPU.
 
 ---
 
@@ -85,7 +85,7 @@ vega ./examples/nas/cars/cars.yml -s
 
 | Reader | Refrence |
 | :--: | :-- |
-| **User** | [Install Guide](./docs/en/user/install.md), [Deployment Guide](./docs/en/user/deployment.md), [Configuration Guide](./docs/en/user/config_reference.md), [Security Configuration](./docs/en/user/security_configure.md), [Examples](./docs/en/user/examples.md), [Evaluate Service](./evaluate_service/docs/en/evaluate_service.md) |
+| **User** | [Install Guide](./docs/en/user/install.md), [Deployment Guide](./docs/en/user/deployment.md), [Configuration Guide](./docs/en/user/config_reference.md), [Security Configuration](./docs/en/user/security_configure.md), [Examples](./docs/en/user/examples.md), [Evaluate Service](./evaluate_service/README.md) |
 | **Developer** | [Development Reference](./docs/en/developer/developer_guide.md), [Quick Start Guide](./docs/en/developer/quick_start.md), [Dataset Guide](./docs/en/developer/datasets.md), [Algorithm Development Guide](./docs/en/developer/new_algorithm.md) |
 
 ## FAQ

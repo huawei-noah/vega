@@ -62,6 +62,7 @@ class TrainerConfig(ConfigSerializable):
     distributed = False
     save_model_desc = False
     save_ext_model = False
+    save_slave_model = False
     report_freq = 10
     seed = 0
     epochs = 1
