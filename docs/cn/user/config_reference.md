@@ -158,7 +158,8 @@ fully_train:
         common:
             data_path: /cache/datasets/cifar10/
 ```
-**注**: HCCL支持多机多卡，Horovod目前只支持单机多卡。
+
+**注**: 使用Horovod时，集群里的各节点间都需要配置SSH互信，且确保各主机的python版本和路径一致。
 
 ## 3. NAS和HPO配置项
 

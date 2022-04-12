@@ -17,7 +17,7 @@ IFS="," eval 'server_list="${IP_ARRAY[*]}"'
 run_experiment() {
     local np=$1
     shift
-    horovodrun -np $np -H $server_list $@
+    horovodrun --start-timeout 300 -np $np -H $server_list $@
 }
 
 run_experiment $nps $PYTHON_COMMAND $SCRIPT_PATH --cf_file $2

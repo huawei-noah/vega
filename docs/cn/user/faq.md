@@ -108,22 +108,22 @@ Vega在多个GPU/NPU场景中，会启动dask scheduler、dask worker及训练�
 
 ```bash
 # 查询运行中的Vega主程序的进程ID
-vega-kill -l
+vega-process -s
 # 终止一个Vega主程序及相关进程
-vega-kill -p <pid>
+vega-kill -s -p <pid>
 # 或者一次性的终止所有Vega相关进程
-vega-kill -a
+vega-kill -s -a
 # 若主程序被非常正常关闭，还存在遗留的相关进程，可使用强制清理
-vega-kill -f
+vega-kill -s -f
 ```
 
 在普通模式下，使用如下命令：
 
 ```bash
-vega-kill -s -l
-vega-kill -s -p <pid>
-vega-kill -s -a
-vega-kill -s -f
+vega-process
+vega-kill -p <pid>
+vega-kill -a
+vega-kill -f
 ```
 
 ### 2.6 如何查询正在运行的vega程序
@@ -131,13 +131,13 @@ vega-kill -s -f
 在安全模式下，可通过如下命令查询正在运行的Vega应用程序：
 
 ```bash
-vega-process
+vega-process -s
 ```
 
 在普通模式下，可通过如下命令查询：
 
 ```bash
-vega-process -s
+vega-process
 ```
 
 ### 2.7 如何查询vega程序运行进度
@@ -145,13 +145,13 @@ vega-process -s
 在安全模式下，可通过如下命令查询正在运行的Vega程序运行进度：
 
 ```bash
-vega-progress -t <Task ID> -r <Task Root Path>
+vega-progress -s -t <Task ID> -r <Task Root Path>
 ```
 
 在普通模式下，可通过如下命令查询：
 
 ```bash
-vega-progress -s -t <Task ID> -r <Task Root Path>
+vega-progress -t <Task ID> -r <Task Root Path>
 ```
 
 ### 2.8 如何使用vega程序执行模型推理
