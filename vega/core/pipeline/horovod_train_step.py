@@ -56,6 +56,7 @@ class HorovodTrainStep(TrainPipeStep):
 
     def _set_cluster_info(self):
         General.cluster.num_workers_per_node = len(os.environ["CUDA_VISIBLE_DEVICES"].split(","))
+        General.cluster.num_nodes = max(General.cluster.num_nodes, 1 + len(General.cluster.slaves))
         General.cluster.num_workers = General.cluster.num_workers_per_node * General.cluster.num_nodes
 
     def train_model(self, trainer):

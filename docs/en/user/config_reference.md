@@ -156,7 +156,8 @@ fully_train:
         common:
             data_path: /cache/datasets/cifar10/
 ```
-**Note**: HCCL supports multi-machine multi-card, Horovod currently only supports single machine multi-card.
+
+**Note**: When Horovod is used, you need to set up SSH Login Without Password between nodes in the cluster and ensure that the Python version and path of each host are the same.
 
 ## 3. NAS and HPO configuration items
 

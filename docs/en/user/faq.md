@@ -108,24 +108,24 @@ In safe mode, the Vega application can be terminated using the following command
 
 ```bash
 # Query the process ID of the running Vega main program.
-vega-process
+vega-process -s
 # Terminate a Vega main program and related processes.
-vega-kill -p <pid>
+vega-kill -s -p <pid>
 # Terminate a Vega main program and related processes.
-vega-kill -t <task id>
+vega-kill -s -t <task id>
 # Or stop all Vega-related processes at a time.
-vega-kill -a
+vega-kill -s -a
 # If the main program is shut down normally and there are remaining related processes, you can forcibly clear the process.
-vega-kill -f
+vega-kill -s -f
 ```
 
 In common mode, run the following command:：
 
 ```bash
-vega-kill -s -l
-vega-kill -s -p <pid>
-vega-kill -s -a
-vega-kill -s -f
+vega-process
+vega-kill -p <pid>
+vega-kill -a
+vega-kill -f
 ```
 
 ### 2.6 How Do I Query the Running Vega Program
@@ -133,13 +133,13 @@ vega-kill -s -f
 In safe mode, run the following command to query the running Vega applications:
 
 ```bash
-vega-process
+vega-process -s
 ```
 
 In common mode, you can run the following command to query:
 
 ```bash
-vega-process -s
+vega-process
 ```
 
 ### 2.7 How Do I Query the Vega Program Running Progress
@@ -147,13 +147,13 @@ vega-process -s
 In safe mode, you can run the following command to query the running progress of the Vega program:
 
 ```bash
-vega-progress -t <Task ID> -r <Task Root Path>
+vega-progress -s -t <Task ID> -r <Task Root Path>
 ```
 
 In common mode, you can run the following command to query:
 
 ```bash
-vega-progress -s -t <Task ID> -r <Task Root Path>
+vega-progress -t <Task ID> -r <Task Root Path>
 ```
 
 ### 2.8 How to Perform Model Inference Using the Vega Program
