@@ -19,6 +19,7 @@
 import torch
 import numpy as np
 import vega
+from vega.common.general import General
 from vega.trainer.trainer_base import TrainerBase
 from vega.modules.loss import Loss
 from vega.trainer.modules.lr_schedulers import LrScheduler
@@ -66,6 +67,13 @@ class TrainerTorch(TrainerBase):
                     self.model, self.optimizer, opt_level=self.config.opt_level,
                     loss_scale=self.config.apex_loss_scale,
                     combine_grad=self.config.apex_combine_grad)
+        # mode ddp should after amp.initialize
+        if self.hccl:
+            self.model = torch.nn.parallel.DistributedDataParallel(
+                self.model,
+                device_ids=[self.device_id],
+                broadcast_buffers=General.cluster.enable_broadcast_buffers
+            )
 
     def set_training_settings(self):
         """Set trainer training setting."""

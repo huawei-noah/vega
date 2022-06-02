@@ -8,13 +8,16 @@
 
 ---
 
-**Vega ver1.8.2 released**
+**Vega ver1.8.4 released**
 
 - Bug Fixed:
 
-  - Fixed bad document links.
-  - The model to be evaluated supports multiple imputs.
-  - Fixed using Apex on the NPU.
+  - Fixed bug that ASHA failed to update data.
+  - Fixed bug that loss is not updated on HCCL+Apex.
+  - Add dictionary metrics.
+  - Update the security configuration document.
+  - Not Allowed Horovod and TensorFlow in safe mode.
+  - Python 3.9 or later is required in the security model.  
 
 ---
 

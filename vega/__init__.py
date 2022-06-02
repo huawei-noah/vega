@@ -34,7 +34,7 @@ __all__ = [
     "get_quota",
 ]
 
-__version__ = "1.8.2"
+__version__ = "1.8.4"
 
 
 import sys

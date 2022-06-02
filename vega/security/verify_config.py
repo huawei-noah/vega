@@ -16,7 +16,6 @@
 
 """Run pipeline."""
 
-import configparser
 import logging
 import os
 import stat

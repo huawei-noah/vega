@@ -9,9 +9,8 @@ Vega的安全配置，包括如下步骤：
 5. 加密私钥口令
 6. 配置安全相关的配置文件
 7. 配置评估服务守护服务
-8. 安装dask和distributed
-9. 配置HCCL白名单
-10. 注意事项
+8. 配置HCCL白名单
+9. 注意事项
 
 ## 1.安装OpenSSL
 
@@ -36,6 +35,7 @@ openssl req -new -x509 -key ca.key -out ca.crt -subj "/C=<country>/ST=<province>
 
 1. 以上`<country>`、`<province>`、`<city>`、`<organization>`、`<group>`、`<cn>`根据实际情况填写，去掉符号`<>`，本文后面的配置也是同样的。并且CA的配置需要和其他的不同。
 2. RSA密钥长度建议在3072位及以上，如本例中使用4096长度。
+3. 缺省证书有效期为30天，可使用`-days`参数调整有效期，如`-days 365`，设置有效期为365天。
 
 ## 3. 生成评估服务使用的证书
 
@@ -46,12 +46,29 @@ openssl req -new -x509 -key ca.key -out ca.crt -subj "/C=<country>/ST=<province>
 
 ### 3.1 生成加密证书
 
+执行以下命令，获得证书配置文件：
+
+1. 查询openssl配置文件所在的路径：
+
+   `openssl version -d`
+
+   在输出信息中，找到类似于`OPENSSLDIR: "/etc/pki/tls"`，其中"/etc/pki/tls"即为配置文件所在目录。
+
+2. 拷贝配置文件到当前目录：
+
+   `cp /etc/pki/tls/openssl.cnf .`
+
+3. 在配置文件中openssl.cnf中，增加如下配置项：
+
+   `req_extensions = v3_req # The extensions to add to a certificate request`
+
 执行如下脚本，生成评估服务器所使用的证书的加密私钥，执行该命令时，会提示输入加密密码，密码的强度要求如下：
 
 1. 密码长度大于等于8位
 2. 必须包含至少1位大写字母
 3. 必须包含至少1位小写字母
 4. 必须包含至少1位数字
+5. 必须包含至少1位特殊字符
 
 ```shell
 openssl genrsa -aes-256-ofb -out server.key 4096
@@ -60,8 +77,8 @@ openssl genrsa -aes-256-ofb -out server.key 4096
 然后再执行如下命令，生成证书，并删除临时文件：
 
 ```shell
-openssl req -new -key server.key -out server.csr -extensions v3_ca -subj "/C=<country>/ST=<province>/L=<city>/O=<organization>/OU=<group>/CN=<cn>"
-openssl x509 -req -in server.csr -CA ca.crt -CAkey ca.key -CAcreateserial -out server.crt
+openssl req -new -key server.key -out server.csr -subj "/C=<country>/ST=<province>/L=<city>/O=<organization>/OU=<group>/CN=<cn>" -config ./openssl.cnf -extensions v3_req
+openssl x509 -req -in server.csr -CA ca.crt -CAkey ca.key -CAcreateserial -out server.crt -extfile ./openssl.cnf -extensions v3_req
 rm server.csr
 ```
 
@@ -74,8 +91,8 @@ openssl genrsa -aes-256-ofb -out client.key 4096
 然后再执行如下命令，生成证书，并删除临时文件：
 
 ```shell
-openssl req -new -key client.key -out client.csr -extensions v3_ca -subj "/C=<country>/ST=<province>/L=<city>/O=<organization>/OU=<group>/CN=<cn>"
-openssl x509 -req -in client.csr -CA ca.crt -CAkey ca.key -CAcreateserial -out client.crt
+openssl req -new -key client.key -out client.csr -subj "/C=<country>/ST=<province>/L=<city>/O=<organization>/OU=<group>/CN=<cn>" -config ./openssl.cnf -extensions v3_req
+openssl x509 -req -in client.csr -CA ca.crt -CAkey ca.key -CAcreateserial -out client.crt -extfile ./openssl.cnf -extensions v3_req
 rm client.csr
 ```
 
@@ -85,13 +102,13 @@ rm client.csr
 
 ```shell
 openssl genrsa -out server.key 4096
-openssl req -new -key server.key -out server.csr -extensions v3_ca  -subj "/C=<country>/ST=<province>/L=<city>/O=<organization>/OU=<group>/CN=<cn>"
-openssl x509 -req -in server.csr -CA ca.crt -CAkey ca.key -CAcreateserial -out server.crt
+openssl req -new -key server.key -out server.csr -subj "/C=<country>/ST=<province>/L=<city>/O=<organization>/OU=<group>/CN=<cn>" -config ./openssl.cnf -extensions v3_req
+openssl x509 -req -in server.csr -CA ca.crt -CAkey ca.key -CAcreateserial -out server.crt -extfile ./openssl.cnf -extensions v3_req
 rm server.csr
 
 openssl genrsa -out client.key 4096
-openssl req -new -key client.key -out client.csr -extensions v3_ca  -subj "/C=<country>/ST=<province>/L=<city>/O=<organization>/OU=<group>/CN=<cn>"
-openssl x509 -req -in client.csr -CA ca.crt -CAkey ca.key -CAcreateserial -out client.crt
+openssl req -new -key client.key -out client.csr -extensions v3_ca  -subj "/C=<country>/ST=<province>/L=<city>/O=<organization>/OU=<group>/CN=<cn>" -config ./openssl.cnf -extensions v3_req
+openssl x509 -req -in client.csr -CA ca.crt -CAkey ca.key -CAcreateserial -out client.crt -extfile ./openssl.cnf -extensions v3_req
 rm client.csr
 ```
 
@@ -101,13 +118,13 @@ rm client.csr
 
 ```shell
 openssl genrsa -out server_dask.key 4096
-openssl req -new -key server_dask.key -out server_dask.csr -extensions v3_ca  -subj "/C=<country>/ST=<province>/L=<city>/O=<organization>/OU=<group>/CN=<cn>"
-openssl x509 -req -in server_dask.csr -CA ca.crt -CAkey ca.key -CAcreateserial -out server_dask.crt
+openssl req -new -key server_dask.key -out server_dask.csr -subj "/C=<country>/ST=<province>/L=<city>/O=<organization>/OU=<group>/CN=<cn>" -config ./openssl.cnf -extensions v3_req
+openssl x509 -req -in server_dask.csr -CA ca.crt -CAkey ca.key -CAcreateserial -out server_dask.crt -extfile ./openssl.cnf -extensions v3_req
 rm server_dask.csr
 
 openssl genrsa -out client_dask.key 4096
-openssl req -new -key client_dask.key -out client_dask.csr -extensions v3_ca  -subj "/C=<country>/ST=<province>/L=<city>/O=<organization>/OU=<group>/CN=<cn>"
-openssl x509 -req -in client_dask.csr -CA ca.crt -CAkey ca.key -CAcreateserial -out client_dask.crt
+openssl req -new -key client_dask.key -out client_dask.csr -subj "/C=<country>/ST=<province>/L=<city>/O=<organization>/OU=<group>/CN=<cn>" -config ./openssl.cnf -extensions v3_req
+openssl x509 -req -in client_dask.csr -CA ca.crt -CAkey ca.key -CAcreateserial -out client_dask.crt -extfile ./openssl.cnf -extensions v3_req
 rm client_dask.csr
 ```
 
@@ -222,31 +239,22 @@ sudo systemctl daemon-reload
 sudo systemctl start evaluate-service
 ```
 
-## 8. 安装Dask和distributed
-
-安装Vega时，会自动安装Dask和Distributed的最新版本，我们发现在当前版本中Distributed关闭dash board时存在bug，需要执行如下命令，安装如下版本的这两个组件：
-
-```shell
-pip3 install --user dask==2.11.0
-pip3 install --user distributed==2.11.0
-```
-
-## 9. 配置HCCL白名单
+## 8. 配置HCCL白名单
 
 请参考Ascend提供的[配置指导](https://support.huawei.com/enterprise/zh/doc/EDOC1100206668/8e964064)。
 
-## 10. 注意事项
+## 9. 注意事项
 
-### 10.1 模型风险
+### 9.1 模型风险
 
 对于AI框架来说，模型就是程序，模型可能会读写文件、发送网络数据。例如Tensorflow提供了本地操作API tf.read_file, tf.write_file，返回值是一个operation，可以被Tensorflow直接执行。
 因此对于未知来源的模型，请谨慎使用，使用前应该排查该模型是否存在恶意操作，消除安全隐患。
 
-### 10.2 运行脚本风险
+### 9.2 运行脚本风险
 
 Vega提供的script_runner功能可以调用外部脚本进行超参优化，请确认脚本来源，确保不存在恶意操作，谨慎运行未知来源脚本。
 
-### 10.3 KMC组件不支持多个用户同时使用
+### 9.3 KMC组件不支持多个用户同时使用
 
 若使用KMC组件对私钥密码加密，需要注意KMC组件不支持不同的用户同时使用KMC组件。若需要切换用户，需要在root用户下，使用如下命令查询当前信号量：
 
@@ -259,3 +267,21 @@ ipcs
 ```bash
 ipcrm -S '<信号量>'
 ```
+
+### 9.4 删除开源软件中不使用的私钥文件
+
+Vega安装时，会自动安装Vega所依赖的开源软件，请参考[列表](https://github.com/huawei-noah/vega/blob/master/setup.py)。
+
+部分开源软件的安装包中可能会带有测试用的私钥文件，Vega不会使用这些私钥文件，删除这些私钥文件不会影响Vega的正常运行。
+
+可执行如下命令所有的私钥文件：
+
+```bash
+find ~/.local/ -name *.pem
+```
+
+在以上命令列出的所有文件中，找到Vega所依赖的开源软件的私钥文件。一般私钥文件的名称中会带有单词`key`，打开这些文件，可以看到以`-----BEGIN PRIVATE KEY-----`开头，以`-----END PRIVATE KEY-----`结尾，这些文件都可以删除。
+
+### 9.5 Horovod 和 TensorFlow
+
+在安全模式下，Vega不支持Horovod数据并行，也不支持TensorFlow框架，Vega在运行前检查若是Horovod数据并行程序，或者TensorFlow框架，会自动退出。

@@ -93,7 +93,16 @@ class MetricsEvaluator(Callback):
     def after_valid_step(self, batch_index, logs=None):
         """Be called after each batch of validation."""
         if self.do_validation and self.valid_metrics is not None:
-            if isinstance(self.valid_batch, list) and isinstance(self.valid_batch[0], dict):
+            is_dict = isinstance(self.valid_batch, list) and \
+                len(self.valid_batch) == 2 and \
+                isinstance(self.valid_batch[0], dict) and \
+                isinstance(self.valid_batch[1], dict)
+            if is_dict:
+                target = self.valid_batch[1]
+                output = logs["valid_batch_output"]
+                self.valid_metrics(**output, **target)
+                return
+            elif isinstance(self.valid_batch, list) and isinstance(self.valid_batch[0], dict):
                 target = self.valid_batch
             else:
                 target = self.valid_batch[1]

@@ -24,6 +24,7 @@ def check_password_rule(password):
     digit_regex = re.compile(r'\d')
     upper_regex = re.compile(r'[A-Z]')
     lower_regex = re.compile(r'[a-z]')
+    character_regex = re.compile(r'[`~!@#$%&*()\-_=+\\|\[{}\]:;‘“,<>./? ]')
 
     if len(password) < 8:
         logging.warning("The length must >= 8")
@@ -39,6 +40,10 @@ def check_password_rule(password):
 
     if len(lower_regex.findall(password)) == 0:
         logging.warning("Must contains lowercase letters")
+        return False
+
+    if len(character_regex.findall(password)) == 0:
+        logging.warning("Must contain special characters")
         return False
 
     return True

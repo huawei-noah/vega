@@ -51,11 +51,13 @@ def run_scheduler_security(ip, port, tmp_file):
     """Run scheduler."""
     if not verify_cert(sec_cfg.ca_cert, sec_cfg.server_cert_dask):
         logging.error(f"The cert {sec_cfg.ca_cert} and {sec_cfg.server_cert_dask} are invalid, please check.")
+    dashboard_port = _available_port(31000, 31999)
     return subprocess.Popen(
         [
             "dask-scheduler",
             "--no-dashboard",
             "--no-show",
+            f"--dashboard-address=127.0.0.1:{dashboard_port}",
             f"--tls-ca-file={sec_cfg.ca_cert}",
             f"--tls-cert={sec_cfg.server_cert_dask}",
             f"--tls-key={sec_cfg.server_secret_key_dask}",
@@ -63,7 +65,6 @@ def run_scheduler_security(ip, port, tmp_file):
             "--protocol=tls",
             f"--port={port}",
             f"--scheduler-file={tmp_file}",
-            f"--local-directory={os.path.dirname(tmp_file)}",
         ],
         env=os.environ
     )
@@ -88,6 +89,7 @@ def run_local_worker_security(slave_ip, address, local_dir):
     address = address.replace("tcp", "tls")
     nanny_port = _available_port(30000, 30999)
     worker_port = _available_port(29000, 29999)
+    dashboard_port = _available_port(31000, 31999)
     pid = subprocess.Popen(
         [
             "dask-worker",
@@ -95,6 +97,7 @@ def run_local_worker_security(slave_ip, address, local_dir):
             '--nthreads=1',
             '--nprocs=1',
             '--memory-limit=0',
+            f"--dashboard-address=127.0.0.1:{dashboard_port}",
             f"--local-directory={local_dir}",
             f"--tls-ca-file={sec_cfg.ca_cert}",
             f"--tls-cert={sec_cfg.client_cert_dask}",
@@ -115,6 +118,7 @@ def run_remote_worker_security(slave_ip, address, local_dir):
     address = address.replace("tcp", "tls")
     nanny_port = _available_port(30000, 30999)
     worker_port = _available_port(29000, 29999)
+    dashboard_port = _available_port(31000, 31999)
     pid = subprocess.Popen(
         [
             "ssh",
@@ -124,6 +128,7 @@ def run_remote_worker_security(slave_ip, address, local_dir):
             '--nthreads=1',
             '--nprocs=1',
             '--memory-limit=0',
+            f"--dashboard-address=127.0.0.1:{dashboard_port}",
             f"--local-directory={local_dir}",
             f"--tls-ca-file={sec_cfg.ca_cert}",
             f"--tls-cert={sec_cfg.client_cert_dask}",

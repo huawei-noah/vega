@@ -31,6 +31,6 @@ For details about the pipeline configuration, see **[Configuration Guide](./conf
 
 ## 3. Model Evaluation On Device
 
-Vega also provides the model evaluation capability. The device hardware supported by Vega includes Davinci inference chips (Atlas 200 DK, Atlas 300, and development board environment Evb) and mobile phones. The [Bolt](https://github.com/huawei-noah/bolt) can be deployed for evaluation.
+Vega also provides the model evaluation capability. The device hardware supported by Vega includes Davinci inference chips (Atlas 200 DK, Atlas 300I, and development board environment Evb) and mobile phones. The [Bolt](https://github.com/huawei-noah/bolt) can be deployed for evaluation.
 
 You can install and configure the evaluation service by referring to [Evaluation Service Installation and Configuration Guide](./evaluate_service.md) to evaluate the model found during architecture search in real time and obtain the model applicable to the device.

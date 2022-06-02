@@ -101,6 +101,9 @@ class ASHA(ShaBase):
         :param float score: Description of parameter `score`.
 
         """
+        loc = self.sieve_board.loc[(self.sieve_board['config_id'] == config_id) & (
+            self.sieve_board['rung_id'] == rung_id), ['status', 'score']]
+        logger.debug(f"update sieve board loc:\n{loc}")
         self.sieve_board.loc[(self.sieve_board['config_id'] == config_id) & (
             self.sieve_board['rung_id'] == rung_id), ['status', 'score']] = [StatusType.FINISHED, score]
         self.is_completed = self._check_completed()
