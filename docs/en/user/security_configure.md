@@ -9,9 +9,8 @@ The security configuration of the Vega includes the following steps:
 5. Encrypt the private key password
 6. Configure security-related configuration files
 7. Configure the evaluation service daemon service
-8. Install dask and distributed
-9. Configuring the HCCL trustlist
-10. Precautions
+8. Configuring the HCCL trustlist
+9. Precautions
 
 ## 1. Install OpenSSL
 
@@ -37,6 +36,7 @@ Note:
 
 1. `<country>`, `<province>`, `<city>`, `<organization>`, `<group>`, and `<cn>` should be set based on the situation. The values do not contain `< >'. In addition, the CA configuration must be different from other configurations.
 2. It is recommended that the length of the RSA key be 3072 bits or more.
+3. The default validity period of the certificate is 30 days. You can use the `-days` parameter to adjust the validity period. For example, you can use the `-days 365` parameter to set the validity period to 365 days.
 
 ## 3. Generate the Certificate for Evaluate_service
 
@@ -47,12 +47,29 @@ The evaluation service supports encryption certificates and common certificates.
 
 ### 3.1 Generating the Encryption Certificate
 
+Run the following commands to obtain the certificate configuration file:
+
+1. Run the following command to query the path of the OpenSSL configuration file:
+
+   `openssl version -d`
+
+   Find information similar to `OPENSSLDIR: "/etc/pki/tls"` in the command output. In the information, "/etc/pki/tls" indicates the directory where the configuration file resides.
+
+2. Copy the configuration file to the current directory：
+
+   `cp /etc/pki/tls/openssl.cnf .`
+
+3. Add the following configuration to the openssl.cnf file:
+
+   `req_extensions = v3_req # The extensions to add to a certificate request`
+
 Run the following commands to generate the encryption private key for the server of evaluate_service. When you run this command, the system prompts you to enter the encryption password. The password strength requirements are as follows:
 
 1. The password contains at least eight characters.
 2. The value must contain at least one uppercase letter.
 3. The value must contain at least one lowercase letter.
 4. The value must contain at least one digit.
+5. The value must contain at least one special character.
 
 ```shell
 openssl genrsa -aes-256-ofb -out server.key 4096
@@ -61,8 +78,8 @@ openssl genrsa -aes-256-ofb -out server.key 4096
 Run the following commands to generate a certificate and delete the temporary file:
 
 ```shell
-openssl req -new -key server.key -out server.csr -extensions v3_ca -subj "/C=<country>/ST=<province>/L=<city>/O=<organization>/OU=<group>/CN=<cn>"
-openssl x509 -req -in server.csr -CA ca.crt -CAkey ca.key -CAcreateserial -out server.crt
+openssl req -new -key server.key -out server.csr -subj "/C=<country>/ST=<province>/L=<city>/O=<organization>/OU=<group>/CN=<cn>" -config ./openssl.cnf -extensions v3_req
+openssl x509 -req -in server.csr -CA ca.crt -CAkey ca.key -CAcreateserial -out server.crt -extfile ./openssl.cnf -extensions v3_req
 rm server.csr
 ```
 
@@ -75,8 +92,8 @@ openssl genrsa -aes-256-ofb -out client.key 4096
 Run the following commands to generate a certificate and delete the temporary file:
 
 ```shell
-openssl req -new -key client.key -out client.csr -extensions v3_ca -subj "/C=<country>/ST=<province>/L=<city>/O=<organization>/OU=<group>/CN=<cn>"
-openssl x509 -req -in client.csr -CA ca.crt -CAkey ca.key -CAcreateserial -out client.crt
+openssl req -new -key client.key -out client.csr -subj "/C=<country>/ST=<province>/L=<city>/O=<organization>/OU=<group>/CN=<cn>" -config ./openssl.cnf -extensions v3_req
+openssl x509 -req -in client.csr -CA ca.crt -CAkey ca.key -CAcreateserial -out client.crt -extfile ./openssl.cnf -extensions v3_req
 rm client.csr
 ```
 
@@ -86,13 +103,13 @@ Run the following commands to generate the private key and certificate for serve
 
 ```shell
 openssl genrsa -out server.key 4096
-openssl req -new -key server.key -out server.csr -extensions v3_ca -subj "/C=<country>/ST=<province>/L=<city>/O=<organization>/OU=<group>/CN=<cn>"
-openssl x509 -req -in server.csr -CA ca.crt -CAkey ca.key -CAcreateserial -out server.crt
+openssl req -new -key server.key -out server.csr -subj "/C=<country>/ST=<province>/L=<city>/O=<organization>/OU=<group>/CN=<cn>" -config ./openssl.cnf -extensions v3_req
+openssl x509 -req -in server.csr -CA ca.crt -CAkey ca.key -CAcreateserial -out server.crt -extfile ./openssl.cnf -extensions v3_req
 rm server.csr
 
 openssl genrsa -out client.key 4096
-openssl req -new -key client.key -out client.csr -extensions v3_ca -subj "/C=<country>/ST=<province>/L=<city>/O=<organization>/OU=<group>/CN=<cn>"
-openssl x509 -req -in client.csr -CA ca.crt -CAkey ca.key -CAcreateserial -out client.crt
+openssl req -new -key client.key -out client.csr -extensions v3_ca  -subj "/C=<country>/ST=<province>/L=<city>/O=<organization>/OU=<group>/CN=<cn>" -config ./openssl.cnf -extensions v3_req
+openssl x509 -req -in client.csr -CA ca.crt -CAkey ca.key -CAcreateserial -out client.crt -extfile ./openssl.cnf -extensions v3_req
 rm client.csr
 ```
 
@@ -102,13 +119,13 @@ Run the following commands to generate the private key and certificate for serve
 
 ```shell
 openssl genrsa -out server_dask.key 4096
-openssl req -new -key server_dask.key -out server_dask.csr -extensions v3_ca -subj "/C=<country>/ST=<province>/L=<city>/O=<organization>/OU=<group>/CN=<cn>"
-openssl x509 -req -in server_dask.csr -CA ca.crt -CAkey ca.key -CAcreateserial -out server_dask.crt
+openssl req -new -key server_dask.key -out server_dask.csr -subj "/C=<country>/ST=<province>/L=<city>/O=<organization>/OU=<group>/CN=<cn>" -config ./openssl.cnf -extensions v3_req
+openssl x509 -req -in server_dask.csr -CA ca.crt -CAkey ca.key -CAcreateserial -out server_dask.crt -extfile ./openssl.cnf -extensions v3_req
 rm server_dask.csr
 
 openssl genrsa -out client_dask.key 4096
-openssl req -new -key client_dask.key -out client_dask.csr -extensions v3_ca -subj "/C=<country>/ST=<province>/L=<city>/O=<organization>/OU=<group>/CN=<cn>"
-openssl x509 -req -in client_dask.csr -CA ca.crt -CAkey ca.key -CAcreateserial -out client_dask.crt
+openssl req -new -key client_dask.key -out client_dask.csr -subj "/C=<country>/ST=<province>/L=<city>/O=<organization>/OU=<group>/CN=<cn>" -config ./openssl.cnf -extensions v3_req
+openssl x509 -req -in client_dask.csr -CA ca.crt -CAkey ca.key -CAcreateserial -out client_dask.crt -extfile ./openssl.cnf -extensions v3_req
 rm client_dask.csr
 ```
 
@@ -223,31 +240,22 @@ sudo systemctl daemon-reload
 sudo systemctl start evaluate-service
 ```
 
-## 8. Install Dask and Distributed
-
-When Vega is installed, the latest versions of the Dashboard and Distributed are automatically installed. In the current version, a bug exists when the Dashboard is disabled in Distributed. You need to run the following commands to install the two components of the following versions:
-
-```shell
-pip3 install --user dask==2.11.0
-pip3 install --user distributed==2.11.0
-```
-
-## 9. Configuring the HCCL Trustlist
+## 8. Configuring the HCCL Trustlist
 
 For details, see the [Configuration Guide](https://support.huawei.com/enterprise/en/doc/EDOC1100206669/8e964064) provided by the Ascend.
 
-## 10. Precautions
+## 9. Precautions
 
-### 10.1 Model Risks
+### 9.1 Model Risks
 
 For an AI framework, a model is a program. A model may read and write files and send network data. For example, TensorFlow provides the local operation API tf.read_file, tf.write_file. The return value is an operation that can be directly executed by TensorFlow.
 Therefore, exercise caution when using a model with unknown sources. Before using the model, check whether malicious operations exist in the model to eliminate security risks.
 
-### 10.2 Risks of Running Scripts
+### 9.2 Risks of Running Scripts
 
 The script_runner function provided by Vega can invoke external scripts to perform hyperparameter optimization. Check the script source and ensure that no malicious operation exists. Exercise caution when running scripts from unknown sources.
 
-### 10.3 Do Not Use KMC Components By Different Users At The Same Time
+### 9.3 Do Not Use KMC Components By Different Users At The Same Time
 
 If the KMC component is used to encrypt the private key password, note that different users cannot use the KMC component at the same time.
 To switch user, run the following command as the root user to query the current semaphore:
@@ -261,3 +269,21 @@ Run the following command to delete all the semaphores:
 ```bash
 ipcrm -S '<semaphore>'
 ```
+
+### 9.4 Deleting Unused Private Key Files from Open Source Software
+
+During Vega installation, the open-source software on which Vega depends is automatically installed. For details, see [List](https://github.com/huawei-noah/vega/blob/master/setup.py).
+
+The packages of some open-source software may contain private key files for testing. Vega does not use these private key files. Deleting these private key files does not affect the running of Vega.
+
+You can run the following command to find all private key files:
+
+```bash
+find -/.local/ -name *.pem
+```
+
+Find the private key file of the open-source software on which Vega depends among all the files listed in the preceding command. Generally, the name of the private key file contains the word `key`. Open these files and you can see that the file starts with `-----BEGIN PRIVATE KEY-----` and ends with `-----END PRIVATE KEY-----`. These files can be deleted.
+
+### 9.5 Horovod and TensorFlow
+
+In security mode, Vega does not support Horovod or the TensorFlow framework. Vega automatically exits if Vega run on Horovod or the TensorFlow framework.

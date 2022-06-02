@@ -16,10 +16,21 @@
 
 """Check security env."""
 
+import vega
+
 
 __all__ = ["check_env"]
 
 
-def check_env(args) -> bool:
+def check_env(config) -> bool:
     """Check security env."""
+    if vega.is_tf_backend():
+        print("Vega can not run on TensorFlow in the security model.")
+        return False
+    pipeline = config.get("pipeline", [])
+    for step in pipeline:
+        if step in config:
+            if config[step]["pipe_step"]["type"] == "HorovodTrainStep":
+                print("Vega can not run on Horovod in the security model.")
+                return False
     return True

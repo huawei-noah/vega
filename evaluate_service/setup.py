@@ -60,7 +60,7 @@ class custom_sdist(sdist):
 
 setuptools.setup(
     name="evaluate-service",
-    version="1.8.2",
+    version="1.8.4",
     packages=["evaluate_service"],
     include_package_data=True,
     python_requires=">=3.6",

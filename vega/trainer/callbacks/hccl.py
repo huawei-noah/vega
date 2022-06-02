@@ -45,20 +45,13 @@ class Hccl(Callback):
             self._init_ms_trainer()
 
     def _init_pytorch_trainer(self):
-        import torch
         import torch.distributed as dist
         logger.info("init HCCL")
-        model = self.trainer.model
         dist.init_process_group(
             backend='hccl',
             init_method=f"tcp://{General.cluster.hccl_server_ip}:{General.cluster.hccl_port}",
             world_size=self.trainer.num_workers,
             rank=self.trainer.rank_id)
-        model = torch.nn.parallel.DistributedDataParallel(
-            model,
-            device_ids=[self.trainer.device_id],
-            broadcast_buffers=General.cluster.enable_broadcast_buffers)
-        self.trainer.model = model
 
     def _init_ms_trainer(self):
         from mindspore import context

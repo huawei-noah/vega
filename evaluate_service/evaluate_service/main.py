@@ -225,14 +225,14 @@ def _parse_args():
     parser.add_argument("-i", "--host_ip", type=str, required=True, help="the ip of the evaluate service machine")
     parser.add_argument("-p", "--port", type=int, required=False, default=8888, help="the listening port")
     parser.add_argument("-w", "--work_path", type=str, required=True, help="the work dir to save the file")
-    parser.add_argument("-t", "--davinci_environment_type", type=str, required=False, default="ATLAS300",
+    parser.add_argument("-t", "--davinci_environment_type", type=str, required=False, default="ATLAS300I",
                         help="the type the davinci hardwares")
     parser.add_argument("-c", "--clean_interval", type=int, required=False, default=1 * 6 * 3600,
                         help="the time interval to clean the temp folder")
     parser.add_argument("-u", "--ddk_user_name", type=str, required=False, default="user",
-                        help="the user to acess ATLAS200200 DK")
+                        help="the user access to ATLAS 200 DK")
     parser.add_argument("-atlas_host_ip", "--atlas_host_ip", type=str, required=False, default=None,
-                        help="the ip of ATLAS200200 DK")
+                        help="the ip of ATLAS 200 DK")
     parser.add_argument("-s", "--security_mode", action='store_true',
                         help="enable safe mode")
     args = parser.parse_args()

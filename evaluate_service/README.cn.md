@@ -6,9 +6,9 @@
 
 ## 1. 简介
 
-模型评估服务是用于评估模型在特定硬件设备上的性能，如评估剪枝和量化后的模型在Atlas200 DK、Atlas300上的准确率、模型大小和时延等。
+模型评估服务是用于评估模型在特定硬件设备上的性能，如评估剪枝和量化后的模型在Atlas 200 DK、Atlas 300I上的准确率、模型大小和时延等。
 
-评估服务目前支持的硬件设备为Davinci推理芯片（Atlas200 DK、ATLAS300产品和开发板环境Evb)和手机，后继会扩展支持更多的设备。
+评估服务目前支持的硬件设备为Davinci推理芯片（Atlas 200 DK、Atlas 300I产品和开发板环境Evb)和手机，后继会扩展支持更多的设备。
 
 评估服务为CS架构， 评估服务在服务端部署， 客户端通过`REST`接口向服务端发送评估请求和获取结果。Vega在进行网络架构搜索时，可以利用评估服务进行实时检测模型性能。在搜索阶段产生备选网络后，可以将该网络模型发送给评估服务，评估服务完成模型评估后，返回评估结果给Vega，Vega根据评估结果，进行后继的搜索。这种实时的在实际的设备上的评估，有利于搜索出对实际硬件更加友好的网络结构。
 
@@ -16,7 +16,7 @@
 
 支持的模型和硬件设备
 
-| 算法 | 模型 | Atlas 200 DK |Atlas 300 | Bolt |
+| 算法 | 模型 | Atlas 200 DK | Atlas 300I | Bolt |
 | :--: | :--: | :--: | :--: | :--: |
 | Prune-EA | ResNetGeneral | √ | √ | √|
 | ESR-EA | ESRN | | √ | √ |
@@ -33,9 +33,9 @@
 
 以下介绍Atalas 300评估服务的部署过程，若需要部署Atlas 200DK或者ARM芯片手机，请联系我们。
 
-### 3.1 安装配置Atlas300环境
+### 3.1 安装配置Atlas 300I环境
 
-首先需要配置Ascend 300环境，请参考[配置文档](./docs/cn/ascend_310.md)。
+首先需要配置Atlas 300I环境，请参考[配置文档](./docs/cn/ascend_310.md)。
 
 然后请安装评估服务，请执行如下命令安装：
 
@@ -57,17 +57,20 @@ cd build/intermediates/host
 cmake ../../src -DCMAKE_CXX_COMPILER=g++ -DCMAKE_SKIP_RPATH=TRUE
 make  && echo "[INFO] check the env sucess!"
 ```
-### 3.2 编译推理程序
-参考 [https://gitee.com/ascend/tools/tree/master/msame](https://gitee.com/ascend/tools/tree/master/msame), 下载代码并完成编译。 
-并把编译后的可执行文件拷贝到`~/.local/lib/python3.7/site-packages/evaluate_service/hardwares/davinci/`目录下。 
 
+### 3.2 配置推理工具
+
+可参考 [https://gitee.com/ascend/tools/tree/master/msame](https://gitee.com/ascend/tools/tree/master/msame), 下载代码并编译为推理工具，文件名为`msame`。
+并把编译后的推理工具拷贝到`~/.local/lib/python3.7/site-packages/evaluate_service/hardwares/davinci/`目录下。
+
+注意：以上推理工具来自昇腾社区，本社区不负责该工具的安全等问题，用户可采用该工具，或者配置其他推理工具。
 
 ### 3.3 启动评估服务
 
 使用如下命令启动评估服务：
 
 ```shell
-vega-evaluate_service-service -i {your_ip_adress} -p {port} -w {your_work_path}
+vega-evaluate_service-service -i {your_ip_adress} -p {port} -w {your_work_path} -s
 ```
 
 其中：
@@ -75,15 +78,16 @@ vega-evaluate_service-service -i {your_ip_adress} -p {port} -w {your_work_path}
 - `-i`参数指定当前使用的服务器的ip地址
 - `-p`参数指定当前使用的服务器的的监听端口，默认值8888
 - `-w`参数指定工作路径， 程序运行时的中间文件将存储在该目录下，请使用绝对路径
+- `-s`参数表示启动安全模式
 
 注意：
 
 以上启动命令会启动安全模式，需要预先进行安全配置，请参考[安全配置](https://github.com/huawei-noah/vega/tree/master/docs/cn/user/security_configure.md)。
 
-也可以使用`-s`参数，启用普通模式，不需要如上配置，命令如下：
+也可以不使用`-s`参数，启用普通模式，不需要如上配置，命令如下：
 
 ```shell
-vega-evaluate_service-service -s -i {your_ip_adress} -w {your_work_path}
+vega-evaluate_service-service  -i {your_ip_adress} -w {your_work_path}
 ```
 
 ## 4. 使用评估服务

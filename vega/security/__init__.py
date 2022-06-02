@@ -23,3 +23,4 @@ from .args import add_args, check_args, check_yml, check_msg
 from .post import post
 from .conf import load_config, get_config
 from .verify_config import check_risky_file
+from .check_env import check_env

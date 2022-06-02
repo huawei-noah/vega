@@ -201,7 +201,7 @@ def main():
     if args.security:
         os.umask(0o077)
         if not security.load_config("all"):
-            print("If you want to run vega in normal mode, use parameter '-s'.")
+            print("If you want to run vega in normal mode, do not use parameter '-s'.")
             print("For more parameters: vega --help")
             return
     General.security = args.security
@@ -211,8 +211,11 @@ def main():
     vega.set_backend(backend, device)
     _append_env()
     config = Config(args.config_file, abs_path=True)
-    if not security.check_risky_file(args, config):
-        return
+    if General.security:
+        if not security.check_risky_file(args, config):
+            return
+        if not security.check_env(config):
+            return
     # load general
     if config.get("general"):
         General.from_dict(config.get("general"), skip_check=False)

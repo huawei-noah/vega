@@ -188,7 +188,7 @@ def _init_kmc_config(primary_key_store_file, standby_key_store_file, alg_id, dom
 
 def init(primary_key_store_file: str, standby_key_store_file: str, alg_id: int, domain_count=3) -> bool:
     """Initialize."""
-    if alg_id not in [5, 7, 8, 9]:  # AES128_CBC, AES256_CBC, AES128_GCM, AES256_GCM
+    if alg_id not in [8, 9]:  # AES128_GCM, AES256_GCM
         logging.error(f"alg (id={alg_id}) is not legal")
         return False
     _load_dll(_get_lib_path())

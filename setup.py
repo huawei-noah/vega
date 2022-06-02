@@ -29,7 +29,7 @@ with open("RELEASE.md", "r") as fh:
 
 setuptools.setup(
     name="noah-vega",
-    version="1.8.2",
+    version="1.8.4",
     packages=["vega"],
     include_package_data=True,
     python_requires=">=3.6",
