@@ -15,7 +15,7 @@ Vega的安全配置，包括如下步骤：
 注意:
 
 1. **Vega只支持Python3.9及以上版本启用安全模式。**
-2. **若安装distributed 2022.5.0版本及后继版本，在任务结束时会出现`RuntimeError('cannot scheduler new feature after shutdown')`错误，可以忽视该信息。也可以安装2022.4.0及以前版本，没有错误提示，但这些版本不会关闭tls1.0和tls1.1协议，请根据需要选择合适的版本安装。**
+2. **若安装distributed 2022.5.0版本及后继版本，在任务结束时会出现`RuntimeError('cannot scheduler new feature after shutdown')`错误，可以忽视该信息。也可以安装2022.2.0及以前版本，没有错误提示，但这些版本不会关闭tls1.0和tls1.1协议，请根据需要选择合适的版本安装。**
 
 ## 1.安装OpenSSL
 
