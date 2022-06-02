@@ -15,7 +15,7 @@ The security configuration of the Vega includes the following steps:
 Note:
 
 1. **Vega supports the security mode only in Python 3.9 or later.**
-2. **After distributed 2022.5.0 or a later version is installed, the `RuntimeError('cannot scheduler new feature after shutdown')` error is displayed when the task ends. You can ignore this information. You can also install 2022.4. 0 or earlier. No error message is displayed. However, these versions do not disable the TLS1.0 and TLS1.1 protocols. Please select a proper version as required.**
+2. **After distributed 2022.5.0 or a later version is installed, the `RuntimeError('cannot scheduler new feature after shutdown')` error is displayed when the task ends. You can ignore this information. You can also install 2022.2.0 or earlier. No error message is displayed. However, these versions do not disable the TLS1.0 and TLS1.1 protocols. Please select a proper version as required.**
 
 ## 1. Install OpenSSL
 
