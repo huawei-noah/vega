@@ -45,9 +45,11 @@ class FasterRCNN(FasterRCNN, Module):
         roi_pooler = torchvision.ops.MultiScaleRoIAlign(featmap_names=[0, 1, 2, 3], output_size=7, sampling_ratio=2)
         super(FasterRCNN, self).__init__(backbone_neck, num_classes, box_roi_pool=roi_pooler, **kwargs)
 
-    def load_state_dict(self, state_dict=None, strict=None):
+    def load_state_dict(self, state_dict=None, strict=None, exclude_weight_prefix=None):
         """Load State dict."""
         if self.convert_pretrained:
+            if exclude_weight_prefix:
+                state_dict = self._exclude_checkpoint_by_prefix(state_dict)
             state_dict = self._convert_state_dict(self.state_dict(), state_dict)
             return super().load_state_dict(state_dict)
         if not self.freeze_swap_keys:
@@ -59,6 +61,15 @@ class FasterRCNN(FasterRCNN, Module):
                 parameter.requires_grad_(False)
             else:
                 parameter.requires_grad_(True)
+
+     def _exclude_checkpoint_by_prefix(self, states):
+        if self.exclude_weight_prefix:
+            if not isinstance(self.exclude_weight_prefix, list):
+                self.exclude_weight_prefix = [self.exclude_weight_prefix]
+            for prefix in self.exclude_weight_prefix:
+                states = {k: v for k, v in states.items() if not k.startswith(prefix)}
+            self.strict = False
+        return states
 
     def _convert_state_dict(self, own_state, state_dict):
         own_state_copy = OrderedDict({k: v for k, v in own_state.items() if 'num_batches_tracked' not in k})
