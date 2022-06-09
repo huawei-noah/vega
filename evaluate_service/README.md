@@ -6,9 +6,9 @@
 
 ## 1.  Introduction
 
-The model evaluation service is used to evaluate the performance of a model on a specific hardware device, such as the accuracy, model size, and latency of a pruned and quantized model on the Atlas 200 DK.
+The model evaluation service is used to evaluate the performance of a model on a specific hardware device, such as the accuracy, model size, and latency of a pruned and quantized model on the Atlas 200 DK, and Ascend 310 Series.
 
-Currently, the evaluation service supports Davincit inference chips (Atlas 200 DK, Atlas 300I, and development board environment Evb) and mobile phones. More devices will be supported in the future.
+Currently, the evaluation service supports Davinci inference chips (Atlas 200 DK, Ascend 310 Series, and development board environment Evb) and mobile phones. More devices will be supported in the future.
 
 The evaluation service uses the CS architecture. The evaluation service is deployed on the server. The client sends an evaluation request to the server through the `REST` interface and obtains the result. Vega can use the evaluation service to detect model performance in real time during network architecture search. After a candidate network is generated in the search phase, the network model can be sent to the evaluation service. After the model evaluation is complete, the evaluation service returns the evaluation result to Vega. Vega performs subsequent search based on the evaluation result. This real-time evaluation on the actual device helps to search for a network structure that is more friendly to the actual hardware.
 
@@ -16,7 +16,7 @@ The evaluation service uses the CS architecture. The evaluation service is deplo
 
 Supported Models and Hardware Devices:
 
-| Algorithm | Model | Atlas 200 DK | Atlas 300I | Bolt |
+| Algorithm | Model | Atlas 200 DK | Ascend 310 Series | Bolt |
 | :--: | :--: | :--: | :--: | :--: |
 | Prune-EA | ResNetGeneral | √ | √ | √ |
 | ESR-EA | ESRN | | √ | √ |
@@ -33,20 +33,20 @@ Supported Models and Hardware Devices:
 
 ### 3.1 Environment installation and configuration (Optional)
 
-Configure the hardware (Atlas 200 DK, Atlas 300I, or mobile phone) by following the instructions provided in the following sections.
+Configure the hardware (Atlas 200 DK, Ascend 310 Series, or mobile phone) by following the instructions provided in the following sections.
 
 ### 3.1.1 Install the Atlas 200DK environment (Optional)
 
 Please contact us.
 
-### 3.1.2 Install and configure the Atlas 300I Environment (Optional)
+### 3.1.2 Install and configure the Ascend 310 Environment (Optional)
 
 Please refer to [configuration documentation](./docs/en/ascend_310.md).
 For details, see the Huawei official tutorial at <https://support.huawei.com/enterprise/zh/ai-computing-platform/a300-3000-pid-250702915>.
 
 Note: The preceding documents may be updated. Please follow the released updates or obtain the corresponding guide documents. After the environment is installed, you need to set environment variables. For details, see the preceding guide. To facilitate environment configuration, we provide the environment variable configuration template [env_atlas300.sh](https://github.com/huawei-noah/vega/blob/master/evaluate_service/hardwares/davinci/env/env_atlas300.sh) for your reference. The actual environment prevails.
 
-The installation of the Atlas 300I environment is complex. To ensure that the environment is correctly installed, please run [check_atlas300.sh](https://github.com/huawei-noah/vega/blob/master/evaluate_service/hardwares/davinci/env/check_atlas300.sh).
+The installation of the Ascend 310 environment is complex. To ensure that the environment is correctly installed, please run [check_atlas300.sh](https://github.com/huawei-noah/vega/blob/master/evaluate_service/hardwares/davinci/env/check_atlas300.sh).
 
 ### 3.1.3 Install and configure the mobile environment (Optional)
 
@@ -68,7 +68,7 @@ Note: The preceding inference tool comes from the Ascend community. We are not r
 Run the following command to start the evaluate service:
 
 ```shell
-vega-evaluate_service-service -i {your_ip_adress} -p {port} -w {your_work_path} -s
+vega-evaluate_service-service -i {your_ip_adress} -p {port} -w {your_work_path} -t {davinci_environment_type} -s
 ```
 
 where:
@@ -76,6 +76,7 @@ where:
 - `-i` indicates the IP of the server
 - `-p` indicates the listen port,default is 8888
 - `-w` indicates the work dir, please use the absolute path
+- `-t` indicates the chipset model, default is Ascend310
 - `-s` indicates the security mode
 
 Note:
@@ -85,7 +86,7 @@ please refer to [security cinfigure](https://github.com/huawei-noah/vega/tree/ma
 You can also not use the `-s` parameter to enable the common mode. The security configuration is not required. The command is as follows:
 
 ```shell
-vega-evaluate_service-service  -i {your_ip_adress} -w {your_work_path}
+vega-evaluate_service-service  -i {your_ip_adress} -w {your_work_path} -t {davinci_environment_type}
 ```
 
 ## 4. Use evaluate service

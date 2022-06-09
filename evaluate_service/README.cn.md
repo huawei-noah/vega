@@ -6,9 +6,9 @@
 
 ## 1. 简介
 
-模型评估服务是用于评估模型在特定硬件设备上的性能，如评估剪枝和量化后的模型在Atlas 200 DK、Atlas 300I上的准确率、模型大小和时延等。
+模型评估服务是用于评估模型在特定硬件设备上的性能，如评估剪枝和量化后的模型在Atlas 200 DK、Ascend 310系列产品上的准确率、模型大小和时延等。
 
-评估服务目前支持的硬件设备为Davinci推理芯片（Atlas 200 DK、Atlas 300I产品和开发板环境Evb)和手机，后继会扩展支持更多的设备。
+评估服务目前支持的硬件设备为Davinci推理芯片（Atlas 200 DK、Ascend 310系列产品和开发板环境Evb)和手机，后继会扩展支持更多的设备。
 
 评估服务为CS架构， 评估服务在服务端部署， 客户端通过`REST`接口向服务端发送评估请求和获取结果。Vega在进行网络架构搜索时，可以利用评估服务进行实时检测模型性能。在搜索阶段产生备选网络后，可以将该网络模型发送给评估服务，评估服务完成模型评估后，返回评估结果给Vega，Vega根据评估结果，进行后继的搜索。这种实时的在实际的设备上的评估，有利于搜索出对实际硬件更加友好的网络结构。
 
@@ -16,7 +16,7 @@
 
 支持的模型和硬件设备
 
-| 算法 | 模型 | Atlas 200 DK | Atlas 300I | Bolt |
+| 算法 | 模型 | Atlas 200 DK | Ascend 310系列 | Bolt |
 | :--: | :--: | :--: | :--: | :--: |
 | Prune-EA | ResNetGeneral | √ | √ | √|
 | ESR-EA | ESRN | | √ | √ |
@@ -31,11 +31,11 @@
 
 ## 3. 评估服务部署
 
-以下介绍Atalas 300评估服务的部署过程，若需要部署Atlas 200DK或者ARM芯片手机，请联系我们。
+以下介绍Ascend 310评估服务的部署过程，若需要部署Atlas 200DK或者ARM芯片手机，请联系我们。
 
-### 3.1 安装配置Atlas 300I环境
+### 3.1 安装配置Ascend 310环境
 
-首先需要配置Atlas 300I环境，请参考[配置文档](./docs/cn/ascend_310.md)。
+首先需要配置Ascend 310环境，请参考[配置文档](./docs/cn/ascend_310.md)。
 
 然后请安装评估服务，请执行如下命令安装：
 
@@ -70,7 +70,7 @@ make  && echo "[INFO] check the env sucess!"
 使用如下命令启动评估服务：
 
 ```shell
-vega-evaluate_service-service -i {your_ip_adress} -p {port} -w {your_work_path} -s
+vega-evaluate_service-service -i {your_ip_adress} -p {port} -w {your_work_path} -t {davinci_environment_type} -s
 ```
 
 其中：
@@ -78,6 +78,7 @@ vega-evaluate_service-service -i {your_ip_adress} -p {port} -w {your_work_path} 
 - `-i`参数指定当前使用的服务器的ip地址
 - `-p`参数指定当前使用的服务器的的监听端口，默认值8888
 - `-w`参数指定工作路径， 程序运行时的中间文件将存储在该目录下，请使用绝对路径
+- `-t`参数表示推理芯片型号，默认值Ascend310
 - `-s`参数表示启动安全模式
 
 注意：
@@ -87,7 +88,7 @@ vega-evaluate_service-service -i {your_ip_adress} -p {port} -w {your_work_path} 
 也可以不使用`-s`参数，启用普通模式，不需要如上配置，命令如下：
 
 ```shell
-vega-evaluate_service-service  -i {your_ip_adress} -w {your_work_path}
+vega-evaluate_service-service  -i {your_ip_adress} -w {your_work_path} -t {davinci_environment_type}
 ```
 
 ## 4. 使用评估服务
