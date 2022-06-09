@@ -15,7 +15,7 @@
 # limitations under the License.
 
 """This is FasterRCNN network."""
-import copy
+
 from collections import OrderedDict
 from vega.common import ClassFactory, ClassType
 from vega.modules.connections import Sequential
@@ -62,7 +62,7 @@ class FasterRCNN(FasterRCNN, Module):
             else:
                 parameter.requires_grad_(True)
 
-     def _exclude_checkpoint_by_prefix(self, states):
+    def _exclude_checkpoint_by_prefix(self, states):
         if self.exclude_weight_prefix:
             if not isinstance(self.exclude_weight_prefix, list):
                 self.exclude_weight_prefix = [self.exclude_weight_prefix]
