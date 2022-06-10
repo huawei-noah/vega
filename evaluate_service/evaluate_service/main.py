@@ -202,7 +202,7 @@ class Evaluate(Resource):
             weight_file.save(self.weight)
         else:
             self.weight = ""
-        logging.warning("upload file sucess!")
+        logging.warning("upload file success!")
 
 
 def _clean_data_path(clean_interval, work_path):

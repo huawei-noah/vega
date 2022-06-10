@@ -39,9 +39,9 @@ def _file_is_link(path):
 
 def _get_risky_files_by_suffix(suffixes, path):
     risky_files = []
-    non_current_user_files = []
-    others_writable_files = []
-    link_files = []
+    other_user_files = []
+    writable_files = []
+    links = []
     for suffix in suffixes:
         if not path.endswith(suffix):
             continue
@@ -49,50 +49,39 @@ def _get_risky_files_by_suffix(suffixes, path):
         if _file_exist(abs_path):
             risky_files.append(abs_path)
             if not _file_belong_to_current_user(abs_path):
-                non_current_user_files.append(abs_path)
+                other_user_files.append(abs_path)
             if _file_other_writable(abs_path):
-                others_writable_files.append(abs_path)
+                writable_files.append(abs_path)
             if _file_is_link(abs_path):
-                link_files.append(abs_path)
+                links.append(abs_path)
 
-    return risky_files, non_current_user_files, others_writable_files, link_files
+    return risky_files, other_user_files, writable_files, links
 
 
-def get_risky_files(config):
+def _get_risky_files_in_config(config, risky_files, other_user_files, writable_files, links):
     """Get contained risky file (.pth/.pth.tar/.onnx/.py)."""
-    risky_files = []
-    non_current_user_files = []
-    others_writable_files = []
-    link_files = []
-    from vega.common.config import Config
-    if not isinstance(config, Config):
-        return risky_files, non_current_user_files, others_writable_files, link_files
-
     for value in config.values():
-        if isinstance(value, Config) and value.get("type") == "DeepLabNetWork":
+        if isinstance(value, dict) and value.get("type", "") == "DeepLabNetWork":
             value = value.get("dir").rstrip("/") + "/" + value.get("name").lstrip("/") + ".py"
         if isinstance(value, str):
-            temp_risky_files, temp_non_current_user_files, temp_other_writable_files, temp_link_files \
-                = _get_risky_files_by_suffix([".pth", ".pth.tar", ".py"], value)
-            risky_files.extend(temp_risky_files)
-            non_current_user_files.extend(temp_non_current_user_files)
-            others_writable_files.extend(temp_other_writable_files)
-            link_files.extend(temp_link_files)
-        temp_risky_files, temp_non_current_user_files, temp_other_writable_files, temp_link_files \
-            = get_risky_files(value)
-        risky_files.extend(temp_risky_files)
-        non_current_user_files.extend(temp_non_current_user_files)
-        others_writable_files.extend(temp_other_writable_files)
-        link_files.extend(temp_link_files)
-
-    return risky_files, non_current_user_files, others_writable_files, link_files
+            _riskies, _others, _writables, _links = _get_risky_files_by_suffix([".pth", ".pth.tar", ".py"], value)
+            risky_files.extend(_riskies)
+            other_user_files.extend(_others)
+            writable_files.extend(_writables)
+            links.extend(_links)
+        if isinstance(value, dict):
+            _get_risky_files_in_config(value, risky_files, other_user_files, writable_files, links)
 
 
-def check_risky_file(args, config):
+def check_risky_file_in_config(args, config):
     """Check risky file (.pth/.pth.tar/.py)."""
     if not args.security:
         return True
-    risky_files, non_current_user_files, others_writable_files, link_files = get_risky_files(config)
+    risky_files = []
+    other_user_files = []
+    writable_files = []
+    links = []
+    _get_risky_files_in_config(config, risky_files, other_user_files, writable_files, links)
     if len(risky_files) == 0:
         return True
 
@@ -101,23 +90,23 @@ def check_risky_file(args, config):
           "\033[0m")
     for file in risky_files:
         print(file)
-    if len(non_current_user_files) > 0:
+    if len(other_user_files) > 0:
         print("\033[1;33m"
               "WARNING: The following executable files that will be loaded do not belong to the current user:"
               "\033[0m")
-        for file in non_current_user_files:
+        for file in other_user_files:
             print(file)
-    if len(others_writable_files) > 0:
+    if len(writable_files) > 0:
         print("\033[1;33m"
               "WARNING: The following executable files that will be loaded have others write permission:"
               "\033[0m")
-        for file in others_writable_files:
+        for file in writable_files:
             print(file)
-    if len(link_files) > 0:
+    if len(links) > 0:
         print("\033[1;33m"
               "WARNING: The following executable files that will be loaded is soft link file:"
               "\033[0m")
-        for file in link_files:
+        for file in links:
             print(file)
     user_confirm = input("It is possible to construct malicious pickle data "
                          "which will execute arbitrary code during unpickling .pth/.pth.tar/.py files. "

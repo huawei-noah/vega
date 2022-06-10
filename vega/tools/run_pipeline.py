@@ -19,6 +19,7 @@
 import os
 import sys
 from copy import deepcopy
+
 import vega
 from vega.common.general import General
 from vega.common.config import Config
@@ -196,7 +197,11 @@ def _check_platform_pkgs(backend, device):
 
 def main():
     """Run pipeline."""
-    args = _parse_args()
+    try:
+        args = _parse_args()
+    except Exception as e:
+        print(f"Parameter Error: {e}")
+        return
     _resume(args)
     if args.security:
         os.umask(0o077)
@@ -212,9 +217,15 @@ def main():
     _append_env()
     config = Config(args.config_file, abs_path=True)
     if General.security:
-        if not security.check_risky_file(args, config):
-            return
-        if not security.check_env(config):
+        try:
+            if not security.check_risky_files([args.config_file]):
+                return
+            if not security.check_risky_file_in_config(args, config):
+                return
+            if not security.check_env(config):
+                return
+        except Exception as e:
+            print(f"Secrity Error: {e}")
             return
     # load general
     if config.get("general"):
