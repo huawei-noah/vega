@@ -71,6 +71,12 @@ def evaluate(backend, hardware, remote_host, model, weight, test_data, input_sha
 
     evaluate_result = _post_request(remote_host, upload_data, test_data, evaluate_config)
 
+    data_file.close()
+    if "model_file" in locals():
+        model_file.close()
+    if "weight_file" in locals():
+        weight_file.close()
+
     if not kwargs.get("save_intermediate_file", False):
         if os.path.exists(model):
             os.remove(model)
@@ -106,7 +112,7 @@ def _post_request(remote_host, upload_data, test_data, evaluate_config):
         for i in range(retry_times):
             evaluate_result = post(host=remote_host, files=upload_data, data=evaluate_config)
             if evaluate_result.get("status") == "sucess":
-                logging.info("Evaluate sucess! The latency is {}.".format(evaluate_result["latency"]))
+                logging.info("Evaluate success! The latency is {}.".format(evaluate_result["latency"]))
                 break
             else:
                 if i == 3:
@@ -120,7 +126,7 @@ def _post_request(remote_host, upload_data, test_data, evaluate_config):
                         message is {}.".format(evaluate_result.get("status"), evaluate_result.get("timestamp"), i + 1,
                                                evaluate_result.get("error_message")))
     else:
-        logging.info("Evaluate sucess! The latency is {}.".format(evaluate_result["latency"]))
+        logging.info("Evaluate success! The latency is {}.".format(evaluate_result["latency"]))
 
     return evaluate_result
 

@@ -16,7 +16,7 @@
 
 """Check security env."""
 
-import vega
+import os
 
 
 __all__ = ["check_env"]
@@ -24,7 +24,7 @@ __all__ = ["check_env"]
 
 def check_env(config) -> bool:
     """Check security env."""
-    if vega.is_tf_backend():
+    if os.environ.get('BACKEND_TYPE', None) == 'TENSORFLOW':
         print("Vega can not run on TensorFlow in the security model.")
         return False
     pipeline = config.get("pipeline", [])
