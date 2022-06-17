@@ -27,18 +27,12 @@ from evaluate_service.class_factory import ClassFactory
 @ClassFactory.register()
 class Davinci(object):
     """Davinci class."""
+    supported_devices = ["ATLAS200DK", "Ascend310", "Ascend310P1", "Ascend310P2", "Ascend310P3", "Ascend310P4"]
 
     def __init__(self, optional_params):
         self.current_path = os.path.dirname(os.path.abspath(__file__))
         self.optional_params = optional_params
         self.davinci_environment_type = optional_params.get("davinci_environment_type")
-        self._check_device()
-
-    def _check_device(self):
-        """Check whether the device is supported."""
-        supported_devices = ["ATLAS200DK", "Ascend310", "Ascend310P1", "Ascend310P2", "Ascend310P3", "Ascend310P4"]
-        if self.davinci_environment_type not in supported_devices:
-            raise Exception("Unsupported device, please check davinci_environment_type parameter")
 
     def convert_model(self, backend, model, weight, **kwargs):
         """Convert the tf/caffe/mindspore/onnx model to om model in Davinci.
