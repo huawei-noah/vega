@@ -54,7 +54,7 @@ nas:
         callbacks: ['AutoLaneTrainerCallback','DetectionMetricsEvaluator','DetectionProgressLogger']
         report_freq: 50
         valid_interval: 10
-        epoch: 40
+        epochs: 40
         optimizer:
             type: SGD
             params:
