@@ -101,7 +101,7 @@ def _check_backend_hardware_shape(backend, hardware, input_shape):
 
 def _post_request(remote_host, upload_data, test_data, evaluate_config):
     evaluate_result = post(host=remote_host, files=upload_data, data=evaluate_config)
-    if evaluate_result.get("status") != "sucess":
+    if evaluate_result.get("status") != "success":
         logging.warning(
             "Evaluate failed and will try again, the status is {}, the timestamp is {}, \
             the error message is {}.".format(
@@ -111,7 +111,7 @@ def _post_request(remote_host, upload_data, test_data, evaluate_config):
         retry_times = 4
         for i in range(retry_times):
             evaluate_result = post(host=remote_host, files=upload_data, data=evaluate_config)
-            if evaluate_result.get("status") == "sucess":
+            if evaluate_result.get("status") == "success":
                 logging.info("Evaluate success! The latency is {}.".format(evaluate_result["latency"]))
                 break
             else:

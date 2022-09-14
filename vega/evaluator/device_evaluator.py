@@ -168,7 +168,7 @@ class DeviceEvaluator(Evaluator):
                                intermediate_format=self.intermediate_format,
                                opset_version=self.opset_version, repeat_times=self.repeat_times,
                                save_intermediate_file=self.config.save_intermediate_file, muti_input=self.muti_input)
-            if results.get("status") != "sucess" and error_count <= error_threshold:
+            if results.get("status") != "success" and error_count <= error_threshold:
                 error_count += 1
                 break
             latency = np.float(results.get("latency"))
@@ -239,7 +239,7 @@ class DeviceEvaluator(Evaluator):
                                repeat_times=self.repeat_times, precision=self.precision,
                                cal_metric=self.calculate_metric,
                                save_intermediate_file=self.config.save_intermediate_file, muti_input=self.muti_input)
-            if self.calculate_metric and results.get("status") != "sucess" and error_count <= error_threshold:
+            if self.calculate_metric and results.get("status") != "success" and error_count <= error_threshold:
                 error_count += 1
                 break
             latency = np.float(results.get("latency"))
