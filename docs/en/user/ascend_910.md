@@ -144,10 +144,3 @@ Run the following command to view the Vega dependency package:
 ```bash
 pip3 show noah-vega
 ```
-
-Note that the following versions must be installed for the dask and distributed packages:
-
-```bash
-pip3 install --user distributed==2021.7.0
-pip3 install --user dask==2021.7.0
-```

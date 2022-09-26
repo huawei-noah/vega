@@ -59,7 +59,7 @@ class Config():
         if "security" not in config.sections():
             return False
         keys = []
-        pass_check_keys = ["encrypted_password", "white_list"]
+        pass_check_keys = ["encrypted_password", "white_list", "ciphers"]
         for key in config["security"]:
             if key not in self.keys:
                 return False
@@ -69,8 +69,9 @@ class Config():
             keys.append(key)
         if len(keys) != len(self.keys):
             missing_keys = list(set(self.keys) - set(keys))
-            logging.error(f"setting items {missing_keys} are missing in {self.file_name}")
-            return False
+            if missing_keys != ["ciphers"]:
+                logging.error(f"setting items {missing_keys} are missing in {self.file_name}")
+                return False
         return True
 
 
@@ -100,11 +101,12 @@ class ClientConfig(Config):
         self.encrypted_password = None
         self.key_component_1 = None
         self.key_component_2 = None
+        self.ciphers = None
         self.white_list = []
         self.file_name = os.path.expanduser("~/.vega/client.ini")
         self.keys = [
             "ca_cert", "client_cert", "client_secret_key", "encrypted_password",
-            "key_component_1", "key_component_2"]
+            "key_component_1", "key_component_2", "ciphers"]
 
 
 _server_config = ServerConfig()

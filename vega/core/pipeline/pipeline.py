@@ -28,7 +28,6 @@ from vega.core.scheduler import shutdown_cluster
 from vega.common.general import General
 from vega.report import ReportServer
 from vega.common.message_server import MessageServer
-from vega.common.parameter_sharing import ParameterSharing
 from .pipe_step import PipeStep
 from .conf import PipeStepConfig, PipelineConfig
 
@@ -106,10 +105,11 @@ class Pipeline(object):
                 PipeStepConfig.evaluator_enable = True
 
     def _interval_time(self, start, end):
-        seconds = (end - start).seconds
+        time_difference = end - start
+        seconds = time_difference.seconds
         minutes, seconds = divmod(seconds, 60)
         hours, minutes = divmod(minutes, 60)
-        return "%d:%02d:%02d" % (hours, minutes, seconds)
+        return "%d:%02d:%02d" % (hours + time_difference.days * 24, minutes, seconds)
 
     def _show_pipeline_info(self):
         logging.info("-" * 48)

@@ -361,10 +361,10 @@ def create_coco_label(is_training, config):
     from pycocotools.coco import COCO
 
     coco_root = config.coco_root
-    data_type = config.val_data_type
     if is_training:
         data_type = config.train_data_type
-
+    else:
+        data_type = config.val_data_type
     # Classes need to train or test.
     train_cls = config.coco_classes
     train_cls_dict = {}

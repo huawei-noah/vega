@@ -18,6 +18,7 @@
 
 import configparser
 import logging
+import ssl
 import os
 from multiprocessing import Process
 import gevent
@@ -76,13 +77,28 @@ def run_flask(app, host, port, security_mode):
         encrypted_password = config.get('security').get('encrypted_password')
         key_component_1 = config.get('security').get('key_component_1')
         key_component_2 = config.get('security').get('key_component_2')
+        ciphers = config.get('security').get('ciphers')
+        cipher_suites = "ECDHE-ECDSA-AES128-CCM:ECDHE-ECDSA-AES256-CCM:ECDHE-ECDSA-AES128-GCM-SHA256" \
+                        ":ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-GCM-SHA384" \
+                        ":DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384:DHE-DSS-AES128-GCM-SHA256" \
+                        ":DHE-DSS-AES256-GCM-SHA384:DHE-RSA-AES128-CCM:DHE-RSA-AES256-CCM"
+
+        if ciphers:
+            ciphersList = [cipher for cipher in ciphers.split(':') if cipher in cipher_suites.split(':')]
+            if ciphersList == []:
+                raise ssl.SSLError("The ciphers are invalid, please check.")
+            else:
+                ciphers = ':'.join(ciphersList)
+        else:
+            ciphers = cipher_suites
+        
         if not check_risky_files((ca_cert, server_cert, server_secret_key, key_component_1, key_component_2)):
             return
         try:
             if encrypted_password == "":
-                ssl_context = create_context(ca_cert, server_cert, server_secret_key)
+                ssl_context = create_context(ca_cert, server_cert, server_secret_key, ciphers)
             else:
-                ssl_context = create_context(ca_cert, server_cert, server_secret_key,
+                ssl_context = create_context(ca_cert, server_cert, server_secret_key, ciphers,
                                              encrypted_password, key_component_1, key_component_2)
         except Exception:
             logging.error("Fail to create context.")

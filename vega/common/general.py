@@ -132,3 +132,4 @@ class General(ConfigSerializable):
     ms_execute_mode = 0  # 0-GRAPH_MODE 1-PYNATIVE_MODE
     dataset_sink_mode = True
     security = False
+    skip_trainer_error = True

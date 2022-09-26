@@ -41,6 +41,7 @@ logger = logging.getLogger(__name__)
 def valid():
     """Construct the trainer of SpNas."""
     config_val = DatasetConfig().to_dict()
+    dataset_type = config_val.type
     config_val = config_val['_class_data'].val
     prefix = "FasterRcnn_eval.mindrecord"
     mindrecord_dir = config_val.mindrecord_dir
@@ -49,7 +50,7 @@ def valid():
     if not os.path.exists(mindrecord_file):
         if not os.path.isdir(mindrecord_dir):
             os.makedirs(mindrecord_dir)
-        if config_val.dataset == "coco":
+        if dataset_type == "CocoDataset":
             if os.path.isdir(config_val.coco_root):
                 data_to_mindrecord_byte_image(config_val, "coco", False, prefix, file_num=1)
             else:
@@ -67,6 +68,7 @@ def valid():
 def train():
     """Train fasterrcnn dataset."""
     config_train = DatasetConfig().to_dict()
+    dataset_type = config_train.type
     config_train = config_train['_class_data'].train
     prefix = "FasterRcnn.mindrecord"
     mindrecord_dir = config_train.mindrecord_dir
@@ -78,7 +80,7 @@ def train():
     if rank == 0 and not os.path.exists(mindrecord_file):
         if not os.path.isdir(mindrecord_dir):
             os.makedirs(mindrecord_dir)
-        if config.dataset == "coco":
+        if dataset_type == "CocoDataset":
             if os.path.isdir(config_train.coco_root):
                 if not os.path.exists(config_train.coco_root):
                     logging.info("Please make sure config:coco_root is valid.")

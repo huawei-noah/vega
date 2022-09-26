@@ -175,7 +175,7 @@ class ModelZoo(object):
         elif vega.is_tf_backend():
             return cls._load_tf_model(model, pretrained_model_file)
         else:
-            return cls._load_ms_model(model, pretrained_model_file)
+            return cls._load_ms_model(model, pretrained_model_file, exclude_weight_prefix)
 
     @classmethod
     def _load_torch_model(cls, model, pretrained_model_file, exclude_weight_prefix=None):
@@ -214,7 +214,7 @@ class ModelZoo(object):
         return model
 
     @classmethod
-    def _load_ms_model(cls, model, pretrained_model_file):
+    def _load_ms_model(cls, model, pretrained_model_file, exclude_weight_prefix):
         from mindspore.train.serialization import load_checkpoint
         if hasattr(model, "pretrained"):
             pretrained_weight = model.pretrained(pretrained_model_file)
@@ -227,7 +227,7 @@ class ModelZoo(object):
                         pretrained_weight = os.path.join(pretrained_model_file, file)
                         break
         network = model if not hasattr(model, "get_ori_model") else model.get_ori_model()
-        load_checkpoint(pretrained_weight, net=network)
+        load_checkpoint(pretrained_weight, net=network, filter_prefix=exclude_weight_prefix)
         return model
 
     @classmethod

@@ -16,6 +16,7 @@
 
 """Data parallel callback."""
 
+import os
 import logging
 import vega
 from vega.common import ClassFactory, ClassType
@@ -59,7 +60,7 @@ class Hccl(Callback):
         from mindspore.communication.management import init
 
         logger.info("init HCCL")
-        context.set_auto_parallel_context(parallel_mode=ParallelMode.DATA_PARALLEL, gradients_mean=True)
+        context.set_auto_parallel_context(device_num=int(os.getenv('RANK_SIZE', '1')), parallel_mode=ParallelMode.DATA_PARALLEL, gradients_mean=True)
         init()
 
     def before_epoch(self, epoch, logs=None):

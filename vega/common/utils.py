@@ -187,8 +187,14 @@ def verify_requires(requires):
     if requires and isinstance(requires, list):
         failed = []
         for pkg in requires:
+            _lower = False
             try:
                 __import__(pkg.split("=")[0].replace("<", "").replace(">", "").lower())
+            except Exception:
+                _lower = True
+            try:
+                if _lower:
+                    __import__(pkg.split("=")[0].replace("<", "").replace(">", ""))
             except Exception:
                 failed.append(pkg)
         if failed:

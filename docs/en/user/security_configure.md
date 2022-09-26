@@ -17,6 +17,7 @@ requirements:
 1. **Python 3.9 or later.**
 2. **Dask and Distributed version is 2022.2.0.**
 
+
 ## 1. Install OpenSSL
 
 You need to install OpenSSL 1.1.1, compile and install from the source code, or directly install the compiled release package.
@@ -173,6 +174,17 @@ Description:
 1. The preceding keys, certificates, and encryption materials can also be stored in other directories. The access permission must be set to 600, and the file location must be changed to an absolute path in subsequent configuration files.
 2. In the train cluster, reserve `ca.crt`, `client.key`, `client.crt`, `ksmaster_client.dat`, `ksstandby_client.dat`, and `server_dask.key`, `server_dask.crt`, `client_dask.key`, `client_dask.crt`, and delete other files.
 3. In the evaluate service, reserve `ca.crt`, `server.key`, `server.crt`, `ksmaster_server.dat`, and `ksstandby_server.dat` files, and delete other files.
+4. The default cipher suites are as follows::
+   
+   ```txt
+   ECDHE-ECDSA-AES128-CCM:ECDHE-ECDSA-AES256-CCM:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-GCM-SHA384:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384:DHE-DSS-AES128-GCM-SHA256:DHE-DSS-AES256-GCM-SHA384:DHE-RSA-AES128-CCM:DHE-RSA-AES256-CCM
+   ```
+
+   To narrow down the scope, add configurations to the `client.ini` and `vega.ini` files:
+
+   ```ini
+   ciphers=ECDHE-ECDSA-AES128-CCM:ECDHE-ECDSA-AES256-CCM
+   ```
 
 Create `server.ini` and `client.ini` in the `~/.vega` directory.
 
@@ -292,3 +304,18 @@ Find the private key file of the open-source software on which Vega depends amon
 ### 9.5 Horovod and TensorFlow
 
 In security mode, Vega does not support Horovod or the TensorFlow framework. Vega automatically exits if Vega run on Horovod or the TensorFlow framework.
+
+### 9.6 Only TLS 1.3 can be used for Distributed
+
+If only the tls1.3 protocol needs to be used for communication between distributed components，configure `~/.config/dask/distributed.yaml`
+
+distributed.yaml：
+
+```yaml
+distributed:
+    comm:
+        tls:
+            min-version: 1.3
+```
+
+For details, see the [Configuration Guide](https://docs.dask.org/en/stable/configuration.html)。

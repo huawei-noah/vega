@@ -137,10 +137,3 @@ pip3 install --user --no-deps noah-vega
 ```bash
 pip3 show noah-vega
 ```
-
-另外要注意的是，dask和distributed这两个包，需要安装如下版本：
-
-```bash
-pip3 install --user distributed==2021.7.0
-pip3 install --user dask==2021.7.0
-```

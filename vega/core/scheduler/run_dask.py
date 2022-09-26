@@ -19,6 +19,7 @@
 import os
 import subprocess
 import shutil
+import time
 from distributed import Client
 from vega.common import General
 
@@ -78,6 +79,7 @@ def run_local_worker(slave_ip, address, local_dir):
         )
     else:
         from vega.security.run_dask import run_local_worker_security
+        time.sleep(1)
         return run_local_worker_security(slave_ip, address, local_dir)
 
 
@@ -102,4 +104,5 @@ def run_remote_worker(slave_ip, address, local_dir):
         return id
     else:
         from vega.security.run_dask import run_remote_worker_security
+        time.sleep(1)
         return run_remote_worker_security(slave_ip, address, local_dir)

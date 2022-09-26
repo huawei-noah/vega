@@ -25,7 +25,7 @@ from distributed import Client
 from distributed.security import Security
 from .conf import get_config
 from .verify_cert import verify_cert
-
+import ssl
 
 sec_cfg = get_config('server')
 
@@ -38,6 +38,7 @@ def get_client_security(address):
     sec = Security(tls_ca_file=sec_cfg.ca_cert,
                    tls_client_cert=sec_cfg.client_cert_dask,
                    tls_client_key=sec_cfg.client_secret_key_dask,
+                   tls_min_version=ssl.TLSVersion.TLSv1_3,
                    require_encryption=True)
     return Client(address, security=sec)
 
