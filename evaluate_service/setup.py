@@ -60,7 +60,7 @@ class custom_sdist(sdist):
 
 setuptools.setup(
     name="evaluate-service",
-    version="1.8.4",
+    version="1.8.5",
     packages=["evaluate_service"],
     include_package_data=True,
     python_requires=">=3.6",
@@ -80,6 +80,7 @@ setuptools.setup(
         "Flask-RESTful",
         "Flask-Limiter",
         "gevent",
+        "PyYAML",
     ],
     cmdclass={
         "build_py": custom_build_py,

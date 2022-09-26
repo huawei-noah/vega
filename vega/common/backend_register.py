@@ -17,7 +17,8 @@
 """Backend Register."""
 
 import os
-import sys
+import logging
+import traceback
 
 __all__ = [
     "set_backend",
@@ -135,7 +136,8 @@ def get_devices():
 
 def import_extension_module():
     """Import extension module."""
-    try:
-        import ascend_automl
-    except ImportError:
-        pass
+    if is_npu_device():
+        try:
+            import ascend_automl
+        except ImportError:
+            logging.debug(traceback.format_exc())

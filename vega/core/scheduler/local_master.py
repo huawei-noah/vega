@@ -65,6 +65,8 @@ class LocalMaster(MasterBase):
             except Exception as e:
                 logging.debug(traceback.format_exc())
                 logging.error(f"Failed to run worker, id: {worker.worker_id}, message: {e}")
+                if not General.skip_trainer_error:
+                    raise e
 
         self._update(step_name, worker_id)
 

@@ -17,6 +17,7 @@ Vega的安全配置，包括如下步骤：
 1. **Python3.9及以上**
 2. **dask和distributed版本为2022.2.0**
 
+
 ## 1.安装OpenSSL
 
 首先要安装OpenSSL 1.1.1，从源码编译安装，或者直接安装编译后的发行包。
@@ -87,7 +88,7 @@ openssl x509 -req -in server.csr -CA ca.crt -CAkey ca.key -CAcreateserial -out s
 rm server.csr
 ```
 
-执行如下脚本生成评估服务客户端所使用的证书的加密私钥，执行该命令时，会提示输入加密密码，密码的强度要求如服务器端私钥，且和服务器段私钥密码不同，请记录好改密码，后继还需使用：
+执行如下脚本生成评估服务客户端所使用的证书的加密私钥，执行该命令时，会提示输入加密密码，密码的强度要求如服务器端私钥，且和服务器端私钥密码不同，请记录好该密码，后继还需使用：
 
 ```shell
 openssl genrsa -aes-256-ofb -out client.key 4096
@@ -172,6 +173,17 @@ chmod 600 ~/.vega/*
 1. 如上的秘钥、证书、加密材料也可以放到其他目录位置，注意访问权限要设置为`600`，并在后继的配置文件中同步修改该文件的位置，需要使用绝对路径。
 2. 在训练集群上，需要保留`ca.crt`、`client.key`、`client.crt`、`ksmaster_client.dat`、`ksstandby_client.dat`、`server_dask.key`、`server_dask.crt`、`client_dask.key`、`client_dask.crt`，并删除其他文件。
 3. 评估服务上，需要保留`ca.crt`、`server.key`、`server.crt`、`ksmaster_server.dat`、`ksstandby_server.dat`，并删除其他文件。
+4. 以下为默认配置的加密套件:
+   
+   ```txt
+   ECDHE-ECDSA-AES128-CCM:ECDHE-ECDSA-AES256-CCM:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-GCM-SHA384:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384:DHE-DSS-AES128-GCM-SHA256:DHE-DSS-AES256-GCM-SHA384:DHE-RSA-AES128-CCM:DHE-RSA-AES256-CCM
+   ```
+
+   如需缩小范围，可在`client.ini`与`vega.ini`中加入配置：
+
+   ```ini
+   ciphers=ECDHE-ECDSA-AES128-CCM:ECDHE-ECDSA-AES256-CCM
+   ```
 
 在`~/.vega`目录下创建`server.ini`和`client.ini`。
 
@@ -290,3 +302,18 @@ find ~/.local/ -name *.pem
 ### 9.5 Horovod 和 TensorFlow
 
 在安全模式下，Vega不支持Horovod数据并行，也不支持TensorFlow框架，Vega在运行前检查若是Horovod数据并行程序，或者TensorFlow框架，会自动退出。
+
+### 9.6 限定Distributed仅使用tls1.3协议进行通信
+
+若需要限定开源软件Distributed的组件间的通信仅使用tls1.3协议，需要配置`~/.config/dask/distributed.yaml`
+
+distributed.yaml：
+
+```yaml
+distributed:
+    comm:
+        tls:
+            min-version: 1.3
+```
+
+请参考Dask的[配置指导](https://docs.dask.org/en/stable/configuration.html)。

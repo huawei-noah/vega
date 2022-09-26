@@ -18,6 +18,7 @@
 
 import ctypes
 import os
+import random
 from ctypes.util import find_library
 import logging
 import platform
@@ -27,7 +28,6 @@ __all__ = ["init", "encrypt", "decrypt", "check_and_update_mk", "update_root_key
 _kmc_dll: ctypes.CDLL = None
 _libc_dll: ctypes.CDLL = None
 ADVANCE_DAY = 3
-
 
 def hmac(domain_id: int, plain_text: str) -> str:
     """Encode HMAC code."""
@@ -102,6 +102,11 @@ def _decrypt(domain_id: int, cipher_text: str):
 
 def check_and_update_mk(domain_id: int, advance_day: int) -> bool:
     """Check and update mk."""
+    try:
+        _kmc_dll.KeRefreshMkMask()
+    except Exception as err:
+        logging.error('refresh_task failed, catch error: %s', err)
+    
     ret = _kmc_dll.KeCheckAndUpdateMk(domain_id, advance_day)
     if ret != 0:
         logging.error(f"failed to call KeCheckAndUpdateMk, code={ret}")
@@ -180,7 +185,11 @@ def _init_kmc_config(primary_key_store_file, standby_key_store_file, alg_id, dom
     config.procLockPerm = 0o0600
     config.sdpAlgId = alg_id
     config.hmacAlgId = 2052  # HMAC_SHA256 2052; HMAC_SHA384 2053 HMAC_SHA512 2054
-    config.semKey = 0x20161516
+    DEFAULT_SEM_KEY = 0x20160000
+    MIN_HEX_SEM_KEY = 0x1111
+    MAX_HEX_SEM_KEY = 0x9999
+    config.semKey = DEFAULT_SEM_KEY + \
+        random.randint(MIN_HEX_SEM_KEY, MAX_HEX_SEM_KEY)
     _kmc_dll.KeInitialize.restype = ctypes.c_int
     _kmc_dll.KeInitialize.argtypes = [ctypes.POINTER(KMCConfig)]
     return _kmc_dll.KeInitialize(ctypes.byref(config))
@@ -197,6 +206,13 @@ def init(primary_key_store_file: str, standby_key_store_file: str, alg_id: int, 
     if ret != 0:
         logging.error(f"failed to call KeInitialized, code={ret}")
         return False
+    domain_id = 0
+    try:
+        _kmc_dll.KeActiveNewKey(domain_id)
+    except Exception:
+        logging.error("failed to call KeActiveNewKey.")
+
+    check_and_update_mk(domain_id, ADVANCE_DAY)
     return True
 
 
@@ -223,6 +239,5 @@ def decrypt(cert_pem_file, secret_key_file, key_mm, key_component_1, key_compone
     if decrypt_mm == "":
         logging.error("kmc init error.")
         raise Exception('ERROR: kmc init failed!')
-    check_and_update_mk(domain_id, ADVANCE_DAY)
     finalize()
     return decrypt_mm

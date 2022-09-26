@@ -155,9 +155,23 @@ class FileOps(object):
             if os.path.isfile(src):
                 shutil.copy(src, dst)
             else:
-                logger.error("failed to copy file, file is not existed, file={}.".format(src))
+                logger.error(f"failed to copy file, file is not existed, file={src}.")
+        except OSError as os_error:
+            if os_error.errno == 13 and os.path.abspath(os_error.filename) != os.path.abspath(src):
+                need_try_again = True
+                os_error_filename = os.path.abspath(os_error.filename)
+            else:
+                logger.error(f"Failed to copy file, src={src}, dst={dst}, msg={os_error}")
         except Exception as ex:
-            logger.error("Failed to copy file, src={}, dst={}, msg={}".format(src, dst, str(ex)))
+            logger.error(f"Failed to copy file, src={src}, dst={dst}, msg={ex}")
+
+        if "need_try_again" in locals():
+            try:
+                logger.info("The dest file is readonly, remove the dest file and try again.")
+                os.remove(os_error_filename)
+                shutil.copy(src, dst)
+            except Exception as ex:
+                logger.error(f"Failed to copy file after removed dest file, src={src}, dst={dst}, msg={ex}")
 
     @classmethod
     def download_dataset(cls, src_path, local_path=None):

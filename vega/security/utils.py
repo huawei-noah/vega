@@ -18,18 +18,15 @@ import sys
 import logging
 
 
-def create_context(ca_file, cert_pem_file, secret_key_file, key_mm=None, key_component_1=None, key_component_2=None):
+def create_context(ca_file, cert_pem_file, secret_key_file, ciphers, key_mm=None, key_component_1=None, key_component_2=None):
     """Create the SSL context."""
-    ciphers = "ECDHE-ECDSA-AES128-CCM:ECDHE-ECDSA-AES256-CCM:ECDHE-ECDSA-AES128-GCM-SHA256" \
-              ":ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-GCM-SHA384" \
-              ":DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384:DHE-DSS-AES128-GCM-SHA256" \
-              ":DHE-DSS-AES256-GCM-SHA384:DHE-RSA-AES128-CCM:DHE-RSA-AES256-CCM"
     context = ssl.SSLContext(ssl.PROTOCOL_TLS)
-    context.options += ssl.OP_NO_TLSv1
-    context.options += ssl.OP_NO_TLSv1_1
+    context.options |= ssl.OP_NO_TLSv1
+    context.options |= ssl.OP_NO_TLSv1_1
     if sys.version_info >= (3, 7):
-        context.options += ssl.OP_NO_TLSv1_2
-        context.options += ssl.OP_NO_RENEGOTIATION
+        context.minimum_version = ssl.TLSVersion.TLSv1_3
+        context.options |= ssl.OP_NO_TLSv1_2
+        context.options |= ssl.OP_NO_RENEGOTIATION
     context.options -= ssl.OP_ALL
     context.verify_mode = ssl.CERT_REQUIRED
     context.set_ciphers(ciphers)

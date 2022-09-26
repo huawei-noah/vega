@@ -176,8 +176,10 @@ class Evaluate(Resource):
         logging.warning("The timestamp is {}.".format(self.now_time))
         self.upload_file_path = os.path.join(self.current_path, "out", self.now_time)
         self.share_dir = os.path.join(self.current_path, "out", self.job_id)
-        os.makedirs(self.upload_file_path)
-        os.makedirs(self.share_dir)
+        if not os.path.exists(self.upload_file_path):
+            os.makedirs(self.upload_file_path)
+        if not os.path.exists(self.share_dir):
+            os.makedirs(self.share_dir)
         patterns = [".pkl", ".pth", ".pt", ".pb", ".ckpt", ".air", '.om',
                     ".onnx", ".caffemodel", ".pbtxt", ".prototxt"]
         model_file = request.files.get("model_file")

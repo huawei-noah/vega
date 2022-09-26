@@ -66,7 +66,7 @@ def parse_cli_to_yaml(parser, cfg, helper=None, choices=None, cfg_path="default_
             else:
                 parser.add_argument("--" + item, type=type(cfg[item]), default=cfg[item], choices=choice,
                                     help=help_description)
-    args = parser.parse_args()
+    args, _ = parser.parse_known_args()
     return args
 
 

@@ -29,7 +29,7 @@ with open("RELEASE.md", "r") as fh:
 
 setuptools.setup(
     name="noah-vega",
-    version="1.8.4",
+    version="1.8.5",
     packages=["vega"],
     include_package_data=True,
     python_requires=">=3.6",
@@ -59,7 +59,6 @@ setuptools.setup(
         "dill",
         "scikit-learn",
         "opencv-python",
-        "tensorboardX",
     ],
     entry_points="""
         [console_scripts]

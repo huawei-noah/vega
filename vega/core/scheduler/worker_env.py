@@ -107,8 +107,8 @@ class WorkerEnv(WorkerPlugin):
                     os.environ['MASTER_PORT'] = rank_table_json['server_list'][0].get('server_port', port)
             else:
                 # multi-nodes
-                if "DLS_TASK_INDEX" in os.environ:
-                    index = int(os.environ["DLS_TASK_INDEX"])
+                if "DLS_TASK_INDEX" in os.environ or 'VC_TASK_INDEX' in os.environ:
+                    index = int(os.getenv('DLS_TASK_INDEX', os.getenv('VC_TASK_INDEX')))
                     devices = server_list[index]["device"]
                     rank_id = list(filter(lambda x: x["device_id"] == device_id, devices))[0]["rank_id"]
                     rank_size = str(sum([len(x["device"]) for x in server_list]))
@@ -120,8 +120,8 @@ class WorkerEnv(WorkerPlugin):
                     rank_size = str(sum([len(x["device"]) for x in server_list]))
             os.environ['RANK_ID'] = rank_id
             os.environ['RANK_SIZE'] = rank_size
-        except Exception:
-            logging.warn(f"wrong rank table file: {rank_table_file}")
+        except Exception as e:
+            logging.warn(f"wrong rank table file: {rank_table_file}, message: {e}")
 
     def _get_device_index(self, worker):
         ports_list = json.loads(os.environ["vega_workers_list"])

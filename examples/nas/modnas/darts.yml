@@ -1,5 +1,6 @@
 general:
     backend: pytorch
+    requires: ["tensorboardX"]
 
 
 pipeline: [nas, fully_train]
