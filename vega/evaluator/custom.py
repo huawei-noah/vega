@@ -37,7 +37,12 @@ class CustomEvaluator():
         from mindspore.train.serialization import export
         from mindspore import Tensor
         from mindspore.common.api import _cell_graph_executor
-        _cell_graph_executor.set_jit_config(jit_config={"jit_level": "o0"})
+        if hasattr(_cell_graph_executor, "set_jit_config"):
+            _cell_graph_executor.set_jit_config(jit_config={"jit_level": "o0"})
+        if hasattr(init_model, "set_jit_config"):
+            from mindspore.common.jit_conig import JitConfig
+            jit_conig = JitConfig(jit_level="O0")
+            init_model.set_jit_config(jit_conig)
         fake_input = np.random.random([1, 12, 320, 320]).astype(np.float32)
         save_name = os.path.join("./", "ms2air.air")
         export(init_model, Tensor(fake_input), Tensor(640), file_name=save_name, file_format='AIR')
