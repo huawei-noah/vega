@@ -51,6 +51,7 @@ block_nas:
     dataset:
         type: Imagenet
         common:
+            dataset_backend: pytorch
             data_path: "/cache/datasets/ILSVRC/Data/CLS-LOC"
             batch_size: 64
             n_class: 1000
@@ -100,6 +101,7 @@ net_nas:
     dataset:
         type: Imagenet
         common:
+            dataset_backend: pytorch
             data_path: "/cache/datasets/ILSVRC/Data/CLS-LOC"
             batch_size: 64
             n_class: 1000

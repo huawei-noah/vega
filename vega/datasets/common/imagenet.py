@@ -41,9 +41,6 @@ class Imagenet(Dataset):
         self.args.data_path = FileOps.download_dataset(self.args.data_path)
         split = 'train' if self.mode == 'train' else 'val'
         local_data_path = FileOps.join_path(self.args.data_path, split)
-        self.frame_type = False
-        if self.args.backend in ["m", "mindspore"]:
-            self.frame_type = True
         if self.frame_type:
             from mindspore.dataset import ImageFolderDataset
             from mindspore.dataset import vision
