@@ -58,8 +58,13 @@ class Dataset(TaskOps):
             self.args = config().to_dict()
         self._init_hps(hps)
         self.train = self.mode in ["train", "val"]
-        transforms_list = self._init_transforms()
-        self._transforms = Transforms(transforms_list)
+        self.frame_type = False
+        dataset_backend = self.args.get("dataset_backend")
+        if dataset_backend in ["m", "mindspore"]:
+            self.frame_type = True
+        if not self.frame_type:
+            transforms_list = self._init_transforms()
+            self._transforms = Transforms(transforms_list)
         self.dataset_init()
         self.world_size = 1
         self.rank = 0
