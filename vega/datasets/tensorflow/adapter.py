@@ -83,7 +83,7 @@ class TfAdapter(object):
         try:
             self.image_dtype = str(image.dtype)
         except Exception:
-            logging.debug('Falied to get image dtype.')
+            logging.debug('Failed to get image dtype.')
         try:
             self.label_dtype = str(label.dtype)
         except Exception:
@@ -156,7 +156,7 @@ class TfAdapter(object):
             try:
                 label = tf.squeeze(label)
             except Exception:
-                logging.debug('Falied to get label.')
+                logging.debug('Failed to get label.')
             if self.label_dtype == "int":
                 label = tf.cast(label, tf.int32)
             if self.data_format == "channels_last":
@@ -164,7 +164,7 @@ class TfAdapter(object):
                     image = tf.transpose(image, [1, 2, 0])
                     label = tf.transpose(label, [1, 2, 0])
                 except Exception:
-                    logging.debug('Falied to transpose.')
+                    logging.debug('Failed to transpose.')
         else:
             img, gt_bboxes, gt_bboxes_ignore, gt_labels_ignore, gt_labels, \
                 ori_shape, img_shape, pad_shape, scale_factor, flip, target = tf.numpy_function(

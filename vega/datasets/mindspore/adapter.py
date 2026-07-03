@@ -54,7 +54,7 @@ class MsAdapter(object):
         try:
             image_dtype = str(image.dtype)
         except Exception:
-            logging.debug('Falied to get image dtype.')
+            logging.debug('Failed to get image dtype.')
         try:
             label_dtype = str(label.dtype)
         except Exception:

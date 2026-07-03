@@ -30,7 +30,7 @@ def _to_cpu(data):
         if torch.is_tensor(data):
             return data.cpu()
     except Exception:
-        logging.debug('Falied to convert data to cpu.')
+        logging.debug('Failed to convert data to cpu.')
 
     if isinstance(data, dict):
         return {k: _to_cpu(v) for k, v in data.items()}

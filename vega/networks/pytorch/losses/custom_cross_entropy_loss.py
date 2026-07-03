@@ -94,7 +94,7 @@ def mask_cross_entropy(pred, target, label, reduction='mean', avg_factor=None):
         pred_slice = pred[inds, label].squeeze(1)
         return F.binary_cross_entropy_with_logits(pred_slice, target, reduction='mean')[None]
     else:
-        raise ValueError('Falied to calculate mask cross_entropy.')
+        raise ValueError('Failed to calculate mask cross_entropy.')
 
 
 @ClassFactory.register(ClassType.NETWORK)
@@ -135,4 +135,4 @@ class CustomCrossEntropyLoss(Module):
                                                              avg_factor=avg_factor, **kwargs)
             return loss_cls
         else:
-            raise ValueError('Falied to calculate CustomCrossEntropyLoss.')
+            raise ValueError('Failed to calculate CustomCrossEntropyLoss.')

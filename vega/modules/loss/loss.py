@@ -67,7 +67,7 @@ if vega.is_torch_backend():
 
         ClassFactory.register_from_package(timm_loss, ClassType.LOSS)
     except Exception:
-        logging.debug('Falied to get timm loss.')
+        logging.debug('Failed to get timm loss.')
 elif vega.is_tf_backend():
     import tensorflow.compat.v1.losses as tf_loss
 
